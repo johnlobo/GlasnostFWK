@@ -4,6 +4,7 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 
 | Example | Linked code | Linked data | BIN bytes |
 |---|---:|---:|---:|
+| animation | 1086 | 29 | 1115 |
 | audio | 5997 | 11 | 6008 |
 | board | 1236 | 37 | 1273 |
 | diskload | 491 | 49 | 540 |

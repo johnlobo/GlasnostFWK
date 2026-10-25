@@ -26,7 +26,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # ocho ejemplos: vertical, disco y audio AKG real
+make examples   # nueve ejemplos: vertical, disco, audio y animación
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
@@ -46,10 +46,10 @@ ejemplo en un ZIP con checksum; el estado y la siguiente acción se mantienen en
 - `src/ui`: adaptador de texto Mode 0.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
-- `src/extensions`: perfiles de entidad/movimiento optativos.
+- `src/extensions`: movimiento y animación optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: ocho consumidores pequeños, sin copias internas del framework.
+- `examples`: nueve consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -77,6 +77,14 @@ CPCTelera Next y datos de demostración de Arkos Tracker con licencia MIT.
 Reproduce música a 50 Hz mediante el callback de IRQ, admite SFX y expone
 comandos de parada/reanudación para la prueba. El smoke comprueba ticks y
 registros PSG reales en CPC 6128 y CPC 464; véase `docs/audio-akg.md`.
+
+## Animación reutilizable
+
+`examples/animation` recorre tres frames sintéticos cada cuatro ticks. El
+módulo solo mantiene descriptor, índice y temporizador: el juego decide cuándo
+llamarlo y cómo dibujar. El smoke comprueba el periodo exacto, los punteros de
+frame, el byte renderizado y que una pausa impuesta por el consumidor congela
+el estado en CPC 6128 y CPC 464. Detalles en `docs/animation.md`.
 
 ## Estado del perfil 160x288
 

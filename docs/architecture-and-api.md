@@ -63,6 +63,27 @@ El pool no interpreta el contenido de los registros ni impone componentes.
 La vertical jugable comprueba en Z80 real emulado una secuencia de tres
 eliminaciones con compactación, además de las pruebas host de arquitectura.
 
+### Animación opcional
+
+Descriptor inmutable: número de frames, duración común en ticks y tabla de
+punteros a frames. Estado mutable de 4 bytes: descriptor activo, índice y ticks
+restantes. El módulo no conoce entidades, salas, movimiento, VSYNC ni formato
+gráfico.
+
+- `fwk_anim_clear`: `IX=estado`; lo desactiva y devuelve `HL=0`, carry limpio.
+- `fwk_anim_set`: `IX=estado`, `HL=descriptor|0`; activa o desactiva. Carry
+  activo indica cambio de descriptor; seleccionar otra vez el mismo conserva
+  índice y temporizador. Devuelve en `HL` el frame actual o cero.
+- `fwk_anim_tick`: `IX=estado`; consume exactamente un tick definido por el
+  llamador. Carry activo solo cuando avanza de frame; devuelve el frame actual
+  en `HL`, o cero si está inactivo.
+
+El descriptor debe persistir y declarar `count>0` y `duration>0`. Los tres
+procedimientos alteran `AF,HL` y conservan `IX`; `set/tick` también pueden
+alterar `BC,DE`. La política para elegir animación, llamar al tick y dibujar el
+frame pertenece al juego. El contrato y la disposición byte a byte se detallan
+en `animation.md`.
+
 ### Vídeo
 
 - `fwk_video_init`: selecciona Mode 0; altera `AF,BC,DE,HL`.

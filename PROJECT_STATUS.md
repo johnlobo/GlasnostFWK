@@ -11,8 +11,8 @@ publicación.
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los ocho ejemplos construyen BIN y DSK con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; siete construyen además CDT.
+- Los nueve ejemplos construyen BIN y DSK con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; ocho construyen además CDT.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -54,9 +54,9 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
 - No existe verificación en hardware real.
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
-- Ventanas, animación y perfiles completos de física siguen pendientes de
-  integración ejecutable.
-- Solo `vertical` es una escena jugable; los otros siete ejemplos son pruebas
+- Ventanas y perfiles completos de física siguen pendientes de integración
+  ejecutable.
+- Solo `vertical` es una escena jugable; los otros ocho ejemplos son pruebas
   técnicas. `diskload` se distribuye solo como DSK.
 
 ## Fase completada: carga desde disco y ZX7B
@@ -112,10 +112,37 @@ python3 tests/emulator_smoke.py audio
 python3 tests/emulator_smoke.py --model 464 audio
 ```
 
-## Fase siguiente: animación reutilizable
+## Fase completada: animación reutilizable
 
-Auditar las implementaciones reales de animación de los cuatro proyectos,
-separar el avance de frames de políticas de juego como «solo al moverse» e
-integrar el mecanismo elegido en un ejemplo ejecutable. Si sus contratos no
-son compatibles, se conservarán perfiles separados en vez de forzar una
-estructura universal.
+- [x] Se auditaron las cuatro bases reales. `model01` contiene un cursor de
+  frames reutilizable, pero acoplado a entidad, sala, movimiento y render;
+  `DeckTower` implementa una máquina de estados específica para impactos;
+  `boop` y `PocketFever` no aportan un reproductor genérico equivalente.
+- [x] `src/extensions/animation.s` conserva únicamente el cursor temporal:
+  descriptor inmutable, estado de 4 bytes, cambio estable de descriptor y loop.
+- [x] El llamador controla cuándo consume ticks, qué animación selecciona y
+  cómo dibuja; no existe dependencia de VSYNC, entidades o formato de sprite.
+- [x] `animation` recorre tres frames sintéticos cada cuatro ticks y demuestra
+  selección idempotente, pausa y reanudación.
+- [x] La prueba específica pasó en AmSpiriT-Lite 1.15.3 para CPC 6128 y CPC
+  464, comprobando además el byte de frame en RAM de vídeo.
+- [x] Suite local: 19 pruebas host, construcción de nueve BIN/DSK y ocho CDT,
+  paquete determinista de 28 entradas y checksum correcto.
+- [x] Los nueve DSK pasaron la batería completa en CPC 6128; `animation` pasó
+  además su comprobación específica en CPC 464.
+- [ ] Pendiente en este punto del registro: commit, sincronización y CI remota
+  de la fase.
+
+Comandos específicos:
+
+```sh
+python3 tests/emulator_smoke.py animation
+python3 tests/emulator_smoke.py --model 464 animation
+```
+
+## Fase siguiente: ventanas y mensajes reutilizables
+
+Auditar primero las implementaciones reales de paneles, cajas y mensajes de
+los cuatro proyectos. Extraer solo geometría, limpieza y composición que tenga
+un contrato común ejecutable; conservar como lógica de juego cualquier menú,
+combate, texto o temporización que no sea verdaderamente compartida.

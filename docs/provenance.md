@@ -35,6 +35,7 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `src/resources/zx7b.s` | `DeckTower/src/sys/compression.s`; `cpct_zx7b_decrunch_s_asm` de CPCTelera Next | Adaptador sin buffer ni packs concretos; compresor y descompresor proceden de la dependencia fijada | GPL-3.0; enlace con LGPL-3.0 |
 | `tools/gen_resources.py` | tabla fija de `DeckTower/src/sys/loader.s` | Sustitución nueva mediante manifiesto validado | GPL-3.0 |
 | `src/extensions/motion_u8.*` | física de model01 y PocketFever | Perfil nuevo, separado; no unifica estructuras incompatibles | GPL-3.0 |
+| `src/extensions/animation.*` | `model01/src/sys/anim.*`; contraste con la máquina de impactos de `DeckTower/src/game/combat.s` | Cursor de frames reimplementado sin entidad, sala, movimiento ni render; DeckTower permanece como especialización | GPL-3.0 |
 | `cfg/*.template*` | ejemplo `examples/asm/helloworld` de CPCTelera Next | Copia de plantilla de construcción con su cabecera intacta | LGPL-3.0 |
 
 No se copiaron sprites, mapas, música ni datos de los cuatro juegos. Los datos

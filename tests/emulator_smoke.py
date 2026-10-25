@@ -185,6 +185,40 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 time.sleep(0.01)
             if not heard_sfx:
                 raise RuntimeError("sound effect did not produce an observable PSG channel B signal")
+        if name == "animation":
+            enabled = symbol(noi, "animation_enabled")
+            changes = symbol(noi, "animation_changes")
+            ticks = symbol(noi, "animation_ticks")
+            frame_value = symbol(noi, "animation_frame_value")
+            status = symbol(noi, "animation_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "four exact animation periods")
+            if ram(frame_value, 1) not in {b"\xF0", b"\x0F", b"\xAA"}:
+                raise RuntimeError("animation selected a frame outside its descriptor")
+            if ram(standard_screen_address(20, 80), 1) != ram(frame_value, 1):
+                raise RuntimeError("animation frame pointer was not rendered")
+
+            write_ram(enabled, b"\x00")
+            time.sleep(0.15)
+            paused_ticks = ram(ticks, 2)
+            paused_changes = ram(changes, 2)
+            paused_frame = ram(frame_value, 1)
+            time.sleep(0.35)
+            if (
+                ram(ticks, 2) != paused_ticks
+                or ram(changes, 2) != paused_changes
+                or ram(frame_value, 1) != paused_frame
+            ):
+                raise RuntimeError("caller-owned animation pause policy did not freeze state")
+
+            write_ram(enabled, b"\x01")
+            paused_tick_value = int.from_bytes(paused_ticks, "little")
+            paused_change_value = int.from_bytes(paused_changes, "little")
+            wait_for(
+                lambda: int.from_bytes(ram(ticks, 2), "little") > paused_tick_value + 4
+                and int.from_bytes(ram(changes, 2), "little") > paused_change_value,
+                5,
+                "animation resume",
+            )
         if name == "vertical":
             player = symbol(noi, "vertical_player")
             pool = symbol(noi, "vertical_entity_pool")
@@ -244,7 +278,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "video", "resources128", "diskload", "audio", "vertical"],
+        default=["minimal", "board", "platform", "video", "resources128", "diskload", "audio", "animation", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

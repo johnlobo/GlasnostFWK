@@ -1,0 +1,6 @@
+{
+  "name": "animation",
+  "profile": "standard-160x200.json",
+  "modules": ["core/system.s", "video/video.s", "extensions/animation.s"],
+  "game_sources": ["main.s", "assets.s"]
+}
