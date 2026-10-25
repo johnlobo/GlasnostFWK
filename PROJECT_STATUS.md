@@ -248,8 +248,11 @@ python3 tests/emulator_smoke.py --model 464 window
 - [x] Los doce programas pasaron desde el mismo DSK en CPC 6128; los dos
   perfiles nuevos también pasaron con estado exacto en CPC 464.
 - [x] Manual HTML/PDF, procedencia y límites actualizados.
-- [x] Implementación y validación local registradas en `362d878`.
-- [ ] Pendiente publicar los commits y registrar CI remota.
+- [x] Implementación registrada en `362d878` y estado persistente en
+  `d3b9c98`; ambos commits están sincronizados en `origin/main`.
+- [x] CI remota `40241297476` correcta para `d3b9c98`: 26 pruebas, doce
+  construcciones, un DSK común con catálogo y once CDT publicados como
+  artefacto temporal.
 
 ## Fase siguiente: tilemaps y colisión de escenario
 
