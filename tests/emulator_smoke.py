@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional AmSpiriT-Lite smoke test for built DSKs (not part of default make test)."""
+"""Optional AmSpiriT-Lite smoke test using the shared test DSK."""
 
 from __future__ import annotations
 
@@ -96,7 +96,7 @@ def hold_cursor_right(frames: int) -> None:
 
 def run_example(name: str, emulator: Path, model: str) -> None:
     directory = ROOT / ".build" / name
-    dsk = directory / f"{name}.dsk"
+    dsk = ROOT / ".build" / "tests" / "GlasnostFWK-tests.dsk"
     noi = directory / "obj" / f"{name}.noi"
     frame = symbol(noi, "fwk_system_frame_count")
     process = subprocess.Popen(

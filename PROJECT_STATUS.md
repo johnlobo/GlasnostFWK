@@ -15,8 +15,9 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los diez ejemplos construyen BIN y DSK con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; nueve construyen además CDT.
+- Los diez ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; nueve construyen además CDT y
+  todos los BIN se reúnen en un único DSK de pruebas.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -60,7 +61,8 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
 - Los perfiles completos de física siguen pendientes de integración ejecutable.
 - Solo `vertical` es una escena jugable; los otros nueve ejemplos son pruebas
-  técnicas. `diskload` se distribuye solo como DSK.
+  técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
+  payloads auxiliares.
 
 ## Fase completada: carga desde disco y ZX7B
 
@@ -199,6 +201,26 @@ Comandos específicos:
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 ```
+
+## Fase completada: DSK de pruebas unificado
+
+- [x] `make examples` y `make test` generan un único
+  `.build/tests/GlasnostFWK-tests.dsk` como salida de disco pública.
+- [x] El catálogo contiene los diez BIN de ejemplo con nombres AMSDOS 8.3 y
+  conserva las direcciones de carga y ejecución extraídas del build real.
+- [x] El mismo DSK incluye `RAWDATA.BIN` y `PACKDATA.ZX7`, requeridos por
+  `diskload`; su catálogo reproducible queda en `.build/tests/catalog.json`.
+- [x] Los DSK individuales de CPCTelera se tratan como intermedios y se eliminan
+  después de construir el disco común.
+- [x] El smoke, CI y paquete de release consumen el DSK compartido; el ZIP pasa
+  de 31 a 22 entradas: diez BIN, nueve CDT, un DSK, manifiesto e instrucciones.
+- [x] Manual HTML/PDF y documentación de validación actualizados.
+- [x] Suite local: 24 pruebas correctas; catálogo real: 12 entradas y
+  exactamente un DSK final; paquete determinista de 22 entradas con checksum
+  correcto.
+- [x] Los diez programas pasaron el smoke completo desde el mismo DSK en CPC
+  6128; `diskload` pasó además en CPC 464 desde ese medio común.
+- [ ] Pendiente registrar el SHA publicado y la ejecución de CI remota.
 
 ## Fase siguiente: perfiles de física especializados
 

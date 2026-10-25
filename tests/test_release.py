@@ -34,9 +34,8 @@ class ReleasePackageTests(unittest.TestCase):
                     (build / example / f"{example}.cdt").write_bytes(
                         f"{example}-cdt".encode()
                     )
-                (build / example / f"{example}.dsk").write_bytes(
-                    f"{example}-dsk".encode()
-                )
+            (build / "tests").mkdir()
+            (build / "tests" / package_release.TEST_DISK).write_bytes(b"shared-dsk")
 
             first = root / "first"
             second = root / "second"
@@ -52,14 +51,12 @@ class ReleasePackageTests(unittest.TestCase):
             )
             with zipfile.ZipFile(archive1) as archive:
                 names = archive.namelist()
-            self.assertEqual(len(names), 31)
+            self.assertEqual(len(names), 22)
             self.assertIn("README.txt", names)
             self.assertIn("manifest.json", names)
-            self.assertIn("examples/vertical/vertical.dsk", names)
-            self.assertIn("examples/diskload/diskload.dsk", names)
-            self.assertIn("examples/audio/audio.dsk", names)
-            self.assertIn("examples/animation/animation.dsk", names)
-            self.assertIn("examples/window/window.dsk", names)
+            self.assertIn(f"tests/{package_release.TEST_DISK}", names)
+            self.assertNotIn("examples/vertical/vertical.dsk", names)
+            self.assertNotIn("examples/diskload/diskload.dsk", names)
             self.assertNotIn("examples/diskload/diskload.cdt", names)
 
 

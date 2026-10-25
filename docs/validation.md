@@ -19,10 +19,11 @@ Fecha: 2026-10-25 UTC.
 
 ## Compilado
 
-Los diez ejemplos generan `.bin` y `.dsk` con CPCTelera Next
-`11e61fe3…`/SDCC 4.5.0; nueve generan además `.cdt`. `diskload` es solo DSK
-porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md`
-contiene tamaños enlazados.
+Los diez ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+nueve generan además `.cdt`. Sus diez BIN y los dos payloads de `diskload` se
+reúnen en un único `.build/tests/GlasnostFWK-tests.dsk`; los DSK individuales
+intermedios se eliminan. `diskload` no genera CDT porque sus payloads auxiliares
+no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
 
 ## Probado automáticamente
 
@@ -35,22 +36,22 @@ contiene tamaños enlazados.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
 - Construcción completa de los diez ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
-- 21 pruebas host en total. El manual cubre los diez ejemplos y doce módulos;
+- 24 pruebas host en total. El manual cubre los diez ejemplos y doce módulos;
   su checksum corresponde al HTML que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los diez DSK arrancaron en un CPC 6128 de 128 KB y avanzaron su contador de
-  frames.
+- Los diez programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
+  CPC 6128 de 128 KB y avanzaron su contador de frames.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
   RAM normal -> banco 0 -> RAM normal.
 - `resources128` se repitió en CPC 464: reportó 64 KB y continuó por su ruta de
   fallback sin intentar el roundtrip.
-- `diskload` se ejecutó en CPC 6128 y CPC 464. En ambos leyó `RAWDATA.BIN`
-  (256 B) y `PACKDATA.ZX7` (23 B) desde el DSK, descomprimió el segundo a
+- `diskload` se ejecutó desde el DSK común en CPC 6128 y CPC 464. En ambos leyó
+  `RAWDATA.BIN` (256 B) y `PACKDATA.ZX7` (23 B), descomprimió el segundo a
   256 B y se compararon todos los bytes contra el testigo esperado.
 - `audio` se ejecutó en CPC 6128 y CPC 464. En ambos se observó avance del
   player, volumen PSG musical no nulo, parada con los tres canales a volumen

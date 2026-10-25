@@ -34,10 +34,13 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los artefactos quedan en `.build/<ejemplo>/`. `make test` no lanza emulador;
-el smoke opcional sí y comprueba estado de RAM, no solo que el proceso arranque.
-Las versiones publicadas ofrecen los `.bin` y los medios declarados por cada
-ejemplo en un ZIP con checksum; el estado y la siguiente acción se mantienen en
+Los BIN y CDT quedan en `.build/<ejemplo>/`; todos los BIN de prueba se reúnen
+en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
+necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
+eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
+ese único DSK para comprobar estado de RAM, no solo que el proceso arranque.
+Las versiones publicadas ofrecen los `.bin`, los CDT declarados y el DSK común
+en un ZIP con checksum; el estado y la siguiente acción se mantienen en
 [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 El manual de uso completo está disponible en
@@ -74,10 +77,10 @@ el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
 
 ## Carga desde DSK y ZX7B
 
-`examples/diskload` incorpora al DSK un payload sintético crudo y el mismo
+`examples/diskload` incorpora al DSK común un payload sintético crudo y el mismo
 payload comprimido con ZX7B. Antes de desactivar el firmware, los carga desde
 AMSDOS, descomprime el segundo y compara los 256 bytes. Este ejemplo solo
-produce DSK: sus archivos auxiliares no forman parte de una cinta CDT.
+se ejecuta desde el DSK: sus archivos auxiliares no forman parte de una cinta CDT.
 
 ## Audio AKG
 

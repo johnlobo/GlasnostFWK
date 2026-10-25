@@ -12,6 +12,7 @@ generate:
 
 examples: generate
 	$(PYTHON) tools/build_examples.py $(EXAMPLES)
+	$(PYTHON) tools/build_test_disk.py $(EXAMPLES)
 
 report: examples
 	$(PYTHON) tools/build_report.py
@@ -26,6 +27,7 @@ release: examples
 test: generate
 	$(PYTHON) -m unittest discover -s tests -v
 	$(PYTHON) tools/build_examples.py $(EXAMPLES)
+	$(PYTHON) tools/build_test_disk.py $(EXAMPLES)
 
 clean:
 	rm -rf .build dist generated/*.inc generated/*.json generated/*.md

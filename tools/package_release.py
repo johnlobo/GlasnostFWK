@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ("minimal", "board", "platform", "video", "resources128", "diskload", "audio", "animation", "window", "vertical")
+TEST_DISK = "GlasnostFWK-tests.dsk"
 VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 
@@ -23,7 +24,9 @@ def artifact_paths() -> list[tuple[str, Path]]:
         manifest = json.loads(
             (ROOT / "examples" / example / "example.json").read_text(encoding="utf-8")
         )
-        formats = ["bin", *manifest.get("media", ["cdt", "dsk"])]
+        formats = ["bin"]
+        if "cdt" in manifest.get("media", ["cdt", "dsk"]):
+            formats.append("cdt")
         for suffix in formats:
             source = (
                 base / "obj" / f"{example}.bin"
@@ -33,6 +36,10 @@ def artifact_paths() -> list[tuple[str, Path]]:
             if not source.is_file() or source.stat().st_size == 0:
                 raise FileNotFoundError(f"missing artifact: {source}")
             artifacts.append((f"examples/{example}/{example}.{suffix}", source))
+    disk = ROOT / ".build" / "tests" / TEST_DISK
+    if not disk.is_file() or disk.stat().st_size == 0:
+        raise FileNotFoundError(f"missing artifact: {disk}")
+    artifacts.append((f"tests/{TEST_DISK}", disk))
     return artifacts
 
 
@@ -49,29 +56,36 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     archive_path = output_dir / f"GlasnostFWK-v{version}-cpc-artifacts.zip"
+    formats_by_example = {}
+    for example in EXAMPLES:
+        example_manifest = json.loads(
+            (ROOT / "examples" / example / "example.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        formats_by_example[example] = [
+            "bin",
+            *(
+                ["cdt"]
+                if "cdt" in example_manifest.get("media", ["cdt", "dsk"])
+                else []
+            ),
+        ]
     manifest = {
         "project": "GlasnostFWK",
         "version": version,
         "examples": list(EXAMPLES),
-        "artifacts": {
-            example: [
-                "bin",
-                *json.loads(
-                    (ROOT / "examples" / example / "example.json").read_text(
-                        encoding="utf-8"
-                    )
-                ).get("media", ["cdt", "dsk"]),
-            ]
-            for example in EXAMPLES
-        },
+        "artifacts": formats_by_example,
+        "test_disk": f"tests/{TEST_DISK}",
         "playable_example": "vertical",
         "run": 'RUN"VERTICAL"',
     }
     instructions = (
         "GlasnostFWK CPC examples\n"
         "========================\n\n"
-        "Load a DSK in an Amstrad CPC emulator and run the file matching the\n"
-        "example name. For the playable vertical slice use:\n\n"
+        f"Load tests/{TEST_DISK} in an Amstrad CPC emulator. It contains all\n"
+        "example binaries and the auxiliary diskload payloads. Run the file\n"
+        "matching the example name. For the playable vertical slice use:\n\n"
         '    RUN"VERTICAL"\n\n'
         "Move with the cursor keys and collect the three dots to the right.\n"
         "The remaining examples are focused technical demonstrations.\n"

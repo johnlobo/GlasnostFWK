@@ -150,7 +150,7 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
 make generate
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los diez consumidores. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los diez consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
 
     <h3>3.2 Construir un único ejemplo</h3>
     <pre><code>python3 tools/build_examples.py minimal
@@ -158,16 +158,16 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <p>Los resultados quedan en <code>.build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
     <ul>
       <li><code>obj/&lt;nombre&gt;.bin</code>: binario AMSDOS.</li>
-      <li><code>&lt;nombre&gt;.dsk</code>: imagen de disco.</li>
       <li><code>&lt;nombre&gt;.cdt</code>: cinta, salvo ejemplos que declaren solo DSK.</li>
       <li><code>selected-modules.json</code>: prueba de qué módulos entraron realmente.</li>
     </ul>
+    <p><code>tools/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make examples</code> los sustituye por el único DSK común y deja su catálogo reproducible en <code>.build/tests/catalog.json</code>.</p>
 
     <h3>3.3 Probar manualmente en un CPC o emulador</h3>
     <ol>
-      <li>Construya el ejemplo.</li>
-      <li>Inserte su DSK o CDT en el CPC/emulador.</li>
-      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL.BIN</code>. El DSK generado de <code>minimal</code> contiene <code>MINIMAL.BIN</code>.</li>
+      <li>Ejecute <code>make examples</code>.</li>
+      <li>Inserte <code>.build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
+      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code> y <code>animation</code> es <code>ANIMATIO.BIN</code>.</li>
       <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos.</li>
     </ol>
     <div class="box">Los smoke automáticos no se limitan a comprobar que el emulador sigue abierto: leen RAM, memoria de vídeo, teclado y, en audio, registros PSG.</div>
@@ -418,16 +418,16 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
     <table>
       <thead><tr><th>Ejemplo</th><th>Qué demuestra</th><th>Medios</th></tr></thead>
       <tbody>
-        <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="board"><td><code>board</code></td><td>Entrada, texto y composición sencilla de tablero.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="platform"><td><code>platform</code></td><td>Pool y perfil de movimiento compacto.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK</td></tr>
-        <tr data-example="audio"><td><code>audio</code></td><td>Música AKG, stop/restart y SFX.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="animation"><td><code>animation</code></td><td>Tres frames, periodo exacto, pausa y reanudación.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="window"><td><code>window</code></td><td>Validación, captura, caja, texto, restauración y reapertura.</td><td>BIN, DSK, CDT</td></tr>
-        <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="board"><td><code>board</code></td><td>Entrada, texto y composición sencilla de tablero.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="platform"><td><code>platform</code></td><td>Pool y perfil de movimiento compacto.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK común</td></tr>
+        <tr data-example="audio"><td><code>audio</code></td><td>Música AKG, stop/restart y SFX.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="animation"><td><code>animation</code></td><td>Tres frames, periodo exacto, pausa y reanudación.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="window"><td><code>window</code></td><td>Validación, captura, caja, texto, restauración y reapertura.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
       </tbody>
     </table>
     <p><code>vertical</code> es la única escena jugable. Los otros nueve son pruebas técnicas deliberadamente pequeñas.</p>
@@ -438,7 +438,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
     <h3>9.1 Suite local</h3>
     <pre><code>make test
 make report</code></pre>
-    <p>La suite comprueba generadores, límites de vídeo, seguridad de manifiestos, frontera de dependencias, paquete, cobertura de este manual y compilación. <code>make report</code> actualiza <code>docs/build-sizes.md</code> desde los mapas SDCC.</p>
+    <p>La suite comprueba generadores, límites de vídeo, seguridad de manifiestos, frontera de dependencias, nombres AMSDOS y colisiones del DSK común, paquete, cobertura de este manual y compilación. <code>make report</code> actualiza <code>docs/build-sizes.md</code> desde los mapas SDCC.</p>
 
     <h3>9.2 Smoke completo en CPC 6128</h3>
     <pre><code>python3 tests/emulator_smoke.py</code></pre>
@@ -456,7 +456,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <h2 id="distribucion">10. Crear un paquete de distribución</h2>
     <pre><code>make release VERSION=0.2.0
 (cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
-    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con BIN/DSK/CDT, manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los diez BIN, nueve CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
     <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.1.0</code>; el desarrollo posterior puede contener funciones aún no incluidas en esa release.</p>
   </section>
 
