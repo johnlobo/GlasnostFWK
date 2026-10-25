@@ -11,8 +11,8 @@ publicación.
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los siete ejemplos construyen BIN y DSK con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; seis construyen además CDT.
+- Los ocho ejemplos construyen BIN y DSK con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; siete construyen además CDT.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -54,9 +54,9 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
 - No existe verificación en hardware real.
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
-- Audio AKG, carga desde disco, ZX7B, ventanas y perfiles completos de física
-  siguen pendientes de integración ejecutable.
-- Solo `vertical` es una escena jugable; los otros seis ejemplos son pruebas
+- Ventanas, animación y perfiles completos de física siguen pendientes de
+  integración ejecutable.
+- Solo `vertical` es una escena jugable; los otros siete ejemplos son pruebas
   técnicas. `diskload` se distribuye solo como DSK.
 
 ## Fase completada: carga desde disco y ZX7B
@@ -82,9 +82,33 @@ python3 tests/emulator_smoke.py diskload
 python3 tests/emulator_smoke.py --model 464 diskload
 ```
 
-## Fase siguiente: audio AKG ejecutable
+## Fase completada: audio AKG ejecutable
 
-Integrar un export AKG sintético o con licencia inequívoca, comprobar música y
-efectos mediante estado observable en emulador y documentar el coste de IRQ.
-El adaptador existente compila, pero todavía no tiene datos enlazados ni una
-prueba de ejecución; no debe presentarse como validado hasta cerrar ese hueco.
+- [x] Adaptador conectado a la ABI real del player AKG de CPCTelera Next.
+- [x] Player externo seleccionado mediante `cpct_modules`, sin incorporarlo a
+  ejemplos que no usan audio.
+- [x] Música y cinco SFX procedentes de recursos oficiales MIT de Arkos
+  Tracker 3.7; licencia, hashes y generación documentados.
+- [x] Contadores observables de ticks y solicitudes SFX.
+- [x] Smoke de música, stop, restart y SFX contra registros PSG reales de
+  AmSpiriT-Lite 1.15.3 en CPC 6128 y CPC 464.
+- [x] Suite host: 19 pruebas; construcción completa: ocho ejemplos; paquete de
+  prueba determinista: 25 entradas y checksum correcto.
+- [x] Coste fijo documentado: 1.104 ciclos/frame de envolturas IRQ de CPCtelera
+  más 187 ciclos del adaptador en el tick activo; coste AKG variable aún no
+  medido y, por tanto, sin garantía de 50 Hz.
+
+Comandos específicos:
+
+```sh
+python3 tests/emulator_smoke.py audio
+python3 tests/emulator_smoke.py --model 464 audio
+```
+
+## Fase siguiente: animación reutilizable
+
+Auditar las implementaciones reales de animación de los cuatro proyectos,
+separar el avance de frames de políticas de juego como «solo al moverse» e
+integrar el mecanismo elegido en un ejemplo ejecutable. Si sus contratos no
+son compatibles, se conservarán perfiles separados en vez de forzar una
+estructura universal.

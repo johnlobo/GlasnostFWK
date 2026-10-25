@@ -10,6 +10,7 @@ con `git ls-remote --symref`; coincidían con los checkouts examinados.
 | DeckTower | `https://github.com/johnlobo/DeckTower.git` | `loader-banking` | `83e15021040fd85e84bf9d505ce4973e2318decd` | `loader-banking`, `master` (`0e9fba7…`) | Sin licencia de repositorio (`NOASSERTION`); fuentes examinados declaran LGPL-3.0-or-later |
 | PocketFever | `https://github.com/johnlobo/PocketFever.git` | `master` | `b879a1b08125c032ae081a5aa74f3d69ced687d7` | `master` y ramas locales de experimentos de física/dibujo | Sin licencia de repositorio (`NOASSERTION`); fuentes examinados declaran LGPL-3.0-or-later |
 | CPCTelera Next | `https://github.com/Arnaud6128/cpctelera.git` | `cpctelera_next` | `11e61fe30175ad7b328de9bcd859c46fd61b26a5` | `cpctelera_next` | LGPL-3.0; copia en `licenses/CPCTelera-LGPL-3.0.txt` |
+| Arkos Tracker | paquete oficial Linux 3.7 | `3.7` | ZIP SHA-256 `7e22d5762a611a09f21e83fa07cef0aeddc37fc28e159b67e2e0a949617024cf` | no aplica | MIT; copia en `licenses/Arkos-Tracker-MIT.txt` |
 
 Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 `64-directions`, `aim-line`, `bigger-balls-bouncing-aim`, `charge-shot`,
@@ -27,7 +28,8 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `src/core/pool.*` | `*/src/sys/array.s`, idéntico byte a byte en model01/DeckTower/PocketFever | Contrato reducido y reimplementado para registros arbitrarios | GPL-3.0 del conjunto |
 | `src/video/video.s`, `tools/gen_video.py` | render común; generadores/tablas de PocketFever; `easyoverscan` de CPCTelera Next | Reimplementación declarativa; sin supuestos de bolas | GPL-3.0; enlace con LGPL-3.0 |
 | `src/ui/text.s` | variantes `src/sys/text.s`; API de strings de CPCTelera Next | Adaptador, sin copiar fuentes ni fuentes gráficas de juego | GPL-3.0; enlace con LGPL-3.0 |
-| `src/audio/akg.s` | audio AKG de model01/boop/DeckTower | Adaptador genérico; no incluye canciones, SFX ni player generado | GPL-3.0 |
+| `src/audio/akg.*` | audio AKG de model01/boop/DeckTower; ABI AKG de CPCTelera Next | Adaptador genérico sobre el player fijado; no incluye datos musicales | GPL-3.0; enlace con LGPL-3.0 |
+| `examples/audio/song.s`, `sfx.s` | recursos oficiales `Music_AHarmlessGrenade` y `SoundEffects` del player AKG de Arkos Tracker 3.7 | Export SDASZ80 generado con la herramienta oficial y comentarios eliminados; solo demostración | MIT |
 | `src/resources/bank.s` | `model01/src/sys/mem.s`, `DeckTower/src/sys/mem.s` | Stub consolidado; prueba movida a `0x7FF0` para que sea funcional | GPL-3.0 |
 | `src/resources/disk.s` | `DeckTower/src/sys/loader.s` y spike firmware de la misma revisión | API nueva reducida a reconexión y carga; sin tabla, bancos, paleta ni política de error del juego | GPL-3.0 del conjunto |
 | `src/resources/zx7b.s` | `DeckTower/src/sys/compression.s`; `cpct_zx7b_decrunch_s_asm` de CPCTelera Next | Adaptador sin buffer ni packs concretos; compresor y descompresor proceden de la dependencia fijada | GPL-3.0; enlace con LGPL-3.0 |
@@ -35,7 +37,9 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `src/extensions/motion_u8.*` | física de model01 y PocketFever | Perfil nuevo, separado; no unifica estructuras incompatibles | GPL-3.0 |
 | `cfg/*.template*` | ejemplo `examples/asm/helloworld` de CPCTelera Next | Copia de plantilla de construcción con su cabecera intacta | LGPL-3.0 |
 
-No se copiaron sprites, mapas, música ni datos de los cuatro juegos. Al no
+No se copiaron sprites, mapas, música ni datos de los cuatro juegos. Los datos
+de `examples/audio` proceden exclusivamente de los recursos oficiales MIT de
+Arkos Tracker indicados arriba. Al no
 existir una declaración de licencia de repositorio en tres de ellos, el estado
 se conserva como `NOASSERTION`; no se interpreta una cabecera de un archivo
 como licencia de todo el repositorio.

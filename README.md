@@ -26,7 +26,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # siete ejemplos: vertical jugable y carga real desde DSK
+make examples   # ocho ejemplos: vertical, disco y audio AKG real
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
@@ -44,12 +44,12 @@ ejemplo en un ZIP con checksum; el estado y la siguiente acción se mantienen en
 - `src/core`: interrupción/sincronización, entrada y pool genérico.
 - `src/video`: direccionamiento, CRTC generado y limpieza visible.
 - `src/ui`: adaptador de texto Mode 0.
-- `src/audio`: adaptador opcional Arkos Tracker 3 AKG.
+- `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
 - `src/extensions`: perfiles de entidad/movimiento optativos.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: siete consumidores pequeños, sin copias internas del framework.
+- `examples`: ocho consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -69,6 +69,14 @@ el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
 payload comprimido con ZX7B. Antes de desactivar el firmware, los carga desde
 AMSDOS, descomprime el segundo y compara los 256 bytes. Este ejemplo solo
 produce DSK: sus archivos auxiliares no forman parte de una cinta CDT.
+
+## Audio AKG
+
+`examples/audio` enlaza el player AKG incluido en la revisión fijada de
+CPCTelera Next y datos de demostración de Arkos Tracker con licencia MIT.
+Reproduce música a 50 Hz mediante el callback de IRQ, admite SFX y expone
+comandos de parada/reanudación para la prueba. El smoke comprueba ticks y
+registros PSG reales en CPC 6128 y CPC 464; véase `docs/audio-akg.md`.
 
 ## Estado del perfil 160x288
 

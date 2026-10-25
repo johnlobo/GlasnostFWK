@@ -52,11 +52,12 @@ class ReleasePackageTests(unittest.TestCase):
             )
             with zipfile.ZipFile(archive1) as archive:
                 names = archive.namelist()
-            self.assertEqual(len(names), 22)
+            self.assertEqual(len(names), 25)
             self.assertIn("README.txt", names)
             self.assertIn("manifest.json", names)
             self.assertIn("examples/vertical/vertical.dsk", names)
             self.assertIn("examples/diskload/diskload.dsk", names)
+            self.assertIn("examples/audio/audio.dsk", names)
             self.assertNotIn("examples/diskload/diskload.cdt", names)
 
 

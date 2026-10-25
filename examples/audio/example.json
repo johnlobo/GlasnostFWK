@@ -1,0 +1,7 @@
+{
+  "name": "audio",
+  "profile": "standard-160x200.json",
+  "modules": ["core/system.s", "video/video.s", "audio/akg.s"],
+  "cpct_modules": ["audio/arkosTracker_PlayerAkg.s"],
+  "game_sources": ["main.s", "song.s", "sfx.s"]
+}

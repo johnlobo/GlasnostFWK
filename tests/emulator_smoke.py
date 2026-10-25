@@ -45,6 +45,10 @@ def post_text(path: str, data: str):
         return json.load(reply)
 
 
+def write_ram(address: int, data: bytes) -> None:
+    post("/api/ram", {"addr": address, "data": data.hex()})
+
+
 def ram(address: int, length: int) -> bytes:
     return bytes.fromhex(get(f"/api/ram?addr={address}&len={length}")["hex"])
 
@@ -131,6 +135,56 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 raise RuntimeError("raw payload read from DSK differs from source")
             if ram(0x9400, 256) != witness:
                 raise RuntimeError("ZX7 decompressed payload differs from source")
+        if name == "audio":
+            active = symbol(noi, "fwk_audio_active")
+            ticks = symbol(noi, "fwk_audio_tick_count")
+            sfx_count = symbol(noi, "fwk_audio_sfx_count")
+            command = symbol(noi, "audio_command")
+            command_ack = symbol(noi, "audio_command_ack")
+
+            initial_ticks = int.from_bytes(ram(ticks, 2), "little")
+            wait_for(
+                lambda: int.from_bytes(ram(ticks, 2), "little") > initial_ticks + 3,
+                5,
+                "AKG playback ticks",
+            )
+            wait_for(
+                lambda: any(get("/api/state")["psg"][key] for key in ("vol_a", "vol_b", "vol_c")),
+                5,
+                "audible PSG volume",
+            )
+
+            write_ram(command, b"\x02")
+            wait_for(lambda: ram(command_ack, 1) == b"\x02", 5, "audio stop acknowledgement")
+            stopped_ticks = int.from_bytes(ram(ticks, 2), "little")
+            time.sleep(0.5)
+            if ram(active, 1) != b"\x00" or int.from_bytes(ram(ticks, 2), "little") != stopped_ticks:
+                raise RuntimeError("AKG playback continued after stop")
+            stopped_psg = get("/api/state")["psg"]
+            if any(stopped_psg[key] for key in ("vol_a", "vol_b", "vol_c")):
+                raise RuntimeError(f"PSG volumes are not silent after stop: {stopped_psg}")
+
+            write_ram(command, b"\x03")
+            wait_for(lambda: ram(command_ack, 1) == b"\x03", 5, "audio start acknowledgement")
+            wait_for(
+                lambda: int.from_bytes(ram(ticks, 2), "little") > stopped_ticks + 3,
+                5,
+                "AKG playback restart",
+            )
+
+            write_ram(command, b"\x01")
+            wait_for(lambda: ram(command_ack, 1) == b"\x01", 5, "sound-effect acknowledgement")
+            wait_for(lambda: ram(sfx_count, 1) == b"\x01", 5, "sound-effect request")
+            deadline = time.time() + 2
+            heard_sfx = False
+            while time.time() < deadline:
+                psg = get("/api/state")["psg"]
+                if psg["vol_b"] and psg["period_b"]:
+                    heard_sfx = True
+                    break
+                time.sleep(0.01)
+            if not heard_sfx:
+                raise RuntimeError("sound effect did not produce an observable PSG channel B signal")
         if name == "vertical":
             player = symbol(noi, "vertical_player")
             pool = symbol(noi, "vertical_entity_pool")
@@ -190,7 +244,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "video", "resources128", "diskload", "vertical"],
+        default=["minimal", "board", "platform", "video", "resources128", "diskload", "audio", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

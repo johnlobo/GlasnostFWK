@@ -152,6 +152,24 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         include = source.with_suffix(".inc")
         if include.is_file():
             shutil.copy2(include, destination.with_suffix(".inc"))
+    cpct_modules = manifest.get("cpct_modules", [])
+    if not isinstance(cpct_modules, list):
+        raise ValueError(f"{name}: cpct_modules must be a list")
+    cpct_source_root = (cpct_path / "src").resolve()
+    for relative in cpct_modules:
+        if not isinstance(relative, str):
+            raise ValueError(f"{name}: invalid CPCTelera module {relative}")
+        relative_path = Path(relative)
+        source = (cpct_source_root / relative_path).resolve()
+        try:
+            source.relative_to(cpct_source_root)
+        except ValueError as error:
+            raise ValueError(f"{name}: unsafe CPCTelera module {relative}") from error
+        if not source.is_file() or source.suffix != ".s":
+            raise ValueError(f"{name}: missing CPCTelera module {relative}")
+        destination = target / "src" / "cpctelera" / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
     disk_files = stage_disk_files(example, manifest, target, cpct_path)
     generated = target / "generated"
     subprocess.run(
@@ -197,6 +215,7 @@ def stage_example(name: str, cpct_path: Path) -> Path:
                 "example": name,
                 "game_sources": game_sources,
                 "modules": manifest["modules"],
+                "cpct_modules": cpct_modules,
                 "media": media,
                 "disk_files": disk_files,
                 "cpct_path": str(cpct_path),

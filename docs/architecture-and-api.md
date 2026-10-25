@@ -87,11 +87,15 @@ coordenadas de 16 bits.
 
 ### Audio AKG opcional
 
-Requiere los símbolos generados `_PLY_AKG_*`; no contiene datos musicales.
+Usa el player `arkosTracker_PlayerAkg.s` de la instalación fijada de CPCTelera
+Next; el juego sigue aportando sus datos musicales y de efectos.
 `fwk_audio_init_music` recibe `HL=canción,A=subsong`; `fwk_audio_init_sfx`
 recibe `HL=tabla`; `fwk_audio_play_sfx` usa `A=id,B=volumen invertido,C=canal`.
 `fwk_audio_start/stop` registran o retiran el callback del sistema. El tick
-preserva ambos juegos de registros. Las restricciones de banco son las del
+incrementa `fwk_audio_tick_count`; las solicitudes SFX incrementan
+`fwk_audio_sfx_count`. El wrapper seguro de CPCtelera preserva los registros
+principales, IX e IY; el adaptador preserva los alternativos alrededor del
+player. Las restricciones de banco son las del
 export AKG del juego: player y datos ejecutados por IRQ deben permanecer
 visibles en el mapeo activo.
 

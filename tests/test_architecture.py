@@ -59,6 +59,8 @@ class ArchitectureTests(unittest.TestCase):
         self.assertNotIn("resources/disk.s", selections["resources128"])
         self.assertIn("resources/disk.s", selections["diskload"])
         self.assertIn("resources/zx7b.s", selections["diskload"])
+        self.assertIn("audio/akg.s", selections["audio"])
+        self.assertNotIn("audio/akg.s", selections["minimal"])
         self.assertIn("extensions/motion_u8.s", selections["vertical"])
 
 
