@@ -60,6 +60,7 @@ jobs:
           make -C "$CPCT_NEXT_PATH/tools/hex2bin-2.0" -j2
           make -C "$CPCT_NEXT_PATH/tools/iDSK-0.13" -j2
           make -C "$CPCT_NEXT_PATH/tools/2cdt" -j2
+          make -C "$CPCT_NEXT_PATH/tools/cpc2cdt" -j2
           make -C "$CPCT_NEXT_PATH" -j2
 
       - name: Verify CPCTelera installation
@@ -71,6 +72,7 @@ jobs:
           test -x "$CPCT_NEXT_PATH/tools/hex2bin-2.0/bin/hex2bin"
           test -x "$CPCT_NEXT_PATH/tools/iDSK-0.13/bin/iDSK"
           test -x "$CPCT_NEXT_PATH/tools/2cdt/bin/2cdt"
+          test -x "$CPCT_NEXT_PATH/tools/cpc2cdt/bin/cpc2cdt"
           test -s "$CPCT_NEXT_PATH/cpctelera.lib"
 
       - name: Run tests and build examples
