@@ -220,7 +220,8 @@ python3 tests/emulator_smoke.py --model 464 window
   correcto.
 - [x] Los diez programas pasaron el smoke completo desde el mismo DSK en CPC
   6128; `diskload` pasó además en CPC 464 desde ese medio común.
-- [ ] Pendiente registrar el SHA publicado y la ejecución de CI remota.
+- [x] Implementación y validación local registradas en `4848af3`.
+- [ ] Pendiente publicar los commits y registrar la ejecución de CI remota.
 
 ## Fase siguiente: perfiles de física especializados
 
