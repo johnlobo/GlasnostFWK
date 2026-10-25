@@ -186,8 +186,9 @@ python3 tests/emulator_smoke.py --model 464 animation
   determinista de 31 entradas y checksum correcto.
 - [x] Los diez DSK pasaron la batería completa en CPC 6128; `window` pasó además
   su comprobación específica en CPC 464.
-- [ ] Pendiente en este punto del registro: commit, sincronización y CI remota
-  de la fase.
+- [x] Implementación registrada en `fc6d0a3`.
+- [ ] Pendiente en este punto del registro: sincronización y CI remota de la
+  fase.
 
 Comandos específicos:
 
