@@ -72,6 +72,8 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - [x] CI construye y verifica explícitamente el compresor ZX7B incluso cuando
   restaura una caché anterior. La ejecución `40208485165` detectó esta omisión
   de CI después del primer push; el código y las pruebas host sí habían pasado.
+- [x] Implementación publicada en `main` mediante `70efbb1` y corrección de CI
+  `9ccf00e`; la ejecución remota `40208554369` terminó correctamente.
 
 Comandos específicos:
 
