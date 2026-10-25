@@ -162,8 +162,9 @@ python3 tests/emulator_smoke.py --model 464 animation
 - [x] Revisión visual de portada, referencia de API y página final; extracción
   de texto comprobada en las 16 páginas.
 - [x] Suite local: 21 pruebas host y construcción completa de nueve ejemplos.
-- [ ] Pendiente en este punto del registro: commit, sincronización y CI remota
-  de la fase documental.
+- [x] Implementación registrada en `fc5111e`.
+- [ ] Pendiente en este punto del registro: sincronización y CI remota de la
+  fase documental.
 
 ## Fase siguiente: ventanas y mensajes reutilizables
 
