@@ -71,11 +71,15 @@ jobs:
           make -C "$CPCT_NEXT_PATH/tools/cpc2cdt" -j2
           make -C "$CPCT_NEXT_PATH" -j2
 
+      - name: Build required ZX7B compressor
+        run: make -C "$CPCT_NEXT_PATH/tools/zx7b" -j2
+
       - name: Verify CPCTelera installation
         shell: bash
         run: |
           set -euo pipefail
           test "$(git -C "$CPCTELERA_ROOT" rev-parse HEAD)" = "$CPCTELERA_REV"
+          test -x "$CPCT_NEXT_PATH/tools/zx7b/bin/zx7b"
           test -s "$CPCT_NEXT_PATH/cpctelera.lib"
 
       - name: Test and package released revision

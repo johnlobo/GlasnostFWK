@@ -69,6 +69,9 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - [x] Los 256 B leídos y descomprimidos se verificaron en AmSpiriT-Lite 1.15.3
   tanto con CPC 6128 como con CPC 464.
 - [x] Suite host: 19 pruebas; construcción completa: siete ejemplos.
+- [x] CI construye y verifica explícitamente el compresor ZX7B incluso cuando
+  restaura una caché anterior. La ejecución `40208485165` detectó esta omisión
+  de CI después del primer push; el código y las pruebas host sí habían pasado.
 
 Comandos específicos:
 
