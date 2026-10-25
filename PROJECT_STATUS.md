@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-25 UTC. Objetivo de publicación: `v0.1.0`.
+Última actualización: 2026-10-25 UTC. Última versión publicada: `v0.1.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -20,7 +20,7 @@ publicación.
 - El repositorio público es `johnlobo/GlasnostFWK` y la rama principal es
   `main`.
 
-## Fase actual: distribución v0.1.0
+## Fase completada: distribución v0.1.0
 
 - [x] Empaquetador determinista para los BIN, CDT y DSK de los seis ejemplos.
 - [x] Instrucciones de ejecución y manifiesto dentro del paquete.
@@ -29,9 +29,11 @@ publicación.
   una GitHub Release.
 - [x] Pruebas locales completas: 14 pruebas, seis construcciones y paquete de
   20 archivos; checksum comprobado desde `dist/`.
-- [ ] Commit y push en `main`.
-- [ ] GitHub Release pública `v0.1.0`.
-- [ ] Descarga y verificación independiente de los archivos publicados.
+- [x] Commit `d8ea9f6` y push en `main`; CI remota `40206661927` correcta.
+- [x] GitHub Release pública `v0.1.0`, asociada exactamente a `d8ea9f6`.
+- [x] Workflow de release `40206700297` correcto.
+- [x] ZIP y `SHA256SUMS` descargados de la release y verificados de forma
+  independiente. El ZIP contiene el manifiesto esperado y los 18 artefactos.
 
 ## Evidencia y comandos
 
@@ -46,6 +48,8 @@ python3 tests/emulator_smoke.py --model 464 vertical
 El detalle de qué se ha implementado, compilado y ejecutado está en
 `docs/validation.md`. Los tamaños enlazados están en `docs/build-sizes.md`.
 
+Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
+
 ## Limitaciones confirmadas
 
 - No existe verificación en hardware real.
@@ -55,7 +59,7 @@ El detalle de qué se ha implementado, compilado y ejecutado está en
 - Solo `vertical` es una escena jugable; los otros cinco artefactos son pruebas
   técnicas.
 
-## Siguiente acción después de v0.1.0
+## Fase siguiente: carga desde disco y ZX7B
 
 Extraer e integrar el backend de carga desde disco de forma independiente del
 manifiesto de recursos, seguido por el wrapper ZX7B, con un ejemplo ejecutable
