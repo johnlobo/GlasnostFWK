@@ -94,9 +94,13 @@ python3 tests/emulator_smoke.py --model 464 diskload
   AmSpiriT-Lite 1.15.3 en CPC 6128 y CPC 464.
 - [x] Suite host: 19 pruebas; construcción completa: ocho ejemplos; paquete de
   prueba determinista: 25 entradas y checksum correcto.
+- [x] Los ocho DSK pasaron la batería completa en CPC 6128; `audio` pasó además
+  la misma comprobación específica en CPC 464.
 - [x] Coste fijo documentado: 1.104 ciclos/frame de envolturas IRQ de CPCtelera
   más 187 ciclos del adaptador en el tick activo; coste AKG variable aún no
   medido y, por tanto, sin garantía de 50 Hz.
+- [x] Implementación registrada en el commit `fb19078`; sincronización remota y
+  CI pendientes de confirmar en este registro.
 
 Comandos específicos:
 
