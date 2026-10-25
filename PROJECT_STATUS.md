@@ -99,8 +99,11 @@ python3 tests/emulator_smoke.py --model 464 diskload
 - [x] Coste fijo documentado: 1.104 ciclos/frame de envolturas IRQ de CPCtelera
   más 187 ciclos del adaptador en el tick activo; coste AKG variable aún no
   medido y, por tanto, sin garantía de 50 Hz.
-- [x] Implementación registrada en el commit `fb19078`; sincronización remota y
-  CI pendientes de confirmar en este registro.
+- [x] Implementación registrada en `fb19078` y estado persistido en `c881de3`;
+  ambos sincronizados en `origin/main`.
+- [x] CI remota `40210414557` correcta para `c881de3`: 19 pruebas, ocho
+  construcciones, artefactos BIN/DSK y los siete CDT verificados y publicados
+  como artefacto temporal del workflow.
 
 Comandos específicos:
 
