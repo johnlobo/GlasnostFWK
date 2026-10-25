@@ -131,8 +131,11 @@ python3 tests/emulator_smoke.py --model 464 audio
 - [x] Los nueve DSK pasaron la batería completa en CPC 6128; `animation` pasó
   además su comprobación específica en CPC 464.
 - [x] Implementación registrada en `7c21d3d`.
-- [ ] Pendiente en este punto del registro: sincronización y CI remota de la
-  fase.
+- [x] Estado registrado en `2a69a8a`; ambos commits están sincronizados en
+  `origin/main`.
+- [x] CI remota `40211091152` correcta para `2a69a8a`: 19 pruebas, nueve
+  construcciones, artefactos BIN/DSK y los ocho CDT verificados y publicados
+  como artefacto temporal del workflow.
 
 Comandos específicos:
 
