@@ -63,6 +63,36 @@ El pool no interpreta el contenido de los registros ni impone componentes.
 La vertical jugable comprueba en Z80 real emulado una secuencia de tres
 eliminaciones con compactación, además de las pruebas host de arquitectura.
 
+### Física de plataforma opcional
+
+Estado mutable de 7 bytes: `x,y,vx,vy,width,height,flags`. Configuración de 4
+bytes: ancho del mundo, coordenada inclusiva del suelo, gravedad y caída máxima.
+
+- `fwk_physics_platform_step`: `IY=estado`, `IX=configuración`; aplica velocidad
+  horizontal con saturación, gravedad, techo, suelo y actualiza el bit
+  `FWK_PLATFORM_AIRBORNE`. Altera `AF,BC` y preserva `IX,IY`.
+- Es reentrante si ningún contexto comparte el registro. Dimensiones, gravedad
+  y velocidades deben cumplir los límites documentados en
+  `physics-profiles.md`; no hay validación dinámica.
+
+No itera pools ni consulta mapas. La colisión con tiles, la selección del cuerpo
+y el render permanecen fuera para no importar la entidad de `model01`.
+
+### Física 8.8 opcional
+
+Estado mutable de 9 bytes: `x,y,vx,vy` como palabras 8.8 little-endian y un
+byte de resto fraccional. Descriptor de 5 bytes: límites X/Y inclusivos y
+fricción lineal por paso.
+
+- `fwk_physics_8_8_step`: `IY=estado`, `IX=descriptor`; reduce la velocidad a lo
+  largo del vector, integra y rebota cada eje. Altera `AF,BC,DE,HL` y preserva
+  `IX,IY`.
+- Usa cuatro palabras internas para magnitudes y división; no es reentrante ni
+  debe llamarse de forma anidada o desde una IRQ que pueda interrumpirlo.
+
+No conoce bolas, radios, pares de colisión ni reglas de restitución. La
+magnitud máxima que evita atravesar geometría pertenece al consumidor.
+
 ### Animación opcional
 
 Descriptor inmutable: número de frames, duración común en ticks y tabla de

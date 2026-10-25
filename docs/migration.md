@@ -6,9 +6,11 @@
   `fwk_audio_start`, no desde el handler.
 - Reemplazar la tabla de `sys_input_generic_update` por el formato
   `key,action-mask`; las reglas leen los tres bytes de estado.
-- Mantener entidades, mapas, física completa y scripts como extensión del
-  juego. El cursor temporal de `extensions/animation.s` ya es reutilizable,
-  pero la selección por movimiento y el render siguen siendo política del juego.
+- Usar `extensions/physics_platform.s` para el subconjunto portable de velocidad
+  byte, gravedad, dimensiones y suelo. Mantener mapas, colisión con tiles,
+  componentes y scripts en el juego hasta disponer de un contrato específico.
+  El cursor temporal de `extensions/animation.s` ya es reutilizable, pero la
+  selección por movimiento y el render siguen siendo política del juego.
 - Sustituir constantes de pantalla por un perfil JSON y consumir
   `fwk_video_get_ptr`.
 
@@ -34,8 +36,10 @@
 
 ## Desde PocketFever
 
-- Conservar `ball_blit`, física 8.8 y tablas de tiro como extensión especializada;
-  no adaptar al perfil `motion_u8`.
+- Sustituir el integrador y fricción acoplados a bola por
+  `extensions/physics_8_8.s` cuando basten límites rectangulares. Conservar
+  `ball_blit`, colisión entre bolas y tablas de tiro como especializaciones;
+  no adaptarlas a `motion_u8` ni al perfil de plataforma.
 - Llevar el método de generadores deterministas a manifiestos del juego.
 - Sustituir `row_table.s` por la tabla generada solo si la geometría coincide;
   para 160x288, todas las coordenadas verticales consumidoras deben ser 16 bit.

@@ -17,6 +17,8 @@ DEFAULT_EXAMPLES = (
     "minimal",
     "board",
     "platform",
+    "gravity",
+    "physics88",
     "video",
     "resources128",
     "diskload",

@@ -10,17 +10,19 @@ Fecha: 2026-10-25 UTC.
   y descompresión ZX7B opcionales.
 - Cursor de animación opcional, independiente de entidad, render y política de
   juego.
+- Física de plataforma con velocidad byte, gravedad, límites y aterrizaje; e
+  integrador 8.8 separado con fricción vectorial y rebote.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y diez ejemplos, incluida una vertical jugable.
+- Generadores de vídeo/recursos y doce ejemplos, incluida una vertical jugable.
 - Frontera de dependencias y exclusión física de módulos.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
 ## Compilado
 
-Los diez ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-nueve generan además `.cdt`. Sus diez BIN y los dos payloads de `diskload` se
+Los doce ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+once generan además `.cdt`. Sus doce BIN y los dos payloads de `diskload` se
 reúnen en un único `.build/tests/GlasnostFWK-tests.dsk`; los DSK individuales
 intermedios se eliminan. `diskload` no genera CDT porque sus payloads auxiliares
 no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
@@ -34,16 +36,16 @@ no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los diez ejemplos y validación de nombres 8.3,
+- Construcción completa de los doce ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
-- 24 pruebas host en total. El manual cubre los diez ejemplos y doce módulos;
+- 26 pruebas host en total. El manual cubre los doce ejemplos y catorce módulos;
   su checksum corresponde al HTML que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los diez programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
+- Los doce programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
   CPC 6128 de 128 KB y avanzaron su contador de frames.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
@@ -61,6 +63,10 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   ticks, mantuvo su cursor al volver a seleccionar el mismo descriptor, se
   congeló al pausar el tick y continuó al reanudarlo. Pasó en CPC 6128 y CPC
   464, incluyendo la comprobación del byte dibujado en RAM de vídeo.
+- `gravity` completó 48 pasos en CPC 6128 y CPC 464: terminó en
+  `(x=76,y=192)`, apoyado, con ambas velocidades a cero y dimensiones `4x8`.
+- `physics88` completó 64 pasos en CPC 6128 y CPC 464: posición final
+  `(&0BDC,&75C0)`, velocidad `(&0100,&0080)` y resto de fricción cero.
 - `window` rechazó una geometría fuera de pantalla, capturó 320 bytes, dibujó
   borde/relleno sin tocar los testigos exteriores, restauró las 16 filas y
   volvió a abrirse. Pasó en CPC 6128 y CPC 464.
@@ -82,8 +88,8 @@ No verificado.
 - Medir ciclos/tiempo de escena; no hay cifras ni promesa de 50 Hz.
 - Validar la temporización CRTC 160x288 en varios tipos CRTC y hardware. El
   modelo de memoria sí está probado; la señal de vídeo no.
-- Extraer perfiles completos de plataformas/8.8 cuando exista una integración
-  verificable.
+- Integrar una consulta de tilemap reutilizable con el perfil de plataforma;
+  el perfil actual cubre límites y suelo, pero no colisión con mapa.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads
@@ -103,6 +109,8 @@ python3 tests/emulator_smoke.py audio
 python3 tests/emulator_smoke.py --model 464 audio
 python3 tests/emulator_smoke.py animation
 python3 tests/emulator_smoke.py --model 464 animation
+python3 tests/emulator_smoke.py gravity physics88
+python3 tests/emulator_smoke.py --model 464 gravity physics88
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical

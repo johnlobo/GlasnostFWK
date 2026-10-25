@@ -15,8 +15,8 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los diez ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; nueve construyen además CDT y
+- Los doce ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; once construyen además CDT y
   todos los BIN se reúnen en un único DSK de pruebas.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -59,8 +59,9 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
 - No existe verificación en hardware real.
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
-- Los perfiles completos de física siguen pendientes de integración ejecutable.
-- Solo `vertical` es una escena jugable; los otros nueve ejemplos son pruebas
+- La física de plataforma no integra todavía una consulta de tilemap; cubre
+  gravedad, límites, techo y suelo global.
+- Solo `vertical` es una escena jugable; los otros once ejemplos son pruebas
   técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
   payloads auxiliares.
 
@@ -227,9 +228,31 @@ python3 tests/emulator_smoke.py --model 464 window
   construcciones, exactamente un DSK común, nueve CDT y catálogo publicados
   como artefacto temporal del workflow.
 
-## Fase siguiente: perfiles de física especializados
+## Fase completada: perfiles de física especializados
 
-Auditar los perfiles reales de plataforma y física 8.8 sin imponer una entidad
-universal. Extraer solo operaciones con contrato y representación compatibles;
-si model01 y PocketFever requieren formatos distintos, conservar extensiones
-separadas y probar cada una con un consumidor ejecutable.
+- [x] Auditoría contra fuentes reales: `model01` usa física de plataforma con
+  bytes; `PocketFever` usa posiciones/velocidades 8.8 y fricción vectorial;
+  `boop` y `DeckTower` no aportan otro integrador general equivalente.
+- [x] `extensions/physics_platform` opera sobre un estado de siete bytes del
+  consumidor y una configuración separada; aplica movimiento horizontal,
+  gravedad, caída máxima, techo, suelo y estado aéreo.
+- [x] `extensions/physics_8_8` opera sobre un estado independiente de nueve
+  bytes; conserva el resto sub-LSB, aplica fricción en la dirección del vector
+  e integra/rebota dentro de límites configurables.
+- [x] No se creó una entidad universal ni dependencias con mapas, bolas, pools,
+  sprites, render o reglas de juego.
+- [x] `gravity` y `physics88` aportan recorridos ejecutables de 48 y 64 pasos;
+  sus estados finales se contrastan con modelos host y se leen de la RAM Z80.
+- [x] Suite local: 26 pruebas, doce BIN, once CDT, DSK común con 14 entradas y
+  paquete determinista de 26 entradas con checksum correcto.
+- [x] Los doce programas pasaron desde el mismo DSK en CPC 6128; los dos
+  perfiles nuevos también pasaron con estado exacto en CPC 464.
+- [x] Manual HTML/PDF, procedencia y límites actualizados.
+- [ ] Pendiente registrar SHA, push y CI remota.
+
+## Fase siguiente: tilemaps y colisión de escenario
+
+Extraer una consulta de tilemap de solo lectura y un contrato de colisión que
+pueda usar el perfil de plataforma sin importar mapas, entidades ni reglas de
+`model01`. Probar suelo, pared y techo con un consumidor ejecutable; mantener
+separadas las colisiones entre bolas de `PocketFever`.

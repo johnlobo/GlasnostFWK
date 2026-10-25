@@ -34,7 +34,9 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `src/resources/disk.s` | `DeckTower/src/sys/loader.s` y spike firmware de la misma revisión | API nueva reducida a reconexión y carga; sin tabla, bancos, paleta ni política de error del juego | GPL-3.0 del conjunto |
 | `src/resources/zx7b.s` | `DeckTower/src/sys/compression.s`; `cpct_zx7b_decrunch_s_asm` de CPCTelera Next | Adaptador sin buffer ni packs concretos; compresor y descompresor proceden de la dependencia fijada | GPL-3.0; enlace con LGPL-3.0 |
 | `tools/gen_resources.py` | tabla fija de `DeckTower/src/sys/loader.s` | Sustitución nueva mediante manifiesto validado | GPL-3.0 |
-| `src/extensions/motion_u8.*` | física de model01 y PocketFever | Perfil nuevo, separado; no unifica estructuras incompatibles | GPL-3.0 |
+| `src/extensions/motion_u8.*` | movimiento de coordenadas enteras observado en model01 | Perfil compacto nuevo; no pretende ser física completa | GPL-3.0 |
+| `src/extensions/physics_platform.*` | `model01/src/sys/physics.s`, `config.h.s` y `entity.h.s` | Reimplementación separada del núcleo portable: velocidad byte, gravedad, caída máxima, dimensiones, límites y suelo; sin mapa ni entidad de model01 | GPL-3.0 |
+| `src/extensions/physics_8_8.*` | `PocketFever/src/sys/physics.s`, `entity.h.s` y `tuning.h.s` | Reimplementación separada del integrador 8.8, fricción vectorial con resto y rebote; sin bolas, colisiones ni mesa fija | GPL-3.0 |
 | `src/extensions/animation.*` | `model01/src/sys/anim.*`; contraste con la máquina de impactos de `DeckTower/src/game/combat.s` | Cursor de frames reimplementado sin entidad, sala, movimiento ni render; DeckTower permanece como especialización | GPL-3.0 |
 | `src/ui/window.*` | `src/sys/messages.s` de los cuatro proyectos; caja idéntica en `DeckTower`/`PocketFever` `src/sys/render.s` | Geometría reimplementada sobre la tabla de vídeo, con buffer del consumidor; sin texto, espera, combate ni direcciones fijas | GPL-3.0 |
 | `cfg/*.template*` | ejemplo `examples/asm/helloworld` de CPCTelera Next | Copia de plantilla de construcción con su cabecera intacta | LGPL-3.0 |

@@ -1,0 +1,5 @@
+{
+  "name": "physics88",
+  "profile": "standard-160x200.json",
+  "modules": ["core/system.s", "video/video.s", "extensions/physics_8_8.s"]
+}

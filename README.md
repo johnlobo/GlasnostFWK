@@ -5,8 +5,8 @@
 Framework modular en ensamblador Z80 para Amstrad CPC, extraído y consolidado
 de `model01`, `boop`, `DeckTower` y `PocketFever`. La primera versión estable
 se centra en un núcleo pequeño, entrada con flancos, vídeo Mode 0 declarativo,
-colecciones sin estructura universal, texto, audio AKG opcional y copia
-bancaria de 128 KB.
+colecciones sin estructura universal, perfiles separados de plataforma y
+física 8.8, texto, audio AKG opcional y copia bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
 ejemplo declara sus módulos y fuentes de juego en `examples/*/example.json`;
@@ -26,7 +26,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # diez ejemplos: vertical, disco, audio, animación y ventanas
+make examples   # doce ejemplos, incluidos plataforma y física 8.8
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -34,7 +34,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT quedan en `.build/<ejemplo>/`; todos los BIN de prueba se reúnen
+Los BIN y CDT quedan en `.build/<ejemplo>/`; los doce BIN de prueba se reúnen
 en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
 necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
 eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
@@ -61,7 +61,7 @@ de render se instala de forma aislada con
 - `src/extensions`: movimiento y animación optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: diez consumidores pequeños, sin copias internas del framework.
+- `examples`: doce consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -74,6 +74,15 @@ el manifiesto los selecciona mediante `game_sources`.
 El smoke de AmSpiriT mantiene CursorRight en la matriz real del CPC y verifica
 en RAM que el pool pasa de cuatro entidades a una, el marcador llega a tres y
 el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
+
+## Física especializada
+
+`extensions/physics_platform` conserva el perfil entero de plataformas:
+velocidad byte, gravedad, caída máxima, dimensiones, límites y suelo.
+`extensions/physics_8_8` mantiene aparte posición/velocidad fraccionarias,
+fricción sobre el vector y rebote por eje. Los ejemplos `gravity` y `physics88`
+comprueban recorridos deterministas sin compartir estructura de entidad. Los
+contratos y límites están en `docs/physics-profiles.md`.
 
 ## Carga desde DSK y ZX7B
 

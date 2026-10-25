@@ -219,6 +219,26 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 5,
                 "animation resume",
             )
+        if name == "gravity":
+            state = symbol(noi, "gravity_state")
+            status = symbol(noi, "gravity_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "48 platform physics steps")
+            result = ram(state, 7)
+            expected = bytes((76, 192, 0, 0, 4, 8, 0))
+            if result != expected:
+                raise RuntimeError(
+                    f"platform physics state is {result.hex()}, expected {expected.hex()}"
+                )
+        if name == "physics88":
+            state = symbol(noi, "physics88_state")
+            status = symbol(noi, "physics88_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "64 fixed-point physics steps")
+            result = ram(state, 9)
+            expected = bytes.fromhex("dc0bc0750001800000")
+            if result != expected:
+                raise RuntimeError(
+                    f"8.8 physics state is {result.hex()}, expected {expected.hex()}"
+                )
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")
@@ -309,7 +329,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

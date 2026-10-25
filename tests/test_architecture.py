@@ -66,6 +66,10 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("ui/window.s", selections["window"])
         self.assertNotIn("ui/window.s", selections["board"])
         self.assertIn("extensions/motion_u8.s", selections["vertical"])
+        self.assertIn("extensions/physics_platform.s", selections["gravity"])
+        self.assertNotIn("extensions/physics_8_8.s", selections["gravity"])
+        self.assertIn("extensions/physics_8_8.s", selections["physics88"])
+        self.assertNotIn("extensions/physics_platform.s", selections["physics88"])
 
 
 if __name__ == "__main__":
