@@ -163,8 +163,10 @@ python3 tests/emulator_smoke.py --model 464 animation
   de texto comprobada en las 16 páginas.
 - [x] Suite local: 21 pruebas host y construcción completa de nueve ejemplos.
 - [x] Implementación registrada en `fc5111e`.
-- [ ] Pendiente en este punto del registro: sincronización y CI remota de la
-  fase documental.
+- [x] Estado registrado en `795e981`; ambos commits están sincronizados en
+  `origin/main`.
+- [x] CI remota `40212147675` correcta para `795e981`: 21 pruebas, nueve
+  construcciones y artefactos distributables verificados.
 
 ## Fase siguiente: ventanas y mensajes reutilizables
 
