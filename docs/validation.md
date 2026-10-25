@@ -12,6 +12,8 @@ Fecha: 2026-10-25 UTC.
   juego.
 - Generadores de vídeo/recursos y nueve ejemplos, incluida una vertical jugable.
 - Frontera de dependencias y exclusión física de módulos.
+- Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
+  y módulos seleccionados.
 
 ## Compilado
 
@@ -31,6 +33,8 @@ contiene tamaños enlazados.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
 - Construcción completa de los nueve ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
+- 21 pruebas host en total. El manual cubre los nueve ejemplos y once módulos;
+  su checksum corresponde al HTML que generó el PDF de 16 páginas.
 
 ## Ejecutado en emulador
 

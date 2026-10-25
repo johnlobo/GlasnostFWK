@@ -6,6 +6,10 @@ Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
 publicación.
 
+El manual de usuario canónico está en `docs/manual.html` y su versión para
+impresión en `docs/manual.pdf`. Toda funcionalidad nueva debe ampliar el HTML,
+regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum.
+
 ## Estado confirmado
 
 - Las nueve fases del encargo inicial están implementadas como primera versión
@@ -143,6 +147,23 @@ Comandos específicos:
 python3 tests/emulator_smoke.py animation
 python3 tests/emulator_smoke.py --model 464 animation
 ```
+
+## Fase completada: manual de usuario en castellano
+
+- [x] Manual HTML autocontenido con instalación, construcción, manifiestos,
+  contratos de los once módulos seleccionables, perfiles, recursos, nueve
+  ejemplos, emulación, distribución, diagnóstico y mantenimiento.
+- [x] PDF A4 de 16 páginas generado desde el mismo HTML mediante WeasyPrint
+  70.0, con texto seleccionable, índice y numeración.
+- [x] Dependencia de documentación fijada en `docs/requirements-manual.txt` y
+  objetivo reproducible `make manual`.
+- [x] `tests/test_manual.py` obliga a cubrir cada ejemplo y módulo seleccionado,
+  valida el PDF y detecta un PDF desfasado mediante el hash del HTML.
+- [x] Revisión visual de portada, referencia de API y página final; extracción
+  de texto comprobada en las 16 páginas.
+- [x] Suite local: 21 pruebas host y construcción completa de nueve ejemplos.
+- [ ] Pendiente en este punto del registro: commit, sincronización y CI remota
+  de la fase documental.
 
 ## Fase siguiente: ventanas y mensajes reutilizables
 

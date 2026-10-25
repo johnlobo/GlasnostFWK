@@ -1,7 +1,7 @@
 PYTHON ?= python3
 EXAMPLES := minimal board platform video resources128 diskload audio animation vertical
 
-.PHONY: all examples test generate report release clean
+.PHONY: all examples test generate report manual release clean
 
 all: test
 
@@ -15,6 +15,9 @@ examples: generate
 
 report: examples
 	$(PYTHON) tools/build_report.py
+
+manual:
+	$(PYTHON) tools/build_manual.py
 
 release: examples
 	@test -n "$(VERSION)" || (echo "VERSION is required (for example: make release VERSION=0.1.0)" >&2; exit 2)

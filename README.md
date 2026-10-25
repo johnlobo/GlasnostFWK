@@ -29,6 +29,7 @@ make generate   # vídeo y manifiesto de recursos, deterministas
 make examples   # nueve ejemplos: vertical, disco, audio y animación
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
+make manual     # regenera docs/manual.pdf desde docs/manual.html
 make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
@@ -38,6 +39,14 @@ el smoke opcional sí y comprueba estado de RAM, no solo que el proceso arranque
 Las versiones publicadas ofrecen los `.bin` y los medios declarados por cada
 ejemplo en un ZIP con checksum; el estado y la siguiente acción se mantienen en
 [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
+El manual de uso completo está disponible en
+[`docs/manual.html`](docs/manual.html) y [`docs/manual.pdf`](docs/manual.pdf).
+Cada funcionalidad nueva debe documentarse allí y regenerar el PDF con
+`make manual`; la suite comprueba cobertura y sincronización. La dependencia
+de render se instala de forma aislada con
+`python3 -m venv .venv-docs` y
+`.venv-docs/bin/python -m pip install -r docs/requirements-manual.txt`.
 
 ## Mapa del repositorio
 

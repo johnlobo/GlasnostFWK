@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="Proyecto GlasnostFWK">
+  <meta name="description" content="Manual de uso de GlasnostFWK para Amstrad CPC">
+  <title>Manual de uso de GlasnostFWK</title>
+  <style>
+    :root {
+      --ink: #18202a;
+      --muted: #52606d;
+      --paper: #fffdf8;
+      --panel: #f2f5f7;
+      --line: #c8d1d9;
+      --accent: #126a70;
+      --accent-dark: #0b464a;
+      --warning: #fff2cc;
+      --code: #17212b;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e7ecef;
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 3rem 4rem 5rem;
+      background: var(--paper);
+      box-shadow: 0 0 30px #1b2a3422;
+    }
+    h1, h2, h3, h4 { color: var(--accent-dark); line-height: 1.18; }
+    h1 { margin: 0 0 .5rem; font-size: 2.65rem; }
+    h2 { margin-top: 3rem; border-bottom: 2px solid var(--accent); padding-bottom: .3rem; }
+    h3 { margin-top: 2rem; }
+    a { color: var(--accent); }
+    code, pre { font-family: "DejaVu Sans Mono", Consolas, monospace; }
+    code { background: #e9eef1; padding: .08rem .3rem; border-radius: 3px; }
+    pre {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      background: var(--code);
+      color: #eef6f7;
+      padding: 1rem 1.15rem;
+      border-radius: 5px;
+      font-size: .88rem;
+      line-height: 1.45;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: .93rem; }
+    th, td { border: 1px solid var(--line); padding: .55rem .65rem; text-align: left; vertical-align: top; }
+    th { background: #dce9ea; color: var(--accent-dark); }
+    tbody tr:nth-child(even) { background: #f7f8f8; }
+    .subtitle { color: var(--muted); font-size: 1.25rem; margin: 0; }
+    .edition { color: var(--muted); margin: 1.4rem 0 2.4rem; }
+    .lead { font-size: 1.08rem; }
+    .box {
+      border-left: 5px solid var(--accent);
+      background: var(--panel);
+      padding: .8rem 1rem;
+      margin: 1.25rem 0;
+    }
+    .warning { border-left-color: #b27700; background: var(--warning); }
+    .api { margin: 1.3rem 0; padding: .1rem 1rem .7rem; border: 1px solid var(--line); border-radius: 5px; }
+    .api h4 { margin-bottom: .35rem; }
+    .tag { display: inline-block; color: white; background: var(--accent); padding: .1rem .45rem; border-radius: 4px; font-size: .78rem; }
+    .toc { columns: 2; padding-left: 1.3rem; }
+    .toc li { break-inside: avoid; margin: .25rem 0; }
+    .page-break { break-before: page; }
+    footer { margin-top: 4rem; border-top: 1px solid var(--line); padding-top: 1rem; color: var(--muted); font-size: .85rem; }
+    @page {
+      size: A4;
+      margin: 17mm 16mm 19mm;
+      @bottom-center { content: "GlasnostFWK — Manual de uso · " counter(page) " / " counter(pages); color: #52606d; font-size: 9pt; }
+    }
+    @media print {
+      body { background: white; font-size: 10.2pt; }
+      main { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+      h1 { font-size: 27pt; }
+      h2 { break-before: page; margin-top: 0; }
+      h2.keep { break-before: auto; margin-top: 2rem; }
+      h3, h4 { break-after: avoid; }
+      table, pre, .box, .api { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+      .toc { columns: 2; }
+    }
+    @media (max-width: 700px) {
+      main { padding: 2rem 1.2rem 4rem; }
+      .toc { columns: 1; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">Amstrad CPC · Z80</span>
+    <h1>Manual de uso de GlasnostFWK</h1>
+    <p class="subtitle">Construcción modular de juegos y pruebas técnicas con CPCTelera Next</p>
+    <p class="edition">Edición: 25 de octubre de 2026 · Idioma: castellano</p>
+  </header>
+
+  <section aria-labelledby="alcance">
+    <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
+    <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
+    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, texto, movimiento compacto, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
+    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. Las ventanas y la física completa 8.8 todavía no forman parte del framework.</div>
+  </section>
+
+  <nav aria-labelledby="indice">
+    <h2 id="indice" class="keep">Índice</h2>
+    <ol class="toc">
+      <li><a href="#alcance">Qué es y qué cubre</a></li>
+      <li><a href="#requisitos">Requisitos</a></li>
+      <li><a href="#primeros-pasos">Primeros pasos</a></li>
+      <li><a href="#estructura">Estructura del repositorio</a></li>
+      <li><a href="#proyecto">Crear un proyecto o ejemplo</a></li>
+      <li><a href="#modulos">Referencia de módulos</a></li>
+      <li><a href="#recursos">Perfiles y recursos</a></li>
+      <li><a href="#ejemplos">Ejemplos incluidos</a></li>
+      <li><a href="#pruebas">Pruebas y emulación</a></li>
+      <li><a href="#distribucion">Distribución</a></li>
+      <li><a href="#diagnostico">Diagnóstico</a></li>
+      <li><a href="#mantenimiento">Mantener este manual</a></li>
+    </ol>
+  </nav>
+
+  <section aria-labelledby="requisitos">
+    <h2 id="requisitos">2. Requisitos</h2>
+    <ul>
+      <li>Python 3 y GNU Make.</li>
+      <li>CPCTelera Next en la revisión fijada <code>11e61fe30175ad7b328de9bcd859c46fd61b26a5</code>, con SDCC Z80 4.5.0 y sus herramientas construidas.</li>
+      <li>Ruta predeterminada: <code>/config/workspace/cpctelera_next/cpctelera</code>. Puede sustituirse con <code>CPCT_NEXT_PATH</code> o con <code>--cpct-path</code>.</li>
+      <li>AmSpiriT-Lite 1.15.3 solo para ejecutar la batería de emulador existente.</li>
+      <li>WeasyPrint 70.0 solo para regenerar este manual en PDF.</li>
+    </ul>
+    <pre><code>export CPCT_NEXT_PATH=/ruta/a/cpctelera
+python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pre>
+    <p>La compatibilidad con instalaciones distintas de la revisión fijada no está confirmada. Si se cambia, hay que volver a compilar y ejecutar las pruebas.</p>
+  </section>
+
+  <section aria-labelledby="primeros-pasos">
+    <h2 id="primeros-pasos">3. Primeros pasos</h2>
+    <h3>3.1 Construir todo</h3>
+    <pre><code>cd /config/workspace/GlasnostFWK
+make generate
+make examples
+make test</code></pre>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los nueve consumidores. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+
+    <h3>3.2 Construir un único ejemplo</h3>
+    <pre><code>python3 tools/build_examples.py minimal
+python3 tools/build_examples.py animation vertical</code></pre>
+    <p>Los resultados quedan en <code>.build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
+    <ul>
+      <li><code>obj/&lt;nombre&gt;.bin</code>: binario AMSDOS.</li>
+      <li><code>&lt;nombre&gt;.dsk</code>: imagen de disco.</li>
+      <li><code>&lt;nombre&gt;.cdt</code>: cinta, salvo ejemplos que declaren solo DSK.</li>
+      <li><code>selected-modules.json</code>: prueba de qué módulos entraron realmente.</li>
+    </ul>
+
+    <h3>3.3 Probar manualmente en un CPC o emulador</h3>
+    <ol>
+      <li>Construya el ejemplo.</li>
+      <li>Inserte su DSK o CDT en el CPC/emulador.</li>
+      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL.BIN</code>. El DSK generado de <code>minimal</code> contiene <code>MINIMAL.BIN</code>.</li>
+      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos.</li>
+    </ol>
+    <div class="box">Los smoke automáticos no se limitan a comprobar que el emulador sigue abierto: leen RAM, memoria de vídeo, teclado y, en audio, registros PSG.</div>
+  </section>
+
+  <section aria-labelledby="estructura">
+    <h2 id="estructura">4. Estructura del repositorio</h2>
+    <table>
+      <thead><tr><th>Ruta</th><th>Responsabilidad</th></tr></thead>
+      <tbody>
+        <tr><td><code>src/core</code></td><td>Sistema, entrada y pool genérico.</td></tr>
+        <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones y limpieza visible.</td></tr>
+        <tr><td><code>src/ui</code></td><td>Adaptador de texto Mode 0.</td></tr>
+        <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
+        <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
+        <tr><td><code>src/extensions</code></td><td>Perfiles opcionales de movimiento y animación.</td></tr>
+        <tr><td><code>examples</code></td><td>Consumidores independientes y sus fuentes de juego.</td></tr>
+        <tr><td><code>profiles</code>, <code>manifests</code></td><td>Geometría y recursos declarativos.</td></tr>
+        <tr><td><code>generated</code></td><td>Tablas producidas por herramientas; no son la fuente canónica.</td></tr>
+        <tr><td><code>tools</code>, <code>tests</code></td><td>Construcción, generación, paquetes y validación.</td></tr>
+      </tbody>
+    </table>
+    <p>La dirección de dependencias es <code>juego → extensión opcional → núcleo → CPCTelera/hardware</code>. Ningún archivo de <code>src/</code> puede importar un ejemplo o símbolos de juego.</p>
+  </section>
+
+  <section aria-labelledby="proyecto">
+    <h2 id="proyecto">5. Crear un proyecto o ejemplo</h2>
+    <h3>5.1 Directorio mínimo</h3>
+    <pre><code>examples/mi_juego/
+├── example.json
+└── main.s</code></pre>
+    <p>El manifiesto mínimo selecciona un perfil, módulos y fuentes propias:</p>
+    <pre><code>{
+  "name": "mi_juego",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s"
+  ],
+  "game_sources": ["main.s"]
+}</code></pre>
+    <p>Después añada el nombre a <code>EXAMPLES</code> en el <code>Makefile</code> si debe formar parte de la construcción completa y del paquete oficial.</p>
+
+    <h3>5.2 Campos del manifiesto</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>Nombre del proyecto y de sus artefactos.</td></tr>
+        <tr><td><code>profile</code></td><td>JSON de vídeo situado en <code>profiles/</code>.</td></tr>
+        <tr><td><code>modules</code></td><td>Fuentes del framework relativos a <code>src/</code>.</td></tr>
+        <tr><td><code>game_sources</code></td><td>Fuentes <code>.s</code>/<code>.inc</code> del consumidor. Debe incluir <code>main.s</code>.</td></tr>
+        <tr><td><code>cpct_modules</code></td><td>Fuentes concretos de CPCTelera que deben compilarse, por ejemplo el player AKG.</td></tr>
+        <tr><td><code>media</code></td><td>Lista con <code>"dsk"</code>, <code>"cdt"</code> o ambos. Por defecto genera ambos.</td></tr>
+        <tr><td><code>disk_files</code></td><td>Payloads adicionales para DSK: fuente, codificación, nombre AMSDOS, símbolo y compresión.</td></tr>
+      </tbody>
+    </table>
+    <p>Las rutas absolutas, recorridos <code>..</code>, ficheros inexistentes, nombres AMSDOS inválidos y símbolos duplicados se rechazan antes de construir.</p>
+
+    <h3>5.3 Fuente principal</h3>
+    <pre><code>.module mi_juego
+.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_video_init
+
+.area _CODE
+_main::
+    call fwk_system_init
+    call fwk_video_init
+loop:
+    call fwk_system_wait_frame
+    jr loop</code></pre>
+    <p>Declare con <code>.globl</code> únicamente las funciones que use. Los módulos ausentes del manifiesto no se copian ni enlazan.</p>
+  </section>
+
+  <section aria-labelledby="modulos">
+    <h2 id="modulos">6. Referencia de módulos</h2>
+    <p>Los contratos indican entradas, salidas y registros alterados. El llamador debe respetarlos; el framework no inserta comprobaciones de límites en tiempo de ejecución salvo donde se indique.</p>
+
+    <article class="api" data-module="core/system.s">
+      <h3>6.1 Sistema — <code>core/system.s</code></h3>
+      <ul>
+        <li><code>fwk_system_init</code>: desactiva firmware, instala IRQ y deja el callback nulo. Altera <code>AF,BC,DE,HL</code>.</li>
+        <li><code>fwk_system_wait_frame</code>: espera VSYNC. Altera <code>AF,BC,DE,HL</code>.</li>
+        <li><code>fwk_system_set_irq_callback</code>: recibe <code>HL=callback|0</code>. El callback se ejecuta una vez por cada seis IRQ, después del escaneo del teclado.</li>
+        <li>Estado público: <code>fwk_system_irq_count</code>, <code>fwk_system_frame_count</code> y el puntero de callback.</li>
+      </ul>
+      <p>No cambie el callback mientras está activo sin deshabilitar interrupciones. Un callback debe preservar lo que necesite el programa principal.</p>
+    </article>
+
+    <article class="api" data-module="core/input.s">
+      <h3>6.2 Entrada — <code>core/input.s</code></h3>
+      <p>Admite hasta ocho acciones lógicas y separa pulsación sostenida, flanco de entrada y flanco de salida.</p>
+      <pre><code>bindings:
+    .dw Key_CursorRight
+    .db 0x01
+    .dw Key_CursorLeft
+    .db 0x02
+    .dw 0
+    .db 0</code></pre>
+      <ul>
+        <li><code>fwk_input_init</code>: borra el estado.</li>
+        <li><code>fwk_input_set_bindings</code>: <code>HL=tabla</code>. La tabla debe persistir y termina con máscara cero.</li>
+        <li><code>fwk_input_update</code>: actualiza <code>fwk_input_held</code>, <code>fwk_input_pressed</code> y <code>fwk_input_released</code>. Altera <code>AF,BC,DE,HL,IY</code>.</li>
+      </ul>
+    </article>
+
+    <article class="api" data-module="core/pool.s">
+      <h3>6.3 Pool compacto — <code>core/pool.s</code></h3>
+      <p>Incluya <code>core/pool.inc</code> y cree un descriptor de cinco bytes:</p>
+      <pre><code>entities: .ds 8 * 5
+FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
+      <ul>
+        <li><code>fwk_pool_init</code>: <code>IX=descriptor</code>; count pasa a cero.</li>
+        <li><code>fwk_pool_get</code>: <code>A=índice</code>; devuelve <code>HL=registro</code> o carry si no existe.</li>
+        <li><code>fwk_pool_alloc</code>: devuelve un slot sin inicializar o carry si está lleno.</li>
+        <li><code>fwk_pool_remove</code>: elimina <code>A=índice</code> y compacta con <code>LDIR</code>.</li>
+        <li><code>fwk_pool_foreach</code>: <code>DE=callback</code>; el callback recibe <code>IY=registro</code>.</li>
+      </ul>
+      <p><code>foreach</code> usa un <code>CALL</code> automodificable: no es reentrante ni debe reentrarse desde IRQ. El pool no interpreta los bytes de cada registro.</p>
+    </article>
+
+    <article class="api" data-module="video/video.s">
+      <h3>6.4 Vídeo Mode 0 — <code>video/video.s</code></h3>
+      <ul>
+        <li><code>fwk_video_init</code>: selecciona Mode 0.</li>
+        <li><code>fwk_video_configure_crtc</code>: aplica la tabla CRTC del perfil. Usarlo no convierte un perfil experimental en verificado.</li>
+        <li><code>fwk_video_get_ptr</code>: <code>HL=y</code> de 16 bits y <code>C=x</code> en bytes; devuelve <code>HL=puntero</code>.</li>
+        <li><code>fwk_video_plot_byte</code>: añade <code>A=byte empaquetado Mode 0</code>.</li>
+        <li><code>fwk_video_clear_visible</code>: <code>A=patrón</code>; limpia solo regiones visibles y conserva huecos.</li>
+      </ul>
+      <p>El ancho estándar es 80 bytes, equivalentes a 160 píxeles en Mode 0. El llamador debe mantener las coordenadas dentro del perfil.</p>
+    </article>
+
+    <article class="api" data-module="ui/text.s">
+      <h3>6.5 Texto — <code>ui/text.s</code></h3>
+      <ul>
+        <li><code>fwk_text_set_colors</code>: <code>L=foreground</code>, <code>H=background</code>, ambos 0..15.</li>
+        <li><code>fwk_text_draw</code>: <code>IY=cadena ASCII NUL</code>, <code>HL=puntero de vídeo</code>.</li>
+      </ul>
+      <p>El adaptador usa las rutinas Mode 0 de CPCTelera. Su implementación subyacente es automodificable y no puede ejecutarse desde ROM.</p>
+    </article>
+
+    <article class="api" data-module="extensions/motion_u8.s">
+      <h3>6.6 Movimiento compacto — <code>extensions/motion_u8.s</code></h3>
+      <p><code>fwk_motion_u8_step</code> recibe en <code>IY</code> un registro de cinco bytes <code>x,y,vx,vy,flags</code>. Aplica velocidades con signo de 8 bits y satura en <code>x=0..79</code>, <code>y=0..199</code>. Altera <code>AF</code>.</p>
+      <p>Este perfil no es una entidad universal y no representa física 8.8. Es reentrante si el registro no se comparte.</p>
+    </article>
+
+    <article class="api" data-module="extensions/animation.s">
+      <h3>6.7 Animación — <code>extensions/animation.s</code></h3>
+      <pre><code>walk_animation:
+    .db 3              ; número de frames
+    .db 4              ; ticks por frame
+    .dw frame0, frame1, frame2
+
+animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
+      <ul>
+        <li><code>fwk_anim_clear</code>: <code>IX=estado</code>; desactiva y devuelve <code>HL=0</code>.</li>
+        <li><code>fwk_anim_set</code>: <code>IX=estado</code>, <code>HL=descriptor|0</code>. Carry indica que cambió. Repetir el descriptor conserva índice y temporizador.</li>
+        <li><code>fwk_anim_tick</code>: consume un tick decidido por el juego y devuelve el puntero de frame. Carry indica avance.</li>
+      </ul>
+      <p>El descriptor y los frames deben seguir visibles. Count y duración deben ser mayores que cero. El juego decide cuándo avanzar, qué descriptor elegir y cómo dibujarlo.</p>
+    </article>
+
+    <article class="api" data-module="audio/akg.s">
+      <h3>6.8 Audio AKG — <code>audio/akg.s</code></h3>
+      <p>El manifiesto también debe incluir <code>audio/arkosTracker_PlayerAkg.s</code> en <code>cpct_modules</code>, y el juego debe aportar su canción y tabla de efectos exportadas por Arkos Tracker.</p>
+      <ol>
+        <li><code>fwk_audio_init_music</code>: <code>HL=canción</code>, <code>A=subsong</code>.</li>
+        <li><code>fwk_audio_init_sfx</code>: <code>HL=tabla de efectos</code>.</li>
+        <li><code>fwk_audio_start</code>: instala el tick AKG en el callback del sistema.</li>
+        <li><code>fwk_audio_play_sfx</code>: <code>A=id</code>, <code>B=volumen invertido</code>, <code>C=canal 0..2</code>.</li>
+        <li><code>fwk_audio_stop</code>: para el player y retira el callback.</li>
+      </ol>
+      <p>El player y sus datos deben permanecer visibles durante la IRQ. El coste total variable del player no está medido; no se promete 50 Hz para cualquier canción o escena.</p>
+    </article>
+
+    <article class="api" data-module="resources/bank.s">
+      <h3>6.9 Bancos de 128 KB — <code>resources/bank.s</code></h3>
+      <ul>
+        <li><code>fwk_bank_init</code>: detecta RAM adicional. Devuelve <code>A=1/NZ</code> o <code>A=0/Z</code> y actualiza <code>fwk_bank_has_128k</code>.</li>
+        <li><code>fwk_bank_copy_from</code>: <code>A=banco 0..3</code>, <code>HL=origen bancado</code>, <code>DE=destino normal</code>, <code>BC=tamaño</code>.</li>
+        <li><code>fwk_bank_copy_to</code>: mismo contrato, con origen normal y destino bancado.</li>
+      </ul>
+      <p>El lado bancado debe estar entre <code>0x4000</code> y <code>0x7FFF</code>. El stub ocupa <code>0x0200</code>, prueba <code>0x7FF0</code> y deja las interrupciones habilitadas. Carry indica banco inválido.</p>
+    </article>
+
+    <article class="api" data-module="resources/disk.s">
+      <h3>6.10 Carga AMSDOS — <code>resources/disk.s</code></h3>
+      <ul>
+        <li><code>fwk_disk_init</code>: reconecta AMSDOS. Debe llamarse antes de <code>fwk_system_init</code>.</li>
+        <li><code>fwk_disk_load</code>: <code>HL=nombre</code>, <code>B=longitud</code>, <code>DE=destino</code>. Carry y <code>BC=longitud lógica</code> indican apertura correcta.</li>
+      </ul>
+      <p>Usa <code>0xF800..0xFFFF</code> como buffer de cabecera y no es reentrante. El llamador debe verificar longitud y contenido; este backend no ofrece por sí solo integridad.</p>
+    </article>
+
+    <article class="api" data-module="resources/zx7b.s">
+      <h3>6.11 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
+      <p><code>fwk_zx7b_unpack</code> recibe <code>HL=último byte comprimido</code> y <code>DE=último byte del destino</code>. Escribe hacia atrás mediante <code>cpct_zx7b_decrunch_s_asm</code> y altera <code>AF,BC,DE,HL</code>.</p>
+      <p>No comprueba límites ni corrupción. Para archivos declarados en <code>disk_files</code>, el constructor genera constantes <code>FWK_DISK_*_SIZE</code> y <code>FWK_DISK_*_UNPACKED_SIZE</code>.</p>
+    </article>
+  </section>
+
+  <section aria-labelledby="recursos">
+    <h2 id="recursos">7. Perfiles y recursos</h2>
+    <h3>7.1 Perfil estándar 160×200</h3>
+    <p><code>profiles/standard-160x200.json</code> define Mode 0, 80 bytes por línea, 200 líneas, pantalla en <code>0xC000</code> y pila reservada en <code>0xB800..0xBFFF</code>. Es el perfil usado por los ejemplos.</p>
+
+    <h3>7.2 Perfil experimental 160×288</h3>
+    <p><code>profiles/experimental-160x288.json</code> usa coordenadas verticales de 16 bits y dos segmentos de vídeo. Se han comprobado 23.040 direcciones únicas y el cruce de memoria; la temporización CRTC no se ha validado visualmente en varios CRTC ni en hardware.</p>
+
+    <h3>7.3 Generar tablas</h3>
+    <pre><code>python3 tools/gen_video.py profiles/standard-160x200.json --out-dir generated
+python3 tools/gen_resources.py manifests/resources128.json --output generated/resources128.inc</code></pre>
+    <p>Edite los JSON fuente y regenere. No edite las tablas de <code>generated/</code> a mano. El generador de recursos rechaza solapamientos, destinos reservados, bancos no disponibles y alineaciones incorrectas.</p>
+
+    <h3>7.4 Archivos adicionales en DSK</h3>
+    <pre><code>"disk_files": [{
+  "source": "mapa.bin",
+  "encoding": "raw",
+  "name": "MAPA.BIN",
+  "symbol": "mapa",
+  "compression": "zx7b"
+}]</code></pre>
+    <p><code>name</code> debe cumplir AMSDOS 8.3 en mayúsculas. <code>encoding</code> admite <code>raw</code> y <code>hex</code>; <code>compression</code>, <code>none</code> y <code>zx7b</code>. Los payloads se incorporan al DSK, no al ejecutable.</p>
+  </section>
+
+  <section aria-labelledby="ejemplos">
+    <h2 id="ejemplos">8. Ejemplos incluidos</h2>
+    <table>
+      <thead><tr><th>Ejemplo</th><th>Qué demuestra</th><th>Medios</th></tr></thead>
+      <tbody>
+        <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="board"><td><code>board</code></td><td>Entrada, texto y composición sencilla de tablero.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="platform"><td><code>platform</code></td><td>Pool y perfil de movimiento compacto.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK</td></tr>
+        <tr data-example="audio"><td><code>audio</code></td><td>Música AKG, stop/restart y SFX.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="animation"><td><code>animation</code></td><td>Tres frames, periodo exacto, pausa y reanudación.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK, CDT</td></tr>
+      </tbody>
+    </table>
+    <p><code>vertical</code> es la única escena jugable. Los otros ocho son pruebas técnicas deliberadamente pequeñas.</p>
+  </section>
+
+  <section aria-labelledby="pruebas">
+    <h2 id="pruebas">9. Pruebas y emulación</h2>
+    <h3>9.1 Suite local</h3>
+    <pre><code>make test
+make report</code></pre>
+    <p>La suite comprueba generadores, límites de vídeo, seguridad de manifiestos, frontera de dependencias, paquete, cobertura de este manual y compilación. <code>make report</code> actualiza <code>docs/build-sizes.md</code> desde los mapas SDCC.</p>
+
+    <h3>9.2 Smoke completo en CPC 6128</h3>
+    <pre><code>python3 tests/emulator_smoke.py</code></pre>
+    <h3>9.3 Casos específicos en CPC 464</h3>
+    <pre><code>python3 tests/emulator_smoke.py --model 464 resources128
+python3 tests/emulator_smoke.py --model 464 diskload
+python3 tests/emulator_smoke.py --model 464 audio
+python3 tests/emulator_smoke.py --model 464 animation
+python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
+    <p>Un build correcto, una prueba host correcta, una ejecución emulada y una prueba en hardware son evidencias distintas. Consulte <code>docs/validation.md</code> para ver cuáles se han realizado realmente.</p>
+  </section>
+
+  <section aria-labelledby="distribucion">
+    <h2 id="distribucion">10. Crear un paquete de distribución</h2>
+    <pre><code>make release VERSION=0.2.0
+(cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con BIN/DSK/CDT, manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.1.0</code>; el desarrollo posterior puede contener funciones aún no incluidas en esa release.</p>
+  </section>
+
+  <section aria-labelledby="diagnostico">
+    <h2 id="diagnostico">11. Diagnóstico rápido</h2>
+    <table>
+      <thead><tr><th>Síntoma</th><th>Comprobación</th></tr></thead>
+      <tbody>
+        <tr><td>No se encuentra CPCTelera.</td><td>Revise <code>CPCT_NEXT_PATH</code> o use <code>--cpct-path</code>; confirme que existen las herramientas y <code>cpctelera.lib</code>.</td></tr>
+        <tr><td>El módulo no se enlaza.</td><td>Añádalo a <code>modules</code>; para fuentes del juego use <code>game_sources</code>; para el player externo use <code>cpct_modules</code>.</td></tr>
+        <tr><td>Entrada siempre vacía.</td><td>Llame a <code>fwk_system_init</code>, instale una tabla persistente terminada en cero y ejecute <code>fwk_input_update</code> cada frame.</td></tr>
+        <tr><td>El archivo DSK no carga.</td><td>Llame a <code>fwk_disk_init</code> antes de desactivar firmware; compruebe nombre 8.3, longitud y destino.</td></tr>
+        <tr><td>ZX7B corrompe memoria.</td><td>Verifique últimos bytes de origen/destino y tamaños generados. No hay comprobación interna de límites.</td></tr>
+        <tr><td>Audio no avanza.</td><td>Inicialice música, mantenga player/datos visibles y llame a <code>fwk_audio_start</code> después del sistema.</td></tr>
+        <tr><td>La animación se reinicia.</td><td>No borre el estado. <code>fwk_anim_set</code> es idempotente solo al recibir el mismo descriptor y bloque de estado.</td></tr>
+        <tr><td>Falla <code>make test</code> por el manual.</td><td>Documente el nuevo ejemplo/módulo en este HTML y ejecute <code>make manual</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section aria-labelledby="mantenimiento">
+    <h2 id="mantenimiento">12. Mantener y ampliar este manual</h2>
+    <p>Este documento forma parte del contrato del proyecto. Siempre que se añada, cambie o retire una funcionalidad:</p>
+    <ol>
+      <li>Actualice la explicación y el contrato correspondiente en <code>docs/manual.html</code>.</li>
+      <li>Si aparece un módulo seleccionable, marque su sección con <code>data-module="ruta/del/modulo.s"</code>.</li>
+      <li>Si aparece un ejemplo, añada una fila con <code>data-example="nombre"</code>.</li>
+      <li>Regenerar PDF y checksum: <code>make manual</code>.</li>
+      <li>Ejecute <code>make test</code> y registre el resultado real en <code>PROJECT_STATUS.md</code>.</li>
+    </ol>
+    <pre><code>python3 -m venv .venv-docs
+.venv-docs/bin/python -m pip install -r docs/requirements-manual.txt
+make manual PYTHON=.venv-docs/bin/python
+make test</code></pre>
+    <p>La prueba <code>tests/test_manual.py</code> compara los ejemplos y módulos seleccionados con las marcas del manual, valida que el PDF existe y comprueba que <code>manual.sha256</code> corresponde al HTML actual. Así, un cambio funcional obliga a revisar esta documentación antes de integrar.</p>
+  </section>
+
+  <footer>
+    <p>Fuentes complementarias: <code>docs/architecture-and-api.md</code>, <code>docs/validation.md</code>, <code>docs/provenance.md</code> y <code>PROJECT_STATUS.md</code>. Ante discrepancias, los contratos del código y la evidencia reproducible prevalecen sobre una descripción antigua.</p>
+  </footer>
+</main>
+</body>
+</html>

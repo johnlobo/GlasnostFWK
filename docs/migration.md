@@ -6,8 +6,9 @@
   `fwk_audio_start`, no desde el handler.
 - Reemplazar la tabla de `sys_input_generic_update` por el formato
   `key,action-mask`; las reglas leen los tres bytes de estado.
-- Mantener por ahora entidades, mapas, física, animación y scripts como una
-  extensión del juego: GlasnostFWK no reproduce aún ese perfil completo.
+- Mantener entidades, mapas, física completa y scripts como extensión del
+  juego. El cursor temporal de `extensions/animation.s` ya es reutilizable,
+  pero la selección por movimiento y el render siguen siendo política del juego.
 - Sustituir constantes de pantalla por un perfil JSON y consumir
   `fwk_video_get_ptr`.
 
