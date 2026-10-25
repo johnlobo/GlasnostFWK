@@ -221,7 +221,11 @@ python3 tests/emulator_smoke.py --model 464 window
 - [x] Los diez programas pasaron el smoke completo desde el mismo DSK en CPC
   6128; `diskload` pasó además en CPC 464 desde ese medio común.
 - [x] Implementación y validación local registradas en `4848af3`.
-- [ ] Pendiente publicar los commits y registrar la ejecución de CI remota.
+- [x] Estado persistente registrado en `c769815`; ambos commits están
+  sincronizados en `origin/main`.
+- [x] CI remota `40213858551` correcta para `c769815`: 24 pruebas, diez
+  construcciones, exactamente un DSK común, nueve CDT y catálogo publicados
+  como artefacto temporal del workflow.
 
 ## Fase siguiente: perfiles de física especializados
 
