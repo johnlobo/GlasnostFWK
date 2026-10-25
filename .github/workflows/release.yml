@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  CPCTELERA_REV: 11e61fe30175ad7b328de9bcd859c46fd61b26a5
+  CPCTELERA_ROOT: ${{ github.workspace }}/.deps/cpctelera-next
+  CPCT_NEXT_PATH: ${{ github.workspace }}/.deps/cpctelera-next/cpctelera
+
+jobs:
+  publish-artifacts:
+    name: Build and attach CPC artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out released revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Verify release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+
+      - name: Restore CPCTelera Next
+        id: cpct-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPCTELERA_ROOT }}
+          key: cpctelera-next-${{ runner.os }}-${{ runner.arch }}-${{ env.CPCTELERA_REV }}
+
+      - name: Install CPCTelera build dependencies
+        if: steps.cpct-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            bison \
+            build-essential \
+            flex \
+            libboost-dev
+
+      - name: Build pinned CPCTelera tools and library
+        if: steps.cpct-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$CPCTELERA_ROOT")"
+          git init "$CPCTELERA_ROOT"
+          git -C "$CPCTELERA_ROOT" remote add origin https://github.com/Arnaud6128/cpctelera.git
+          git -C "$CPCTELERA_ROOT" fetch --depth=1 origin "$CPCTELERA_REV"
+          git -C "$CPCTELERA_ROOT" checkout --detach FETCH_HEAD
+
+          make -C "$CPCT_NEXT_PATH/tools/sdcc-4.5.0" -j2
+          make -C "$CPCT_NEXT_PATH/tools/hex2bin-2.0" -j2
+          make -C "$CPCT_NEXT_PATH/tools/iDSK-0.13" -j2
+          make -C "$CPCT_NEXT_PATH/tools/2cdt" -j2
+          make -C "$CPCT_NEXT_PATH/tools/cpc2cdt" -j2
+          make -C "$CPCT_NEXT_PATH" -j2
+
+      - name: Verify CPCTelera installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C "$CPCTELERA_ROOT" rev-parse HEAD)" = "$CPCTELERA_REV"
+          test -s "$CPCT_NEXT_PATH/cpctelera.lib"
+
+      - name: Test and package released revision
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          make test
+          make release VERSION="${RELEASE_TAG#v}"
+          cd dist
+          sha256sum --check SHA256SUMS
+
+      - name: Attach artifacts to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/*.zip dist/SHA256SUMS --clobber

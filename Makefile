@@ -1,7 +1,7 @@
 PYTHON ?= python3
 EXAMPLES := minimal board platform video resources128 vertical
 
-.PHONY: all examples test generate report clean
+.PHONY: all examples test generate report release clean
 
 all: test
 
@@ -16,9 +16,13 @@ examples: generate
 report: examples
 	$(PYTHON) tools/build_report.py
 
+release: examples
+	@test -n "$(VERSION)" || (echo "VERSION is required (for example: make release VERSION=0.1.0)" >&2; exit 2)
+	$(PYTHON) tools/package_release.py --version "$(VERSION)"
+
 test: generate
 	$(PYTHON) -m unittest discover -s tests -v
 	$(PYTHON) tools/build_examples.py $(EXAMPLES)
 
 clean:
-	rm -rf .build generated/*.inc generated/*.json generated/*.md
+	rm -rf .build dist generated/*.inc generated/*.json generated/*.md

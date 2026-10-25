@@ -1,5 +1,6 @@
 .build/
 build/
+dist/
 generated/*.inc
 generated/*.json
 generated/*.md
