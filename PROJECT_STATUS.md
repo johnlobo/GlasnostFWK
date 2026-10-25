@@ -130,8 +130,9 @@ python3 tests/emulator_smoke.py --model 464 audio
   paquete determinista de 28 entradas y checksum correcto.
 - [x] Los nueve DSK pasaron la batería completa en CPC 6128; `animation` pasó
   además su comprobación específica en CPC 464.
-- [ ] Pendiente en este punto del registro: commit, sincronización y CI remota
-  de la fase.
+- [x] Implementación registrada en `7c21d3d`.
+- [ ] Pendiente en este punto del registro: sincronización y CI remota de la
+  fase.
 
 Comandos específicos:
 
