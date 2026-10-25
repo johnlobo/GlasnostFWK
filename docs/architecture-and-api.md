@@ -12,7 +12,10 @@ herramientas -> perfiles/manifiestos -> fuentes/tablas generadas
 Ningún archivo de `src/` importa `examples/` ni símbolos de un juego. La prueba
 `test_framework_never_imports_examples` mantiene esta frontera. Los manifiestos
 de ejemplo seleccionan módulos antes del ensamblado; no existe un registro
-dinámico que arrastre código no usado.
+dinámico que arrastre código no usado. `game_sources` permite declarar varios
+archivos fuente propios del consumidor, por ejemplo lógica y recursos
+separados; las rutas absolutas y los recorridos `..` se rechazan antes de
+copiarlos.
 
 ## Contratos
 
@@ -57,6 +60,8 @@ Descriptor de 5 bytes: puntero base, capacidad, tamaño de registro y count.
   no debe reentrarse desde IRQ.
 
 El pool no interpreta el contenido de los registros ni impone componentes.
+La vertical jugable comprueba en Z80 real emulado una secuencia de tres
+eliminaciones con compactación, además de las pruebas host de arquitectura.
 
 ### Vídeo
 

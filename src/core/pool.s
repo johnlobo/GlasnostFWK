@@ -64,6 +64,8 @@ _fwk_pool_remove_index:
     ld b, a                         ;; number of records after removed slot
     or a
     ret z
+    ld a, b
+    ld (_fwk_pool_records_left + 1), a
     ld a, (_fwk_pool_remove_index + 1)
     call fwk_pool_get                ;; count is now one smaller: last old index
     ;; Index can equal new count only when removing old last, already returned.
@@ -78,9 +80,7 @@ _fwk_pool_remove_index:
 _fwk_pool_source_ready:
     push de
     ld c, FWK_POOL_ELEMENT_SIZE(ix)
-    ld a, b
     ld b, #0
-    ld (_fwk_pool_records_left + 1), a
     ld de, #0
 _fwk_pool_size_loop:
 _fwk_pool_records_left:

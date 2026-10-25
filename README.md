@@ -9,9 +9,9 @@ colecciones sin estructura universal, texto, audio AKG opcional y copia
 bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
-ejemplo declara sus módulos en `examples/*/example.json`; el constructor copia
-únicamente esos fuentes al árbol temporal `.build/`, de modo que excluir una
-funcionalidad la excluye también del enlazado.
+ejemplo declara sus módulos y fuentes de juego en `examples/*/example.json`;
+el constructor copia únicamente esos fuentes al árbol temporal `.build/`, de
+modo que excluir una funcionalidad la excluye también del enlazado.
 
 ## Dependencia fijada
 
@@ -26,7 +26,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # minimal, board, platform, video y resources128
+make examples   # seis ejemplos, incluida la vertical jugable
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
@@ -45,8 +45,19 @@ el smoke opcional sí y comprueba estado de RAM, no solo que el proceso arranque
 - `src/extensions`: perfiles de entidad/movimiento optativos.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: cinco consumidores pequeños, sin copias internas del framework.
+- `examples`: seis consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
+
+## Vertical jugable
+
+`examples/vertical` integra entrada, pool, movimiento, vídeo y recursos de
+juego. Mueve al jugador con los cursores y recoge los tres puntos situados a su
+derecha. `assets.s` mantiene posiciones y bytes gráficos fuera de la lógica;
+el manifiesto los selecciona mediante `game_sources`.
+
+El smoke de AmSpiriT mantiene CursorRight en la matriz real del CPC y verifica
+en RAM que el pool pasa de cuatro entidades a una, el marcador llega a tres y
+el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
 
 ## Estado del perfil 160x288
 

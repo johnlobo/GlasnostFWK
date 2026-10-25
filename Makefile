@@ -1,5 +1,5 @@
 PYTHON ?= python3
-EXAMPLES := minimal board platform video resources128
+EXAMPLES := minimal board platform video resources128 vertical
 
 .PHONY: all examples test generate report clean
 

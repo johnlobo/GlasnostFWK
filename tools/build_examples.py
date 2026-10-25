@@ -25,7 +25,19 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         shutil.rmtree(target)
     (target / "src" / "game").mkdir(parents=True)
     (target / "cfg").mkdir(parents=True)
-    shutil.copy2(example / "main.s", target / "src" / "game" / "main.s")
+    game_sources = manifest.get("game_sources", ["main.s"])
+    if not game_sources or "main.s" not in game_sources:
+        raise ValueError(f"{name}: game_sources must include main.s")
+    for relative in game_sources:
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ValueError(f"{name}: unsafe game source {relative}")
+        source = example / relative_path
+        if not source.is_file() or source.suffix not in {".s", ".inc"}:
+            raise ValueError(f"{name}: invalid game source {relative}")
+        destination = target / "src" / "game" / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
     for relative in manifest["modules"]:
         source = ROOT / "src" / relative
         if not source.is_file():
@@ -62,7 +74,15 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     config = config.replace("Z80CCINCLUDE  := -I$(CPCT_SRC)", "Z80CCINCLUDE  := -I$(CPCT_SRC) -I$(SRCDIR)")
     (target / "cfg" / "build_config.mk").write_text(config, encoding="utf-8")
     (target / "selected-modules.json").write_text(
-        json.dumps({"example": name, "modules": manifest["modules"], "cpct_path": str(cpct_path)}, indent=2) + "\n",
+        json.dumps(
+            {
+                "example": name,
+                "game_sources": game_sources,
+                "modules": manifest["modules"],
+                "cpct_path": str(cpct_path),
+            },
+            indent=2,
+        ) + "\n",
         encoding="utf-8",
     )
     return target

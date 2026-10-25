@@ -6,7 +6,7 @@ no en las hipótesis iniciales.
 | Sistema | Clasificación | Base elegida y mejoras | Incompatibilidades/dependencias eliminadas | Decisión y comprobación |
 |---|---|---|---|---|
 | Arranque, IRQ, sincronización | Núcleo común | Estructura de 6 IRQ presente en los cuatro; callback por frame nuevo | Referencias directas a audio, render y configuración de cada juego | `core/system.s`; construye con Next y escanea teclado una vez/frame |
-| Entrada | Núcleo común | Tabla de acciones de model01; flancos motivados por debounce de boop | Tablas `_menu_*`/`_match_*` de boop y entidades de model01 | Estado `held/pressed/released` por máscara configurable; prueba de enlazado |
+| Entrada | Núcleo común | Tabla de acciones de model01; flancos motivados por debounce de boop | Tablas `_menu_*`/`_match_*` de boop y entidades de model01 | Estado `held/pressed/released` por máscara configurable; entrada sostenida comprobada en la vertical |
 | Array/pool | Núcleo común | `array.s` es idéntico en model01, DeckTower y PocketFever | Sus descriptores de componentes y estructuras de entidad | Pool compacto para registros arbitrarios; capacidad, `get`, borrado compacto y `foreach` |
 | Entidades | Especialización | No se elige estructura universal | Model01 usa plataforma/componentes; PocketFever usa física 8.8 y bola | Solo perfil opcional `motion_u8`; otros perfiles quedan por migrar |
 | Animación | Módulo opcional pendiente | Model01 separa descriptor/avance | Política de movimiento y estructura de entidad | No incorporada aún: no había integración coherente sin traer el perfil entero |

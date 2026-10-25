@@ -1,0 +1,6 @@
+{
+  "name": "vertical",
+  "profile": "standard-160x200.json",
+  "game_sources": ["main.s", "assets.s"],
+  "modules": ["core/system.s", "core/input.s", "core/pool.s", "video/video.s", "extensions/motion_u8.s"]
+}
