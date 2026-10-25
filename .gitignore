@@ -6,3 +6,4 @@ generated/*.json
 generated/*.md
 __pycache__/
 *.pyc
+.venv-docs/

@@ -433,8 +433,8 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="board"><td><code>board</code></td><td>Entrada, texto y composición sencilla de tablero.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platform"><td><code>platform</code></td><td>Pool y perfil de movimiento compacto.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="gravity"><td><code>gravity</code></td><td>Gravedad, salto, límites y aterrizaje con velocidad byte.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="physics88"><td><code>physics88</code></td><td>Integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="gravity"><td><code>gravity</code></td><td>Traza amarilla sobre negro: gravedad, salto, límites y aterrizaje con velocidad byte.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="physics88"><td><code>physics88</code></td><td>Traza cian sobre negro: integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK común</td></tr>
@@ -444,7 +444,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
       </tbody>
     </table>
-    <p><code>vertical</code> es la única escena jugable. Los otros once son pruebas técnicas deliberadamente pequeñas.</p>
+    <p><code>vertical</code> es la única escena jugable. Los otros once son pruebas técnicas deliberadamente pequeñas. <code>gravity</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su recorrido y fijan una paleta propia para no heredar colores invisibles de BASIC.</p>
   </section>
 
   <section aria-labelledby="pruebas">

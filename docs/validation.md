@@ -67,6 +67,10 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   `(x=76,y=192)`, apoyado, con ambas velocidades a cero y dimensiones `4x8`.
 - `physics88` completó 64 pasos en CPC 6128 y CPC 464: posición final
   `(&0BDC,&75C0)`, velocidad `(&0100,&0080)` y resto de fricción cero.
+- Tras reproducir una salida aparentemente vacía en `gravity`, se comprobó que
+  la demo heredaba de BASIC fondo azul en el pen 0 y negro en el pen 5 usado por
+  la traza. `gravity` fija ahora negro/amarillo y `physics88` negro/cian. El
+  smoke verifica tanto los registros de paleta como el byte final en VRAM.
 - `window` rechazó una geometría fuera de pantalla, capturó 320 bytes, dibujó
   borde/relleno sin tocar los testigos exteriores, restauró las 16 filas y
   volvió a abrirse. Pasó en CPC 6128 y CPC 464.

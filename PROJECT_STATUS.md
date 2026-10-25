@@ -254,6 +254,22 @@ python3 tests/emulator_smoke.py --model 464 window
   construcciones, un DSK común con catálogo y once CDT publicados como
   artefacto temporal.
 
+## Corrección posterior: visibilidad de las demos físicas
+
+- [x] Reproducida en AmSpiriT-Lite la salida aparentemente vacía de `gravity`:
+  la demo escribía `0xF0` en VRAM, pero el pen 5 heredado de BASIC era negro y
+  el fondo del pen 0 era azul.
+- [x] `gravity` fija negro/amarillo brillante y `physics88` negro/cian brillante
+  sin imponer una paleta global al framework.
+- [x] El smoke comprueba ahora estado físico, registros Gate Array y byte final
+  en VRAM, cubriendo cálculo y visibilidad por separado.
+- [x] Captura manual confirmada en AmSpiriT-Lite: `gravity` muestra la traza
+  amarilla sobre negro; smoke exacto correcto en CPC 6128 y CPC 464 para
+  `gravity` y `physics88`.
+- [x] `make test`: 26 pruebas, doce construcciones y DSK común regenerado;
+  manual HTML/PDF y checksum sincronizados, e informe de tamaños actualizado.
+- [ ] Pendiente registrar commit, sincronización y CI remota.
+
 ## Fase siguiente: tilemaps y colisión de escenario
 
 Extraer una consulta de tilemap de solo lectura y un contrato de colisión que

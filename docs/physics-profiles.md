@@ -23,7 +23,9 @@ un suelo alcanzable y parámetros que no desborden una velocidad byte con signo.
 
 `examples/gravity` ejecuta 48 pasos reproducibles. Parte en `(75,150)` con
 velocidad `(3,-8)`, satura horizontalmente en `x=76` y termina apoyado en
-`y=192` con velocidad cero para un cuerpo de `4x8` y suelo `199`.
+`y=192` con velocidad cero para un cuerpo de `4x8` y suelo `199`. La traza usa
+el pen 5 amarillo brillante sobre el pen 0 negro; la demo fija ambos colores y
+no depende de la paleta que dejara BASIC.
 
 ## Perfil 8.8
 
@@ -40,6 +42,8 @@ una velocidad que no atraviese su geometría relevante en un solo paso.
 `examples/physics88` ejecuta 64 pasos desde `(78,70)` y velocidad `(2,1)`, con
 fricción `4/256` por paso. El resultado comprobado en RAM es posición
 `(&0BDC,&75C0)` y velocidad `(&0100,&0080)` después de rebotar en el límite X.
+Su traza alterna el pen 15 cian brillante y el pen 0 negro mediante una paleta
+fijada por el propio ejemplo.
 
 Ambos perfiles actúan sobre registros propiedad del consumidor y son módulos
 opcionales independientes. No realizan iteración, render, temporización ni

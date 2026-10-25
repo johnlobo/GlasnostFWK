@@ -81,8 +81,9 @@ el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
 velocidad byte, gravedad, caída máxima, dimensiones, límites y suelo.
 `extensions/physics_8_8` mantiene aparte posición/velocidad fraccionarias,
 fricción sobre el vector y rebote por eje. Los ejemplos `gravity` y `physics88`
-comprueban recorridos deterministas sin compartir estructura de entidad. Los
-contratos y límites están en `docs/physics-profiles.md`.
+comprueban recorridos deterministas sin compartir estructura de entidad y fijan
+paletas propias para que sus trazas no dependan de los colores heredados de
+BASIC. Los contratos y límites están en `docs/physics-profiles.md`.
 
 ## Carga desde DSK y ZX7B
 

@@ -8,9 +8,9 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | audio | 5997 | 14 | 6011 |
 | board | 1236 | 40 | 1276 |
 | diskload | 491 | 49 | 540 |
-| gravity | 1062 | 21 | 1083 |
+| gravity | 1086 | 21 | 1107 |
 | minimal | 970 | 24 | 994 |
-| physics88 | 1276 | 32 | 1308 |
+| physics88 | 1300 | 32 | 1332 |
 | platform | 1114 | 33 | 1147 |
 | resources128 | 464 | 7 | 20488 |
 | vertical | 1447 | 58 | 1505 |

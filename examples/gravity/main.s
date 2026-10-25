@@ -3,6 +3,7 @@
 .globl fwk_system_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_physics_platform_step
+.globl cpct_setPALColour_asm
 
 .area _DATA
 gravity_state::
@@ -15,6 +16,13 @@ gravity_status:: .db 0
 _main::
     call fwk_system_init
     call fwk_video_init
+    ;; Do not inherit the BASIC palette: 0xF0 is pen 5 in Mode 0.
+    ld l, #0
+    ld h, #0x14              ; HW_BLACK
+    call cpct_setPALColour_asm
+    ld l, #5
+    ld h, #0x0A              ; HW_BRIGHT_YELLOW
+    call cpct_setPALColour_asm
     xor a
     call fwk_video_clear_visible
 _gravity_loop:

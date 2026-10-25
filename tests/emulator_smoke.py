@@ -229,6 +229,11 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 raise RuntimeError(
                     f"platform physics state is {result.hex()}, expected {expected.hex()}"
                 )
+            inks = get("/api/state")["ga"]["ink_idx"]
+            if inks[0] != 0x14 or inks[5] != 0x0A:
+                raise RuntimeError(f"gravity palette is not black/yellow: {inks}")
+            if ram(standard_screen_address(76, 192), 1) != b"\xF0":
+                raise RuntimeError("gravity final position is not visible in video RAM")
         if name == "physics88":
             state = symbol(noi, "physics88_state")
             status = symbol(noi, "physics88_status")
@@ -239,6 +244,11 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 raise RuntimeError(
                     f"8.8 physics state is {result.hex()}, expected {expected.hex()}"
                 )
+            inks = get("/api/state")["ga"]["ink_idx"]
+            if inks[0] != 0x14 or inks[15] != 0x13:
+                raise RuntimeError(f"physics88 palette is not black/cyan: {inks}")
+            if ram(standard_screen_address(11, 117), 1) != b"\xAA":
+                raise RuntimeError("physics88 final position is not visible in video RAM")
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")

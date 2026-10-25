@@ -3,6 +3,7 @@
 .globl fwk_system_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_physics_8_8_step
+.globl cpct_setPALColour_asm
 
 .area _DATA
 physics88_state::
@@ -16,6 +17,13 @@ physics88_status:: .db 0
 _main::
     call fwk_system_init
     call fwk_video_init
+    ;; Do not inherit the BASIC palette: 0xAA alternates pens 15 and 0.
+    ld l, #0
+    ld h, #0x14              ; HW_BLACK
+    call cpct_setPALColour_asm
+    ld l, #15
+    ld h, #0x13              ; HW_BRIGHT_CYAN
+    call cpct_setPALColour_asm
     xor a
     call fwk_video_clear_visible
 _physics88_loop:
