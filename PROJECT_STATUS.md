@@ -248,7 +248,8 @@ python3 tests/emulator_smoke.py --model 464 window
 - [x] Los doce programas pasaron desde el mismo DSK en CPC 6128; los dos
   perfiles nuevos también pasaron con estado exacto en CPC 464.
 - [x] Manual HTML/PDF, procedencia y límites actualizados.
-- [ ] Pendiente registrar SHA, push y CI remota.
+- [x] Implementación y validación local registradas en `362d878`.
+- [ ] Pendiente publicar los commits y registrar CI remota.
 
 ## Fase siguiente: tilemaps y colisión de escenario
 
