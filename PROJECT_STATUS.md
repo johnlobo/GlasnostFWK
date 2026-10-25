@@ -268,8 +268,11 @@ python3 tests/emulator_smoke.py --model 464 window
   `gravity` y `physics88`.
 - [x] `make test`: 26 pruebas, doce construcciones y DSK común regenerado;
   manual HTML/PDF y checksum sincronizados, e informe de tamaños actualizado.
-- [x] Corrección, pruebas y documentación registradas en `aba05c9`.
-- [ ] Pendiente sincronizar los commits y registrar CI remota.
+- [x] Corrección registrada en `aba05c9` y estado persistente en `08ade20`;
+  ambos commits están sincronizados en `origin/main`.
+- [x] CI remota `40242797070` correcta para `08ade20`: 26 pruebas, doce
+  construcciones, un DSK común con catálogo y once CDT publicados como
+  artefacto temporal.
 
 ## Fase siguiente: tilemaps y colisión de escenario
 
