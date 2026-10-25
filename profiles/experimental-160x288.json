@@ -1,0 +1,26 @@
+{
+  "name": "experimental-160x288",
+  "status": "experimental-unverified-crtc",
+  "mode": 0,
+  "width_pixels": 160,
+  "width_bytes": 80,
+  "height_lines": 288,
+  "coordinate_bits": 16,
+  "crtc": {
+    "profile": "derived-from-cpctelera-next-easyoverscan",
+    "registers": {"R1": 40, "R2": 42, "R3": 140, "R6": 36, "R7": 37, "R9": 7},
+    "video_page_command": "0x2D",
+    "evidence": "R1/R6 are geometry; R2/R7 preserve the +2/+1 margins of CPCTelera Next 96x272. These timing values remain unverified on emulator and hardware."
+  },
+  "segments": [
+    {"y_start": 0, "height": 128, "base": "0x8200", "row_bytes": 80, "raster_stride": "0x0800"},
+    {"y_start": 128, "height": 160, "base": "0xC000", "row_bytes": 80, "raster_stride": "0x0800"}
+  ],
+  "memory_windows": [
+    {"start": "0x8000", "end": "0xBFFF", "purpose": "video-low"},
+    {"start": "0xC000", "end": "0xFFFF", "purpose": "video-high"}
+  ],
+  "reserved": [
+    {"start": "0x0100", "end": "0x01FF", "purpose": "stack-required-outside-video"}
+  ]
+}

@@ -1,0 +1,104 @@
+# Arquitectura y contratos públicos
+
+## Dirección de dependencias
+
+```text
+ejemplo/juego -> extensión opcional -> núcleo -> CPCTelera Next / hardware
+              -> audio AKG ---------> sistema
+              -> recursos ----------> hardware de bancos
+herramientas -> perfiles/manifiestos -> fuentes/tablas generadas
+```
+
+Ningún archivo de `src/` importa `examples/` ni símbolos de un juego. La prueba
+`test_framework_never_imports_examples` mantiene esta frontera. Los manifiestos
+de ejemplo seleccionan módulos antes del ensamblado; no existe un registro
+dinámico que arrastre código no usado.
+
+## Contratos
+
+Los costes temporales no se publican todavía: no se han medido en emulador y no
+se ha realizado un conteo de todos los caminos. Los tamaños enlazados sí se
+obtienen de los mapas SDCC en `build-sizes.md`.
+
+### Sistema
+
+- `fwk_system_init`: sin entrada/salida; altera `AF,BC,DE,HL`. Desactiva
+  firmware, instala IRQ y deja callback nulo. No reentrante durante instalación.
+- `fwk_system_wait_frame`: altera `AF,BC,DE,HL`; espera VSYNC.
+- `fwk_system_set_irq_callback`: `HL=callback|0`; no altera registros. El
+  callback corre una vez por seis IRQ, después del scan de teclado. Cambiarlo
+  mientras está activo requiere interrupciones deshabilitadas por el llamador.
+- Estado persistente: `fwk_system_irq_count` (1 B),
+  `fwk_system_frame_count` (2 B), callback (2 B). El callback puede alterar los
+  registros principales; un driver de audio debe preservarlos.
+
+### Entrada
+
+- `fwk_input_set_bindings`: `HL` apunta a entradas `.dw key,.db mask`, con
+  máscara cero como terminador. La tabla debe persistir.
+- `fwk_input_update`: altera `AF,BC,DE,HL,IY`; consume el buffer que la IRQ
+  escanea. Actualiza tres bytes públicos: `fwk_input_held`,
+  `fwk_input_pressed`, `fwk_input_released`.
+- `fwk_input_init`: altera `AF` y borra estado. Soporta hasta ocho acciones por
+  máscaras de bits; no contiene semántica del juego.
+
+### Pool
+
+Descriptor de 5 bytes: puntero base, capacidad, tamaño de registro y count.
+`FWK_POOL_DESCRIPTOR` lo materializa durante ensamblado.
+
+- `fwk_pool_init`: `IX=descriptor`; altera `A`.
+- `fwk_pool_get`: `IX`, `A=index`; devuelve `HL` y carry limpio, o carry activo;
+  altera `AF,B,DE,HL`.
+- `fwk_pool_alloc`: devuelve slot sin inicializar en `HL`; carry indica lleno.
+- `fwk_pool_remove`: `A=index`; compacta con `LDIR`; altera `AF,BC,DE,HL`.
+- `fwk_pool_foreach`: `DE=callback`, callback recibe `IY=registro`; altera
+  registros principales e `IY`. Usa `CALL` automodificable: no es reentrante y
+  no debe reentrarse desde IRQ.
+
+El pool no interpreta el contenido de los registros ni impone componentes.
+
+### Vídeo
+
+- `fwk_video_init`: selecciona Mode 0; altera `AF,BC,DE,HL`.
+- `fwk_video_configure_crtc`: aplica la tabla CRTC explícita del perfil; altera
+  `AF,BC,DE,HL,IX`. El perfil experimental no adquiere por ello estado de
+  verificado.
+- `fwk_video_get_ptr`: `HL=y` de 16 bits, `C=x` en bytes; devuelve `HL=puntero`;
+  altera `AF,DE,HL`. Las coordenadas deben estar dentro del perfil.
+- `fwk_video_plot_byte`: además recibe `A=byte Mode 0`.
+- `fwk_video_clear_visible`: `A=patrón`; altera `AF,BC,DE,HL,IX`. Recorre solo
+  las regiones visibles generadas y conserva todos los huecos declarados.
+
+La tabla de líneas y las regiones se generan juntas. Para 160x200: ocho tramos
+de 2.000 B y ocho huecos de 48 B. Para 160x288: 288 entradas, dos segmentos y
+coordenadas de 16 bits.
+
+### Texto
+
+- `fwk_text_set_colors`: `L=foreground`, `H=background` (0..15); altera
+  `AF,BC,DE,HL`; hereda automodificación de CPCTelera y no funciona desde ROM.
+- `fwk_text_draw`: `IY=ASCII NUL`, `HL=vídeo`; altera `AF,BC,DE,HL`.
+
+### Audio AKG opcional
+
+Requiere los símbolos generados `_PLY_AKG_*`; no contiene datos musicales.
+`fwk_audio_init_music` recibe `HL=canción,A=subsong`; `fwk_audio_init_sfx`
+recibe `HL=tabla`; `fwk_audio_play_sfx` usa `A=id,B=volumen invertido,C=canal`.
+`fwk_audio_start/stop` registran o retiran el callback del sistema. El tick
+preserva ambos juegos de registros. Las restricciones de banco son las del
+export AKG del juego: player y datos ejecutados por IRQ deben permanecer
+visibles en el mapeo activo.
+
+### Bancos 128 KB
+
+- `fwk_bank_init`: instala stub en `0x0200`, prueba `0x7FF0`, preserva bytes y
+  devuelve `A=1/NZ` para RAM independiente o `A=0/Z`; altera `AF,BC,DE,HL`.
+- `fwk_bank_copy_from/to`: `A=0..3`, `HL=origen`, `DE=destino`, `BC=tamaño`;
+  carry activo para banco inválido. El lado bancado debe estar en
+  `0x4000..0x7FFF`; pila, callback y lado normal deben quedar fuera. El stub
+  ejecuta `DI`, restaura mapeo normal, ejecuta `EI` y retorna; por tanto deja
+  interrupciones habilitadas y no preserva un estado IFF previo.
+
+No se ofrece una operación que deje un banco conectado. Esto evita dependencias
+ocultas del núcleo con 128 KB y reduce el riesgo de ejecutar código paginado.

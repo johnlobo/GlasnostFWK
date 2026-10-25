@@ -1,0 +1,48 @@
+# Guía de migración
+
+## Desde model01
+
+- Sustituir `src/sys/system.s` por `core/system.s` y registrar audio mediante
+  `fwk_audio_start`, no desde el handler.
+- Reemplazar la tabla de `sys_input_generic_update` por el formato
+  `key,action-mask`; las reglas leen los tres bytes de estado.
+- Mantener por ahora entidades, mapas, física, animación y scripts como una
+  extensión del juego: GlasnostFWK no reproduce aún ese perfil completo.
+- Sustituir constantes de pantalla por un perfil JSON y consumir
+  `fwk_video_get_ptr`.
+
+## Desde boop
+
+- Eliminar `sys_input_menu_key_actions`/`match`; aportar bindings por estado.
+- Mantener los callbacks de reglas en la capa juego.
+- Un export `BoopAudioAT3.s` puede acompañar `audio/akg.s`, pero debe declarar
+  su propia licencia/procedencia y no se incluye en GlasnostFWK.
+- Migrar ventanas como especialización: el buffer y la interacción de cierre
+  no forman parte aún del núcleo.
+
+## Desde DeckTower
+
+- Sustituir `sl_payload_table` por un JSON validado por `gen_resources.py`.
+- Mantener separados: backend de disco, copia bancaria, descompresión y
+  localización. Esta versión solo entrega copia y localización generada; el
+  backend AMSDOS y ZX7B siguen pendientes.
+- Los staging buffers se declaran como regiones reservadas y destinos en el
+  manifiesto; el generador rechaza solapamientos y alineación incorrecta.
+- El bytecode de combate permanece extensión del juego.
+
+## Desde PocketFever
+
+- Conservar `ball_blit`, física 8.8 y tablas de tiro como extensión especializada;
+  no adaptar al perfil `motion_u8`.
+- Llevar el método de generadores deterministas a manifiestos del juego.
+- Sustituir `row_table.s` por la tabla generada solo si la geometría coincide;
+  para 160x288, todas las coordenadas verticales consumidoras deben ser 16 bit.
+
+## Configuración que aporta cada juego
+
+1. Perfil de vídeo y mapa de regiones reservadas.
+2. Lista de módulos del ejemplo/juego.
+3. Bindings de acciones de entrada.
+4. Estructuras/perfiles de entidad que necesite.
+5. Manifiesto de recursos y backend de medio.
+6. Export AKG y datos de audio, si activa audio.

@@ -1,0 +1,7 @@
+.build/
+build/
+generated/*.inc
+generated/*.json
+generated/*.md
+__pycache__/
+*.pyc

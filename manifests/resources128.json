@@ -1,0 +1,14 @@
+{
+  "profile": "128k",
+  "bank_window": {"start": "0x4000", "end": "0x7FFF"},
+  "normal_reserved": [
+    {"name": "framework-code", "start": "0x4000", "end": "0x6FFF"},
+    {"name": "bank-probe", "start": "0x7FF0", "end": "0x7FF0"},
+    {"name": "stack", "start": "0xB800", "end": "0xBFFF"},
+    {"name": "screen", "start": "0xC000", "end": "0xFFFF"}
+  ],
+  "resources": [
+    {"id": "demo_sprite", "medium": "embedded", "bank": 0, "bank_offset": "0x0000", "size": 32, "destination": "0x9000", "alignment": 16},
+    {"id": "demo_map", "medium": "disk", "filename": "DEMO_MAP.BIN", "bank": 1, "bank_offset": "0x0200", "size": 256, "destination": "0x9200", "alignment": 256, "compression": "none"}
+  ]
+}

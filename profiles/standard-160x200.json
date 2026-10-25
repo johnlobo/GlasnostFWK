@@ -1,0 +1,23 @@
+{
+  "name": "standard-160x200",
+  "status": "stable-model",
+  "mode": 0,
+  "width_pixels": 160,
+  "width_bytes": 80,
+  "height_lines": 200,
+  "coordinate_bits": 8,
+  "crtc": {
+    "profile": "cpc-standard",
+    "registers": {"R1": 40, "R6": 25, "R9": 7},
+    "video_page": "0xC000"
+  },
+  "segments": [
+    {"y_start": 0, "height": 200, "base": "0xC000", "row_bytes": 80, "raster_stride": "0x0800"}
+  ],
+  "memory_windows": [
+    {"start": "0xC000", "end": "0xFFFF", "purpose": "video"}
+  ],
+  "reserved": [
+    {"start": "0xB800", "end": "0xBFFF", "purpose": "stack"}
+  ]
+}

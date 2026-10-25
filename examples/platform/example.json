@@ -1,0 +1,5 @@
+{
+  "name": "platform",
+  "profile": "standard-160x200.json",
+  "modules": ["core/system.s", "core/pool.s", "video/video.s", "extensions/motion_u8.s"]
+}
