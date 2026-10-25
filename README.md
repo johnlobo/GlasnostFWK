@@ -1,5 +1,7 @@
 # GlasnostFWK
 
+[![CI](https://github.com/johnlobo/GlasnostFWK/actions/workflows/ci.yml/badge.svg)](https://github.com/johnlobo/GlasnostFWK/actions/workflows/ci.yml)
+
 Framework modular en ensamblador Z80 para Amstrad CPC, extraído y consolidado
 de `model01`, `boop`, `DeckTower` y `PocketFever`. La primera versión estable
 se centra en un núcleo pequeño, entrada con flancos, vídeo Mode 0 declarativo,

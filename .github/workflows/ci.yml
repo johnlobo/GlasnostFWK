@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CPCTELERA_REV: 11e61fe30175ad7b328de9bcd859c46fd61b26a5
+  CPCTELERA_ROOT: ${{ github.workspace }}/.deps/cpctelera-next
+  CPCT_NEXT_PATH: ${{ github.workspace }}/.deps/cpctelera-next/cpctelera
+
+jobs:
+  test:
+    name: Host tests and CPC builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out GlasnostFWK
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore CPCTelera Next
+        id: cpct-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPCTELERA_ROOT }}
+          key: cpctelera-next-${{ runner.os }}-${{ runner.arch }}-${{ env.CPCTELERA_REV }}
+
+      - name: Install CPCTelera build dependencies
+        if: steps.cpct-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            bison \
+            build-essential \
+            flex \
+            libboost-dev
+
+      - name: Build pinned CPCTelera tools and library
+        if: steps.cpct-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$CPCTELERA_ROOT")"
+          git init "$CPCTELERA_ROOT"
+          git -C "$CPCTELERA_ROOT" remote add origin https://github.com/Arnaud6128/cpctelera.git
+          git -C "$CPCTELERA_ROOT" fetch --depth=1 origin "$CPCTELERA_REV"
+          git -C "$CPCTELERA_ROOT" checkout --detach FETCH_HEAD
+
+          make -C "$CPCT_NEXT_PATH/tools/sdcc-4.5.0" -j2
+          make -C "$CPCT_NEXT_PATH/tools/hex2bin-2.0" -j2
+          make -C "$CPCT_NEXT_PATH/tools/iDSK-0.13" -j2
+          make -C "$CPCT_NEXT_PATH/tools/2cdt" -j2
+          make -C "$CPCT_NEXT_PATH" -j2
+
+      - name: Verify CPCTelera installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C "$CPCTELERA_ROOT" rev-parse HEAD)" = "$CPCTELERA_REV"
+          test -x "$CPCT_NEXT_PATH/tools/sdcc-4.5.0/bin/sdcc"
+          test -x "$CPCT_NEXT_PATH/tools/hex2bin-2.0/bin/hex2bin"
+          test -x "$CPCT_NEXT_PATH/tools/iDSK-0.13/bin/iDSK"
+          test -x "$CPCT_NEXT_PATH/tools/2cdt/bin/2cdt"
+          test -s "$CPCT_NEXT_PATH/cpctelera.lib"
+
+      - name: Run tests and build examples
+        run: make test
+
+      - name: Verify distributable artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for example in minimal board platform video resources128; do
+            test -s ".build/$example/obj/$example.bin"
+            test -s ".build/$example/$example.cdt"
+            test -s ".build/$example/$example.dsk"
+          done
+
+      - name: Upload CPC artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: glasnostfwk-${{ github.sha }}
+          path: |
+            .build/*/obj/*.bin
+            .build/*/*.cdt
+            .build/*/*.dsk
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
