@@ -7,6 +7,10 @@
 .globl cpct_setCRTCReg_asm
 .globl cpct_setVideoMemoryPage_asm
 
+.area _DATA
+fwk_video_width_bytes:: .db FWK_VIDEO_WIDTH_BYTES
+fwk_video_height:: .dw FWK_VIDEO_HEIGHT
+
 .area _CODE
 
 ;; fwk_video_init

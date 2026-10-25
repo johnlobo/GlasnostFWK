@@ -95,6 +95,8 @@ en `animation.md`.
 - `fwk_video_plot_byte`: además recibe `A=byte Mode 0`.
 - `fwk_video_clear_visible`: `A=patrón`; altera `AF,BC,DE,HL,IX`. Recorre solo
   las regiones visibles generadas y conserva todos los huecos declarados.
+- Geometría pública de solo lectura por contrato: `fwk_video_width_bytes` (1 B)
+  y `fwk_video_height` (2 B), consumida por la validación de ventanas.
 
 La tabla de líneas y las regiones se generan juntas. Para 160x200: ocho tramos
 de 2.000 B y ocho huecos de 48 B. Para 160x288: 288 entradas, dos segmentos y
@@ -105,6 +107,24 @@ coordenadas de 16 bits.
 - `fwk_text_set_colors`: `L=foreground`, `H=background` (0..15); altera
   `AF,BC,DE,HL`; hereda automodificación de CPCTelera y no funciona desde ROM.
 - `fwk_text_draw`: `IY=ASCII NUL`, `HL=vídeo`; altera `AF,BC,DE,HL`.
+
+### Ventanas opcionales
+
+Descriptor inmutable de 7 bytes: `x` en bytes Mode 0, `y` de 16 bits, ancho,
+alto, patrón de borde y patrón de relleno. El módulo usa la tabla de líneas del
+perfil y valida que la geometría completa quepa en la pantalla.
+
+- `fwk_window_capture`: `IX=descriptor`, `DE=buffer`; copia exactamente
+  `width*height` bytes y devuelve carry si la geometría no es válida.
+- `fwk_window_draw`: `IX=descriptor`; dibuja un borde de un byte y rellena el
+  interior. Devuelve carry si no puede dibujarse.
+- `fwk_window_restore`: `IX=descriptor`, `HL=buffer` capturado; repone la región
+  exacta y devuelve carry si la geometría no es válida.
+
+Las tres preservan `IX` y alteran `AF,BC,DE,HL`; captura/restauración también
+alteran `IY`. El llamador debe reservar un buffer suficiente y conservar el
+descriptor entre captura y restauración. Texto, entrada, espera, pila de
+ventanas y política de cierre pertenecen al juego.
 
 ### Audio AKG opcional
 

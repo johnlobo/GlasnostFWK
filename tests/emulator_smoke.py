@@ -219,6 +219,37 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 5,
                 "animation resume",
             )
+        if name == "window":
+            command = symbol(noi, "window_command")
+            status = symbol(noi, "window_status")
+            buffer = symbol(noi, "window_buffer")
+            wait_for(lambda: ram(status, 1) == b"\xA5", 5, "window shown")
+            if ram(buffer, 20 * 16) != b"\x55" * (20 * 16):
+                raise RuntimeError("window background capture differs from the original pattern")
+
+            top = standard_screen_address(10, 40)
+            middle = standard_screen_address(10, 41)
+            if ram(top, 20) != b"\xFF" * 20:
+                raise RuntimeError("window top border has invalid geometry")
+            if ram(middle, 20) != b"\xFF" + b"\x00" * 18 + b"\xFF":
+                raise RuntimeError("window border/fill row has invalid geometry")
+            if ram(standard_screen_address(9, 41), 1) != b"\x55" or ram(
+                standard_screen_address(30, 41), 1
+            ) != b"\x55":
+                raise RuntimeError("window draw modified bytes outside its descriptor")
+
+            write_ram(command, b"\x01")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "window background restore")
+            for y in range(40, 56):
+                if ram(standard_screen_address(10, y), 20) != b"\x55" * 20:
+                    raise RuntimeError(f"window restore failed on row {y}")
+
+            write_ram(command, b"\x02")
+            wait_for(lambda: ram(status, 1) == b"\xC3", 5, "window redraw")
+            if ram(top, 20) != b"\xFF" * 20 or ram(middle, 20) != (
+                b"\xFF" + b"\x00" * 18 + b"\xFF"
+            ):
+                raise RuntimeError("window did not redraw after restoration")
         if name == "vertical":
             player = symbol(noi, "vertical_player")
             pool = symbol(noi, "vertical_entity_pool")
@@ -278,7 +309,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "video", "resources128", "diskload", "audio", "animation", "vertical"],
+        default=["minimal", "board", "platform", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

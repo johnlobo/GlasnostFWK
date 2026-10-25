@@ -86,11 +86,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for example in minimal board platform video resources128 diskload audio animation vertical; do
+          for example in minimal board platform video resources128 diskload audio animation window vertical; do
             test -s ".build/$example/obj/$example.bin"
             test -s ".build/$example/$example.dsk"
           done
-          for example in minimal board platform video resources128 audio animation vertical; do
+          for example in minimal board platform video resources128 audio animation window vertical; do
             test -s ".build/$example/$example.cdt"
           done
 

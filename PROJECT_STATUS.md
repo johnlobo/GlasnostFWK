@@ -15,8 +15,8 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los nueve ejemplos construyen BIN y DSK con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; ocho construyen además CDT.
+- Los diez ejemplos construyen BIN y DSK con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; nueve construyen además CDT.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -58,9 +58,8 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
 - No existe verificación en hardware real.
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
-- Ventanas y perfiles completos de física siguen pendientes de integración
-  ejecutable.
-- Solo `vertical` es una escena jugable; los otros ocho ejemplos son pruebas
+- Los perfiles completos de física siguen pendientes de integración ejecutable.
+- Solo `vertical` es una escena jugable; los otros nueve ejemplos son pruebas
   técnicas. `diskload` se distribuye solo como DSK.
 
 ## Fase completada: carga desde disco y ZX7B
@@ -151,8 +150,8 @@ python3 tests/emulator_smoke.py --model 464 animation
 ## Fase completada: manual de usuario en castellano
 
 - [x] Manual HTML autocontenido con instalación, construcción, manifiestos,
-  contratos de los once módulos seleccionables, perfiles, recursos, nueve
-  ejemplos, emulación, distribución, diagnóstico y mantenimiento.
+  contratos de los módulos seleccionables, perfiles, recursos, ejemplos,
+  emulación, distribución, diagnóstico y mantenimiento.
 - [x] PDF A4 de 16 páginas generado desde el mismo HTML mediante WeasyPrint
   70.0, con texto seleccionable, índice y numeración.
 - [x] Dependencia de documentación fijada en `docs/requirements-manual.txt` y
@@ -168,9 +167,38 @@ python3 tests/emulator_smoke.py --model 464 animation
 - [x] CI remota `40212147675` correcta para `795e981`: 21 pruebas, nueve
   construcciones y artefactos distributables verificados.
 
-## Fase siguiente: ventanas y mensajes reutilizables
+## Fase completada: ventanas y mensajes reutilizables
 
-Auditar primero las implementaciones reales de paneles, cajas y mensajes de
-los cuatro proyectos. Extraer solo geometría, limpieza y composición que tenga
-un contrato común ejecutable; conservar como lógica de juego cualquier menú,
-combate, texto o temporización que no sea verdaderamente compartida.
+- [x] Auditoría de las cuatro implementaciones: todas capturan/restauran fondo
+  y dibujan caja; DeckTower/PocketFever comparten trazado, mientras texto,
+  espera, combate, temporización y ubicación del buffer divergen.
+- [x] `src/ui/window.s` extrae solo descriptor geométrico, validación contra el
+  perfil, captura a un buffer del consumidor, borde/relleno y restauración.
+- [x] Coordenada vertical de 16 bits y consulta de dimensiones públicas de
+  vídeo; no se fija `0xC000` ni una fórmula de scanlines estándar.
+- [x] `window` demuestra rechazo fuera de límites, captura de 320 bytes,
+  composición de texto, restauración y reapertura.
+- [x] La prueba específica pasó en AmSpiriT-Lite 1.15.3 para CPC 6128 y CPC
+  464, comprobando RAM de vídeo y testigos exteriores.
+- [x] Manual ampliado y PDF de 17 páginas regenerado; cobertura automática de
+  diez ejemplos y doce módulos seleccionados.
+- [x] Suite local: 21 pruebas host, diez BIN/DSK, nueve CDT, paquete
+  determinista de 31 entradas y checksum correcto.
+- [x] Los diez DSK pasaron la batería completa en CPC 6128; `window` pasó además
+  su comprobación específica en CPC 464.
+- [ ] Pendiente en este punto del registro: commit, sincronización y CI remota
+  de la fase.
+
+Comandos específicos:
+
+```sh
+python3 tests/emulator_smoke.py window
+python3 tests/emulator_smoke.py --model 464 window
+```
+
+## Fase siguiente: perfiles de física especializados
+
+Auditar los perfiles reales de plataforma y física 8.8 sin imponer una entidad
+universal. Extraer solo operaciones con contrato y representación compatibles;
+si model01 y PocketFever requieren formatos distintos, conservar extensiones
+separadas y probar cada una con un consumidor ejecutable.

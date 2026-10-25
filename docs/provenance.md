@@ -36,6 +36,7 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `tools/gen_resources.py` | tabla fija de `DeckTower/src/sys/loader.s` | Sustitución nueva mediante manifiesto validado | GPL-3.0 |
 | `src/extensions/motion_u8.*` | física de model01 y PocketFever | Perfil nuevo, separado; no unifica estructuras incompatibles | GPL-3.0 |
 | `src/extensions/animation.*` | `model01/src/sys/anim.*`; contraste con la máquina de impactos de `DeckTower/src/game/combat.s` | Cursor de frames reimplementado sin entidad, sala, movimiento ni render; DeckTower permanece como especialización | GPL-3.0 |
+| `src/ui/window.*` | `src/sys/messages.s` de los cuatro proyectos; caja idéntica en `DeckTower`/`PocketFever` `src/sys/render.s` | Geometría reimplementada sobre la tabla de vídeo, con buffer del consumidor; sin texto, espera, combate ni direcciones fijas | GPL-3.0 |
 | `cfg/*.template*` | ejemplo `examples/asm/helloworld` de CPCTelera Next | Copia de plantilla de construcción con su cabecera intacta | LGPL-3.0 |
 
 No se copiaron sprites, mapas, música ni datos de los cuatro juegos. Los datos

@@ -107,8 +107,8 @@
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, texto, movimiento compacto, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
-    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. Las ventanas y la física completa 8.8 todavía no forman parte del framework.</div>
+    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, texto, ventanas restaurables, movimiento compacto, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
+    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física completa 8.8 todavía no forma parte del framework.</div>
   </section>
 
   <nav aria-labelledby="indice">
@@ -150,7 +150,7 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
 make generate
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los nueve consumidores. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los diez consumidores. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
 
     <h3>3.2 Construir un único ejemplo</h3>
     <pre><code>python3 tools/build_examples.py minimal
@@ -180,7 +180,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
       <tbody>
         <tr><td><code>src/core</code></td><td>Sistema, entrada y pool genérico.</td></tr>
         <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones y limpieza visible.</td></tr>
-        <tr><td><code>src/ui</code></td><td>Adaptador de texto Mode 0.</td></tr>
+        <tr><td><code>src/ui</code></td><td>Texto Mode 0 y ventanas con fondo restaurable.</td></tr>
         <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
         <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
         <tr><td><code>src/extensions</code></td><td>Perfiles opcionales de movimiento y animación.</td></tr>
@@ -298,7 +298,7 @@ FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
         <li><code>fwk_video_plot_byte</code>: añade <code>A=byte empaquetado Mode 0</code>.</li>
         <li><code>fwk_video_clear_visible</code>: <code>A=patrón</code>; limpia solo regiones visibles y conserva huecos.</li>
       </ul>
-      <p>El ancho estándar es 80 bytes, equivalentes a 160 píxeles en Mode 0. El llamador debe mantener las coordenadas dentro del perfil.</p>
+      <p><code>fwk_video_width_bytes</code> y <code>fwk_video_height</code> exponen la geometría activa para módulos de validación. El ancho estándar es 80 bytes, equivalentes a 160 píxeles en Mode 0. El llamador debe mantener las coordenadas dentro del perfil.</p>
     </article>
 
     <article class="api" data-module="ui/text.s">
@@ -310,14 +310,32 @@ FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
       <p>El adaptador usa las rutinas Mode 0 de CPCTelera. Su implementación subyacente es automodificable y no puede ejecutarse desde ROM.</p>
     </article>
 
+    <article class="api" data-module="ui/window.s">
+      <h3>6.6 Ventanas restaurables — <code>ui/window.s</code></h3>
+      <pre><code>message_window:
+    .db 10       ; x en bytes Mode 0
+    .dw 40       ; y de 16 bits
+    .db 20, 16   ; ancho y alto
+    .db 0xFF     ; patrón de borde
+    .db 0x00     ; patrón de relleno
+
+window_buffer: .ds 20 * 16</code></pre>
+      <ul>
+        <li><code>fwk_window_capture</code>: <code>IX=descriptor</code>, <code>DE=buffer</code>; guarda <code>width*height</code> bytes.</li>
+        <li><code>fwk_window_draw</code>: <code>IX=descriptor</code>; dibuja borde de un byte y relleno.</li>
+        <li><code>fwk_window_restore</code>: <code>IX=descriptor</code>, <code>HL=buffer</code>; repone exactamente la captura.</li>
+      </ul>
+      <p>Carry indica geometría inválida. El módulo usa las dimensiones y tabla de líneas del perfil; no contiene texto, entrada, espera ni un buffer global. El llamador debe reservar suficiente memoria y conservar la geometría entre captura y restauración. El contrato detallado está en <code>docs/windows.md</code>.</p>
+    </article>
+
     <article class="api" data-module="extensions/motion_u8.s">
-      <h3>6.6 Movimiento compacto — <code>extensions/motion_u8.s</code></h3>
+      <h3>6.7 Movimiento compacto — <code>extensions/motion_u8.s</code></h3>
       <p><code>fwk_motion_u8_step</code> recibe en <code>IY</code> un registro de cinco bytes <code>x,y,vx,vy,flags</code>. Aplica velocidades con signo de 8 bits y satura en <code>x=0..79</code>, <code>y=0..199</code>. Altera <code>AF</code>.</p>
       <p>Este perfil no es una entidad universal y no representa física 8.8. Es reentrante si el registro no se comparte.</p>
     </article>
 
     <article class="api" data-module="extensions/animation.s">
-      <h3>6.7 Animación — <code>extensions/animation.s</code></h3>
+      <h3>6.8 Animación — <code>extensions/animation.s</code></h3>
       <pre><code>walk_animation:
     .db 3              ; número de frames
     .db 4              ; ticks por frame
@@ -333,7 +351,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="audio/akg.s">
-      <h3>6.8 Audio AKG — <code>audio/akg.s</code></h3>
+      <h3>6.9 Audio AKG — <code>audio/akg.s</code></h3>
       <p>El manifiesto también debe incluir <code>audio/arkosTracker_PlayerAkg.s</code> en <code>cpct_modules</code>, y el juego debe aportar su canción y tabla de efectos exportadas por Arkos Tracker.</p>
       <ol>
         <li><code>fwk_audio_init_music</code>: <code>HL=canción</code>, <code>A=subsong</code>.</li>
@@ -346,7 +364,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/bank.s">
-      <h3>6.9 Bancos de 128 KB — <code>resources/bank.s</code></h3>
+      <h3>6.10 Bancos de 128 KB — <code>resources/bank.s</code></h3>
       <ul>
         <li><code>fwk_bank_init</code>: detecta RAM adicional. Devuelve <code>A=1/NZ</code> o <code>A=0/Z</code> y actualiza <code>fwk_bank_has_128k</code>.</li>
         <li><code>fwk_bank_copy_from</code>: <code>A=banco 0..3</code>, <code>HL=origen bancado</code>, <code>DE=destino normal</code>, <code>BC=tamaño</code>.</li>
@@ -356,7 +374,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/disk.s">
-      <h3>6.10 Carga AMSDOS — <code>resources/disk.s</code></h3>
+      <h3>6.11 Carga AMSDOS — <code>resources/disk.s</code></h3>
       <ul>
         <li><code>fwk_disk_init</code>: reconecta AMSDOS. Debe llamarse antes de <code>fwk_system_init</code>.</li>
         <li><code>fwk_disk_load</code>: <code>HL=nombre</code>, <code>B=longitud</code>, <code>DE=destino</code>. Carry y <code>BC=longitud lógica</code> indican apertura correcta.</li>
@@ -365,7 +383,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/zx7b.s">
-      <h3>6.11 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
+      <h3>6.12 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
       <p><code>fwk_zx7b_unpack</code> recibe <code>HL=último byte comprimido</code> y <code>DE=último byte del destino</code>. Escribe hacia atrás mediante <code>cpct_zx7b_decrunch_s_asm</code> y altera <code>AF,BC,DE,HL</code>.</p>
       <p>No comprueba límites ni corrupción. Para archivos declarados en <code>disk_files</code>, el constructor genera constantes <code>FWK_DISK_*_SIZE</code> y <code>FWK_DISK_*_UNPACKED_SIZE</code>.</p>
     </article>
@@ -408,10 +426,11 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK</td></tr>
         <tr data-example="audio"><td><code>audio</code></td><td>Música AKG, stop/restart y SFX.</td><td>BIN, DSK, CDT</td></tr>
         <tr data-example="animation"><td><code>animation</code></td><td>Tres frames, periodo exacto, pausa y reanudación.</td><td>BIN, DSK, CDT</td></tr>
+        <tr data-example="window"><td><code>window</code></td><td>Validación, captura, caja, texto, restauración y reapertura.</td><td>BIN, DSK, CDT</td></tr>
         <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK, CDT</td></tr>
       </tbody>
     </table>
-    <p><code>vertical</code> es la única escena jugable. Los otros ocho son pruebas técnicas deliberadamente pequeñas.</p>
+    <p><code>vertical</code> es la única escena jugable. Los otros nueve son pruebas técnicas deliberadamente pequeñas.</p>
   </section>
 
   <section aria-labelledby="pruebas">
@@ -428,6 +447,7 @@ make report</code></pre>
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py --model 464 audio
 python3 tests/emulator_smoke.py --model 464 animation
+python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <p>Un build correcto, una prueba host correcta, una ejecución emulada y una prueba en hardware son evidencias distintas. Consulte <code>docs/validation.md</code> para ver cuáles se han realizado realmente.</p>
   </section>
@@ -452,6 +472,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
         <tr><td>ZX7B corrompe memoria.</td><td>Verifique últimos bytes de origen/destino y tamaños generados. No hay comprobación interna de límites.</td></tr>
         <tr><td>Audio no avanza.</td><td>Inicialice música, mantenga player/datos visibles y llame a <code>fwk_audio_start</code> después del sistema.</td></tr>
         <tr><td>La animación se reinicia.</td><td>No borre el estado. <code>fwk_anim_set</code> es idempotente solo al recibir el mismo descriptor y bloque de estado.</td></tr>
+        <tr><td>La ventana no restaura bien.</td><td>Reserve exactamente <code>width*height</code> bytes o más y no cambie descriptor, buffer ni perfil entre captura y restauración.</td></tr>
         <tr><td>Falla <code>make test</code> por el manual.</td><td>Documente el nuevo ejemplo/módulo en este HTML y ejecute <code>make manual</code>.</td></tr>
       </tbody>
     </table>

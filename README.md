@@ -26,7 +26,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # nueve ejemplos: vertical, disco, audio y animación
+make examples   # diez ejemplos: vertical, disco, audio, animación y ventanas
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -52,13 +52,13 @@ de render se instala de forma aislada con
 
 - `src/core`: interrupción/sincronización, entrada y pool genérico.
 - `src/video`: direccionamiento, CRTC generado y limpieza visible.
-- `src/ui`: adaptador de texto Mode 0.
+- `src/ui`: texto Mode 0 y ventanas con fondo restaurable.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
 - `src/extensions`: movimiento y animación optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: nueve consumidores pequeños, sin copias internas del framework.
+- `examples`: diez consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -94,6 +94,14 @@ módulo solo mantiene descriptor, índice y temporizador: el juego decide cuánd
 llamarlo y cómo dibujar. El smoke comprueba el periodo exacto, los punteros de
 frame, el byte renderizado y que una pausa impuesta por el consumidor congela
 el estado en CPC 6128 y CPC 464. Detalles en `docs/animation.md`.
+
+## Ventanas restaurables
+
+`examples/window` captura un fondo propiedad del consumidor, dibuja una caja
+con borde y relleno, compone texto y restaura exactamente la región anterior.
+El módulo valida la geometría contra el perfil de vídeo y no contiene espera de
+tecla, menús ni temporización. El smoke prueba cierre y reapertura en CPC 6128
+y CPC 464; véase `docs/windows.md`.
 
 ## Estado del perfil 160x288
 
