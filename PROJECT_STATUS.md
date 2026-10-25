@@ -187,8 +187,11 @@ python3 tests/emulator_smoke.py --model 464 animation
 - [x] Los diez DSK pasaron la batería completa en CPC 6128; `window` pasó además
   su comprobación específica en CPC 464.
 - [x] Implementación registrada en `fc6d0a3`.
-- [ ] Pendiente en este punto del registro: sincronización y CI remota de la
-  fase.
+- [x] Estado registrado en `5d9277f`; ambos commits están sincronizados en
+  `origin/main`.
+- [x] CI remota `40212959229` correcta para `5d9277f`: 21 pruebas, diez
+  construcciones, artefactos BIN/DSK y los nueve CDT verificados y publicados
+  como artefacto temporal del workflow.
 
 Comandos específicos:
 
