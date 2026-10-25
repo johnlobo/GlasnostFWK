@@ -15,9 +15,9 @@ no en las hipótesis iniciales.
 | Texto | Módulo opcional | ABI Mode 0 de CPCTelera Next | Fuentes y números específicos de juego | Adaptador `ui/text.s`; `board` demuestra uso sin assets originales |
 | Ventanas/mensajes | Especialización pendiente | Variantes incompatibles: model01/boop frente a buffer pequeño Deck/Pocket | Geometría, buffers y semántica de cierre | No consolidado para evitar una API falsa; cajas pueden añadirse sobre vídeo |
 | Audio | Módulo genérico opcional | ABI AKG compartida por model01/boop/DeckTower | Subsongs, símbolos y export Boop concretos | Adaptador genérico; solo enlaza si el juego aporta export AKG |
-| Bancos 128 KB | Módulo genérico opcional | Stub de model01/DeckTower; prueba real fijada en ventana | DeckTower declaraba actualmente detección no operativa por ubicación | `resources/bank.s`; compila en ejemplo 128 KB, ejecución aún no verificada |
-| Disco | Pendiente | Firmware loader de DeckTower inspeccionado | Tabla fija de nombres/destinos y dependencia AMSDOS | Manifiesto ya sustituye tabla; backend de lectura de disco no extraído aún |
-| Compresión | Opcional pendiente | Wrapper ZX7B de DeckTower es separable | Buffer fijo y config del juego | No incorporado en esta primera consolidación |
+| Bancos 128 KB | Módulo genérico opcional | Stub de model01/DeckTower; prueba real fijada en ventana | DeckTower declaraba actualmente detección no operativa por ubicación | `resources/bank.s`; roundtrip ejecutado en 6128 y fallback en 464 |
+| Disco | Módulo genérico opcional | Secuencia firmware verificada de DeckTower | Eliminadas tabla fija, política de bancos y fallo con `HALT` | `resources/disk.s`; el manifiesto añade archivos 8.3 y `diskload` verifica lectura real en 6128/464 |
+| Compresión | Módulo genérico opcional | ABI ZX7B de CPCTelera Next y separación observada en DeckTower | Eliminados buffer fijo y packs concretos del juego | `resources/zx7b.s`; payload 256 B -> 23 B -> 256 B comprobado en emulador |
 | Recursos | Módulo genérico opcional | Concepto de seeding de DeckTower | Tabla de payloads fija | Generador rechaza bancos, tamaños, alineación y solapamientos inválidos |
 | Mapas/colisión/física | Especializaciones | model01 para plataformas; PocketFever para 8.8/bolas | Estructuras y coordenadas incompatibles | No se fusionan; ejemplo plataforma usa extensión mínima independiente |
 | Bytecode | Especialización por género | model01 (comportamientos) y DeckTower (combate) son intérpretes distintos | Operaciones y estado concretos | Conservados como candidatos, no servicio universal |

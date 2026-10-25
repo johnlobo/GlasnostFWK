@@ -32,6 +32,22 @@ class ArchitectureTests(unittest.TestCase):
                 self.assertNotIn("..", relative.parts, f"{manifest_path}: {source}")
                 self.assertTrue((manifest_path.parent / relative).is_file(), f"{manifest_path}: {source}")
 
+    def test_disk_files_are_local_unique_and_dsk_only(self):
+        for manifest_path in (ROOT / "examples").glob("*/example.json"):
+            manifest = json.loads(manifest_path.read_text())
+            entries = manifest.get("disk_files", [])
+            names = [entry["name"] for entry in entries]
+            symbols = [entry["symbol"] for entry in entries]
+            self.assertEqual(len(names), len(set(names)), str(manifest_path))
+            self.assertEqual(len(symbols), len(set(symbols)), str(manifest_path))
+            if entries:
+                self.assertIn("dsk", manifest.get("media", ["cdt", "dsk"]))
+            for entry in entries:
+                relative = Path(entry["source"])
+                self.assertFalse(relative.is_absolute(), f"{manifest_path}: {relative}")
+                self.assertNotIn("..", relative.parts, f"{manifest_path}: {relative}")
+                self.assertTrue((manifest_path.parent / relative).is_file())
+
     def test_optional_modules_are_not_universally_selected(self):
         selections = {
             path.parent.name: set(json.loads(path.read_text())["modules"])
@@ -40,6 +56,9 @@ class ArchitectureTests(unittest.TestCase):
         self.assertNotIn("resources/bank.s", selections["minimal"])
         self.assertNotIn("extensions/motion_u8.s", selections["board"])
         self.assertIn("resources/bank.s", selections["resources128"])
+        self.assertNotIn("resources/disk.s", selections["resources128"])
+        self.assertIn("resources/disk.s", selections["diskload"])
+        self.assertIn("resources/zx7b.s", selections["diskload"])
         self.assertIn("extensions/motion_u8.s", selections["vertical"])
 
 

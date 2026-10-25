@@ -26,7 +26,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # seis ejemplos, incluida la vertical jugable
+make examples   # siete ejemplos: vertical jugable y carga real desde DSK
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
@@ -35,8 +35,8 @@ python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instala
 
 Los artefactos quedan en `.build/<ejemplo>/`. `make test` no lanza emulador;
 el smoke opcional sí y comprueba estado de RAM, no solo que el proceso arranque.
-Las versiones publicadas ofrecen todos los `.bin`, `.cdt` y `.dsk` en un ZIP
-con checksum; el estado y la siguiente acción se mantienen en
+Las versiones publicadas ofrecen los `.bin` y los medios declarados por cada
+ejemplo en un ZIP con checksum; el estado y la siguiente acción se mantienen en
 [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Mapa del repositorio
@@ -45,11 +45,11 @@ con checksum; el estado y la siguiente acción se mantienen en
 - `src/video`: direccionamiento, CRTC generado y limpieza visible.
 - `src/ui`: adaptador de texto Mode 0.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG.
-- `src/resources`: copia bancaria 128 KB.
+- `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
 - `src/extensions`: perfiles de entidad/movimiento optativos.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: seis consumidores pequeños, sin copias internas del framework.
+- `examples`: siete consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -62,6 +62,13 @@ el manifiesto los selecciona mediante `game_sources`.
 El smoke de AmSpiriT mantiene CursorRight en la matriz real del CPC y verifica
 en RAM que el pool pasa de cuatro entidades a una, el marcador llega a tres y
 el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
+
+## Carga desde DSK y ZX7B
+
+`examples/diskload` incorpora al DSK un payload sintético crudo y el mismo
+payload comprimido con ZX7B. Antes de desactivar el firmware, los carga desde
+AMSDOS, descomprime el segundo y compara los 256 bytes. Este ejemplo solo
+produce DSK: sus archivos auxiliares no forman parte de una cinta CDT.
 
 ## Estado del perfil 160x288
 

@@ -29,6 +29,8 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `src/ui/text.s` | variantes `src/sys/text.s`; API de strings de CPCTelera Next | Adaptador, sin copiar fuentes ni fuentes gráficas de juego | GPL-3.0; enlace con LGPL-3.0 |
 | `src/audio/akg.s` | audio AKG de model01/boop/DeckTower | Adaptador genérico; no incluye canciones, SFX ni player generado | GPL-3.0 |
 | `src/resources/bank.s` | `model01/src/sys/mem.s`, `DeckTower/src/sys/mem.s` | Stub consolidado; prueba movida a `0x7FF0` para que sea funcional | GPL-3.0 |
+| `src/resources/disk.s` | `DeckTower/src/sys/loader.s` y spike firmware de la misma revisión | API nueva reducida a reconexión y carga; sin tabla, bancos, paleta ni política de error del juego | GPL-3.0 del conjunto |
+| `src/resources/zx7b.s` | `DeckTower/src/sys/compression.s`; `cpct_zx7b_decrunch_s_asm` de CPCTelera Next | Adaptador sin buffer ni packs concretos; compresor y descompresor proceden de la dependencia fijada | GPL-3.0; enlace con LGPL-3.0 |
 | `tools/gen_resources.py` | tabla fija de `DeckTower/src/sys/loader.s` | Sustitución nueva mediante manifiesto validado | GPL-3.0 |
 | `src/extensions/motion_u8.*` | física de model01 y PocketFever | Perfil nuevo, separado; no unifica estructuras incompatibles | GPL-3.0 |
 | `cfg/*.template*` | ejemplo `examples/asm/helloworld` de CPCTelera Next | Copia de plantilla de construcción con su cabecera intacta | LGPL-3.0 |

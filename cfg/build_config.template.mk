@@ -50,17 +50,20 @@ Z80CODELOC := 0x4000
 # Folders
 SRCDIR  := src
 OBJDIR  := obj
+DSKFILESDIR := dsk
 
 # File extensions
 C_EXT   := c
 ASM_EXT := s
 OBJ_EXT := rel
+DSKINC_EXT := dskinc
 
 # BINARY CONFIG
 BINFILE := $(OBJDIR)/$(PROJNAME).bin
 IHXFILE := $(OBJDIR)/$(PROJNAME).ihx
 CDT     := $(PROJNAME).cdt
 DSK     := $(PROJNAME).dsk
+DSKINC  := $(OBJDIR)/$(DSK).$(DSKINC_EXT)
 
 # TARGETs for compilation (if you only want one of them, remove the other)
 TARGET  := $(CDT) $(DSK)
@@ -97,14 +100,17 @@ Z80CCLINKARGS := -mz80 --no-std-crt0 -Wl-u \
 include $(CPCT_PATH)/cfg/global_functions.mk
 
 # Calculate all subdirectories
-SUBDIRS    := $(filter-out ., $(shell find $(SRCDIR) -type d -print))
-OBJSUBDIRS := $(foreach DIR, $(SUBDIRS), $(patsubst $(SRCDIR)%, $(OBJDIR)%, $(DIR)))
+SUBDIRS         := $(filter-out ., $(shell find $(SRCDIR) -type d -print))
+OBJDSKINCSDIR   := $(OBJDIR)/$(DSKFILESDIR)
+OBJSUBDIRS      := $(OBJDSKINCSDIR) $(foreach DIR, $(SUBDIRS), $(patsubst $(SRCDIR)%, $(OBJDIR)%, $(DIR)))
 
 # Calculate all source files
 CFILES     := $(foreach DIR, $(SUBDIRS), $(wildcard $(DIR)/*.$(C_EXT)))
 ASMFILES   := $(foreach DIR, $(SUBDIRS), $(wildcard $(DIR)/*.$(ASM_EXT)))
+DSKINCSRCFILES := $(wildcard $(DSKFILESDIR)/*)
 
 # Calculate all object files
 C_OBJFILES   := $(patsubst $(SRCDIR)%, $(OBJDIR)%, $(patsubst %.$(C_EXT), %.$(OBJ_EXT), $(CFILES)))
 ASM_OBJFILES := $(patsubst $(SRCDIR)%, $(OBJDIR)%, $(patsubst %.$(ASM_EXT), %.$(OBJ_EXT), $(ASMFILES)))
 OBJFILES		 := $(C_OBJFILES) $(ASM_OBJFILES)
+DSKINCOBJFILES := $(foreach FILE, $(DSKINCSRCFILES), $(patsubst $(DSKFILESDIR)/%, $(OBJDSKINCSDIR)/%, $(FILE)).$(DSKINC_EXT))

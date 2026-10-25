@@ -18,14 +18,22 @@ class ReleasePackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build = root / ".build"
+            examples = root / "examples"
             for example in package_release.EXAMPLES:
+                (examples / example).mkdir(parents=True)
+                media = ["dsk"] if example == "diskload" else ["cdt", "dsk"]
+                (examples / example / "example.json").write_text(
+                    '{"media": ' + str(media).replace("'", '"') + "}\n",
+                    encoding="utf-8",
+                )
                 (build / example / "obj").mkdir(parents=True)
                 (build / example / "obj" / f"{example}.bin").write_bytes(
                     f"{example}-bin".encode()
                 )
-                (build / example / f"{example}.cdt").write_bytes(
-                    f"{example}-cdt".encode()
-                )
+                if "cdt" in media:
+                    (build / example / f"{example}.cdt").write_bytes(
+                        f"{example}-cdt".encode()
+                    )
                 (build / example / f"{example}.dsk").write_bytes(
                     f"{example}-dsk".encode()
                 )
@@ -44,10 +52,12 @@ class ReleasePackageTests(unittest.TestCase):
             )
             with zipfile.ZipFile(archive1) as archive:
                 names = archive.namelist()
-            self.assertEqual(len(names), 20)
+            self.assertEqual(len(names), 22)
             self.assertIn("README.txt", names)
             self.assertIn("manifest.json", names)
             self.assertIn("examples/vertical/vertical.dsk", names)
+            self.assertIn("examples/diskload/diskload.dsk", names)
+            self.assertNotIn("examples/diskload/diskload.cdt", names)
 
 
 if __name__ == "__main__":

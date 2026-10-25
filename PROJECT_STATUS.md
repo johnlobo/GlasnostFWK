@@ -11,8 +11,8 @@ publicación.
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los seis ejemplos construyen BIN, CDT y DSK con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
+- Los siete ejemplos construyen BIN y DSK con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; seis construyen además CDT.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -56,12 +56,30 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
 - Audio AKG, carga desde disco, ZX7B, ventanas y perfiles completos de física
   siguen pendientes de integración ejecutable.
-- Solo `vertical` es una escena jugable; los otros cinco artefactos son pruebas
-  técnicas.
+- Solo `vertical` es una escena jugable; los otros seis ejemplos son pruebas
+  técnicas. `diskload` se distribuye solo como DSK.
 
-## Fase siguiente: carga desde disco y ZX7B
+## Fase completada: carga desde disco y ZX7B
 
-Extraer e integrar el backend de carga desde disco de forma independiente del
-manifiesto de recursos, seguido por el wrapper ZX7B, con un ejemplo ejecutable
-y comprobaciones en emulador. No se considerará cerrado hasta que la carga real
-desde DSK esté verificada.
+- [x] Backend AMSDOS separado de bancos, manifiestos y política de errores.
+- [x] Archivos crudos o ZX7B añadidos al DSK desde `disk_files`, sin enlazarlos
+  dentro del ejecutable.
+- [x] Adaptador ZX7B opcional sobre la rutina de CPCTelera Next.
+- [x] Ejemplo `diskload`: 256 B crudos y los mismos datos comprimidos a 23 B.
+- [x] Los 256 B leídos y descomprimidos se verificaron en AmSpiriT-Lite 1.15.3
+  tanto con CPC 6128 como con CPC 464.
+- [x] Suite host: 19 pruebas; construcción completa: siete ejemplos.
+
+Comandos específicos:
+
+```sh
+python3 tests/emulator_smoke.py diskload
+python3 tests/emulator_smoke.py --model 464 diskload
+```
+
+## Fase siguiente: audio AKG ejecutable
+
+Integrar un export AKG sintético o con licencia inequívoca, comprobar música y
+efectos mediante estado observable en emulador y documentar el coste de IRQ.
+El adaptador existente compila, pero todavía no tiene datos enlazados ni una
+prueba de ejecución; no debe presentarse como validado hasta cerrar ese hueco.

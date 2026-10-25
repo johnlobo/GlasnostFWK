@@ -82,10 +82,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for example in minimal board platform video resources128 vertical; do
+          for example in minimal board platform video resources128 diskload vertical; do
             test -s ".build/$example/obj/$example.bin"
-            test -s ".build/$example/$example.cdt"
             test -s ".build/$example/$example.dsk"
+          done
+          for example in minimal board platform video resources128 vertical; do
+            test -s ".build/$example/$example.cdt"
           done
 
       - name: Upload CPC artifacts

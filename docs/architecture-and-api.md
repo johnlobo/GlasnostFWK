@@ -5,7 +5,7 @@
 ```text
 ejemplo/juego -> extensión opcional -> núcleo -> CPCTelera Next / hardware
               -> audio AKG ---------> sistema
-              -> recursos ----------> hardware de bancos
+              -> recursos ----------> firmware AMSDOS / bancos / ZX7B
 herramientas -> perfiles/manifiestos -> fuentes/tablas generadas
 ```
 
@@ -107,3 +107,27 @@ visibles en el mapeo activo.
 
 No se ofrece una operación que deje un banco conectado. Esto evita dependencias
 ocultas del núcleo con 128 KB y reduce el riesgo de ejecutar código paginado.
+
+### Disco AMSDOS
+
+- `fwk_disk_init`: sin entrada/salida; altera `AF,B,C,DE,HL`, habilita
+  interrupciones y reconecta la ROM 7 con `KL INIT BACK`. Debe ejecutarse antes
+  de `fwk_system_init`, que desactiva el firmware.
+- `fwk_disk_load`: `HL=nombre`, `B=longitud del nombre`, `DE=destino`; devuelve
+  carry activo y `BC=longitud lógica` si `CAS IN OPEN` tuvo éxito, o carry
+  limpio si no pudo abrir. Altera `AF,DE,HL`. Lee con `CAS IN DIRECT` y cierra
+  con `CAS IN CLOSE`.
+- Usa `0xF800..0xFFFF` como buffer de cabecera de 2 KB. El código, pila y
+  destino del llamador no pueden solaparlo. No es reentrante ni puede usarse
+  mientras el sistema del framework mantiene el firmware desactivado.
+- El firmware no proporciona aquí una comprobación de integridad: el llamador
+  debe validar longitud y contenido según su formato. `diskload` hace ambas.
+
+### ZX7B
+
+- `fwk_zx7b_unpack`: `HL=último byte comprimido`, `DE=último byte del destino`;
+  altera `AF,BC,DE,HL` y escribe hacia atrás mediante
+  `cpct_zx7b_decrunch_s_asm` de CPCTelera Next.
+- No comprueba límites ni corrupción. Los tamaños exactos se generan desde
+  `disk_files` como `FWK_DISK_<SYMBOL>_SIZE` y
+  `FWK_DISK_<SYMBOL>_UNPACKED_SIZE`.

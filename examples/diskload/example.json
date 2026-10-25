@@ -1,0 +1,22 @@
+{
+  "name": "diskload",
+  "profile": "standard-160x200.json",
+  "media": ["dsk"],
+  "modules": ["core/system.s", "resources/disk.s", "resources/zx7b.s"],
+  "disk_files": [
+    {
+      "source": "payload.hex",
+      "encoding": "hex",
+      "name": "RAWDATA.BIN",
+      "symbol": "raw",
+      "compression": "none"
+    },
+    {
+      "source": "payload.hex",
+      "encoding": "hex",
+      "name": "PACKDATA.ZX7",
+      "symbol": "packed",
+      "compression": "zx7b"
+    }
+  ]
+}

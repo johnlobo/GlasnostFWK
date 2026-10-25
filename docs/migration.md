@@ -22,10 +22,11 @@
 
 ## Desde DeckTower
 
-- Sustituir `sl_payload_table` por un JSON validado por `gen_resources.py`.
+- Sustituir `sl_payload_table` por `disk_files` en el manifiesto del ejemplo y,
+  para destinos bancados, por el JSON validado por `gen_resources.py`.
 - Mantener separados: backend de disco, copia bancaria, descompresión y
-  localización. Esta versión solo entrega copia y localización generada; el
-  backend AMSDOS y ZX7B siguen pendientes.
+  localización. `resources/disk.s`, `resources/bank.s` y `resources/zx7b.s`
+  se seleccionan por separado; el juego conserva su política de destinos.
 - Los staging buffers se declaran como regiones reservadas y destinos en el
   manifiesto; el generador rechaza solapamientos y alineación incorrecta.
 - El bytecode de combate permanece extensión del juego.

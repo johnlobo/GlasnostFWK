@@ -115,6 +115,22 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                     raise RuntimeError("128K bank detection/roundtrip failed")
             elif ram(bank_flag, 1) != b"\x00":
                 raise RuntimeError("64K profile was incorrectly reported as 128K")
+        if name == "diskload":
+            status = symbol(noi, "diskload_status")
+            raw_length = symbol(noi, "diskload_raw_length")
+            packed_length = symbol(noi, "diskload_packed_length")
+            result = ram(status, 1)
+            if result != b"\x5A":
+                raise RuntimeError(f"disk/ZX7 validation failed with status {result.hex()}")
+            if int.from_bytes(ram(raw_length, 2), "little") != 256:
+                raise RuntimeError("AMSDOS raw payload length is not 256")
+            if int.from_bytes(ram(packed_length, 2), "little") != 23:
+                raise RuntimeError("AMSDOS ZX7 payload length is not 23")
+            witness = bytes.fromhex("004c41534e4f53542d4449534b2d5a58") * 16
+            if ram(0x9000, 256) != witness:
+                raise RuntimeError("raw payload read from DSK differs from source")
+            if ram(0x9400, 256) != witness:
+                raise RuntimeError("ZX7 decompressed payload differs from source")
         if name == "vertical":
             player = symbol(noi, "vertical_player")
             pool = symbol(noi, "vertical_entity_pool")
@@ -174,7 +190,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "video", "resources128", "vertical"],
+        default=["minimal", "board", "platform", "video", "resources128", "diskload", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")
