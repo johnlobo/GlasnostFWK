@@ -339,7 +339,9 @@ momento todavía no existía el render añadido en la fase posterior.
   AmSpiriT-Lite 1.15.3 para CPC 6128 y CPC 464; salida inspeccionada visualmente.
 - [x] La batería completa pasó los catorce programas en CPC 6128 en una sola
   ejecución.
-- [ ] Commit, push y CI remota pendientes.
+- [x] Implementación y validación local registradas en `058d4a5`, sincronizada
+  en `origin/main`.
+- [ ] CI remota de `058d4a5` pendiente de resultado.
 
 Límites: el mapa permanece inmutable y el render no ofrece transparencia,
 clipping parcial, scroll sub-tile, acceso bancado ni dirty rectangles
