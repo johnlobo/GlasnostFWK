@@ -16,17 +16,19 @@ Fecha: 2026-10-26 UTC.
   sólidos/plataformas de una dirección para el perfil de plataforma.
 - Render rectangular de tilemap Mode 0 con cámara, prevalidación completa y
   actualización parcial explícita de una celda.
+- Sprites rectangulares Mode 0 con coordenadas de 16 bits con signo, clipping
+  por los cuatro bordes y captura/restauración del fondo visible.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y catorce ejemplos, incluida una vertical jugable.
+- Generadores de vídeo/recursos y quince ejemplos, incluida una vertical jugable.
 - Frontera de dependencias y exclusión física de módulos.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
 ## Compilado
 
-Los catorce ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-trece generan además `.cdt`. Sus catorce BIN y los dos payloads de `diskload` se
+Los quince ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+catorce generan además `.cdt`. Sus quince BIN y los dos payloads de `diskload` se
 reúnen en un único `.build/tests/GlasnostFWK-tests.dsk`; los DSK individuales
 intermedios se eliminan. `diskload` no genera CDT porque sus payloads auxiliares
 no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
@@ -40,16 +42,16 @@ no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los catorce ejemplos y validación de nombres 8.3,
+- Construcción completa de los quince ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
-- 35 pruebas host en total. El manual cubre los catorce ejemplos y diecisiete módulos;
+- 41 pruebas host en total. El manual cubre los quince ejemplos y dieciocho módulos;
   su checksum corresponde al HTML que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los catorce programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
+- Los quince programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
   CPC 6128 de 128 KB y avanzaron su contador de frames.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
@@ -80,6 +82,10 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   parcial. Se comprobaron el contador, cuatro patrones dentro del viewport y un
   testigo exterior en VRAM. Pasó en CPC 6128 y CPC 464 y su salida final se
   inspeccionó visualmente.
+- `spriteclip` rechazó dimensión nula y span gráfico con wrap, aceptó sin
+  escrituras un sprite totalmente exterior, recortó cada borde y capturó/restauró
+  exactamente un fondo no uniforme de 4x5 bytes. Pasó en CPC 6128 y CPC 464;
+  los sprites de borde y centro se inspeccionaron visualmente.
 - Tras reproducir una salida aparentemente vacía en `gravity`, se comprobó que
   la demo heredaba de BASIC fondo azul en el pen 0 y negro en el pen 5 usado por
   la traza. `gravity` fija ahora negro/amarillo y `physics88` negro/cian. El
@@ -93,14 +99,15 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
   jugador, coleccionables y victoria. La misma prueba pasó en CPC 6128 y CPC 464.
 
-La entrada está automatizada solo para `vertical`. `tilecoll` y `tilerender` se
-inspeccionaron visualmente en emulador y su salida resultó visible. No se validó
+La entrada está automatizada solo para `vertical`. `tilecoll`, `tilerender` y
+`spriteclip` se inspeccionaron visualmente en emulador y su salida resultó
+visible. No se validó
 visualmente el perfil experimental 160x288 ni se capturó la salida analógica de
 audio. Dos ejecuciones completas expusieron carreras de observación en los
 testigos finales de `animation` y `vertical`: ambos publican estado antes de
 dibujar en ese mismo frame. El smoke espera ahora explícitamente el byte de
 VRAM; las repeticiones aisladas ya habían pasado y una tercera batería completa
-pasó los catorce casos en una sola ejecución.
+pasó los quince casos en una sola ejecución.
 
 ## Verificado en hardware
 
@@ -113,6 +120,8 @@ No verificado.
   modelo de memoria sí está probado; la señal de vídeo no.
 - El tilemap continúa siendo de solo lectura. No hay edición, streaming,
   transparencia, scroll sub-tile ni dirty rectangles automáticos.
+- Los sprites son rectángulos opacos. No hay máscaras, transparencia,
+  recoloreado, cola/orden global de render ni comprobación de capacidad del buffer.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads
@@ -137,6 +146,8 @@ python3 tests/emulator_smoke.py --model 464 gravity physics88
 python3 tests/emulator_smoke.py --model 464 tilecoll
 python3 tests/emulator_smoke.py tilerender
 python3 tests/emulator_smoke.py --model 464 tilerender
+python3 tests/emulator_smoke.py spriteclip
+python3 tests/emulator_smoke.py --model 464 spriteclip
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical

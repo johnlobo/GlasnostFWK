@@ -21,6 +21,7 @@ DEFAULT_EXAMPLES = (
     "physics88",
     "tilecoll",
     "tilerender",
+    "spriteclip",
     "video",
     "resources128",
     "diskload",

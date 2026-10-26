@@ -171,6 +171,26 @@ La tabla de líneas y las regiones se generan juntas. Para 160x200: ocho tramos
 de 2.000 B y ocho huecos de 48 B. Para 160x288: 288 entradas, dos segmentos y
 coordenadas de 16 bits.
 
+### Sprites Mode 0 opcionales
+
+Descriptor mutable de 8 bytes: puntero a datos, X/Y con signo de 16 bits,
+ancho en bytes Mode 0 y alto en scanlines. Los datos ocupan `width*height`
+bytes por filas, sin padding.
+
+- `fwk_sprite_draw`: `IX=descriptor`; valida dimensiones/span, recorta contra
+  los cuatro bordes y dibuja solo el rectángulo visible.
+- `fwk_sprite_capture`: `IX=descriptor`, `DE=buffer`; guarda el fondo visible y
+  devuelve `IY` al final de los bytes utilizados.
+- `fwk_sprite_restore`: `IX=mismo descriptor`, `HL=buffer`; repone el fondo
+  visible y devuelve `IY` al final.
+
+Carry indica descriptor inválido. Una geometría completamente exterior es
+válida y no escribe. Las tres preservan `IX`; dibujo altera `AF,BC,DE,HL`, y
+captura/restauración también `IY`. El módulo usa scratch interno y no es
+reentrante. El buffer, el orden de borrado/dibujo y la sincronización pertenecen
+al consumidor. No hay transparencia, máscaras, recoloreado, cola de render,
+dirty rectangles automáticos ni medición de ciclos. Detalles en `sprites.md`.
+
 ### Texto
 
 - `fwk_text_set_colors`: `L=foreground`, `H=background` (0..15); altera

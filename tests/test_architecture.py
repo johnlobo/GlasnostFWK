@@ -76,6 +76,9 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("extensions/tilemap.s", selections["tilerender"])
         self.assertIn("extensions/tilemap_render.s", selections["tilerender"])
         self.assertNotIn("extensions/platform_tilemap.s", selections["tilerender"])
+        self.assertIn("video/sprite.s", selections["spriteclip"])
+        self.assertNotIn("video/sprite.s", selections["minimal"])
+        self.assertNotIn("ui/window.s", selections["spriteclip"])
 
 
 if __name__ == "__main__":

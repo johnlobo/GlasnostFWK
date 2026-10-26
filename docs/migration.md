@@ -41,8 +41,9 @@
 
 - Sustituir el integrador y fricción acoplados a bola por
   `extensions/physics_8_8.s` cuando basten límites rectangulares. Conservar
-  `ball_blit`, colisión entre bolas y tablas de tiro como especializaciones;
-  no adaptarlas a `motion_u8` ni al perfil de plataforma.
+  `ball_blit`, colisión entre bolas y tablas de tiro como especializaciones.
+  Para sprites rectangulares generales puede usarse `video/sprite.s`, pero no
+  sustituye el coste ni los patrones generados del blitter 6x8 de bola.
 - Llevar el método de generadores deterministas a manifiestos del juego.
 - Sustituir `row_table.s` por la tabla generada solo si la geometría coincide;
   para 160x288, todas las coordenadas verticales consumidoras deben ser 16 bit.

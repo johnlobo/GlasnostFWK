@@ -15,8 +15,8 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los catorce ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; trece construyen además CDT y
+- Los quince ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; catorce construyen además CDT y
   todos los BIN se reúnen en un único DSK de pruebas.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -62,7 +62,7 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - El tilemap es de solo lectura. Su render no incluye transparencia, clipping,
   scroll sub-tile, bancos ni dirty rectangles automáticos; la colisión no
   resuelve pendientes ni colisión entre cuerpos.
-- Solo `vertical` es una escena jugable; los otros trece ejemplos son pruebas
+- Solo `vertical` es una escena jugable; los otros catorce ejemplos son pruebas
   técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
   payloads auxiliares.
 
@@ -350,9 +350,40 @@ Límites: el mapa permanece inmutable y el render no ofrece transparencia,
 clipping parcial, scroll sub-tile, acceso bancado ni dirty rectangles
 automáticos. Las rutinas usan estado interno y no son reentrantes.
 
-## Siguiente fase propuesta: sprites con clipping y restauración
+## Fase completada localmente: sprites con clipping y restauración
 
-Auditar los blitters existentes y definir una primitiva Mode 0 rectangular para
-sprites, con clipping y restauración de fondo explícita propiedad del consumidor.
-La propuesta aún no está implementada y no presupone una entidad universal ni
-una cola de render.
+- [x] Auditoría de `PocketFever`: `ball_blit.s` conserva su clasificación de
+  especialización 6x8; no se presentó su coste ni sus patrones como genéricos.
+- [x] `video/sprite` define un descriptor de 8 bytes con datos, X/Y con signo y
+  dimensiones, sin imponer entidad, física ni cola de render.
+- [x] Dibujo recortado en los cuatro bordes; dimensión nula y span gráfico con
+  wrap fallan antes de escribir, mientras una imagen exterior es válida y vacía.
+- [x] Captura y restauración consumen solo el rectángulo visible y usan un buffer
+  propiedad del consumidor, devolviendo su final en `IY`.
+- [x] `spriteclip` cubre los cuatro bordes, centro, exterior, errores y una
+  restauración simultáneamente recortada arriba/izquierda de 4x5 bytes.
+- [x] Seis pruebas host nuevas cubren geometría, stride, vacío, span y tamaño de
+  captura.
+- [x] `make test`: 41 pruebas, quince BIN, catorce CDT y DSK común con 17 entradas.
+- [x] `make manual`: HTML, PDF y checksum sincronizados; cobertura de quince
+  ejemplos y dieciocho módulos.
+- [x] Informe de tamaños actualizado; paquete local `0.2.0` con 32 entradas y
+  checksum correcto. Esto no publica una release.
+- [x] `spriteclip` pasó estado, buffer y testigos VRAM en AmSpiriT-Lite 1.15.3
+  para CPC 6128 y CPC 464; salida inspeccionada visualmente.
+- [x] La batería completa pasó los quince programas en CPC 6128 en una sola
+  ejecución.
+- [ ] Commit, push y CI remota pendientes.
+
+Límites: sprites opacos y rectangulares, sin máscara, transparencia, recoloreado,
+orden global, dirty rectangles automáticos ni comprobación de capacidad del
+buffer. Las rutinas usan scratch interno, no son reentrantes y no tienen ciclos
+medidos.
+
+## Siguiente fase propuesta: orden explícito de render
+
+Definir y comprobar un ciclo de borrado, actualización de fondo, captura y
+dibujo para varios sprites solapados, sin imponer una estructura universal de
+entidad. La propuesta todavía no está implementada; antes debe decidirse si el
+framework necesita una primitiva de pases o basta un contrato documentado y un
+ejemplo de composición.

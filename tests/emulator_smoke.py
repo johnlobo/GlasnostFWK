@@ -295,6 +295,42 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                         f"tilerender VRAM witness {(x, y)} is {actual.hex()}, "
                         f"expected {expected.hex()}"
                     )
+        if name == "spriteclip":
+            status = symbol(noi, "spriteclip_status")
+            used = symbol(noi, "spriteclip_capture_used")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "clipped sprite render")
+            if ram(used, 2) != bytes((20, 0)):
+                raise RuntimeError("spriteclip did not capture the 4x5 visible rectangle")
+            restored = (
+                bytes.fromhex("11223344"),
+                bytes.fromhex("55667788"),
+                bytes.fromhex("99122334"),
+                bytes.fromhex("45566778"),
+                bytes.fromhex("899aabbc"),
+            )
+            for y, expected in enumerate(restored):
+                if ram(standard_screen_address(0, y), 4) != expected:
+                    raise RuntimeError(f"spriteclip background restore failed on row {y}")
+            witnesses = {
+                (0, 30): b"\xAA",
+                (3, 30): b"\x00",
+                (20, 0): b"\xAA",
+                (22, 0): b"\x00",
+                (77, 30): b"\x00",
+                (79, 30): b"\xAA",
+                (20, 196): b"\x00",
+                (20, 199): b"\xAA",
+                (35, 80): b"\x00",
+                (36, 80): b"\xAA",
+                (79, 100): b"\x55",
+            }
+            for (x, y), expected in witnesses.items():
+                actual = ram(standard_screen_address(x, y), 1)
+                if actual != expected:
+                    raise RuntimeError(
+                        f"spriteclip VRAM witness {(x, y)} is {actual.hex()}, "
+                        f"expected {expected.hex()}"
+                    )
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")
@@ -389,7 +425,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

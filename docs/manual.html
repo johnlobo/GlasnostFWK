@@ -107,7 +107,7 @@
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
+    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping y restauración, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
     <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura.</div>
   </section>
 
@@ -150,7 +150,7 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
 make generate
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los catorce consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los quince consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
 
     <h3>3.2 Construir un único ejemplo</h3>
     <pre><code>python3 tools/build_examples.py minimal
@@ -167,8 +167,8 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <ol>
       <li>Ejecute <code>make examples</code>.</li>
       <li>Inserte <code>.build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
-      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILECOLL"</code> o <code>RUN"TILEREND"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code> y <code>tilerender</code> es <code>TILEREND.BIN</code>.</li>
-      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code> y <code>tilerender</code> no necesitan entrada: muestran automáticamente colisión y viewport respectivamente.</li>
+      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code> o <code>RUN"SPRITECL"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code> y <code>spriteclip</code> es <code>SPRITECL.BIN</code>.</li>
+      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code> y <code>spriteclip</code> no necesitan entrada: muestran automáticamente su resultado.</li>
     </ol>
     <div class="box">Los smoke automáticos no se limitan a comprobar que el emulador sigue abierto: leen RAM, memoria de vídeo, teclado y, en audio, registros PSG.</div>
   </section>
@@ -179,7 +179,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
       <thead><tr><th>Ruta</th><th>Responsabilidad</th></tr></thead>
       <tbody>
         <tr><td><code>src/core</code></td><td>Sistema, entrada y pool genérico.</td></tr>
-        <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones y limpieza visible.</td></tr>
+        <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping.</td></tr>
         <tr><td><code>src/ui</code></td><td>Texto Mode 0 y ventanas con fondo restaurable.</td></tr>
         <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
         <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
@@ -301,8 +301,21 @@ FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
       <p><code>fwk_video_width_bytes</code> y <code>fwk_video_height</code> exponen la geometría activa para módulos de validación. El ancho estándar es 80 bytes, equivalentes a 160 píxeles en Mode 0. El llamador debe mantener las coordenadas dentro del perfil.</p>
     </article>
 
+    <article class="api" data-module="video/sprite.s">
+      <h3>6.5 Sprites Mode 0 — <code>video/sprite.s</code></h3>
+      <pre><code>FWK_SPRITE_DESCRIPTOR player_sprite, player_pixels, 20, 40, 6, 8
+player_background: .ds 6 * 8</code></pre>
+      <p>El descriptor de ocho bytes contiene puntero a datos, X/Y con signo de 16 bits, ancho en bytes Mode 0 y alto en scanlines. Las coordenadas negativas permiten entrar o salir por arriba e izquierda; los datos son <code>width*height</code> bytes por filas y sin padding.</p>
+      <ul>
+        <li><code>fwk_sprite_draw</code>: <code>IX=descriptor</code>; valida, recorta contra los cuatro bordes y dibuja solo el área visible.</li>
+        <li><code>fwk_sprite_capture</code>: <code>IX=descriptor</code>, <code>DE=buffer</code>; guarda el fondo visible y devuelve <code>IY</code> al final.</li>
+        <li><code>fwk_sprite_restore</code>: <code>IX=mismo descriptor</code>, <code>HL=buffer</code>; restaura el fondo visible y devuelve <code>IY</code> al final.</li>
+      </ul>
+      <p>Carry indica dimensiones nulas o span de datos con wrap; una imagen totalmente exterior es válida y no escribe. Reserve al menos <code>width*height</code> bytes y no cambie la geometría antes de restaurar. Las rutinas preservan <code>IX</code>, alteran <code>AF,BC,DE,HL</code>, captura/restauración alteran además <code>IY</code> y no son reentrantes. No hay transparencia, máscara, recoloreado, cola de render ni dirty rectangles automáticos. Véase <code>docs/sprites.md</code>.</p>
+    </article>
+
     <article class="api" data-module="ui/text.s">
-      <h3>6.5 Texto — <code>ui/text.s</code></h3>
+      <h3>6.6 Texto — <code>ui/text.s</code></h3>
       <ul>
         <li><code>fwk_text_set_colors</code>: <code>L=foreground</code>, <code>H=background</code>, ambos 0..15.</li>
         <li><code>fwk_text_draw</code>: <code>IY=cadena ASCII NUL</code>, <code>HL=puntero de vídeo</code>.</li>
@@ -311,7 +324,7 @@ FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
     </article>
 
     <article class="api" data-module="ui/window.s">
-      <h3>6.6 Ventanas restaurables — <code>ui/window.s</code></h3>
+      <h3>6.7 Ventanas restaurables — <code>ui/window.s</code></h3>
       <pre><code>message_window:
     .db 10       ; x en bytes Mode 0
     .dw 40       ; y de 16 bits
@@ -329,19 +342,19 @@ window_buffer: .ds 20 * 16</code></pre>
     </article>
 
     <article class="api" data-module="extensions/motion_u8.s">
-      <h3>6.7 Movimiento compacto — <code>extensions/motion_u8.s</code></h3>
+      <h3>6.8 Movimiento compacto — <code>extensions/motion_u8.s</code></h3>
       <p><code>fwk_motion_u8_step</code> recibe en <code>IY</code> un registro de cinco bytes <code>x,y,vx,vy,flags</code>. Aplica velocidades con signo de 8 bits y satura en <code>x=0..79</code>, <code>y=0..199</code>. Altera <code>AF</code>.</p>
       <p>Este perfil no es una entidad universal y no representa física 8.8. Es reentrante si el registro no se comparte.</p>
     </article>
 
     <article class="api" data-module="extensions/physics_platform.s">
-      <h3>6.8 Física de plataforma — <code>extensions/physics_platform.s</code></h3>
+      <h3>6.9 Física de plataforma — <code>extensions/physics_platform.s</code></h3>
       <p><code>fwk_physics_platform_step</code> recibe <code>IY=estado</code> e <code>IX=configuración</code>. El estado de siete bytes contiene <code>x,y,vx,vy,width,height,flags</code>; la configuración define ancho del mundo, coordenada inclusiva del suelo, gravedad y caída máxima.</p>
       <p>Aplica velocidad byte con signo, límites horizontales, gravedad, techo, suelo y los bits <code>FWK_PLATFORM_AIRBORNE</code> y <code>FWK_PLATFORM_TILE_GROUNDED</code>. No conoce mapas, tiles, pools ni sprites. Altera <code>AF,BC</code>, preserva <code>IX/IY</code> y es reentrante si el estado no se comparte. El consumidor debe usar dimensiones no nulas, <code>width &lt;= world_width</code> y parámetros que no desborden la velocidad con signo.</p>
     </article>
 
     <article class="api" data-module="extensions/tilemap.s">
-      <h3>6.9 Consulta de tilemap — <code>extensions/tilemap.s</code></h3>
+      <h3>6.10 Consulta de tilemap — <code>extensions/tilemap.s</code></h3>
       <pre><code>tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID, FWK_TILE_ONE_WAY
 tile_data:  .db 0, 1, 0, 2
 FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</code></pre>
@@ -350,13 +363,13 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
     </article>
 
     <article class="api" data-module="extensions/platform_tilemap.s">
-      <h3>6.10 Colisión de plataforma con tilemap — <code>extensions/platform_tilemap.s</code></h3>
+      <h3>6.11 Colisión de plataforma con tilemap — <code>extensions/platform_tilemap.s</code></h3>
       <p>Llame a <code>fwk_platform_tilemap_resolve</code> inmediatamente después de <code>fwk_physics_platform_step</code>, con <code>IY=estado</code> e <code>IX=tilemap</code>. Corrige posición, velocidad y flags. Devuelve en <code>A</code> una máscara de izquierda, derecha, techo, suelo y pérdida de apoyo.</p>
       <p>Los sólidos bloquean todos los ejes. <code>FWK_TILE_ONE_WAY</code> deja pasar al subir y solo bloquea un cruce descendente o sostiene un cuerpo ya apoyado. Las consultas inválidas pasan. No hay barrido continuo: la velocidad no debe atravesar un tile completo. Solo consulta las esquinas del rectángulo y no resuelve pendientes ni colisión entre cuerpos. Véase <code>docs/tilemap-collision.md</code>.</p>
     </article>
 
     <article class="api" data-module="extensions/tilemap_render.s">
-      <h3>6.11 Render de tilemap — <code>extensions/tilemap_render.s</code></h3>
+      <h3>6.12 Render de tilemap — <code>extensions/tilemap_render.s</code></h3>
       <pre><code>FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 10, 24, 12, 10, 16
 ; tileset, cámara X/Y, pantalla X/Y, viewport ancho/alto, gráficos</code></pre>
       <ul>
@@ -367,13 +380,13 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
     </article>
 
     <article class="api" data-module="extensions/physics_8_8.s">
-      <h3>6.12 Física 8.8 — <code>extensions/physics_8_8.s</code></h3>
+      <h3>6.13 Física 8.8 — <code>extensions/physics_8_8.s</code></h3>
       <p><code>fwk_physics_8_8_step</code> recibe <code>IY=estado</code> e <code>IX=descriptor</code>. Posición y velocidad son palabras 8.8 little-endian; el noveno byte conserva el resto sub-LSB de fricción. El descriptor aporta límites inclusivos y fricción de <code>0..255</code>.</p>
       <p>La fricción sigue el vector para no curvar diagonales al detener antes el eje menor. Después integra y rebota por eje. Altera <code>AF,BC,DE,HL</code>, preserva <code>IX/IY</code> y no es reentrante porque usa cuatro palabras internas. No resuelve colisiones entre cuerpos ni evita por sí sola atravesar geometría con velocidades excesivas. Véase <code>docs/physics-profiles.md</code>.</p>
     </article>
 
     <article class="api" data-module="extensions/animation.s">
-      <h3>6.13 Animación — <code>extensions/animation.s</code></h3>
+      <h3>6.14 Animación — <code>extensions/animation.s</code></h3>
       <pre><code>walk_animation:
     .db 3              ; número de frames
     .db 4              ; ticks por frame
@@ -389,7 +402,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="audio/akg.s">
-      <h3>6.14 Audio AKG — <code>audio/akg.s</code></h3>
+      <h3>6.15 Audio AKG — <code>audio/akg.s</code></h3>
       <p>El manifiesto también debe incluir <code>audio/arkosTracker_PlayerAkg.s</code> en <code>cpct_modules</code>, y el juego debe aportar su canción y tabla de efectos exportadas por Arkos Tracker.</p>
       <ol>
         <li><code>fwk_audio_init_music</code>: <code>HL=canción</code>, <code>A=subsong</code>.</li>
@@ -402,7 +415,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/bank.s">
-      <h3>6.15 Bancos de 128 KB — <code>resources/bank.s</code></h3>
+      <h3>6.16 Bancos de 128 KB — <code>resources/bank.s</code></h3>
       <ul>
         <li><code>fwk_bank_init</code>: detecta RAM adicional. Devuelve <code>A=1/NZ</code> o <code>A=0/Z</code> y actualiza <code>fwk_bank_has_128k</code>.</li>
         <li><code>fwk_bank_copy_from</code>: <code>A=banco 0..3</code>, <code>HL=origen bancado</code>, <code>DE=destino normal</code>, <code>BC=tamaño</code>.</li>
@@ -412,7 +425,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/disk.s">
-      <h3>6.16 Carga AMSDOS — <code>resources/disk.s</code></h3>
+      <h3>6.17 Carga AMSDOS — <code>resources/disk.s</code></h3>
       <ul>
         <li><code>fwk_disk_init</code>: reconecta AMSDOS. Debe llamarse antes de <code>fwk_system_init</code>.</li>
         <li><code>fwk_disk_load</code>: <code>HL=nombre</code>, <code>B=longitud</code>, <code>DE=destino</code>. Carry y <code>BC=longitud lógica</code> indican apertura correcta.</li>
@@ -421,7 +434,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/zx7b.s">
-      <h3>6.17 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
+      <h3>6.18 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
       <p><code>fwk_zx7b_unpack</code> recibe <code>HL=último byte comprimido</code> y <code>DE=último byte del destino</code>. Escribe hacia atrás mediante <code>cpct_zx7b_decrunch_s_asm</code> y altera <code>AF,BC,DE,HL</code>.</p>
       <p>No comprueba límites ni corrupción. Para archivos declarados en <code>disk_files</code>, el constructor genera constantes <code>FWK_DISK_*_SIZE</code> y <code>FWK_DISK_*_UNPACKED_SIZE</code>.</p>
     </article>
@@ -462,6 +475,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="gravity"><td><code>gravity</code></td><td>Traza amarilla sobre negro: gravedad, salto, límites y aterrizaje con velocidad byte.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilecoll"><td><code>tilecoll</code></td><td>Escenario cian y traza amarilla: consulta row-major, techo, pared y suelo sólido.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilerender"><td><code>tilerender</code></td><td>Viewport Mode 0: cambio de cámara, render completo y actualización de una celda.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="spriteclip"><td><code>spriteclip</code></td><td>Sprites opacos: clipping en cuatro bordes y captura/restauración del fondo visible.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="physics88"><td><code>physics88</code></td><td>Traza cian sobre negro: integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK común, CDT</td></tr>
@@ -472,7 +486,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
       </tbody>
     </table>
-    <p><code>vertical</code> es la única escena jugable. Los otros trece son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p><code>vertical</code> es la única escena jugable. Los otros catorce son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
   </section>
 
   <section aria-labelledby="pruebas">
@@ -489,7 +503,7 @@ make report</code></pre>
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py --model 464 audio
 python3 tests/emulator_smoke.py --model 464 animation
-python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender physics88
+python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender spriteclip physics88
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <p>Un build correcto, una prueba host correcta, una ejecución emulada y una prueba en hardware son evidencias distintas. Consulte <code>docs/validation.md</code> para ver cuáles se han realizado realmente.</p>
@@ -499,7 +513,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <h2 id="distribucion">10. Crear un paquete de distribución</h2>
     <pre><code>make release VERSION=0.2.0
 (cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
-    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los catorce BIN, trece CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los quince BIN, catorce CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
     <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.1.0</code>; el desarrollo posterior puede contener funciones aún no incluidas en esa release.</p>
   </section>
 
@@ -518,6 +532,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
         <tr><td>La ventana no restaura bien.</td><td>Reserve exactamente <code>width*height</code> bytes o más y no cambie descriptor, buffer ni perfil entre captura y restauración.</td></tr>
         <tr><td>El cuerpo atraviesa un tile.</td><td>Compruebe tamaños/shifts, llame al resolver justo después del paso físico y mantenga el desplazamiento por eje por debajo del tamaño de tile.</td></tr>
         <tr><td>El viewport devuelve carry.</td><td>Compruebe cámara, destino, dimensiones no nulas, <code>tile_count</code>, ids seleccionados y que el tileset completo no haga wrap de 16 bits.</td></tr>
+        <tr><td>El sprite no restaura bien.</td><td>No cambie X/Y entre captura y restauración, reserve <code>width*height</code> bytes y conserve visibles tanto los datos como el buffer.</td></tr>
         <tr><td>Falla <code>make test</code> por el manual.</td><td>Documente el nuevo ejemplo/módulo en este HTML y ejecute <code>make manual</code>.</td></tr>
       </tbody>
     </table>
