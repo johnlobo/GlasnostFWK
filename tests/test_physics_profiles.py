@@ -2,16 +2,16 @@ import unittest
 
 
 def platform_steps(state, config, count):
-    x, y, vx, vy, width, height, airborne = state
+    x, y, vx, vy, width, height, flags = state
     world_width, ground_y, gravity, max_fall = config
     for _ in range(count):
         x = max(0, min(world_width - width, x + vx))
         if x in {0, world_width - width}:
             vx = 0
-        if airborne:
+        if flags & 1:
             vy = min(max_fall, vy + gravity)
         elif vy < 0:
-            airborne = 1
+            flags = (flags | 1) & ~2
         else:
             vy = 0
         if vy:
@@ -22,8 +22,8 @@ def platform_steps(state, config, count):
             elif y + height - 1 >= ground_y:
                 y = ground_y - height + 1
                 vy = 0
-                airborne = 0
-    return x, y, vx, vy, width, height, airborne
+                flags &= ~3
+    return x, y, vx, vy, width, height, flags
 
 
 def physics_8_8_steps(state, bounds, friction, count):

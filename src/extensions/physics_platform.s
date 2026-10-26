@@ -60,6 +60,7 @@ _fwk_platform_grounded:
     bit 7, a
     jr z, _fwk_platform_floor_hold
     set FWK_PLATFORM_AIRBORNE_BIT, FWK_PLATFORM_FLAGS(iy)
+    res FWK_PLATFORM_TILE_GROUNDED_BIT, FWK_PLATFORM_FLAGS(iy)
     jr _fwk_platform_move_y
 _fwk_platform_floor_hold:
     xor a
@@ -100,6 +101,7 @@ _fwk_platform_land:
     xor a
     ld FWK_PLATFORM_VY(iy), a
     res FWK_PLATFORM_AIRBORNE_BIT, FWK_PLATFORM_FLAGS(iy)
+    res FWK_PLATFORM_TILE_GROUNDED_BIT, FWK_PLATFORM_FLAGS(iy)
     ret
 _fwk_platform_y_store_c:
     ld a, c

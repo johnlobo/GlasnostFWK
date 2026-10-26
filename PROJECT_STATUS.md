@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-25 UTC. Última versión publicada: `v0.1.0`.
+Última actualización: 2026-10-26 UTC. Última versión publicada: `v0.1.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -15,8 +15,8 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los doce ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; once construyen además CDT y
+- Los trece ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; doce construyen además CDT y
   todos los BIN se reúnen en un único DSK de pruebas.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -59,9 +59,9 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
 - No existe verificación en hardware real.
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
-- La física de plataforma no integra todavía una consulta de tilemap; cubre
-  gravedad, límites, techo y suelo global.
-- Solo `vertical` es una escena jugable; los otros once ejemplos son pruebas
+- El tilemap es de solo lectura y colisión: no renderiza, modifica ni transmite
+  mapas; tampoco resuelve pendientes o colisión entre cuerpos.
+- Solo `vertical` es una escena jugable; los otros doce ejemplos son pruebas
   técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
   payloads auxiliares.
 
@@ -279,9 +279,41 @@ python3 tests/emulator_smoke.py --model 464 window
 - [x] Confirmación persistida en `25acf49`, sincronizada en `origin/main`; CI
   remota `40250484819` correcta para ese commit.
 
-## Fase siguiente: tilemaps y colisión de escenario
+## Fase completada localmente: tilemaps y colisión de escenario
 
-Extraer una consulta de tilemap de solo lectura y un contrato de colisión que
-pueda usar el perfil de plataforma sin importar mapas, entidades ni reglas de
-`model01`. Probar suelo, pared y techo con un consumidor ejecutable; mantener
-separadas las colisiones entre bolas de `PocketFever`.
+- [x] Auditoría de `model01`: se conservaron la consulta row-major y la tabla
+  id -> tipo; se excluyeron habitaciones, entidades, portales, render y reglas.
+- [x] `extensions/tilemap` ofrece una consulta de solo lectura con descriptor
+  del consumidor, validación de límites e ids y resultado carry explícito.
+- [x] `extensions/platform_tilemap` compone sólidos y plataformas de una
+  dirección con `physics_platform`, devuelve máscara de contactos y detecta
+  pérdida de apoyo sin mezclar el suelo global.
+- [x] `tilecoll` recorre 96 pasos, golpea techo, pared derecha y suelo y dibuja
+  geometría cian y trayectoria amarilla. Estado final exacto:
+  `(58,156,0,0,2,4,FWK_PLATFORM_TILE_GROUNDED)`, máscara `0x0E`.
+- [x] Cuatro pruebas host cubren consulta/límites, recorrido completo,
+  plataforma de una dirección y pérdida de apoyo.
+- [x] `make test`: 30 pruebas, trece BIN, doce CDT y DSK común con 15 entradas.
+- [x] `make manual`: HTML, PDF y checksum sincronizados; cobertura de trece
+  ejemplos y dieciséis módulos.
+- [x] `make report` actualizado; paquete local `0.2.0` con 28 entradas y
+  checksum correcto. Esto no publica una release.
+- [x] `tilecoll` pasó estado, máscara, paleta y testigos VRAM en AmSpiriT-Lite
+  1.15.3 para CPC 6128 y CPC 464; salida inspeccionada visualmente.
+- [x] Dos baterías completas expusieron carreras en los testigos de render de
+  `animation` y `vertical`: el estado final se publica antes del dibujo del
+  mismo frame. Ambos casos pasaron aislados y el smoke espera ahora el byte de
+  VRAM en vez de leerlo inmediatamente. La batería completa posterior pasó los
+  trece casos en CPC 6128 en una sola ejecución.
+- [ ] Commit, push y CI remota pendientes en este punto del registro.
+
+Límites: coordenadas de 8 bits, tiles potencia de dos coherentes con sus
+shifts y velocidad menor que un tile por paso. No hay barrido continuo, render,
+edición, pendientes, habitaciones, portales ni colisión entre cuerpos.
+
+## Siguiente fase propuesta: render de tilemaps
+
+Añadir un render rectangular desacoplado que consuma los mismos datos de solo
+lectura, con cámara/viewport propiedad del consumidor y actualización parcial
+explícita. Es una propuesta todavía no implementada; antes de iniciarla debe
+fijarse el contrato y el ejemplo ejecutable sin incorporar reglas de salas.

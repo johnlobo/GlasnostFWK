@@ -75,8 +75,29 @@ bytes: ancho del mundo, coordenada inclusiva del suelo, gravedad y caída máxim
   y velocidades deben cumplir los límites documentados en
   `physics-profiles.md`; no hay validación dinámica.
 
-No itera pools ni consulta mapas. La colisión con tiles, la selección del cuerpo
-y el render permanecen fuera para no importar la entidad de `model01`.
+No itera pools ni consulta mapas. La consulta y resolución opcionales se
+seleccionan por separado; la selección del cuerpo y el render permanecen fuera.
+
+### Tilemap y colisión de plataforma opcionales
+
+El descriptor de tilemap tiene 11 bytes: punteros a datos y tabla de tipos,
+ancho/alto, shifts y tamaños X/Y, y número de tipos. Los datos son ids de 8 bits
+en orden de filas; el mapa y las tablas pertenecen al consumidor.
+
+- `fwk_tilemap_query`: `IX=descriptor`, `B=Y`, `C=X`; devuelve tipo en `A` y
+  carry limpio. Fuera de mapa, descriptor inválido o id fuera de tabla devuelve
+  `A=0` y carry activo. Preserva `BC,IX,IY`; altera `AF,DE,HL`.
+- `fwk_platform_tilemap_resolve`: se llama inmediatamente después de
+  `fwk_physics_platform_step`, con `IY=estado` e `IX=tilemap`; corrige posición,
+  velocidad y flags y devuelve una máscara de contactos en `A`. Los sólidos
+  bloquean todos los ejes; una plataforma de una dirección solo bloquea al
+  descender y sostiene un cuerpo ya apoyado.
+
+Ambos son reentrantes para datos/estados separados. Las coordenadas son de 8
+bits, los tamaños deben ser potencias de dos coherentes con sus shifts y no hay
+barrido continuo: una velocidad capaz de saltar un tile puede atravesarlo. No
+hay render, escritura del mapa, pendientes, habitaciones, portales ni colisión
+entre cuerpos. El contrato completo está en `tilemap-collision.md`.
 
 ### Física 8.8 opcional
 

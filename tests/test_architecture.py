@@ -70,6 +70,9 @@ class ArchitectureTests(unittest.TestCase):
         self.assertNotIn("extensions/physics_8_8.s", selections["gravity"])
         self.assertIn("extensions/physics_8_8.s", selections["physics88"])
         self.assertNotIn("extensions/physics_platform.s", selections["physics88"])
+        self.assertIn("extensions/tilemap.s", selections["tilecoll"])
+        self.assertIn("extensions/platform_tilemap.s", selections["tilecoll"])
+        self.assertNotIn("extensions/physics_8_8.s", selections["tilecoll"])
 
 
 if __name__ == "__main__":

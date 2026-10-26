@@ -6,7 +6,8 @@ Framework modular en ensamblador Z80 para Amstrad CPC, extraído y consolidado
 de `model01`, `boop`, `DeckTower` y `PocketFever`. La primera versión estable
 se centra en un núcleo pequeño, entrada con flancos, vídeo Mode 0 declarativo,
 colecciones sin estructura universal, perfiles separados de plataforma y
-física 8.8, texto, audio AKG opcional y copia bancaria de 128 KB.
+física 8.8, consulta de tilemap y colisión de escenario opcionales, texto,
+audio AKG opcional y copia bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
 ejemplo declara sus módulos y fuentes de juego en `examples/*/example.json`;
@@ -26,7 +27,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # doce ejemplos, incluidos plataforma y física 8.8
+make examples   # trece ejemplos, incluidos tilemap y colisión
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -34,7 +35,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT quedan en `.build/<ejemplo>/`; los doce BIN de prueba se reúnen
+Los BIN y CDT quedan en `.build/<ejemplo>/`; los trece BIN de prueba se reúnen
 en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
 necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
 eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
@@ -58,10 +59,10 @@ de render se instala de forma aislada con
 - `src/ui`: texto Mode 0 y ventanas con fondo restaurable.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
-- `src/extensions`: movimiento y animación optativos, sin entidad universal.
+- `src/extensions`: movimiento, física, animación y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: doce consumidores pequeños, sin copias internas del framework.
+- `examples`: trece consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -84,6 +85,15 @@ fricción sobre el vector y rebote por eje. Los ejemplos `gravity` y `physics88`
 comprueban recorridos deterministas sin compartir estructura de entidad y fijan
 paletas propias para que sus trazas no dependan de los colores heredados de
 BASIC. Los contratos y límites están en `docs/physics-profiles.md`.
+
+## Tilemaps y colisión de escenario
+
+`extensions/tilemap` consulta mapas de solo lectura propiedad del consumidor y
+traduce cada id mediante una tabla de tipos. `extensions/platform_tilemap`
+resuelve sólidos y plataformas de una dirección sobre el estado producido por
+`physics_platform`, sin importar entidades, salas ni render. `tilecoll` muestra
+automáticamente techo, pared y suelo; contratos y límites están en
+`docs/tilemap-collision.md`.
 
 ## Carga desde DSK y ZX7B
 

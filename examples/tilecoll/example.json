@@ -1,0 +1,11 @@
+{
+  "name": "tilecoll",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "video/video.s",
+    "extensions/physics_platform.s",
+    "extensions/tilemap.s",
+    "extensions/platform_tilemap.s"
+  ]
+}

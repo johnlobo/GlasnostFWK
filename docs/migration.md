@@ -6,9 +6,12 @@
   `fwk_audio_start`, no desde el handler.
 - Reemplazar la tabla de `sys_input_generic_update` por el formato
   `key,action-mask`; las reglas leen los tres bytes de estado.
-- Usar `extensions/physics_platform.s` para el subconjunto portable de velocidad
-  byte, gravedad, dimensiones y suelo. Mantener mapas, colisión con tiles,
-  componentes y scripts en el juego hasta disponer de un contrato específico.
+- Usar `extensions/physics_platform.s` para velocidad byte, gravedad,
+  dimensiones y suelo. Para mapas rectangulares de solo lectura, seleccionar
+  además `extensions/tilemap.s` y `extensions/platform_tilemap.s`; adaptar los
+  ids a una tabla de tipos y llamar al resolver inmediatamente después del paso
+  físico. Mantener render, habitaciones, portales, componentes y scripts en el
+  juego.
   El cursor temporal de `extensions/animation.s` ya es reutilizable, pero la
   selección por movimiento y el render siguen siendo política del juego.
 - Sustituir constantes de pantalla por un perfil JSON y consumir

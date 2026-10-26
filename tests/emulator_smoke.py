@@ -194,8 +194,11 @@ def run_example(name: str, emulator: Path, model: str) -> None:
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "four exact animation periods")
             if ram(frame_value, 1) not in {b"\xF0", b"\x0F", b"\xAA"}:
                 raise RuntimeError("animation selected a frame outside its descriptor")
-            if ram(standard_screen_address(20, 80), 1) != ram(frame_value, 1):
-                raise RuntimeError("animation frame pointer was not rendered")
+            wait_for(
+                lambda: ram(standard_screen_address(20, 80), 1) == ram(frame_value, 1),
+                5,
+                "animation frame pointer rendering",
+            )
 
             write_ram(enabled, b"\x00")
             time.sleep(0.15)
@@ -249,6 +252,26 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 raise RuntimeError(f"physics88 palette is not black/cyan: {inks}")
             if ram(standard_screen_address(11, 117), 1) != b"\xAA":
                 raise RuntimeError("physics88 final position is not visible in video RAM")
+        if name == "tilecoll":
+            state = symbol(noi, "tilecoll_state")
+            hits = symbol(noi, "tilecoll_hits")
+            status = symbol(noi, "tilecoll_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "96 tile collision steps")
+            result = ram(state, 7)
+            expected = bytes.fromhex("3a9c0000020402")
+            if result != expected or ram(hits, 1) != b"\x0E":
+                raise RuntimeError(
+                    f"tile collision state/hits are {result.hex()}/{ram(hits, 1).hex()}, "
+                    f"expected {expected.hex()}/0e"
+                )
+            inks = get("/api/state")["ga"]["ink_idx"]
+            if inks[0] != 0x14 or inks[5] != 0x0A or inks[15] != 0x13:
+                raise RuntimeError(f"tilecoll palette is not black/yellow/cyan: {inks}")
+            if ram(standard_screen_address(58, 156), 1) != b"\xF0":
+                raise RuntimeError("tilecoll final entity position is not visible in VRAM")
+            for x, y in ((0, 40), (60, 100), (0, 160)):
+                if ram(standard_screen_address(x, y), 1) != b"\xAA":
+                    raise RuntimeError(f"tilecoll geometry witness missing at {(x, y)}")
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")
@@ -320,8 +343,12 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 )
             if ram(status, 1) != b"\x5A" or ram(player, 1)[0] <= 40:
                 raise RuntimeError("vertical slice did not reach its won state")
-            if ram(standard_screen_address(final_player[0], final_player[1]), 1) != b"\xF3":
-                raise RuntimeError("vertical won sprite resource was not rendered")
+            wait_for(
+                lambda: ram(standard_screen_address(final_player[0], final_player[1]), 1)
+                == b"\xF3",
+                5,
+                "vertical won sprite rendering",
+            )
         print(f"ok - {name} executes and advances frames ({model})")
     finally:
         try:
@@ -339,7 +366,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

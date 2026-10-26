@@ -1,6 +1,6 @@
 # Estado de validación
 
-Fecha: 2026-10-25 UTC.
+Fecha: 2026-10-26 UTC.
 
 ## Implementado
 
@@ -12,17 +12,19 @@ Fecha: 2026-10-25 UTC.
   juego.
 - Física de plataforma con velocidad byte, gravedad, límites y aterrizaje; e
   integrador 8.8 separado con fricción vectorial y rebote.
+- Consulta row-major de tilemap de solo lectura y resolución opcional de
+  sólidos/plataformas de una dirección para el perfil de plataforma.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y doce ejemplos, incluida una vertical jugable.
+- Generadores de vídeo/recursos y trece ejemplos, incluida una vertical jugable.
 - Frontera de dependencias y exclusión física de módulos.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
 ## Compilado
 
-Los doce ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-once generan además `.cdt`. Sus doce BIN y los dos payloads de `diskload` se
+Los trece ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+doce generan además `.cdt`. Sus trece BIN y los dos payloads de `diskload` se
 reúnen en un único `.build/tests/GlasnostFWK-tests.dsk`; los DSK individuales
 intermedios se eliminan. `diskload` no genera CDT porque sus payloads auxiliares
 no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
@@ -36,16 +38,16 @@ no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los doce ejemplos y validación de nombres 8.3,
+- Construcción completa de los trece ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
-- 26 pruebas host en total. El manual cubre los doce ejemplos y catorce módulos;
+- 30 pruebas host en total. El manual cubre los trece ejemplos y dieciséis módulos;
   su checksum corresponde al HTML que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los doce programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
+- Los trece programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
   CPC 6128 de 128 KB y avanzaron su contador de frames.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
@@ -67,6 +69,10 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   `(x=76,y=192)`, apoyado, con ambas velocidades a cero y dimensiones `4x8`.
 - `physics88` completó 64 pasos en CPC 6128 y CPC 464: posición final
   `(&0BDC,&75C0)`, velocidad `(&0100,&0080)` y resto de fricción cero.
+- `tilecoll` completó 96 pasos en CPC 6128 y CPC 464: terminó en
+  `(x=58,y=156)`, velocidades cero, dimensiones `2x4`, apoyado en tile y con
+  máscara acumulada `0x0E` (derecha, techo y suelo). También se verificaron la
+  paleta, el cuerpo final y testigos de techo, pared y suelo en VRAM.
 - Tras reproducir una salida aparentemente vacía en `gravity`, se comprobó que
   la demo heredaba de BASIC fondo azul en el pen 0 y negro en el pen 5 usado por
   la traza. `gravity` fija ahora negro/amarillo y `physics88` negro/cian. El
@@ -80,8 +86,14 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
   jugador, coleccionables y victoria. La misma prueba pasó en CPC 6128 y CPC 464.
 
-La entrada está automatizada solo para `vertical`. No se validó visualmente el
-perfil experimental 160x288 ni se capturó la salida analógica de audio.
+La entrada está automatizada solo para `vertical`. `tilecoll` se inspeccionó
+visualmente en emulador y su geometría/traza resultaron visibles. No se validó
+visualmente el perfil experimental 160x288 ni se capturó la salida analógica de
+audio. Dos ejecuciones completas expusieron carreras de observación en los
+testigos finales de `animation` y `vertical`: ambos publican estado antes de
+dibujar en ese mismo frame. El smoke espera ahora explícitamente el byte de
+VRAM; las repeticiones aisladas ya habían pasado y una tercera batería completa
+pasó los trece casos en una sola ejecución.
 
 ## Verificado en hardware
 
@@ -92,8 +104,8 @@ No verificado.
 - Medir ciclos/tiempo de escena; no hay cifras ni promesa de 50 Hz.
 - Validar la temporización CRTC 160x288 en varios tipos CRTC y hardware. El
   modelo de memoria sí está probado; la señal de vídeo no.
-- Integrar una consulta de tilemap reutilizable con el perfil de plataforma;
-  el perfil actual cubre límites y suelo, pero no colisión con mapa.
+- Añadir render o edición de tilemaps si una fase futura lo requiere; el
+  contrato actual es deliberadamente de solo lectura y colisión.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads
@@ -115,6 +127,7 @@ python3 tests/emulator_smoke.py animation
 python3 tests/emulator_smoke.py --model 464 animation
 python3 tests/emulator_smoke.py gravity physics88
 python3 tests/emulator_smoke.py --model 464 gravity physics88
+python3 tests/emulator_smoke.py --model 464 tilecoll
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical
