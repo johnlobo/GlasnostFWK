@@ -375,7 +375,10 @@ automáticos. Las rutinas usan estado interno y no son reentrantes.
   ejecución.
 - [x] Implementación y validación local registradas en `3885f89`, sincronizada
   en `origin/main`.
-- [ ] CI remota de `3885f89` pendiente de resultado.
+- [x] Estado persistido en `098090f`, sincronizado en `origin/main`; CI remota
+  `40395118414` correcta para ese commit: 41 pruebas, quince construcciones,
+  un DSK común con catálogo y catorce CDT verificados y publicados como
+  artefacto temporal.
 
 Límites: sprites opacos y rectangulares, sin máscara, transparencia, recoloreado,
 orden global, dirty rectangles automáticos ni comprobación de capacidad del
