@@ -276,6 +276,8 @@ python3 tests/emulator_smoke.py --model 464 window
 - [x] Validación manual del usuario recibida el 2026-10-26: confirma que el DSK
   corregido funciona. No se especificaron emulador, modelo ni hardware, por lo
   que esta confirmación no se registra como prueba en hardware real.
+- [x] Confirmación persistida en `25acf49`, sincronizada en `origin/main`; CI
+  remota `40250484819` correcta para ese commit.
 
 ## Fase siguiente: tilemaps y colisión de escenario
 
