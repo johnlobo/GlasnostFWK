@@ -373,7 +373,9 @@ automáticos. Las rutinas usan estado interno y no son reentrantes.
   para CPC 6128 y CPC 464; salida inspeccionada visualmente.
 - [x] La batería completa pasó los quince programas en CPC 6128 en una sola
   ejecución.
-- [ ] Commit, push y CI remota pendientes.
+- [x] Implementación y validación local registradas en `3885f89`, sincronizada
+  en `origin/main`.
+- [ ] CI remota de `3885f89` pendiente de resultado.
 
 Límites: sprites opacos y rectangulares, sin máscara, transparencia, recoloreado,
 orden global, dirty rectangles automáticos ni comprobación de capacidad del
