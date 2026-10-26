@@ -411,7 +411,11 @@ rutinas usan scratch interno, no son reentrantes y no tienen ciclos medidos.
 - [x] La batería completa pasó los dieciséis programas en CPC 6128 en una sola
   ejecución.
 - [x] Implementación y validación local registradas en `48d71a2`.
-- [ ] Push y CI remota todavía pendientes.
+- [x] Estado persistido en `cad4901`; ambos commits están sincronizados en
+  `origin/main`.
+- [x] CI remota `40397040993` correcta para `cad4901`: 46 pruebas, dieciséis
+  construcciones, un DSK común con catálogo y quince CDT verificados y
+  publicados como artefacto temporal.
 
 Límites: capacidad y claves son propiedad del consumidor; no hay eliminación,
 reordenación automática por coordenada, asignación dinámica, transparencia,
