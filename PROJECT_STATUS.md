@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-26 UTC. Última versión publicada: `v0.1.0`.
+Última actualización: 2026-10-27 UTC. Última versión publicada: `v0.1.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -15,9 +15,11 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los dieciséis ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; quince construyen además CDT y
-  todos los BIN se reúnen en un único DSK de pruebas.
+- Los diecisiete ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; dieciséis construyen además CDT
+  y todos los BIN se reúnen en un único DSK de pruebas con 19 entradas.
+- La suite host contiene 53 pruebas; el manual cubre los diecisiete ejemplos y
+  diecinueve módulos seleccionados.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -62,9 +64,11 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - El tilemap es de solo lectura. Su render no incluye transparencia, clipping,
   scroll sub-tile, bancos ni dirty rectangles automáticos; la colisión no
   resuelve pendientes ni colisión entre cuerpos.
-- Solo `vertical` es una escena jugable; los otros quince ejemplos son pruebas
-  técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
-  payloads auxiliares.
+- Solo `vertical` es una escena jugable; los otros dieciséis ejemplos son
+  pruebas técnicas. `diskload` se ejecuta solo desde el DSK común porque
+  requiere dos payloads auxiliares.
+- Los sprites enmascarados son una API separada del camino opaco y del lote
+  ordenado. No tienen ciclos medidos ni promesa de 50 Hz.
 
 ## Fase completada: carga desde disco y ZX7B
 
@@ -423,8 +427,48 @@ máscaras ni ciclos medidos. Un fallo de sprite durante un pase puede dejar las
 entradas anteriores procesadas; el módulo usa scratch interno y no es
 reentrante.
 
-## Siguiente fase propuesta: sprites enmascarados
+## Fase completada localmente: sprites enmascarados
 
-Añadir transparencia explícita Mode 0 sobre el descriptor de sprite existente,
-manteniendo separado el camino opaco y midiendo el coste antes de recomendarlo
-para escenas a 50 Hz. La propuesta todavía no está implementada.
+- [x] `video/sprite` añade `fwk_sprite_draw_masked` sobre el descriptor de ocho
+  bytes existente, sin cambiar el camino opaco de `fwk_sprite_draw`.
+- [x] La máscara es paralela a los datos, con la misma geometría y offsets de
+  clipping. La composición, byte a byte, es `(pantalla AND máscara) OR datos`; un
+  bit 1 conserva el fondo y exige que el bit de datos correspondiente sea cero.
+- [x] Se valida el span completo de datos y de máscara, además de dimensiones,
+  antes de escribir. Un sprite exterior sigue siendo válido y no escribe.
+- [x] `spritemask` comprueba un span de máscara con wrap, un sprite exterior,
+  composición sobre fondo no uniforme y el mismo asset centrado y recortado.
+- [x] Cuatro pruebas host cubren composición, offsets de clipping, span de
+  máscara y la invariante de datos cero bajo bits preservados.
+- [x] Se corrige la validación de ventanas para rechazar el desbordamiento de
+  `y+height` de 16 bits antes de comparar con la altura del perfil. Tres pruebas
+  host y un caso Z80 en `window` cubren la regresión.
+- [x] `make test`: 53 pruebas, diecisiete BIN, dieciséis CDT y DSK común con 19
+  entradas.
+- [x] `make manual`: HTML, PDF y checksum sincronizados; cobertura de diecisiete
+  ejemplos y diecinueve módulos.
+- [x] `make report`: `docs/build-sizes.md` incluye los diecisiete ejemplos.
+- [x] Paquete local `0.2.0` con 36 entradas y checksum correcto; no se ha
+  publicado como release.
+- [x] `spritemask` pasó estado y testigos VRAM en AmSpiriT-Lite 1.15.3 para CPC
+  6128 y CPC 464.
+- [x] `window` pasó la regresión de desbordamiento, captura, restauración y
+  reapertura en CPC 6128 y CPC 464.
+- [x] La batería completa pasó los diecisiete programas en CPC 6128 en una sola
+  ejecución.
+- [ ] Commit, push y CI remota pendientes. El paquete local no se publica.
+
+Límites: la máscara es bit a bit; en Mode 0 permite preservar un píxel de 4 bits
+y sustituir el otro del mismo byte. No hay color-key ni mezcla alfa.
+`sprite_batch` continúa usando el camino opaco y no integra la variante
+enmascarada. La rutina enmascarada comparte `video/sprite.s`, por lo que todo
+ejemplo con sprites paga su código enlazado aunque no la use. No hay recoloreado,
+comprobación de capacidad del buffer, dirty rectangles automáticos ni ciclos
+medidos; no se promete 50 Hz para una escena enmascarada.
+
+## Siguiente fase pendiente de acordar
+
+La fase de sprites enmascarados queda funcionalmente cerrada. Antes de integrarla
+en el lote ordenado o recomendarla para escenas a 50 Hz falta medir su coste y
+decidir si se añade una ruta enmascarada al batch. También sigue pendiente la
+validación en hardware real y la medición temporal general del framework.

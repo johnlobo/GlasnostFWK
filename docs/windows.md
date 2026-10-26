@@ -20,8 +20,9 @@ my_window:
 ```
 
 Ancho y alto deben ser al menos 2. La esquina final debe caber en las
-dimensiones exportadas por el perfil de vídeo. Un ancho de 20 y alto de 16
-requiere un buffer de `20*16 = 320` bytes.
+dimensiones exportadas por el perfil de vídeo y `y+height` no puede desbordar
+los 16 bits. Un ancho de 20 y alto de 16 requiere un buffer de
+`20*16 = 320` bytes.
 
 ## Operaciones
 
@@ -39,9 +40,10 @@ geometría deben permanecer iguales hasta restaurar.
 ## Composición y prueba
 
 `examples/window` llena la pantalla con `0x55`, comprueba que una ventana fuera
-de límites se rechaza, captura una región de 320 bytes, dibuja borde `0xFF` y
-relleno `0x00`, y compone `GLASNOST` mediante `ui/text.s`. Un comando observable
-restaura las 16 filas y otro vuelve a abrir la ventana.
+de límites se rechaza, verifica también que `y=0xFFFF` con alto 10 se rechaza
+por desbordamiento de 16 bits, captura una región de 320 bytes, dibuja borde
+`0xFF` y relleno `0x00`, y compone `GLASNOST` mediante `ui/text.s`. Un comando
+observable restaura las 16 filas y otro vuelve a abrir la ventana.
 
 El smoke verifica el buffer, filas de borde/relleno, testigos exteriores,
 restauración completa y reapertura en CPC 6128 y CPC 464 emulados. No se ha

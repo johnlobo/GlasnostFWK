@@ -82,6 +82,8 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("video/sprite.s", selections["renderorder"])
         self.assertIn("video/sprite_batch.s", selections["renderorder"])
         self.assertNotIn("video/sprite_batch.s", selections["minimal"])
+        self.assertIn("video/sprite.s", selections["spritemask"])
+        self.assertNotIn("video/sprite_batch.s", selections["spritemask"])
 
 
 if __name__ == "__main__":

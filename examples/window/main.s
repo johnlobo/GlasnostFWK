@@ -26,6 +26,15 @@ window_invalid_descriptor:
     .db 0xFF
     .db 0x00
 
+;; Y + height must not wrap the 16-bit coordinate space.
+window_overflow_descriptor:
+    .db 10
+    .dw 0xFFFF
+    .db 10
+    .db 10
+    .db 0xFF
+    .db 0x00
+
 window_message: .asciz "GLASNOST"
 window_buffer:: .ds WINDOW_BUFFER_SIZE
 window_command:: .db 0
@@ -40,6 +49,12 @@ _main::
 
     ;; Invalid geometry must be rejected without touching the screen/buffer.
     ld ix, #window_invalid_descriptor
+    ld de, #window_buffer
+    call fwk_window_capture
+    jr nc, _window_failed
+
+    ;; Y+height overflow is invalid even though the wrapped sum is on-screen.
+    ld ix, #window_overflow_descriptor
     ld de, #window_buffer
     call fwk_window_capture
     jr nc, _window_failed

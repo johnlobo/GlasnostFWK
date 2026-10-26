@@ -178,18 +178,26 @@ ancho en bytes Mode 0 y alto en scanlines. Los datos ocupan `width*height`
 bytes por filas, sin padding.
 
 - `fwk_sprite_draw`: `IX=descriptor`; valida dimensiones/span, recorta contra
-  los cuatro bordes y dibuja solo el rectángulo visible.
+  los cuatro bordes y dibuja el rectángulo visible de forma opaca.
+- `fwk_sprite_draw_masked`: `IX=descriptor`, `DE=máscara paralela`; valida
+  también el span de la máscara y compone bit a bit
+  `(pantalla AND máscara) OR datos`. Un bit 1 de la máscara conserva el fondo y
+  exige que el bit de datos correspondiente sea cero. En Mode 0 cada píxel ocupa
+  4 bits, así que se puede preservar un píxel y sustituir el otro del mismo byte.
 - `fwk_sprite_capture`: `IX=descriptor`, `DE=buffer`; guarda el fondo visible y
   devuelve `IY` al final de los bytes utilizados.
 - `fwk_sprite_restore`: `IX=mismo descriptor`, `HL=buffer`; repone el fondo
   visible y devuelve `IY` al final.
 
-Carry indica descriptor inválido. Una geometría completamente exterior es
-válida y no escribe. Las tres preservan `IX`; dibujo altera `AF,BC,DE,HL`, y
-captura/restauración también `IY`. El módulo usa scratch interno y no es
-reentrante. El buffer, el orden de borrado/dibujo y la sincronización pertenecen
-al consumidor. No hay transparencia, máscaras, recoloreado, cola de render,
-dirty rectangles automáticos ni medición de ciclos. Detalles en `sprites.md`.
+Carry indica descriptor inválido, span de datos con wrap o, en la variante
+enmascarada, span de máscara con wrap. Una geometría completamente exterior es
+válida y no escribe; la máscara debe ser válida aunque el sprite esté fuera.
+Los dos dibujos preservan `IX` e `IY` y alteran `AF,BC,DE,HL`;
+captura/restauración preservan `IX` y alteran también `IY`. El módulo usa scratch
+interno y no es reentrante. El buffer, el orden de borrado/dibujo y la
+sincronización pertenecen al consumidor. El lote ordenado sigue usando solo el
+camino opaco; no hay color-key, mezcla alfa, recoloreado, dirty rectangles
+automáticos ni medición de ciclos. Detalles en `sprites.md`.
 
 ### Lote ordenado de sprites opcional
 
@@ -222,7 +230,8 @@ Detalles en `render-order.md`.
 
 Descriptor inmutable de 7 bytes: `x` en bytes Mode 0, `y` de 16 bits, ancho,
 alto, patrón de borde y patrón de relleno. El módulo usa la tabla de líneas del
-perfil y valida que la geometría completa quepa en la pantalla.
+perfil y valida que la geometría completa quepa en la pantalla sin que
+`y+height` desborde los 16 bits.
 
 - `fwk_window_capture`: `IX=descriptor`, `DE=buffer`; copia exactamente
   `width*height` bytes y devuelve carry si la geometría no es válida.

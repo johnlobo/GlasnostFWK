@@ -101,14 +101,14 @@
     <span class="tag">Amstrad CPC · Z80</span>
     <h1>Manual de uso de GlasnostFWK</h1>
     <p class="subtitle">Construcción modular de juegos y pruebas técnicas con CPCTelera Next</p>
-    <p class="edition">Edición: 26 de octubre de 2026 · Idioma: castellano</p>
+    <p class="edition">Edición: 27 de octubre de 2026 · Idioma: castellano</p>
   </header>
 
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración y orden explícito, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
-    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura.</div>
+    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
+    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo con máscara no tiene ciclos medidos ni se ha integrado en el lote ordenado.</div>
   </section>
 
   <nav aria-labelledby="indice">
@@ -150,7 +150,7 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
 make generate
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los dieciséis consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los diecisiete consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
 
     <h3>3.2 Construir un único ejemplo</h3>
     <pre><code>python3 tools/build_examples.py minimal
@@ -167,8 +167,8 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <ol>
       <li>Ejecute <code>make examples</code>.</li>
       <li>Inserte <code>.build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
-      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"RENDEROR"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code> y <code>renderorder</code> es <code>RENDEROR.BIN</code>.</li>
-      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code> y <code>renderorder</code> no necesitan entrada: muestran automáticamente su resultado.</li>
+      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"RENDEROR"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code>, <code>spritemask</code> es <code>SPRITEMA.BIN</code> y <code>renderorder</code> es <code>RENDEROR.BIN</code>.</li>
+      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>renderorder</code> no necesitan entrada: muestran automáticamente su resultado.</li>
     </ol>
     <div class="box">Los smoke automáticos no se limitan a comprobar que el emulador sigue abierto: leen RAM, memoria de vídeo, teclado y, en audio, registros PSG.</div>
   </section>
@@ -179,7 +179,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
       <thead><tr><th>Ruta</th><th>Responsabilidad</th></tr></thead>
       <tbody>
         <tr><td><code>src/core</code></td><td>Sistema, entrada y pool genérico.</td></tr>
-        <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping y orden explícito.</td></tr>
+        <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping, máscaras opcionales y orden explícito.</td></tr>
         <tr><td><code>src/ui</code></td><td>Texto Mode 0 y ventanas con fondo restaurable.</td></tr>
         <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
         <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
@@ -307,11 +307,12 @@ FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
 player_background: .ds 6 * 8</code></pre>
       <p>El descriptor de ocho bytes contiene puntero a datos, X/Y con signo de 16 bits, ancho en bytes Mode 0 y alto en scanlines. Las coordenadas negativas permiten entrar o salir por arriba e izquierda; los datos son <code>width*height</code> bytes por filas y sin padding.</p>
       <ul>
-        <li><code>fwk_sprite_draw</code>: <code>IX=descriptor</code>; valida, recorta contra los cuatro bordes y dibuja solo el área visible.</li>
+        <li><code>fwk_sprite_draw</code>: <code>IX=descriptor</code>; valida, recorta contra los cuatro bordes y dibuja el rectángulo visible de forma opaca.</li>
+        <li><code>fwk_sprite_draw_masked</code>: <code>IX=descriptor</code>, <code>DE=máscara paralela</code>; aplica <code>(pantalla AND máscara) OR datos</code> sobre el mismo rectángulo recortado. Un bit 1 de la máscara conserva el fondo; los bits de datos cubiertos por esos unos deben ser cero. Valida también el span completo de la máscara.</li>
         <li><code>fwk_sprite_capture</code>: <code>IX=descriptor</code>, <code>DE=buffer</code>; guarda el fondo visible y devuelve <code>IY</code> al final.</li>
         <li><code>fwk_sprite_restore</code>: <code>IX=mismo descriptor</code>, <code>HL=buffer</code>; restaura el fondo visible y devuelve <code>IY</code> al final.</li>
       </ul>
-      <p>Carry indica dimensiones nulas o span de datos con wrap; una imagen totalmente exterior es válida y no escribe. Reserve al menos <code>width*height</code> bytes y no cambie la geometría antes de restaurar. Las rutinas preservan <code>IX</code>, alteran <code>AF,BC,DE,HL</code>, captura/restauración alteran además <code>IY</code> y no son reentrantes. No hay transparencia, máscara, recoloreado, cola de render ni dirty rectangles automáticos. Véase <code>docs/sprites.md</code>.</p>
+      <p>Carry indica dimensiones nulas, span de datos con wrap o, en el camino enmascarado, span de máscara con wrap; una imagen totalmente exterior es válida y no escribe si la máscara también es válida. Reserve al menos <code>width*height</code> bytes para los datos y otros tantos para la máscara. La máscara actúa bit a bit y es paralela a los datos. En Mode 0 cada píxel ocupa 4 bits, de modo que una máscara <code>0xF0</code> conserva un píxel y sustituye el otro; no es un color-key ni una mezcla alfa. Los dos dibujos preservan <code>IX</code> e <code>IY</code> y alteran <code>AF,BC,DE,HL</code>; captura y restauración preservan <code>IX</code> y alteran además <code>IY</code>. Ninguna es reentrante. Ambas rutinas de dibujo comparten <code>video/sprite.s</code>, así que todo ejemplo con sprites enlaza también el código enmascarado aunque no lo use. El lote ordenado sigue usando solo el camino opaco; no hay recoloreado, cola automática, dirty rectangles ni ciclos medidos. Véase <code>docs/sprites.md</code>.</p>
     </article>
 
     <article class="api" data-module="video/sprite_batch.s">
@@ -490,6 +491,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="tilecoll"><td><code>tilecoll</code></td><td>Escenario cian y traza amarilla: consulta row-major, techo, pared y suelo sólido.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilerender"><td><code>tilerender</code></td><td>Viewport Mode 0: cambio de cámara, render completo y actualización de una celda.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="spriteclip"><td><code>spriteclip</code></td><td>Sprites opacos: clipping en cuatro bordes y captura/restauración del fondo visible.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="spritemask"><td><code>spritemask</code></td><td>Máscara paralela: transparencia bit a bit, composición, clipping y rechazo de span.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="renderorder"><td><code>renderorder</code></td><td>Dos sprites solapados: orden estable, restauración inversa y redibujado tras cambiar el fondo.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="physics88"><td><code>physics88</code></td><td>Traza cian sobre negro: integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
@@ -501,7 +503,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
       </tbody>
     </table>
-    <p><code>vertical</code> es la única escena jugable. Los otros quince son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p><code>vertical</code> es la única escena jugable. Los otros dieciséis son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
   </section>
 
   <section aria-labelledby="pruebas">
@@ -518,7 +520,7 @@ make report</code></pre>
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py --model 464 audio
 python3 tests/emulator_smoke.py --model 464 animation
-python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender spriteclip renderorder physics88
+python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender spriteclip spritemask renderorder physics88
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <p>Un build correcto, una prueba host correcta, una ejecución emulada y una prueba en hardware son evidencias distintas. Consulte <code>docs/validation.md</code> para ver cuáles se han realizado realmente.</p>
@@ -528,7 +530,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <h2 id="distribucion">10. Crear un paquete de distribución</h2>
     <pre><code>make release VERSION=0.2.0
 (cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
-    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los dieciséis BIN, quince CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los diecisiete BIN, dieciséis CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
     <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.1.0</code>; el desarrollo posterior puede contener funciones aún no incluidas en esa release.</p>
   </section>
 
@@ -548,6 +550,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
         <tr><td>El cuerpo atraviesa un tile.</td><td>Compruebe tamaños/shifts, llame al resolver justo después del paso físico y mantenga el desplazamiento por eje por debajo del tamaño de tile.</td></tr>
         <tr><td>El viewport devuelve carry.</td><td>Compruebe cámara, destino, dimensiones no nulas, <code>tile_count</code>, ids seleccionados y que el tileset completo no haga wrap de 16 bits.</td></tr>
         <tr><td>El sprite no restaura bien.</td><td>No cambie X/Y entre captura y restauración, reserve <code>width*height</code> bytes y conserve visibles tanto los datos como el buffer.</td></tr>
+        <tr><td>La máscara no compone como se espera.</td><td>Recuerde que un bit 1 conserva el fondo y que los datos bajo esos bits deben ser cero. La máscara es paralela a los datos, tiene <code>width*height</code> bytes y actúa bit a bit: un patrón <code>0xF0</code>/<code>0x0F</code> permite preservar un píxel y sustituir el otro.</td></tr>
         <tr><td>Falla <code>make test</code> por el manual.</td><td>Documente el nuevo ejemplo/módulo en este HTML y ejecute <code>make manual</code>.</td></tr>
       </tbody>
     </table>

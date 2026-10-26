@@ -1,6 +1,6 @@
 # Estado de validación
 
-Fecha: 2026-10-26 UTC.
+Fecha: 2026-10-27 UTC.
 
 ## Implementado
 
@@ -18,22 +18,26 @@ Fecha: 2026-10-26 UTC.
   actualización parcial explícita de una celda.
 - Sprites rectangulares Mode 0 con coordenadas de 16 bits con signo, clipping
   por los cuatro bordes y captura/restauración del fondo visible.
+- Dibujo enmascarado opcional sobre el mismo descriptor, con máscara paralela,
+  composición `(pantalla AND máscara) OR datos` y validación del span completo.
 - Lote opcional de sprites con inserción estable por clave, restauración
-  inversa y captura/dibujo directo para solapamientos.
+  inversa y captura/dibujo directo para solapamientos; el lote usa el camino
+  opaco y no integra todavía la máscara.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y dieciséis ejemplos, incluida una vertical jugable.
+- Generadores de vídeo/recursos y diecisiete ejemplos, incluida una vertical jugable.
 - Frontera de dependencias y exclusión física de módulos.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
 ## Compilado
 
-Los dieciséis ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-quince generan además `.cdt`. Sus dieciséis BIN y los dos payloads de `diskload` se
-reúnen en un único `.build/tests/GlasnostFWK-tests.dsk`; los DSK individuales
-intermedios se eliminan. `diskload` no genera CDT porque sus payloads auxiliares
-no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
+Los diecisiete ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+dieciséis generan además `.cdt`. Sus diecisiete BIN y los dos payloads de
+`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 19
+entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
+porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md` contiene
+tamaños enlazados.
 
 ## Probado automáticamente
 
@@ -44,17 +48,22 @@ no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los dieciséis ejemplos y validación de nombres 8.3,
+- Construcción completa de los diecisiete ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
-- 46 pruebas host en total. El manual cubre los dieciséis ejemplos y diecinueve módulos;
-  su checksum corresponde al HTML que generó el PDF vigente.
+- Composición de máscara, offsets de clipping compartidos, preservación de un
+  píxel Mode 0 con `0xF0`, span de máscara sin wrap y la invariante de datos cero
+  bajo bits preservados.
+- Validación de ventanas: geometría válida, ajuste exacto, límites exteriores y
+  rechazo de `y+height` con desbordamiento de 16 bits.
+- 53 pruebas host en total. El manual cubre los diecisiete ejemplos y diecinueve
+  módulos; su checksum corresponde al HTML que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los dieciséis programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
-  CPC 6128 de 128 KB y avanzaron su contador de frames.
+- Los diecisiete programas arrancaron desde el único `GlasnostFWK-tests.dsk` en
+  un CPC 6128 de 128 KB y avanzaron su contador de frames.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
   RAM normal -> banco 0 -> RAM normal.
@@ -88,6 +97,10 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   escrituras un sprite totalmente exterior, recortó cada borde y capturó/restauró
   exactamente un fondo no uniforme de 4x5 bytes. Pasó en CPC 6128 y CPC 464;
   los sprites de borde y centro se inspeccionaron visualmente.
+- `spritemask` rechazó un span de máscara con wrap, aceptó sin escrituras un
+  sprite exterior, compuso una máscara paralela sobre bandas de fondo no
+  uniformes y dibujó el mismo asset centrado y recortado arriba/izquierda. Se
+  comprobaron estado y testigos VRAM en CPC 6128 y CPC 464.
 - `renderorder` ordenó dos entradas dadas en orden inverso, dejó la clave mayor
   por encima, rechazó capacidad excedida y doble captura, restauró exactamente
   doce filas no uniformes, conservó una actualización de fondo entre pases y
@@ -97,9 +110,10 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   la demo heredaba de BASIC fondo azul en el pen 0 y negro en el pen 5 usado por
   la traza. `gravity` fija ahora negro/amarillo y `physics88` negro/cian. El
   smoke verifica tanto los registros de paleta como el byte final en VRAM.
-- `window` rechazó una geometría fuera de pantalla, capturó 320 bytes, dibujó
-  borde/relleno sin tocar los testigos exteriores, restauró las 16 filas y
-  volvió a abrirse. Pasó en CPC 6128 y CPC 464.
+- `window` rechazó una geometría fuera de pantalla y un `y=0xFFFF` con alto 10
+  que desbordaba la suma de 16 bits, capturó 320 bytes, dibujó borde/relleno sin
+  tocar los testigos exteriores, restauró las 16 filas y volvió a abrirse. Pasó
+  en CPC 6128 y CPC 464.
 - `vertical` cargó jugador y tres coleccionables desde fuentes de recursos
   separadas. CursorRight se mantuvo mediante la matriz de teclado: el jugador
   recogió los tres, el pool se compactó de cuatro registros a uno y se activó
@@ -114,7 +128,7 @@ audio. Dos ejecuciones completas expusieron carreras de observación en los
 testigos finales de `animation` y `vertical`: ambos publican estado antes de
 dibujar en ese mismo frame. El smoke espera ahora explícitamente el byte de
 VRAM; las repeticiones aisladas ya habían pasado y una tercera batería completa
-pasó los dieciséis casos en una sola ejecución.
+pasó los diecisiete casos en una sola ejecución.
 
 ## Verificado en hardware
 
@@ -127,9 +141,15 @@ No verificado.
   modelo de memoria sí está probado; la señal de vídeo no.
 - El tilemap continúa siendo de solo lectura. No hay edición, streaming,
   transparencia, scroll sub-tile ni dirty rectangles automáticos.
-- Los sprites son rectángulos opacos. No hay máscaras, transparencia,
-  recoloreado ni comprobación de capacidad del buffer. El lote ordenado tiene
-  capacidad fija y no ofrece eliminación ni cambio automático de clave.
+- El camino opaco sigue siendo la base del lote ordenado. La máscara es bit a
+  bit: en Mode 0 permite preservar un píxel de 4 bits y sustituir el otro del
+  mismo byte, sin color-key ni mezcla alfa. No está integrada en `sprite_batch`;
+  tampoco hay recoloreado ni comprobación de capacidad del buffer. El código
+  enmascarado comparte `video/sprite.s` y se enlaza en todo ejemplo con sprites.
+  El lote ordenado tiene capacidad fija y no ofrece eliminación ni cambio
+  automático de clave.
+- No se han medido ciclos del dibujo enmascarado ni se promete 50 Hz para una
+  escena que lo use.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads
@@ -154,8 +174,8 @@ python3 tests/emulator_smoke.py --model 464 gravity physics88
 python3 tests/emulator_smoke.py --model 464 tilecoll
 python3 tests/emulator_smoke.py tilerender
 python3 tests/emulator_smoke.py --model 464 tilerender
-python3 tests/emulator_smoke.py spriteclip
-python3 tests/emulator_smoke.py --model 464 spriteclip
+python3 tests/emulator_smoke.py spriteclip spritemask
+python3 tests/emulator_smoke.py --model 464 spriteclip spritemask
 python3 tests/emulator_smoke.py renderorder
 python3 tests/emulator_smoke.py --model 464 renderorder
 python3 tests/emulator_smoke.py window

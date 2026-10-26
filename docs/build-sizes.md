@@ -12,13 +12,14 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | minimal | 970 | 24 | 994 |
 | physics88 | 1300 | 32 | 1332 |
 | platform | 1114 | 33 | 1147 |
-| renderorder | 1963 | 172 | 2135 |
+| renderorder | 2107 | 174 | 2281 |
 | resources128 | 464 | 7 | 20488 |
-| spriteclip | 1515 | 212 | 1727 |
+| spriteclip | 1659 | 214 | 1873 |
+| spritemask | 1560 | 144 | 1704 |
 | tilecoll | 1716 | 536 | 2252 |
 | tilerender | 1592 | 222 | 1814 |
 | vertical | 1447 | 58 | 1505 |
 | video | 882 | 8 | 890 |
-| window | 1384 | 353 | 1737 |
+| window | 1398 | 360 | 1758 |
 
 No cycle/frame-rate value is reported: no emulator timing run was completed.

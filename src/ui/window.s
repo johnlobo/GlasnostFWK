@@ -31,6 +31,7 @@ _fwk_window_validate:
     ld l, FWK_WINDOW_Y(ix)
     ld h, FWK_WINDOW_Y+1(ix)
     add hl, de
+    jr c, _fwk_window_invalid   ; reject y+height wrap before comparing
     ld de, (fwk_video_height)
     or a
     sbc hl, de

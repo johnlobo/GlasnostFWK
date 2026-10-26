@@ -331,6 +331,28 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                         f"spriteclip VRAM witness {(x, y)} is {actual.hex()}, "
                         f"expected {expected.hex()}"
                     )
+        if name == "spritemask":
+            status = symbol(noi, "spritemask_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "masked sprite render")
+            witnesses = {
+                (20, 48): b"\x20",
+                (22, 48): b"\xAA",
+                (20, 49): b"\x1E",
+                (21, 49): b"\xAA",
+                (22, 50): b"\x1C",
+                (20, 50): b"\xAA",
+                (0, 0): b"\xAA",
+                (2, 0): b"\xF0",
+                (0, 2): b"\x00",
+                (79, 20): b"\x00",
+            }
+            for (x, y), expected in witnesses.items():
+                actual = ram(standard_screen_address(x, y), 1)
+                if actual != expected:
+                    raise RuntimeError(
+                        f"spritemask VRAM witness {(x, y)} is {actual.hex()}, "
+                        f"expected {expected.hex()}"
+                    )
         if name == "renderorder":
             status = symbol(noi, "renderorder_status")
             command = symbol(noi, "renderorder_command")
@@ -467,7 +489,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

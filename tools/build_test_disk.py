@@ -22,6 +22,7 @@ DEFAULT_EXAMPLES = (
     "tilecoll",
     "tilerender",
     "spriteclip",
+    "spritemask",
     "renderorder",
     "video",
     "resources128",

@@ -14,5 +14,6 @@ label:
 .endm
 
 .globl fwk_sprite_draw
+.globl fwk_sprite_draw_masked
 .globl fwk_sprite_capture
 .globl fwk_sprite_restore

@@ -54,8 +54,9 @@ repetir: ignora las entradas que no estén marcadas como capturadas.
 - El lote usa scratch interno y no es reentrante ni apto para una IRQ que pueda
   interrumpir otro pase.
 - No asigna memoria, elimina entradas ni decide claves, cámara o sincronización.
-- Hereda de `video/sprite` los sprites opacos: no añade máscara, transparencia,
-  recoloreado ni dirty rectangles automáticos.
+- Usa el camino opaco de `video/sprite`: no integra
+  `fwk_sprite_draw_masked`, transparencia, recoloreado ni dirty rectangles
+  automáticos.
 - No hay todavía mediciones de ciclos ni promesa de mantener 50 Hz.
 
 `examples/renderorder` añade primero la capa superior para demostrar la
