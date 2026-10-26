@@ -15,8 +15,8 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los quince ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; catorce construyen además CDT y
+- Los dieciséis ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; quince construyen además CDT y
   todos los BIN se reúnen en un único DSK de pruebas.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -62,7 +62,7 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - El tilemap es de solo lectura. Su render no incluye transparencia, clipping,
   scroll sub-tile, bancos ni dirty rectangles automáticos; la colisión no
   resuelve pendientes ni colisión entre cuerpos.
-- Solo `vertical` es una escena jugable; los otros catorce ejemplos son pruebas
+- Solo `vertical` es una escena jugable; los otros quince ejemplos son pruebas
   técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
   payloads auxiliares.
 
@@ -381,14 +381,45 @@ automáticos. Las rutinas usan estado interno y no son reentrantes.
   artefacto temporal.
 
 Límites: sprites opacos y rectangulares, sin máscara, transparencia, recoloreado,
-orden global, dirty rectangles automáticos ni comprobación de capacidad del
-buffer. Las rutinas usan scratch interno, no son reentrantes y no tienen ciclos
-medidos.
+dirty rectangles automáticos ni comprobación de capacidad del buffer. Las
+rutinas usan scratch interno, no son reentrantes y no tienen ciclos medidos.
 
-## Siguiente fase propuesta: orden explícito de render
+## Fase completada localmente: orden explícito de render
 
-Definir y comprobar un ciclo de borrado, actualización de fondo, captura y
-dibujo para varios sprites solapados, sin imponer una estructura universal de
-entidad. La propuesta todavía no está implementada; antes debe decidirse si el
-framework necesita una primitiva de pases o basta un contrato documentado y un
-ejemplo de composición.
+- [x] Auditoría de `model01`: su cola ordenada por Y separa restauración inversa
+  y redibujado directo; `PocketFever` confirma la separación de pases, pero su
+  implementación permanece especializada en bolas.
+- [x] `video/sprite_batch` ofrece un descriptor de lote de cuatro bytes y
+  entradas de seis bytes con sprite, buffer, clave explícita y flag de captura.
+- [x] El alta mantiene orden estable ascendente; capacidad cero, span con wrap
+  y lote lleno devuelven carry. El lote no impone entidad ni asigna memoria.
+- [x] La restauración recorre capas en orden inverso y el dibujo captura y
+  compone en orden directo. Una segunda captura se rechaza antes de escribir.
+- [x] `renderorder` añade la capa superior primero, prueba el orden real, el
+  solapamiento, la restauración de fondo no uniforme, el movimiento y una
+  actualización de escenario entre los dos pases.
+- [x] Cinco pruebas host nuevas cubren orden estable, capacidad sin mutación,
+  restauración inversa, doble captura y wrap del almacenamiento.
+- [x] `make test`: 46 pruebas, dieciséis BIN, quince CDT y DSK común con 18
+  entradas.
+- [x] `make manual`: HTML, PDF y checksum sincronizados; cobertura de dieciséis
+  ejemplos y diecinueve módulos.
+- [x] Informe de tamaños actualizado; paquete local `0.2.0` con 34 entradas y
+  checksum correcto. Esto no publica una release.
+- [x] `renderorder` pasó orden, flags, fondos y testigos VRAM en AmSpiriT-Lite
+  1.15.3 para CPC 6128 y CPC 464.
+- [x] La batería completa pasó los dieciséis programas en CPC 6128 en una sola
+  ejecución.
+- [ ] Commit de implementación, push y CI remota todavía pendientes.
+
+Límites: capacidad y claves son propiedad del consumidor; no hay eliminación,
+reordenación automática por coordenada, asignación dinámica, transparencia,
+máscaras ni ciclos medidos. Un fallo de sprite durante un pase puede dejar las
+entradas anteriores procesadas; el módulo usa scratch interno y no es
+reentrante.
+
+## Siguiente fase propuesta: sprites enmascarados
+
+Añadir transparencia explícita Mode 0 sobre el descriptor de sprite existente,
+manteniendo separado el camino opaco y midiendo el coste antes de recomendarlo
+para escenas a 50 Hz. La propuesta todavía no está implementada.

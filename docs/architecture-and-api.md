@@ -191,6 +191,27 @@ reentrante. El buffer, el orden de borrado/dibujo y la sincronización pertenece
 al consumidor. No hay transparencia, máscaras, recoloreado, cola de render,
 dirty rectangles automáticos ni medición de ciclos. Detalles en `sprites.md`.
 
+### Lote ordenado de sprites opcional
+
+Descriptor de 4 bytes: puntero a entradas, count y capacidad. Cada entrada de
+6 bytes contiene puntero a descriptor de sprite, puntero a buffer, clave de
+orden y flags. Los datos y buffers pertenecen al consumidor.
+
+- `fwk_sprite_batch_init`: `IX=lote`; valida capacidad y span, y fija count a
+  cero.
+- `fwk_sprite_batch_add`: `IX=lote`, `HL=sprite`, `DE=buffer`, `A=clave`;
+  inserta de forma estable y ascendente. Carry indica lote inválido o lleno.
+- `fwk_sprite_batch_restore`: restaura solo entradas capturadas en orden
+  inverso y limpia sus flags.
+- `fwk_sprite_batch_draw`: rechaza una segunda captura antes de escribir y,
+  con estado limpio, captura/dibuja en orden ascendente.
+
+Las rutinas preservan el `IX` del lote al volver, alteran los registros
+principales e `IY`, usan scratch interno y no son reentrantes. Un error de
+sprite durante el pase puede dejar las entradas anteriores procesadas. No hay
+alta dinámica, eliminación, elección automática de clave ni sincronización.
+Detalles en `render-order.md`.
+
 ### Texto
 
 - `fwk_text_set_colors`: `L=foreground`, `H=background` (0..15); altera

@@ -7,7 +7,7 @@ de `model01`, `boop`, `DeckTower` y `PocketFever`. La primera versión estable
 se centra en un núcleo pequeño, entrada con flancos, vídeo Mode 0 declarativo,
 colecciones sin estructura universal, perfiles separados de plataforma y
 física 8.8, consulta, colisión y render de tilemaps opcionales, sprites con
-clipping y restauración, texto, audio
+clipping, restauración y pases ordenados, texto, audio
 AKG opcional y copia bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
@@ -28,7 +28,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # quince ejemplos, incluidos tilemaps y sprites con clipping
+make examples   # dieciséis ejemplos, incluidos tilemaps y sprites ordenados
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -36,7 +36,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT quedan en `.build/<ejemplo>/`; los quince BIN de prueba se reúnen
+Los BIN y CDT quedan en `.build/<ejemplo>/`; los dieciséis BIN de prueba se reúnen
 en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
 necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
 eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
@@ -56,14 +56,14 @@ de render se instala de forma aislada con
 ## Mapa del repositorio
 
 - `src/core`: interrupción/sincronización, entrada y pool genérico.
-- `src/video`: direccionamiento, CRTC, limpieza y sprites con clipping.
+- `src/video`: direccionamiento, CRTC, limpieza y sprites con clipping/orden.
 - `src/ui`: texto Mode 0 y ventanas con fondo restaurable.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
 - `src/extensions`: movimiento, física, animación y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: quince consumidores pequeños, sin copias internas del framework.
+- `examples`: dieciséis consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -107,6 +107,12 @@ de cámara y actualización parcial; véase `docs/tilemap-render.md`.
 signo contra los cuatro bordes y captura/restaura el fondo visible en un buffer
 del consumidor. No impone entidad ni cola de render. `spriteclip` comprueba los
 cuatro bordes y una restauración recortada; véase `docs/sprites.md`.
+
+`video/sprite_batch` añade un lote opcional: inserción estable por clave,
+restauración inversa y captura/dibujo directo para que varios sprites
+solapados mantengan un orden explícito. Los buffers continúan en manos del
+consumidor y no se introduce una entidad universal. `renderorder` comprueba el
+ciclo completo; véase `docs/render-order.md`.
 
 ## Carga desde DSK y ZX7B
 

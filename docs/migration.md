@@ -16,6 +16,10 @@
   selección por movimiento y el render siguen siendo política del juego.
 - Sustituir constantes de pantalla por un perfil JSON y consumir
   `fwk_video_get_ptr`.
+- Si los sprites se solapan, sustituir la cola ligada a entidades por
+  `video/sprite_batch.s`: asignar una clave explícita, restaurar el lote antes
+  de actualizar el fondo y dibujarlo después. La elección de clave sigue en el
+  juego.
 
 ## Desde boop
 
@@ -44,6 +48,9 @@
   `ball_blit`, colisión entre bolas y tablas de tiro como especializaciones.
   Para sprites rectangulares generales puede usarse `video/sprite.s`, pero no
   sustituye el coste ni los patrones generados del blitter 6x8 de bola.
+  Para varios sprites rectangulares, `video/sprite_batch.s` reemplaza la
+  secuencia especializada de borrado/dibujo, pero cada bola debe aportar su
+  descriptor y buffer y no conserva las optimizaciones del blitter 6x8.
 - Llevar el método de generadores deterministas a manifiestos del juego.
 - Sustituir `row_table.s` por la tabla generada solo si la geometría coincide;
   para 160x288, todas las coordenadas verticales consumidoras deben ser 16 bit.

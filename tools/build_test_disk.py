@@ -22,6 +22,7 @@ DEFAULT_EXAMPLES = (
     "tilecoll",
     "tilerender",
     "spriteclip",
+    "renderorder",
     "video",
     "resources128",
     "diskload",

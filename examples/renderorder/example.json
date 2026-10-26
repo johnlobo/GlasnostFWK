@@ -1,0 +1,11 @@
+{
+  "name": "renderorder",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "video/video.s",
+    "video/sprite.s",
+    "video/sprite_batch.s"
+  ],
+  "game_sources": ["main.s"]
+}

@@ -18,17 +18,19 @@ Fecha: 2026-10-26 UTC.
   actualización parcial explícita de una celda.
 - Sprites rectangulares Mode 0 con coordenadas de 16 bits con signo, clipping
   por los cuatro bordes y captura/restauración del fondo visible.
+- Lote opcional de sprites con inserción estable por clave, restauración
+  inversa y captura/dibujo directo para solapamientos.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y quince ejemplos, incluida una vertical jugable.
+- Generadores de vídeo/recursos y dieciséis ejemplos, incluida una vertical jugable.
 - Frontera de dependencias y exclusión física de módulos.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
 ## Compilado
 
-Los quince ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-catorce generan además `.cdt`. Sus quince BIN y los dos payloads de `diskload` se
+Los dieciséis ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+quince generan además `.cdt`. Sus dieciséis BIN y los dos payloads de `diskload` se
 reúnen en un único `.build/tests/GlasnostFWK-tests.dsk`; los DSK individuales
 intermedios se eliminan. `diskload` no genera CDT porque sus payloads auxiliares
 no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
@@ -42,16 +44,16 @@ no están en cinta. `docs/build-sizes.md` contiene tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los quince ejemplos y validación de nombres 8.3,
+- Construcción completa de los dieciséis ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
-- 41 pruebas host en total. El manual cubre los quince ejemplos y dieciocho módulos;
+- 46 pruebas host en total. El manual cubre los dieciséis ejemplos y diecinueve módulos;
   su checksum corresponde al HTML que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los quince programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
+- Los dieciséis programas arrancaron desde el único `GlasnostFWK-tests.dsk` en un
   CPC 6128 de 128 KB y avanzaron su contador de frames.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
@@ -86,6 +88,11 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   escrituras un sprite totalmente exterior, recortó cada borde y capturó/restauró
   exactamente un fondo no uniforme de 4x5 bytes. Pasó en CPC 6128 y CPC 464;
   los sprites de borde y centro se inspeccionaron visualmente.
+- `renderorder` ordenó dos entradas dadas en orden inverso, dejó la clave mayor
+  por encima, rechazó capacidad excedida y doble captura, restauró exactamente
+  doce filas no uniformes, conservó una actualización de fondo entre pases y
+  restauró la posición movida. Pasó en CPC 6128 y CPC 464 mediante testigos de
+  estado, lote, flags y VRAM; no se registró una inspección visual separada.
 - Tras reproducir una salida aparentemente vacía en `gravity`, se comprobó que
   la demo heredaba de BASIC fondo azul en el pen 0 y negro en el pen 5 usado por
   la traza. `gravity` fija ahora negro/amarillo y `physics88` negro/cian. El
@@ -107,7 +114,7 @@ audio. Dos ejecuciones completas expusieron carreras de observación en los
 testigos finales de `animation` y `vertical`: ambos publican estado antes de
 dibujar en ese mismo frame. El smoke espera ahora explícitamente el byte de
 VRAM; las repeticiones aisladas ya habían pasado y una tercera batería completa
-pasó los quince casos en una sola ejecución.
+pasó los dieciséis casos en una sola ejecución.
 
 ## Verificado en hardware
 
@@ -121,7 +128,8 @@ No verificado.
 - El tilemap continúa siendo de solo lectura. No hay edición, streaming,
   transparencia, scroll sub-tile ni dirty rectangles automáticos.
 - Los sprites son rectángulos opacos. No hay máscaras, transparencia,
-  recoloreado, cola/orden global de render ni comprobación de capacidad del buffer.
+  recoloreado ni comprobación de capacidad del buffer. El lote ordenado tiene
+  capacidad fija y no ofrece eliminación ni cambio automático de clave.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads
@@ -148,6 +156,8 @@ python3 tests/emulator_smoke.py tilerender
 python3 tests/emulator_smoke.py --model 464 tilerender
 python3 tests/emulator_smoke.py spriteclip
 python3 tests/emulator_smoke.py --model 464 spriteclip
+python3 tests/emulator_smoke.py renderorder
+python3 tests/emulator_smoke.py --model 464 renderorder
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical

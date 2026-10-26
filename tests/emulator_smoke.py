@@ -331,6 +331,48 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                         f"spriteclip VRAM witness {(x, y)} is {actual.hex()}, "
                         f"expected {expected.hex()}"
                     )
+        if name == "renderorder":
+            status = symbol(noi, "renderorder_status")
+            command = symbol(noi, "renderorder_command")
+            batch = symbol(noi, "renderorder_batch")
+            entries = symbol(noi, "renderorder_entries")
+            wait_for(lambda: ram(status, 1) == b"\xA5", 5, "ordered sprite draw")
+            if ram(batch + 2, 1) != b"\x02":
+                raise RuntimeError("renderorder batch count is not two")
+            if ram(entries + 4, 1) != b"\x0A" or ram(entries + 10, 1) != b"\x14":
+                raise RuntimeError("renderorder keys are not stably sorted")
+            if ram(entries + 5, 1) != b"\x01" or ram(entries + 11, 1) != b"\x01":
+                raise RuntimeError("renderorder entries were not marked captured")
+            if ram(standard_screen_address(22, 42), 1) != b"\xAA":
+                raise RuntimeError("renderorder lower layer is not visible")
+            if ram(standard_screen_address(24, 44), 1) != b"\xF0":
+                raise RuntimeError("renderorder upper layer did not win the overlap")
+
+            write_ram(command, b"\x01")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "reverse sprite restore")
+            patterns = bytes.fromhex("112233445566778899122334")
+            for y, pattern in enumerate(patterns, start=40):
+                if ram(standard_screen_address(20, y), 12) != bytes((pattern,)) * 12:
+                    raise RuntimeError(f"renderorder background restore failed on row {y}")
+            if ram(entries + 5, 1) != b"\x00" or ram(entries + 11, 1) != b"\x00":
+                raise RuntimeError("renderorder captured flags survived restoration")
+
+            write_ram(command, b"\x02")
+            wait_for(lambda: ram(status, 1) == b"\xC3", 5, "sprite move and redraw")
+            if ram(standard_screen_address(23, 43), 1) != b"\x55":
+                raise RuntimeError("renderorder background update was lost")
+            if ram(standard_screen_address(30, 60), 1) != b"\xAA":
+                raise RuntimeError("renderorder moved lower layer is not visible")
+            if ram(standard_screen_address(32, 62), 1) != b"\xF0":
+                raise RuntimeError("renderorder moved upper layer did not win the overlap")
+
+            write_ram(command, b"\x03")
+            wait_for(lambda: ram(status, 1) == b"\x3C", 5, "final sprite restore")
+            for y in range(60, 68):
+                if ram(standard_screen_address(30, y), 6) != b"\x00" * 6:
+                    raise RuntimeError(f"renderorder moved background restore failed on row {y}")
+            if ram(standard_screen_address(23, 43), 1) != b"\x55":
+                raise RuntimeError("renderorder persistent background update changed")
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")
@@ -425,7 +467,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")
