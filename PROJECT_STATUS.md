@@ -305,7 +305,8 @@ python3 tests/emulator_smoke.py --model 464 window
   mismo frame. Ambos casos pasaron aislados y el smoke espera ahora el byte de
   VRAM en vez de leerlo inmediatamente. La batería completa posterior pasó los
   trece casos en CPC 6128 en una sola ejecución.
-- [ ] Commit, push y CI remota pendientes en este punto del registro.
+- [x] Implementación y validación local registradas en `c29da93`.
+- [ ] Push y CI remota pendientes en este punto del registro.
 
 Límites: coordenadas de 8 bits, tiles potencia de dos coherentes con sus
 shifts y velocidad menor que un tile por paso. No hay barrido continuo, render,
