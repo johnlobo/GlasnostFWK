@@ -410,7 +410,8 @@ rutinas usan scratch interno, no son reentrantes y no tienen ciclos medidos.
   1.15.3 para CPC 6128 y CPC 464.
 - [x] La batería completa pasó los dieciséis programas en CPC 6128 en una sola
   ejecución.
-- [ ] Commit de implementación, push y CI remota todavía pendientes.
+- [x] Implementación y validación local registradas en `48d71a2`.
+- [ ] Push y CI remota todavía pendientes.
 
 Límites: capacidad y claves son propiedad del consumidor; no hay eliminación,
 reordenación automática por coordenada, asignación dinámica, transparencia,
