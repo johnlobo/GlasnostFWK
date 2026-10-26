@@ -341,7 +341,10 @@ momento todavía no existía el render añadido en la fase posterior.
   ejecución.
 - [x] Implementación y validación local registradas en `058d4a5`, sincronizada
   en `origin/main`.
-- [ ] CI remota de `058d4a5` pendiente de resultado.
+- [x] Estado persistido en `3777074`, sincronizado en `origin/main`; CI remota
+  `40392730740` correcta para ese commit: 35 pruebas, catorce construcciones,
+  un DSK común con catálogo y trece CDT verificados y publicados como artefacto
+  temporal.
 
 Límites: el mapa permanece inmutable y el render no ofrece transparencia,
 clipping parcial, scroll sub-tile, acceso bancado ni dirty rectangles
