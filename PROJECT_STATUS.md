@@ -268,11 +268,14 @@ python3 tests/emulator_smoke.py --model 464 window
   `gravity` y `physics88`.
 - [x] `make test`: 26 pruebas, doce construcciones y DSK común regenerado;
   manual HTML/PDF y checksum sincronizados, e informe de tamaños actualizado.
-- [x] Corrección registrada en `aba05c9` y estado persistente en `08ade20`;
-  ambos commits están sincronizados en `origin/main`.
-- [x] CI remota `40242797070` correcta para `08ade20`: 26 pruebas, doce
+- [x] Corrección registrada en `aba05c9`; cierres de estado `08ade20` y
+  `ea9da1f`, sincronizados en `origin/main`.
+- [x] CI remota final `40242850476` correcta para `ea9da1f`: 26 pruebas, doce
   construcciones, un DSK común con catálogo y once CDT publicados como
   artefacto temporal.
+- [x] Validación manual del usuario recibida el 2026-10-26: confirma que el DSK
+  corregido funciona. No se especificaron emulador, modelo ni hardware, por lo
+  que esta confirmación no se registra como prueba en hardware real.
 
 ## Fase siguiente: tilemaps y colisión de escenario
 
