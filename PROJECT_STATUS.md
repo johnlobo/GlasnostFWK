@@ -456,7 +456,11 @@ reentrante.
   reapertura en CPC 6128 y CPC 464.
 - [x] La batería completa pasó los diecisiete programas en CPC 6128 en una sola
   ejecución.
-- [ ] Commit, push y CI remota pendientes. El paquete local no se publica.
+- [x] Implementación y validación local registradas en `ceaa68c`; el commit está
+  sincronizado en `origin/main`.
+- [x] CI remota `40421617471` correcta para `ceaa68c`: 53 pruebas, diecisiete
+  construcciones, DSK común con catálogo y dieciséis CDT verificados y publicados
+  como artefacto temporal.
 
 Límites: la máscara es bit a bit; en Mode 0 permite preservar un píxel de 4 bits
 y sustituir el otro del mismo byte. No hay color-key ni mezcla alfa.
