@@ -272,6 +272,29 @@ def run_example(name: str, emulator: Path, model: str) -> None:
             for x, y in ((0, 40), (60, 100), (0, 160)):
                 if ram(standard_screen_address(x, y), 1) != b"\xAA":
                     raise RuntimeError(f"tilecoll geometry witness missing at {(x, y)}")
+        if name == "tilerender":
+            view = symbol(noi, "tilerender_view")
+            status = symbol(noi, "tilerender_status")
+            partial_count = symbol(noi, "tilerender_partial_count")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "tilemap viewport render")
+            if ram(view + 2, 2) != bytes((2, 1)):
+                raise RuntimeError("tilerender camera did not move to (2,1)")
+            if ram(partial_count, 1) != b"\x01":
+                raise RuntimeError("tilerender partial update was not executed")
+            witnesses = {
+                (10, 32): b"\xAA",
+                (14, 32): b"\x00",
+                (18, 40): b"\xF0",
+                (26, 56): b"\xF0",
+                (9, 32): b"\x55",
+            }
+            for (x, y), expected in witnesses.items():
+                actual = ram(standard_screen_address(x, y), 1)
+                if actual != expected:
+                    raise RuntimeError(
+                        f"tilerender VRAM witness {(x, y)} is {actual.hex()}, "
+                        f"expected {expected.hex()}"
+                    )
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")
@@ -366,7 +389,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

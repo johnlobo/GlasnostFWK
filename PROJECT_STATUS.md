@@ -15,8 +15,8 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los trece ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; doce construyen además CDT y
+- Los catorce ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; trece construyen además CDT y
   todos los BIN se reúnen en un único DSK de pruebas.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -59,9 +59,10 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
 - No existe verificación en hardware real.
 - No se ha validado visualmente el perfil experimental 160x288 en varios CRTC.
-- El tilemap es de solo lectura y colisión: no renderiza, modifica ni transmite
-  mapas; tampoco resuelve pendientes o colisión entre cuerpos.
-- Solo `vertical` es una escena jugable; los otros doce ejemplos son pruebas
+- El tilemap es de solo lectura. Su render no incluye transparencia, clipping,
+  scroll sub-tile, bancos ni dirty rectangles automáticos; la colisión no
+  resuelve pendientes ni colisión entre cuerpos.
+- Solo `vertical` es una escena jugable; los otros trece ejemplos son pruebas
   técnicas. `diskload` se ejecuta solo desde el DSK común porque requiere dos
   payloads auxiliares.
 
@@ -312,13 +313,41 @@ python3 tests/emulator_smoke.py --model 464 window
   construcciones, un DSK común con catálogo y doce CDT verificados y publicados
   como artefacto temporal.
 
-Límites: coordenadas de 8 bits, tiles potencia de dos coherentes con sus
-shifts y velocidad menor que un tile por paso. No hay barrido continuo, render,
-edición, pendientes, habitaciones, portales ni colisión entre cuerpos.
+Límites de esa fase: coordenadas de 8 bits, tiles potencia de dos coherentes con
+sus shifts y velocidad menor que un tile por paso. No hay barrido continuo,
+edición, pendientes, habitaciones, portales ni colisión entre cuerpos. En ese
+momento todavía no existía el render añadido en la fase posterior.
 
-## Siguiente fase propuesta: render de tilemaps
+## Fase completada localmente: render de tilemaps
 
-Añadir un render rectangular desacoplado que consuma los mismos datos de solo
-lectura, con cámara/viewport propiedad del consumidor y actualización parcial
-explícita. Es una propuesta todavía no implementada; antes de iniciarla debe
-fijarse el contrato y el ejemplo ejecutable sin incorporar reglas de salas.
+- [x] `extensions/tilemap_render` consume el descriptor de mapa de solo lectura
+  y un descriptor de render de 10 bytes con tileset, cámara, destino y viewport.
+- [x] `fwk_tilemap_render_view` prevalida geometría, rango del tileset e ids antes
+  de la primera escritura y dibuja tiles Mode 0 rectangulares sin padding.
+- [x] `fwk_tilemap_render_cell` actualiza una celda indicada por fila y columna
+  relativas al viewport, sin imponer una política de dirty rectangles.
+- [x] `tilerender` prueba cámara `(0,0) -> (2,1)`, rechazo de coordenada exterior,
+  daño deliberado y restauración parcial de una celda.
+- [x] Cinco pruebas host nuevas cubren límites de viewport/pantalla, selección de
+  cámara, ids inválidos, desbordamiento del tileset y coordenadas parciales.
+- [x] `make test`: 35 pruebas, catorce BIN, trece CDT y DSK común con 16 entradas.
+- [x] `make manual`: HTML, PDF y checksum sincronizados; cobertura de catorce
+  ejemplos y diecisiete módulos.
+- [x] `make report` actualizado; paquete local `0.2.0` con 30 entradas y checksum
+  correcto. Esto no publica una release.
+- [x] `tilerender` pasó estado, cámara, contador y testigos VRAM en
+  AmSpiriT-Lite 1.15.3 para CPC 6128 y CPC 464; salida inspeccionada visualmente.
+- [x] La batería completa pasó los catorce programas en CPC 6128 en una sola
+  ejecución.
+- [ ] Commit, push y CI remota pendientes.
+
+Límites: el mapa permanece inmutable y el render no ofrece transparencia,
+clipping parcial, scroll sub-tile, acceso bancado ni dirty rectangles
+automáticos. Las rutinas usan estado interno y no son reentrantes.
+
+## Siguiente fase propuesta: sprites con clipping y restauración
+
+Auditar los blitters existentes y definir una primitiva Mode 0 rectangular para
+sprites, con clipping y restauración de fondo explícita propiedad del consumidor.
+La propuesta aún no está implementada y no presupone una entidad universal ni
+una cola de render.

@@ -6,8 +6,8 @@ Framework modular en ensamblador Z80 para Amstrad CPC, extraído y consolidado
 de `model01`, `boop`, `DeckTower` y `PocketFever`. La primera versión estable
 se centra en un núcleo pequeño, entrada con flancos, vídeo Mode 0 declarativo,
 colecciones sin estructura universal, perfiles separados de plataforma y
-física 8.8, consulta de tilemap y colisión de escenario opcionales, texto,
-audio AKG opcional y copia bancaria de 128 KB.
+física 8.8, consulta, colisión y render de tilemaps opcionales, texto, audio
+AKG opcional y copia bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
 ejemplo declara sus módulos y fuentes de juego en `examples/*/example.json`;
@@ -27,7 +27,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # trece ejemplos, incluidos tilemap y colisión
+make examples   # catorce ejemplos, incluidos colisión y render de tilemaps
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -35,7 +35,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT quedan en `.build/<ejemplo>/`; los trece BIN de prueba se reúnen
+Los BIN y CDT quedan en `.build/<ejemplo>/`; los catorce BIN de prueba se reúnen
 en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
 necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
 eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
@@ -62,7 +62,7 @@ de render se instala de forma aislada con
 - `src/extensions`: movimiento, física, animación y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: trece consumidores pequeños, sin copias internas del framework.
+- `examples`: catorce consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable
@@ -94,6 +94,11 @@ resuelve sólidos y plataformas de una dirección sobre el estado producido por
 `physics_platform`, sin importar entidades, salas ni render. `tilecoll` muestra
 automáticamente techo, pared y suelo; contratos y límites están en
 `docs/tilemap-collision.md`.
+
+`extensions/tilemap_render` dibuja un viewport rectangular desde un tileset
+Mode 0, con cámara y destino propiedad del consumidor. Prevalida el render
+completo y permite redibujar una celda explícita. `tilerender` demuestra cambio
+de cámara y actualización parcial; véase `docs/tilemap-render.md`.
 
 ## Carga desde DSK y ZX7B
 

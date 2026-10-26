@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = ("minimal", "board", "platform", "gravity", "physics88", "tilecoll", "video", "resources128", "diskload", "audio", "animation", "window", "vertical")
+EXAMPLES = ("minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "video", "resources128", "diskload", "audio", "animation", "window", "vertical")
 TEST_DISK = "GlasnostFWK-tests.dsk"
 VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)

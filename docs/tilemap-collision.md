@@ -4,8 +4,9 @@ Fecha: 2026-10-26 UTC.
 
 Esta extensión separa tres responsabilidades: el consumidor conserva los datos
 del mapa, `tilemap` traduce una coordenada de mundo a un tipo de colisión y
-`platform_tilemap` corrige el estado producido por `physics_platform`. No hay
-entidad universal, render de mapa, habitaciones, portales ni reglas de juego.
+`platform_tilemap` corrige el estado producido por `physics_platform`. Este
+módulo no renderiza; la extensión opcional `tilemap_render` puede dibujar el
+mismo mapa. No hay entidad universal, habitaciones, portales ni reglas de juego.
 
 ## Descriptor y consulta
 
@@ -64,8 +65,9 @@ o fuera de mapa se trata como espacio transitable.
   correspondiente; no hay barrido continuo ni subdivisión automática.
 - Solo se consultan las esquinas del rectángulo. No hay pendientes ni formas
   distintas de sólido, pasable y plataforma de una dirección.
-- El mapa es de solo lectura y no se dibuja. Render, edición, streaming y
-  animación de tiles pertenecen al consumidor o a una extensión posterior.
+- El mapa es de solo lectura y este módulo no lo dibuja. `tilemap_render` ofrece
+  render Mode 0 opcional; edición, streaming y animación pertenecen al consumidor
+  o a una extensión posterior.
 - La colisión entre entidades o bolas y la física 8.8 no forman parte de este
   contrato.
 

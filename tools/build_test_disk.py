@@ -20,6 +20,7 @@ DEFAULT_EXAMPLES = (
     "gravity",
     "physics88",
     "tilecoll",
+    "tilerender",
     "video",
     "resources128",
     "diskload",

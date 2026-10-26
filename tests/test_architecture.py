@@ -73,6 +73,9 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("extensions/tilemap.s", selections["tilecoll"])
         self.assertIn("extensions/platform_tilemap.s", selections["tilecoll"])
         self.assertNotIn("extensions/physics_8_8.s", selections["tilecoll"])
+        self.assertIn("extensions/tilemap.s", selections["tilerender"])
+        self.assertIn("extensions/tilemap_render.s", selections["tilerender"])
+        self.assertNotIn("extensions/platform_tilemap.s", selections["tilerender"])
 
 
 if __name__ == "__main__":

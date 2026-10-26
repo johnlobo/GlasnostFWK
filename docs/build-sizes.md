@@ -14,6 +14,7 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | platform | 1114 | 33 | 1147 |
 | resources128 | 464 | 7 | 20488 |
 | tilecoll | 1716 | 536 | 2252 |
+| tilerender | 1592 | 222 | 1814 |
 | vertical | 1447 | 58 | 1505 |
 | video | 882 | 8 | 890 |
 | window | 1384 | 353 | 1737 |

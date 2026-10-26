@@ -99,6 +99,24 @@ barrido continuo: una velocidad capaz de saltar un tile puede atravesarlo. No
 hay render, escritura del mapa, pendientes, habitaciones, portales ni colisión
 entre cuerpos. El contrato completo está en `tilemap-collision.md`.
 
+### Render de tilemap opcional
+
+Descriptor mutable de 10 bytes: puntero al tileset Mode 0, cámara X/Y en tiles,
+origen de pantalla (`x` byte, `y` palabra), ancho/alto del viewport en tiles y
+número de gráficos. Cada gráfico ocupa `map.x_size * map.y_size` bytes
+contiguos, por filas y sin padding.
+
+- `fwk_tilemap_render_view`: `IX=tilemap`, `IY=render`; valida toda la
+  geometría, el span del tileset y los ids seleccionados antes de escribir.
+  Dibuja el viewport completo o devuelve carry sin escrituras.
+- `fwk_tilemap_render_cell`: además recibe `B=fila`, `C=columna` relativas al
+  viewport; valida y redibuja solo esa celda.
+
+Ambas preservan `IX,IY`, alteran `AF,BC,DE,HL` y no son reentrantes por su
+scratch interno. No ofrecen clipping, transparencia, scroll sub-tile, doble
+buffer, bancos, dirty rectangles automáticos ni política de cámara. El mapa
+permanece de solo lectura. Detalles en `tilemap-render.md`.
+
 ### Física 8.8 opcional
 
 Estado mutable de 9 bytes: `x,y,vx,vy` como palabras 8.8 little-endian y un
