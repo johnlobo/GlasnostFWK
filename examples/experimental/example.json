@@ -1,0 +1,9 @@
+{
+  "name": "experimental",
+  "profile": "experimental-160x288.json",
+  "modules": [
+    "core/system.s",
+    "video/video.s"
+  ],
+  "game_sources": ["main.s"]
+}

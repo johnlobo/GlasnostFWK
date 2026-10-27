@@ -148,8 +148,8 @@ No verificado.
   enmascarado comparte `video/sprite.s` y se enlaza en todo ejemplo con sprites.
   El lote ordenado tiene capacidad fija y no ofrece eliminación ni cambio
   automático de clave.
-- No se han medido ciclos del dibujo enmascarado ni se promete 50 Hz para una
-  escena que lo use.
+- Ciclos del dibujo enmascarado medidos en `docs/performance.md` (6x8 ≈ 11022
+  T-estados). No se promete 50 Hz para una escena arbitraria.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads

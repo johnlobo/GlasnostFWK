@@ -1,9 +1,11 @@
 .module example_tilerender
 .include "extensions/tilemap_render.inc"
+.include "extensions/tilemap_dirty.inc"
 
 .globl fwk_system_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_tilemap_render_view, fwk_tilemap_render_cell
+.globl fwk_tilemap_dirty_init, fwk_tilemap_dirty_mark, fwk_tilemap_dirty_flush
 .globl cpct_setPALColour_asm
 .globl tilerender_view
 
@@ -41,6 +43,9 @@ FWK_TILE_RENDER_DESCRIPTOR tilerender_view, tilerender_tileset, 0, 0, 10, 32, 5,
 
 tilerender_status::        .db 0
 tilerender_partial_count:: .db 0
+
+tilerender_dirty_cells:: .ds 16
+FWK_TILE_DIRTY_DESCRIPTOR tilerender_dirty, tilerender_dirty_cells, 8
 
 .area _CODE
 
@@ -103,6 +108,18 @@ _main::
     ld c, #2
     call fwk_tilemap_render_cell
     jp c, _tilerender_fail
+
+    ;; Demonstrate the dirty-rectangle helper on the same cell.
+    ld hl, #tilerender_dirty
+    call fwk_tilemap_dirty_init
+    ld b, #1
+    ld c, #2
+    call fwk_tilemap_dirty_mark
+    ld ix, #tilerender_map_descriptor
+    ld iy, #tilerender_view
+    call fwk_tilemap_dirty_flush
+    jp c, _tilerender_fail
+
     ld a, #1
     ld (tilerender_partial_count), a
     ld a, #0x5A

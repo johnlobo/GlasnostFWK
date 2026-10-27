@@ -1,5 +1,5 @@
 PYTHON ?= python3
-EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical
+EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental
 
 .PHONY: all examples test generate report manual release clean
 

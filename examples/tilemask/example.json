@@ -1,0 +1,12 @@
+{
+  "name": "tilemask",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "video/video.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s",
+    "extensions/tilemap_render_masked.s"
+  ],
+  "game_sources": ["main.s"]
+}

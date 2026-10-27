@@ -476,3 +476,18 @@ La fase de sprites enmascarados queda funcionalmente cerrada. Antes de integrarl
 en el lote ordenado o recomendarla para escenas a 50 Hz falta medir su coste y
 decidir si se añade una ruta enmascarada al batch. También sigue pendiente la
 validación en hardware real y la medición temporal general del framework.
+
+## Fase completada: rendimiento medible y presupuesto de frame
+
+- [x] Arnés `examples/perf` con escenas deterministas: bucle vacío, limpieza
+  completa, sprite opaco, sprite enmascarado, captura, restauración, lote de 8,
+  tilemap completo y actualización de una celda.
+- [x] Medición por frames emulados en CPC 6128 con conversión a T-estados
+  (`79872` T-estados/frame) y sobrecarga del bucle calibrada.
+- [x] Resultados en `docs/performance.md`: limpieza ≈ 862618 T, sprite opaco 6x8
+  ≈ 6230 T, enmascarado 6x8 ≈ 11022 T, captura ≈ 5831 T, restauración ≈
+  5811 T, lote de 8 ≈ 94089 T, tilemap completo ≈ 66028 T, celda ≈ 4649 T.
+- [x] Decisión: `sprite_batch` sigue siendo solo opaco; la ruta enmascarada se
+  mantiene separada por su coste ~1,77× y se aplaza su integración en el lote.
+- [x] Herramienta `tools/measure_perf.py` para reproducir la medición.
+- [x] Manual y PDF regenerados con cobertura de `perf`; suite host 53 pruebas.

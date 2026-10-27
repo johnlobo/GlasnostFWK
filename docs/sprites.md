@@ -121,8 +121,8 @@ copiará en una posición distinta.
   visibles en el mapeo de RAM activo.
 - Ancho y alto máximos son 255; el perfil de vídeo debe tener dimensiones
   positivas que quepan en coordenadas con signo de 16 bits.
-- No se han medido ciclos del camino opaco ni del enmascarado; no se promete un
-  presupuesto global de 50 Hz.
+- Ciclos medidos en `docs/performance.md`: opaco 6x8 ≈ 6230 T-estados, enmascarado
+  6x8 ≈ 11022 T-estados (≈1,77×). No se promete un presupuesto global de 50 Hz.
 
 `examples/spriteclip` prueba geometría inválida, span de datos con wrap, sprite
 totalmente exterior, clipping independiente en los cuatro bordes y una

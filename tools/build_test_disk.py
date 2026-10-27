@@ -31,6 +31,10 @@ DEFAULT_EXAMPLES = (
     "animation",
     "window",
     "vertical",
+    "perf",
+    "collision",
+    "tilemask",
+    "experimental",
 )
 DISK_NAME = "GlasnostFWK-tests.dsk"
 ADDRESS_RE = re.compile(

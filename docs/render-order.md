@@ -57,7 +57,9 @@ repetir: ignora las entradas que no estén marcadas como capturadas.
 - Usa el camino opaco de `video/sprite`: no integra
   `fwk_sprite_draw_masked`, transparencia, recoloreado ni dirty rectangles
   automáticos.
-- No hay todavía mediciones de ciclos ni promesa de mantener 50 Hz.
+- Mediciones en `docs/performance.md`: lote de 8 sprites 4x4 (captura + dibujo +
+  restauración) ≈ 94089 T-estados (≈1,18 frames). No se promete 50 Hz para
+  escenas arbitrarias.
 
 `examples/renderorder` añade primero la capa superior para demostrar la
 ordenación estable, comprueba capacidad y doble captura, restaura un fondo no

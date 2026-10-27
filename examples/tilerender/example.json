@@ -5,6 +5,7 @@
     "core/system.s",
     "video/video.s",
     "extensions/tilemap.s",
-    "extensions/tilemap_render.s"
+    "extensions/tilemap_render.s",
+    "extensions/tilemap_dirty.s"
   ]
 }

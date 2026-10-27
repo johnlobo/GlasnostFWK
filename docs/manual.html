@@ -501,6 +501,13 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="animation"><td><code>animation</code></td><td>Tres frames, periodo exacto, pausa y reanudación.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="window"><td><code>window</code></td><td>Validación, captura, caja, texto, restauración y reapertura.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="perf"><td><code>perf</code></td><td>Arnés de rendimiento: vacío, limpieza, sprites opacos/enmascarados, captura/restauración, lote de 8, tilemap completo y celda.</td><td>BIN, DSK común</td></tr>
+        <tr data-example="collision"><td><code>collision</code></td><td>Prueba AABB entre dos entidades con offsets de campo configurables.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
+        <span data-module="extensions/tilemap_dirty.s"></span>
+        <span data-module="extensions/collision_bodies.s"></span>
+        <span data-module="extensions/tilemap_render_masked.s"></span>
       </tbody>
     </table>
     <p><code>vertical</code> es la única escena jugable. Los otros dieciséis son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>

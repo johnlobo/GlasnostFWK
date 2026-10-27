@@ -1,0 +1,14 @@
+{
+  "name": "perf",
+  "profile": "standard-160x200.json",
+  "media": ["dsk"],
+  "modules": [
+    "core/system.s",
+    "video/video.s",
+    "video/sprite.s",
+    "video/sprite_batch.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s"
+  ],
+  "game_sources": ["main.s"]
+}
