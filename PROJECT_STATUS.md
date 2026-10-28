@@ -539,7 +539,7 @@ estado persistido en `6b12268`; ambos se publicaron en `origin/main`. La CI
 remota `40610742319` terminó correctamente para el SHA completo
 `6b1226877394346c599e434b91fe6396d395424d`.
 
-## Fase completada localmente: aplicación didáctica de plataformas
+## Fase completada: aplicación didáctica de plataformas
 
 - [x] `platformer` se reorganizó en `main.s`, `assets.s`, `game.inc` y
   `example.json`: constantes compartidas, inicialización, entrada, física,
@@ -560,6 +560,7 @@ remota `40610742319` terminó correctamente para el SHA completo
 
 Límites confirmados: la aplicación sigue siendo una escena de una sola pantalla,
 sin scroll, pendientes, enemigos ni animación. Las capturas proceden de
-AmSpiriT-Lite 1.15.3; no existe validación en hardware real. Esta fase todavía
-no tiene push ni CI remota registrados. Implementación y documentación:
-`6d7b928`.
+AmSpiriT-Lite 1.15.3; no existe validación en hardware real. Implementación y
+documentación registradas en `6d7b928`, con estado en `343701a`; ambos se
+publicaron en `origin/main`. La CI remota `40619504621` terminó correctamente
+para el SHA completo `343701ae622cda40c91d70d8a2f5e222248148e8`.
