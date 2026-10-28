@@ -534,5 +534,5 @@ Límites confirmados: hay que llamar `fwk_text_init` tras desactivar firmware;
 la tabla de máscara ocupa `0x0100..0x01FF`; los índices de color dependen de la
 paleta del juego y el pen 14 se reserva para sombra. No hay minúsculas, clipping,
 borrado automático ni reentrancia. Para sustituir texto enmascarado hay que
-restaurar o limpiar primero el fondo. Esta fase aún no tiene commit, push ni CI
-remota registrados.
+restaurar o limpiar primero el fondo. Implementación registrada en el commit
+`263bbd4`; el push y la CI remota quedan pendientes del commit de cierre.
