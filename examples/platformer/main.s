@@ -2,43 +2,72 @@
 .include "cpctelera.h.s"
 .include "video/sprite.inc"
 .include "extensions/platform_tilemap.inc"
+.include "game/game.inc"
 
 .globl fwk_system_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_get_ptr
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update
 .globl fwk_input_held, fwk_input_pressed
-.globl fwk_physics_platform_step
-.globl fwk_platform_tilemap_resolve
+.globl fwk_physics_platform_step, fwk_platform_tilemap_resolve
 .globl fwk_tilemap_render_view, fwk_tilemap_render_cell
 .globl fwk_sprite_draw, fwk_sprite_capture, fwk_sprite_restore
 .globl fwk_text_init, fwk_text_set_color, fwk_text_draw
 .globl cpct_setPALColour_asm
 .globl platformer_map_descriptor, platformer_view, platformer_config
 .globl platformer_player_sprite, platformer_coin_sprite
-.globl platformer_status, platformer_score, platformer_bindings
-.globl platformer_coins, platformer_player
+.globl platformer_bindings, platformer_coins
+.globl platformer_status, platformer_score, platformer_player
 
 .area _DATA
-platformer_status:: .db 0
-platformer_score:: .db 0
-platformer_hud_dirty:: .db 1
-_platformer_hud_row: .db 0
+
+;; Public state doubles as a small observable contract for emulator tests.
+platformer_status::         .db 0
+platformer_score::          .db 0
+platformer_last_collision:: .db 0
+platformer_hud_dirty::      .db 1
+
+platformer_player:: .ds PF_PLAYER_SIZE
+platformer_player_background::
+    .ds PF_PLAYER_WIDTH_BYTES * PF_PLAYER_HEIGHT_PX
+
+platformer_score_str:: .ascii "COINS: 0/4"
+    .db 0
+platformer_help_str:: .ascii "CURSORS  UP JUMPS"
+    .db 0
+platformer_win_str:: .ascii "ALL COINS! YOU WIN"
+    .db 0
+
+_platformer_hud_row:    .db 0
 _platformer_hud_column: .db 0
-
-platformer_player:: .ds 7
-platformer_player_background:: .ds 64
-
-platformer_score_str:: .ascii "SCORE: 0"
-    .db 0
-platformer_help_str:: .ascii "LEFT RIGHT  UP JUMP"
-    .db 0
 
 .area _CODE
 
 _main::
+    call _pf_init_framework
+    call _pf_reset_game
+    call _pf_render_scene
+
+_platformer_loop:
+    call fwk_system_wait_frame
+    call _pf_erase_player
+    call fwk_input_update
+    call _pf_read_controls
+    call _pf_update_player
+    call _pf_collect_coins
+
+    ld a, (platformer_hud_dirty)
+    or a
+    call nz, _pf_draw_hud
+    call _pf_draw_player
+    jp _platformer_loop
+
+;; Framework and palette setup are kept separate from game state so the order
+;; required by the text module is obvious in the tutorial.
+_pf_init_framework:
     call fwk_system_init
     call fwk_video_init
     call fwk_text_init
+
     ld l, #0
     ld h, #0x14
     call cpct_setPALColour_asm
@@ -56,210 +85,205 @@ _main::
     xor a
     call fwk_video_clear_visible
 
-    ;; Player initial state
-    ld a, #16
-    ld (platformer_player+0), a   ; X
-    ld a, #184
-    ld (platformer_player+1), a   ; Y
-    xor a
-    ld (platformer_player+2), a   ; VX
-    ld (platformer_player+3), a   ; VY
-    ld a, #8
-    ld (platformer_player+4), a   ; width
-    ld a, #8
-    ld (platformer_player+5), a   ; height
-    ld a, #0x02
-    ld (platformer_player+6), a   ; grounded on the bottom row
-
-    xor a
-    ld (platformer_score), a
-    ld a, #1
-    ld (platformer_hud_dirty), a
-    xor a
-    ld (platformer_status), a
-
     call fwk_input_init
     ld hl, #platformer_bindings
-    call fwk_input_set_bindings
+    jp fwk_input_set_bindings
 
-    ;; Static scene: draw the full tilemap once. Moving objects restore only
-    ;; their saved background, avoiding a full-screen tilemap pass per frame.
+_pf_reset_game:
+    ld a, #PF_PLAYER_START_X
+    ld (platformer_player+PF_PLAYER_X), a
+    ld a, #PF_PLAYER_START_Y
+    ld (platformer_player+PF_PLAYER_Y), a
+    xor a
+    ld (platformer_player+PF_PLAYER_VX), a
+    ld (platformer_player+PF_PLAYER_VY), a
+    ld (platformer_last_collision), a
+    ld (platformer_score), a
+    ld (platformer_status), a
+    ld a, #PF_PLAYER_WIDTH_BYTES
+    ld (platformer_player+PF_PLAYER_WIDTH), a
+    ld a, #PF_PLAYER_HEIGHT_PX
+    ld (platformer_player+PF_PLAYER_HEIGHT), a
+    ld a, #PF_TILE_GROUNDED
+    ld (platformer_player+PF_PLAYER_FLAGS), a
+    ld a, #1
+    ld (platformer_hud_dirty), a
+    ret
+
+_pf_render_scene:
+    ;; The tilemap is static. Only dirty cells, the HUD and the moving player
+    ;; are restored/redrawn after this initial full pass.
     ld ix, #platformer_map_descriptor
     ld iy, #platformer_view
     call fwk_tilemap_render_view
     call _pf_draw_coins
     call _pf_draw_hud
     call _pf_draw_player
-    ld a, #0xA5
+    ld a, #PF_STATUS_READY
     ld (platformer_status), a
+    ret
 
-_platformer_loop:
-    call fwk_system_wait_frame
-
+_pf_erase_player:
     ld ix, #platformer_player_sprite
     ld hl, #platformer_player_background
-    call fwk_sprite_restore
+    jp fwk_sprite_restore
 
-    call fwk_input_update
-
-    ;; Horizontal movement
+_pf_read_controls:
+    ;; Left wins if both horizontal directions are held. Releasing both stops
+    ;; immediately; acceleration belongs to a larger game, not this example.
     ld a, (fwk_input_held)
-    and #0x01
-    jr z, _pf_not_left
-    ld a, #-2
-    ld (platformer_player+2), a
-    jr _pf_input_done
-_pf_not_left:
+    and #PF_INPUT_LEFT
+    jr z, _pf_try_right
+    ld a, #-PF_SPEED
+    ld (platformer_player+PF_PLAYER_VX), a
+    jr _pf_try_jump
+_pf_try_right:
     ld a, (fwk_input_held)
-    and #0x02
-    jr z, _pf_not_right
-    ld a, #2
-    ld (platformer_player+2), a
-    jr _pf_input_done
-_pf_not_right:
+    and #PF_INPUT_RIGHT
+    jr z, _pf_stop_horizontal
+    ld a, #PF_SPEED
+    ld (platformer_player+PF_PLAYER_VX), a
+    jr _pf_try_jump
+_pf_stop_horizontal:
     xor a
-    ld (platformer_player+2), a
-_pf_input_done:
+    ld (platformer_player+PF_PLAYER_VX), a
 
-    ;; Jump if pressed up and on ground
+_pf_try_jump:
     ld a, (fwk_input_pressed)
-    and #0x04
-    jr z, _pf_no_jump
-    ld a, (platformer_player+6)
-    and #0x02          ; tile grounded bit
-    jr z, _pf_no_jump
-    ld a, #-8
-    ld (platformer_player+3), a
-_pf_no_jump:
+    and #PF_INPUT_JUMP
+    ret z
+    ld a, (platformer_player+PF_PLAYER_FLAGS)
+    and #PF_TILE_GROUNDED
+    ret z
+    ld a, #PF_JUMP_SPEED
+    ld (platformer_player+PF_PLAYER_VY), a
+    ret
 
-    ;; Physics
+_pf_update_player:
     ld ix, #platformer_config
     ld iy, #platformer_player
     call fwk_physics_platform_step
-
-    ;; Tile collision
     ld ix, #platformer_map_descriptor
     ld iy, #platformer_player
     call fwk_platform_tilemap_resolve
+    ld (platformer_last_collision), a
+    ret
 
-    ;; Coin collection
+_pf_collect_coins:
     ld hl, #platformer_coins
-    ld b, #4
+    ld b, #PF_COIN_COUNT
 _pf_coin_loop:
     ld a, (hl)
-    cp #0xFF
+    cp #PF_COIN_REMOVED
     jr z, _pf_coin_next
     push bc
     push hl
+
+    ;; Coin coordinates are stored as tile coordinates and converted to the
+    ;; byte/pixel coordinate system used by the compact platform state.
     ld a, (hl)
     sla a
     sla a
     sla a
-    ld c, a            ; coin x px
+    ld c, a
     inc hl
     ld a, (hl)
     sla a
     sla a
     sla a
-    ld b, a            ; coin y px
-    ; player pos
-    ld a, (platformer_player+0)
+    ld b, a
+
+    ld a, (platformer_player+PF_PLAYER_X)
     sub c
-    jr nc, _pf_cdx
+    jr nc, _pf_coin_dx_positive
     neg
-_pf_cdx:
+_pf_coin_dx_positive:
     cp #8
-    jr nc, _pf_coin_skip
-    ld a, (platformer_player+1)
+    jr nc, _pf_coin_miss
+    ld a, (platformer_player+PF_PLAYER_Y)
     sub b
-    jr nc, _pf_cdy
+    jr nc, _pf_coin_dy_positive
     neg
-_pf_cdy:
+_pf_coin_dy_positive:
     cp #8
-    jr nc, _pf_coin_skip
-    ; collect and restore the static tile below the removed coin
+    jr nc, _pf_coin_miss
+
+    ;; Mark the coin inactive, then redraw exactly the tile it occupied.
     pop hl
     ld c, (hl)
     inc hl
     ld b, (hl)
     dec hl
-    ld (hl), #0xFF
+    ld (hl), #PF_COIN_REMOVED
     push hl
     ld ix, #platformer_map_descriptor
     ld iy, #platformer_view
     call fwk_tilemap_render_cell
+
     ld a, (platformer_score)
     inc a
     ld (platformer_score), a
     ld a, #1
     ld (platformer_hud_dirty), a
     ld a, (platformer_score)
-    cp #4
-    jr nz, _pf_coin_done
-    ld a, #0x5A
+    cp #PF_WIN_SCORE
+    jr nz, _pf_coin_miss
+    ld a, #PF_STATUS_WON
     ld (platformer_status), a
-_pf_coin_done:
-_pf_coin_skip:
+
+_pf_coin_miss:
     pop hl
     pop bc
 _pf_coin_next:
-    inc hl
-    inc hl
-    inc hl
+    ld de, #PF_COIN_STRIDE
+    add hl, de
     djnz _pf_coin_loop
-
-    ld a, (platformer_hud_dirty)
-    or a
-    call nz, _pf_draw_hud
-    call _pf_draw_player
-    jp _platformer_loop
+    ret
 
 _pf_draw_player:
-    ld a, (platformer_player+0)
-    ld (platformer_player_sprite+2), a
-    ld a, (platformer_player+1)
-    ld (platformer_player_sprite+4), a
+    ld a, (platformer_player+PF_PLAYER_X)
+    ld (platformer_player_sprite+FWK_SPRITE_X), a
+    ld a, (platformer_player+PF_PLAYER_Y)
+    ld (platformer_player_sprite+FWK_SPRITE_Y), a
     ld ix, #platformer_player_sprite
     ld de, #platformer_player_background
     call fwk_sprite_capture
     ld ix, #platformer_player_sprite
-    call fwk_sprite_draw
-    ret
+    jp fwk_sprite_draw
 
 _pf_draw_coins:
     ld hl, #platformer_coins
-    ld b, #4
-_pf_render_coins:
+    ld b, #PF_COIN_COUNT
+_pf_coin_draw_loop:
     ld a, (hl)
-    cp #0xFF
-    jr z, _pf_rc_next
+    cp #PF_COIN_REMOVED
+    jr z, _pf_coin_draw_next
     push bc
     push hl
     ld a, (hl)
     sla a
     sla a
     sla a
-    ld (platformer_coin_sprite+2), a
+    ld (platformer_coin_sprite+FWK_SPRITE_X), a
     inc hl
     ld a, (hl)
     sla a
     sla a
     sla a
-    ld (platformer_coin_sprite+4), a
+    ld (platformer_coin_sprite+FWK_SPRITE_Y), a
     ld ix, #platformer_coin_sprite
     call fwk_sprite_draw
     pop hl
     pop bc
-_pf_rc_next:
-    inc hl
-    inc hl
-    inc hl
-    djnz _pf_render_coins
+_pf_coin_draw_next:
+    ld de, #PF_COIN_STRIDE
+    add hl, de
+    djnz _pf_coin_draw_loop
     ret
 
 _pf_draw_hud:
-    ;; Restore the three tile rows below the masked HUD before changing text.
-    ;; Otherwise transparent pixels from the previous score remain visible.
+    ;; Masked text cannot erase its previous opaque pixels. Restore the three
+    ;; tile rows under the HUD before drawing the new score or victory line.
     xor a
     ld (platformer_hud_dirty), a
     ld (_platformer_hud_row), a
@@ -277,27 +301,30 @@ _pf_hud_restore_column:
     ld a, (_platformer_hud_column)
     inc a
     ld (_platformer_hud_column), a
-    cp #10
+    cp #PF_MAP_COLUMNS
     jr c, _pf_hud_restore_column
     ld a, (_platformer_hud_row)
     inc a
     ld (_platformer_hud_row), a
-    cp #3
+    cp #PF_HUD_ROWS
     jr c, _pf_hud_restore_row
 
     ld a, (platformer_score)
     add a, #48
     ld (platformer_score_str+7), a
-
-    ;; Draw HUD
     ld hl, #0
     ld c, #0
     call fwk_video_get_ptr
     ld iy, #platformer_score_str
     call fwk_text_draw
+
     ld hl, #10
     ld c, #0
     call fwk_video_get_ptr
+    ld a, (platformer_status)
+    cp #PF_STATUS_WON
     ld iy, #platformer_help_str
-    call fwk_text_draw
-    ret
+    jr nz, _pf_draw_hud_line
+    ld iy, #platformer_win_str
+_pf_draw_hud_line:
+    jp fwk_text_draw

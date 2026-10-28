@@ -18,7 +18,7 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
   `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
   y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 56 pruebas; el manual cubre todos los ejemplos y
+- La suite host contiene 58 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -538,3 +538,27 @@ restaurar o limpiar primero el fondo. Implementación registrada en `263bbd4` y
 estado persistido en `6b12268`; ambos se publicaron en `origin/main`. La CI
 remota `40610742319` terminó correctamente para el SHA completo
 `6b1226877394346c599e434b91fe6396d395424d`.
+
+## Fase completada localmente: aplicación didáctica de plataformas
+
+- [x] `platformer` se reorganizó en `main.s`, `assets.s`, `game.inc` y
+  `example.json`: constantes compartidas, inicialización, entrada, física,
+  reglas y render tienen responsabilidades separadas.
+- [x] El ejemplo conserva movimiento, salto, colisión sólida y unidireccional,
+  cuatro monedas, actualización parcial del mapa, HUD restaurable y victoria;
+  añade gráficos distinguibles y publica la última máscara de colisión.
+- [x] El smoke completa el recorrido en CPC 6128 y CPC 464, comprueba estado,
+  puntuación, aterrizajes, limpieza exacta de las celdas de monedas y
+  composición del dígito final del HUD contra el tileset vigente.
+- [x] El smoke admite `--screenshot-dir` y generó capturas PNG reales de la
+  escena inicial y la victoria en CPC 6128.
+- [x] Nueva guía mantenible `docs/platform-game-guide.html` y PDF equivalente:
+  creación paso a paso, cinco capturas reproducibles, construcción, DSK común,
+  pruebas y diagnóstico. Su generador conserva las tres capturas de terminal.
+- [x] `make test`: 58 pruebas host, veintidós BIN, veintiún CDT y un DSK común
+  de 24 entradas. Manual HTML/PDF y tamaños regenerados.
+
+Límites confirmados: la aplicación sigue siendo una escena de una sola pantalla,
+sin scroll, pendientes, enemigos ni animación. Las capturas proceden de
+AmSpiriT-Lite 1.15.3; no existe validación en hardware real. Esta fase todavía
+no tiene commit, push ni CI remota registrados.

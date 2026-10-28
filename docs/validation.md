@@ -56,11 +56,12 @@ tamaños enlazados.
   bajo bits preservados.
 - Validación de ventanas: geometría válida, ajuste exacto, límites exteriores y
   rechazo de `y+height` con desbordamiento de 16 bits.
-- 56 pruebas host en total. Las pruebas específicas de texto verifican los 918
+- 58 pruebas host en total. Las pruebas específicas de texto verifican los 918
   bytes de los 51 glifos, los 100 bytes de los diez dígitos, la tabla de máscara
   de 256 bytes y la presencia de la API y el mapeo original. El manual cubre
   todos los ejemplos y módulos seleccionados; su checksum corresponde al HTML
-  que generó el PDF vigente.
+  que generó el PDF vigente. Dos pruebas adicionales validan los enlaces, las
+  cinco capturas PNG y el PDF de la guía específica de plataformas.
 
 ## Ejecutado en emulador
 
@@ -132,7 +133,9 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 - `platformer` completó su recorrido jugable automatizado, recogió cuatro
   monedas y alcanzó la victoria en CPC 6128 y CPC 464. Al cambiar el marcador,
   restauró las tres filas de tiles bajo el HUD antes de redibujar; el smoke
-  comparó el glifo final con la composición exacta de fuente, máscara y fondo.
+  comparó el glifo final con la composición exacta de fuente, máscara y tileset,
+  y comprobó que las celdas de las monedas inferiores quedaron limpias. La ruta
+  CPC 6128 produjo capturas PNG reales de la escena inicial y la victoria.
 
 La entrada está automatizada para `vertical` y `platformer`. `tilecoll`, `tilerender` y
 `spriteclip` se inspeccionaron visualmente en emulador y su salida resultó

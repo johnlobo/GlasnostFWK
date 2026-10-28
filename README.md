@@ -66,6 +66,9 @@ de render se instala de forma aislada con
 - `examples`: veintidós consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
+La aplicación didáctica de plataformas dispone de una guía paso a paso con
+capturas reproducibles en `docs/platform-game-guide.html` y PDF equivalente.
+
 ## Vertical jugable
 
 `examples/vertical` integra entrada, pool, movimiento, vídeo y recursos de

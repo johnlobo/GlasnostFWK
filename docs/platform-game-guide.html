@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crear un juego de plataformas con GlasnostFWK</title>
+  <style>
+    @page { size: A4; margin: 16mm 15mm 18mm; @bottom-center { content: "GlasnostFWK · Guía de plataformas · " counter(page); color: #64748b; font: 9pt sans-serif; } }
+    :root { --ink:#172033; --muted:#526077; --blue:#174ea6; --soft:#eef4ff; --line:#cbd5e1; --code:#111827; --warn:#fff7df; }
+    * { box-sizing: border-box; }
+    body { margin:0 auto; max-width: 1040px; padding: 32px; color:var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    h1,h2,h3 { color:#10244a; line-height:1.18; break-after:avoid; }
+    h1 { font-size:2.25rem; margin:0 0 .35rem; }
+    h2 { border-bottom:2px solid #dbe7fb; margin-top:2.2rem; padding-bottom:.28rem; }
+    h3 { margin-top:1.5rem; }
+    p, li { orphans:3; widows:3; }
+    a { color:var(--blue); }
+    code { color:#8b1e3f; font: .92em "DejaVu Sans Mono", monospace; }
+    pre { overflow-wrap:anywhere; white-space:pre-wrap; background:var(--code); color:#f8fafc; padding:15px 17px; border-radius:8px; font:13px/1.45 "DejaVu Sans Mono", monospace; break-inside:avoid; }
+    pre code { color:inherit; font:inherit; }
+    table { border-collapse:collapse; width:100%; margin:1rem 0; break-inside:avoid; }
+    th,td { border:1px solid var(--line); padding:.5rem .65rem; text-align:left; vertical-align:top; }
+    th { background:#edf3fc; }
+    figure { margin:1.3rem 0; break-inside:avoid; }
+    figure img { display:block; width:100%; border:1px solid #94a3b8; border-radius:7px; }
+    figcaption { color:var(--muted); font-size:.9rem; margin-top:.4rem; }
+    .lead { color:#334155; font-size:1.16rem; }
+    .meta { color:var(--muted); font-size:.92rem; }
+    .note,.warning { border-left:5px solid #3478d4; background:var(--soft); padding:.75rem 1rem; margin:1rem 0; break-inside:avoid; }
+    .warning { border-color:#d69519; background:var(--warn); }
+    .step { display:inline-block; min-width:1.7rem; margin-right:.4rem; border-radius:99px; background:#174ea6; color:white; text-align:center; }
+    .toc { columns:2; border:1px solid var(--line); background:#f8fafc; padding:1rem 1.2rem; }
+    .toc li { margin:.2rem 0; }
+    .checklist li { margin:.36rem 0; }
+    .page-break { break-before:page; }
+    @media print { body { max-width:none; padding:0; font-size:10.2pt; } h1{font-size:25pt} h2{font-size:17pt} h3{font-size:13pt} a{color:inherit;text-decoration:none} .toc{columns:2} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Crear un juego de plataformas con GlasnostFWK</h1>
+    <p class="lead">Tutorial mantenible, paso a paso, basado en el flujo de construcción y en las APIs presentes en el repositorio.</p>
+    <p class="meta">Edición: 28 de octubre de 2026 · Perfil estable <code>standard-160x200.json</code> · Ensamblador Z80</p>
+  </header>
+
+  <div class="note"><strong>Alcance confirmado.</strong> Esta guía explica cómo montar un proyecto pequeño con movimiento, salto, tilemap, colisión, sprites y objetos coleccionables. No presupone cámara con scroll, pendientes, streaming de mapas ni un sistema universal de entidades: esas funciones no forman parte del contrato actual.</div>
+
+  <nav aria-label="Índice">
+    <h2>Índice</h2>
+    <ol class="toc">
+      <li><a href="#resultado">Resultado y requisitos</a></li>
+      <li><a href="#estructura">Crear la estructura</a></li>
+      <li><a href="#manifiesto">Declarar el manifiesto</a></li>
+      <li><a href="#datos">Preparar mapa y assets</a></li>
+      <li><a href="#estado">Definir jugador y física</a></li>
+      <li><a href="#inicio">Inicializar el juego</a></li>
+      <li><a href="#bucle">Construir el bucle</a></li>
+      <li><a href="#objetos">Añadir objetos y HUD</a></li>
+      <li><a href="#construir">Construir y ejecutar</a></li>
+      <li><a href="#integrar">Integrar en el DSK común</a></li>
+      <li><a href="#pruebas">Pruebas y diagnóstico</a></li>
+      <li><a href="#capturas">Regenerar esta documentación</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="resultado">1. Resultado y requisitos</h2>
+  <p>El proyecto queda dividido en cuatro archivos: <code>example.json</code> elige perfil y módulos, <code>game.inc</code> comparte constantes, <code>assets.s</code> conserva datos estáticos, y <code>main.s</code> implementa estado, inicialización y bucle. El constructor prepara un proyecto CPCTelera aislado bajo <code>.build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
+  <p>Antes de empezar, desde la raíz de GlasnostFWK, compruebe:</p>
+  <pre><code>test -f /config/workspace/cpctelera_next/cpctelera/cpctelera.lib
+python3 --version
+make --version</code></pre>
+  <p>Si CPCTelera está en otra ruta, defina <code>CPCT_NEXT_PATH</code> al invocar el constructor. El valor predeterminado del repositorio es <code>/config/workspace/cpctelera_next/cpctelera</code>.</p>
+  <div class="warning"><strong>Unidades.</strong> En el perfil estándar, X y el ancho usados por sprites y por este perfil de plataformas están expresados en bytes Mode 0; cada byte contiene dos píxeles. Y y la altura se expresan en scanlines. Mezclar píxeles con bytes desplaza colisiones y dibujos.</div>
+  <figure>
+    <img src="images/platformer/platformer-6128-start.png" alt="Captura real de la escena inicial de platformer en un CPC 6128 emulado">
+    <figcaption>Captura 1. Escena inicial obtenida desde AmSpiriT-Lite 1.15.3, modelo CPC 6128, mediante el mismo smoke que comprueba el estado del juego.</figcaption>
+  </figure>
+
+  <h2 id="estructura"><span class="step">2</span> Crear la estructura</h2>
+  <p>Para seguir el tutorial sin modificar el ejemplo distribuido, utilice otro nombre:</p>
+  <pre><code>mkdir -p examples/mi_plataformas
+touch examples/mi_plataformas/example.json
+touch examples/mi_plataformas/main.s
+touch examples/mi_plataformas/assets.s
+touch examples/mi_plataformas/game.inc</code></pre>
+  <p>La captura siguiente se genera leyendo el ejemplo real. Muestra la misma separación que debe conservar el proyecto nuevo y los módulos de plataforma disponibles.</p>
+  <figure>
+    <img src="images/platformer/01-estructura.png" alt="Captura de terminal con los archivos del ejemplo y los módulos de plataforma">
+    <figcaption>Captura 2. Estructura obtenida mediante <code>find</code>; no es un esquema dibujado a mano.</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Archivo</th><th>Responsabilidad recomendada</th></tr></thead>
+    <tbody>
+      <tr><td><code>example.json</code></td><td>Dependencias explícitas, perfil de vídeo, nombre AMSDOS y fuentes del juego.</td></tr>
+      <tr><td><code>game.inc</code></td><td>Offsets, máscaras y constantes compartidas entre código y assets.</td></tr>
+      <tr><td><code>assets.s</code></td><td>Mapa row-major, tabla de tipos, tileset, sprites, configuración, teclas y posiciones iniciales.</td></tr>
+      <tr><td><code>main.s</code></td><td>Estado mutable, inicialización, lectura de entrada, física, reglas y render.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="manifiesto"><span class="step">3</span> Declarar el manifiesto</h2>
+  <p>Escriba en <code>examples/mi_plataformas/example.json</code>:</p>
+  <pre><code>{
+  "name": "mi_plataformas",
+  "amsdos_name": "MIPLATA",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s",
+    "video/sprite.s",
+    "ui/text.s",
+    "extensions/physics_platform.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s",
+    "extensions/platform_tilemap.s"
+  ],
+  "game_sources": ["main.s", "assets.s", "game.inc"]
+}</code></pre>
+  <p><code>game_sources</code> debe incluir <code>main.s</code>. Las rutas son relativas al directorio del ejemplo y el constructor rechaza rutas que escapen de él. <code>amsdos_name</code> se usa al integrar el BIN en el DSK común: debe contener entre uno y ocho caracteres AMSDOS válidos.</p>
+  <figure>
+    <img src="images/platformer/02-manifiesto.png" alt="Captura de terminal con el manifiesto JSON real de platformer">
+    <figcaption>Captura 3. Manifiesto leído directamente de <code>examples/platformer/example.json</code>. Si el ejemplo evoluciona, el generador de capturas reflejará el cambio.</figcaption>
+  </figure>
+  <div class="note"><strong>Dependencias explícitas.</strong> Añadir una llamada en ensamblador no enlaza automáticamente su implementación. El archivo que define la rutina debe aparecer en <code>modules</code>; los <code>.inc</code> asociados se copian automáticamente cuando existen.</div>
+
+  <h3>3.1 Compartir constantes del juego</h3>
+  <p>El constructor copia las fuentes del consumidor bajo <code>src/game</code>. Por eso <code>main.s</code> y <code>assets.s</code> incluyen el archivo compartido con esta ruta:</p>
+  <pre><code>.include "game/game.inc"</code></pre>
+  <p>Centralice allí offsets y reglas numéricas para no duplicarlas:</p>
+  <pre><code>PF_PLAYER_X      = 0
+PF_PLAYER_Y      = 1
+PF_PLAYER_VX     = 2
+PF_PLAYER_VY     = 3
+PF_PLAYER_WIDTH  = 4
+PF_PLAYER_HEIGHT = 5
+PF_PLAYER_FLAGS  = 6
+PF_PLAYER_SIZE   = 7
+
+PF_INPUT_LEFT    = 0x01
+PF_INPUT_RIGHT   = 0x02
+PF_INPUT_JUMP    = 0x04
+PF_SPEED         = 2
+PF_JUMP_SPEED    = -8</code></pre>
+
+  <h2 id="datos" class="page-break"><span class="step">4</span> Preparar mapa, tiles y sprites</h2>
+  <h3>4.1 Mapa y tipos de colisión</h3>
+  <p>El mapa contiene identificadores de tile en orden de filas. Otra tabla traduce cada identificador a <code>FWK_TILE_PASSABLE</code>, <code>FWK_TILE_SOLID</code> o <code>FWK_TILE_ONE_WAY</code>. Un ejemplo mínimo de 10 columnas usa tiles de 8 bytes por 8 scanlines:</p>
+  <pre><code>.include "cpctelera.h.s"
+.include "extensions/tilemap.inc"
+.include "extensions/tilemap_render.inc"
+.include "video/sprite.inc"
+
+tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID, FWK_TILE_ONE_WAY
+level_map:
+    .db 1,1,1,1,1,1,1,1,1,1
+    .db 1,0,0,0,0,0,0,0,0,1
+    ; ...añada las filas restantes...
+    .db 1,1,1,1,1,1,1,1,1,1
+
+FWK_TILEMAP_DESCRIPTOR level_descriptor, level_map, tile_types, 10, 25, 3, 3, 8, 8, 3</code></pre>
+  <p>Los tamaños del tile deben ser potencias de dos coherentes con los desplazamientos: tamaño 8 implica shift 3. El descriptor usa ancho y alto de 8 bits. Las consultas fuera del mapa y los identificadores inválidos se tratan como error/transitable, no como una pared implícita.</p>
+
+  <h3>4.2 Tileset y vista</h3>
+  <p>Cada gráfico ocupa exactamente <code>x_size * y_size</code> bytes Mode 0, por filas y sin padding. Concatenelos por identificador y describa la región visible:</p>
+  <pre><code>tileset:
+    .rept 64
+        .db 0x00       ; tile 0: 8 bytes x 8 scanlines
+    .endm
+    .rept 64
+        .db 0x55       ; tile 1
+    .endm
+    .rept 64
+        .db 0xF0       ; tile 2
+    .endm
+
+FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 0, 0, 10, 25, 3</code></pre>
+  <p>La cámara y el viewport están en tiles; <code>screen_x</code> está en bytes Mode 0 y <code>screen_y</code> es una palabra. El render completo valida la geometría antes de escribir.</p>
+
+  <h3>4.3 Sprite y buffer de fondo</h3>
+  <pre><code>player_pixels:
+    .rept 8
+        .db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
+    .endm
+
+FWK_SPRITE_DESCRIPTOR player_sprite, player_pixels, 16, 184, 8, 8</code></pre>
+  <p>En la zona mutable reserve <code>width * height</code> bytes para guardar el fondo. Captura y restauración deben usar la misma posición del descriptor; restaure antes de modificar X/Y.</p>
+
+  <h2 id="estado"><span class="step">5</span> Definir jugador, física y controles</h2>
+  <p>El perfil compacto usa un estado de siete bytes: <code>x, y, vx, vy, width, height, flags</code>. La configuración contiene ancho del mundo, suelo inclusivo, gravedad y caída máxima.</p>
+  <pre><code>.include "extensions/physics_platform.inc"
+
+player_state:      .ds FWK_PLATFORM_STATE_SIZE
+player_background: .ds 8 * 8
+
+FWK_PLATFORM_CONFIG physics_config, 80, 255, 1, 8
+
+ACTION_LEFT  = 0x01
+ACTION_RIGHT = 0x02
+ACTION_JUMP  = 0x04
+
+bindings:
+    .dw Key_CursorLeft
+    .db ACTION_LEFT
+    .dw Key_CursorRight
+    .db ACTION_RIGHT
+    .dw Key_CursorUp
+    .db ACTION_JUMP
+    .dw 0
+    .db 0</code></pre>
+  <p>La máscara cero termina la tabla. Hay como máximo ocho bits de acción. Use <code>fwk_input_held</code> para movimiento continuo y <code>fwk_input_pressed</code> para disparar el salto una sola vez.</p>
+  <p>El suelo global en 255 actúa solo como límite de seguridad si el tilemap ya posee un suelo visible. El resolver de mapa establece <code>FWK_PLATFORM_TILE_GROUNDED</code> al aterrizar sobre tiles sólidos o plataformas de una dirección.</p>
+
+  <h2 id="inicio"><span class="step">6</span> Inicializar el juego</h2>
+  <p>La secuencia mínima es: sistema, vídeo, módulos auxiliares, estado, entrada y escena estática.</p>
+  <pre><code>_main::
+    call fwk_system_init
+    call fwk_video_init
+    call fwk_text_init
+    xor a
+    call fwk_video_clear_visible
+
+    ld a, #16
+    ld (player_state + FWK_PLATFORM_X), a
+    ld a, #184
+    ld (player_state + FWK_PLATFORM_Y), a
+    xor a
+    ld (player_state + FWK_PLATFORM_VX), a
+    ld (player_state + FWK_PLATFORM_VY), a
+    ld a, #8
+    ld (player_state + FWK_PLATFORM_WIDTH), a
+    ld (player_state + FWK_PLATFORM_HEIGHT), a
+    ld a, #FWK_PLATFORM_TILE_GROUNDED
+    ld (player_state + FWK_PLATFORM_FLAGS), a
+
+    call fwk_input_init
+    ld hl, #bindings
+    call fwk_input_set_bindings
+
+    ld ix, #level_descriptor
+    ld iy, #level_view
+    call fwk_tilemap_render_view
+    jp c, fatal_data_error</code></pre>
+  <p>Después dibuje objetos estáticos, capture el fondo del jugador y dibújelo. Si el render devuelve carry, el descriptor, el viewport o algún id de tile no son válidos.</p>
+
+  <h2 id="bucle" class="page-break"><span class="step">7</span> Construir el bucle de juego</h2>
+  <p>El orden evita borrar la escena y garantiza que el resolver pueda reconstruir la posición anterior a partir de la velocidad:</p>
+  <ol>
+    <li>Esperar el frame.</li>
+    <li>Restaurar el fondo en la posición anterior.</li>
+    <li>Actualizar entrada y velocidades.</li>
+    <li>Ejecutar física.</li>
+    <li>Resolver inmediatamente la colisión con el tilemap.</li>
+    <li>Aplicar reglas del juego.</li>
+    <li>Actualizar el descriptor del sprite.</li>
+    <li>Capturar el fondo nuevo y dibujar.</li>
+  </ol>
+  <pre><code>game_loop:
+    call fwk_system_wait_frame
+
+    ld ix, #player_sprite
+    ld hl, #player_background
+    call fwk_sprite_restore
+
+    call fwk_input_update
+    call update_horizontal_velocity
+    call try_jump
+
+    ld ix, #physics_config
+    ld iy, #player_state
+    call fwk_physics_platform_step
+
+    ld ix, #level_descriptor
+    ld iy, #player_state
+    call fwk_platform_tilemap_resolve
+    ; A contiene la mascara FWK_PLATFORM_HIT_*
+
+    call update_rules
+    call draw_player
+    jp game_loop</code></pre>
+
+  <h3>7.1 Movimiento horizontal</h3>
+  <pre><code>    ld a, (fwk_input_held)
+    and #ACTION_LEFT
+    jr z, check_right
+    ld a, #-2
+    ld (player_state + FWK_PLATFORM_VX), a
+    jr horizontal_done
+check_right:
+    ld a, (fwk_input_held)
+    and #ACTION_RIGHT
+    jr z, stop_horizontal
+    ld a, #2
+    ld (player_state + FWK_PLATFORM_VX), a
+    jr horizontal_done
+stop_horizontal:
+    xor a
+    ld (player_state + FWK_PLATFORM_VX), a
+horizontal_done:</code></pre>
+
+  <h3>7.2 Salto</h3>
+  <pre><code>    ld a, (fwk_input_pressed)
+    and #ACTION_JUMP
+    jr z, no_jump
+    ld a, (player_state + FWK_PLATFORM_FLAGS)
+    and #FWK_PLATFORM_TILE_GROUNDED
+    jr z, no_jump
+    ld a, #-8
+    ld (player_state + FWK_PLATFORM_VY), a
+no_jump:</code></pre>
+  <p>La velocidad es un byte con signo. La rutina de física aplica gravedad y caída máxima; el resolver corrige paredes, techo y suelo. No use velocidades que permitan atravesar un tile completo en un solo frame: no hay barrido continuo ni subdivisión automática.</p>
+
+  <h3>7.3 Restaurar y dibujar el jugador</h3>
+  <pre><code>draw_player:
+    ld a, (player_state + FWK_PLATFORM_X)
+    ld (player_sprite + FWK_SPRITE_X), a
+    xor a
+    ld (player_sprite + FWK_SPRITE_X + 1), a
+    ld a, (player_state + FWK_PLATFORM_Y)
+    ld (player_sprite + FWK_SPRITE_Y), a
+    xor a
+    ld (player_sprite + FWK_SPRITE_Y + 1), a
+
+    ld ix, #player_sprite
+    ld de, #player_background
+    call fwk_sprite_capture
+    ld ix, #player_sprite
+    call fwk_sprite_draw
+    ret</code></pre>
+  <div class="warning"><strong>Detalle importante.</strong> El descriptor de sprite almacena X e Y en 16 bits con signo, mientras que el estado compacto usa bytes. Si escribe el byte bajo, inicialice también el byte alto; para este mundo positivo debe ser cero.</div>
+
+  <h2 id="objetos"><span class="step">8</span> Añadir objetos coleccionables y HUD</h2>
+  <p>Una regla sencilla almacena cada objeto como <code>x_tile, y_tile, activo</code>. En cada frame, compare su rectángulo con el del jugador. Al recogerlo:</p>
+  <ol>
+    <li>marque la entrada como inactiva;</li>
+    <li>redibuje la celda estática mediante <code>fwk_tilemap_render_cell</code>;</li>
+    <li>incremente la puntuación;</li>
+    <li>marque el HUD como sucio.</li>
+  </ol>
+  <p><code>fwk_tilemap_render_cell</code> recibe fila en <code>B</code> y columna en <code>C</code>, ambas relativas al viewport. Evita repintar todo el mapa por retirar un objeto.</p>
+  <p>El texto con máscara conserva el fondo en los bits transparentes, pero al sustituir un glifo pueden quedar píxeles opacos del glifo anterior. Antes de redibujar una puntuación variable, restaure las celdas de tile que ocupa el HUD y después escriba el texto. Hágalo solo cuando cambie el valor.</p>
+  <figure>
+    <img src="images/platformer/platformer-6128-victory.png" alt="Captura real del estado de victoria tras recoger las cuatro monedas">
+    <figcaption>Captura 4. El recorrido automatizado ha recogido las cuatro monedas, actualizado el HUD y publicado el estado de victoria en CPC 6128.</figcaption>
+  </figure>
+
+  <h2 id="construir" class="page-break"><span class="step">9</span> Construir y ejecutar</h2>
+  <h3>9.1 Construcción aislada</h3>
+  <pre><code>python3 tools/build_examples.py mi_plataformas</code></pre>
+  <p>El constructor valida las fuentes y módulos, genera la configuración de vídeo, prepara <code>.build/mi_plataformas</code> y ejecuta su Makefile CPCTelera. Los artefactos principales quedan en:</p>
+  <pre><code>.build/mi_plataformas/obj/mi_plataformas.bin
+.build/mi_plataformas/mi_plataformas.cdt
+.build/mi_plataformas/mi_plataformas.dsk
+.build/mi_plataformas/selected-modules.json</code></pre>
+  <p>El JSON generado permite auditar qué fuentes, módulos, medios y ruta de CPCTelera entraron realmente en la construcción.</p>
+  <figure>
+    <img src="images/platformer/03-construccion.png" alt="Captura de terminal de una construcción correcta del ejemplo platformer">
+    <figcaption>Captura 5. Construcción real de <code>platformer</code>; los tamaños se leen de los artefactos producidos y pueden cambiar cuando cambie el código.</figcaption>
+  </figure>
+
+  <h3>9.2 Cargar el resultado</h3>
+  <p>Para CDT, abra <code>.build/mi_plataformas/mi_plataformas.cdt</code> en un CPC o emulador y use los comandos normales de cinta de su entorno. Una construcción aislada también produce <code>mi_plataformas.dsk</code>; al ejecutar el flujo completo del repositorio, la política pública reúne los BIN en el DSK común descrito a continuación.</p>
+  <p class="meta">La compilación y los smokes automatizados no sustituyen una prueba visual en hardware real. Consulte <code>docs/validation.md</code> para conocer qué se ha verificado y qué sigue sin verificarse.</p>
+
+  <h2 id="integrar"><span class="step">10</span> Integrar el proyecto en el DSK común</h2>
+  <p>La construcción aislada no añade automáticamente un proyecto nuevo a <code>make examples</code>. Para convertirlo en ejemplo mantenido por el repositorio:</p>
+  <ol>
+    <li>Añada <code>mi_plataformas</code> a <code>EXAMPLES</code> en el Makefile raíz.</li>
+    <li>Añádalo a la lista predeterminada de <code>tools/build_test_disk.py</code>.</li>
+    <li>Si debe distribuirse en releases, añádalo a la lista correspondiente de <code>tools/package_release.py</code>.</li>
+    <li>Documente el ejemplo en el manual y añada pruebas host/smoke apropiadas.</li>
+    <li>Ejecute <code>make examples</code>.</li>
+  </ol>
+  <p>El DSK público de pruebas queda en <code>.build/tests/GlasnostFWK-tests.dsk</code> y su catálogo reproducible en <code>.build/tests/catalog.json</code>. El nombre visible del BIN procede de <code>amsdos_name</code>; no puede colisionar con otra entrada.</p>
+  <pre><code>make examples
+python3 -m json.tool .build/tests/catalog.json | less</code></pre>
+
+  <h2 id="pruebas"><span class="step">11</span> Pruebas y diagnóstico</h2>
+  <h3>11.1 Lista de comprobación jugable</h3>
+  <ul class="checklist">
+    <li>El jugador aparece sobre una superficie, sin caer dentro del tile.</li>
+    <li>Izquierda y derecha paran en paredes y límites del mundo.</li>
+    <li>El salto solo se inicia desde apoyo válido.</li>
+    <li>Las plataformas de una dirección dejan pasar al subir y sostienen al bajar.</li>
+    <li>El fondo se restaura sin estelas al moverse.</li>
+    <li>Un objeto recogido no reaparece y su celda queda limpia.</li>
+    <li>El cambio de puntuación no conserva partes del dígito anterior.</li>
+    <li>La condición de victoria puede observarse en RAM y en pantalla.</li>
+  </ul>
+
+  <h3>11.2 Fallos habituales</h3>
+  <table>
+    <thead><tr><th>Síntoma</th><th>Comprobación concreta</th></tr></thead>
+    <tbody>
+      <tr><td>El enlazador no encuentra una rutina.</td><td>Confirme que su <code>.s</code> figura en <code>modules</code> y que el símbolo está declarado con <code>.globl</code>.</td></tr>
+      <tr><td>El jugador se desplaza el doble.</td><td>Revise si X se introdujo como píxeles; sprites y tiles usan bytes Mode 0.</td></tr>
+      <tr><td>Atraviesa paredes o suelo.</td><td>Llame al resolver justo después de la física y mantenga la velocidad por debajo del tamaño del tile por frame.</td></tr>
+      <tr><td>No puede saltar.</td><td>Compruebe el bit <code>FWK_PLATFORM_TILE_GROUNDED</code>, la máscara de acción y que usa <code>fwk_input_pressed</code>.</td></tr>
+      <tr><td>Quedan estelas.</td><td>Restaure antes de cambiar X/Y; reserve al menos <code>width*height</code> bytes para el fondo.</td></tr>
+      <tr><td>El mapa no se dibuja.</td><td>Inspeccione carry tras <code>fwk_tilemap_render_view</code>, dimensiones, cámara, ids y <code>tile_count</code>.</td></tr>
+      <tr><td>El BIN no aparece en el DSK común.</td><td>La construcción aislada no basta: sincronice las listas de integración y vuelva a ejecutar <code>make examples</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>11.3 Validación proporcionada por el repositorio</h3>
+  <pre><code>python3 -m unittest discover -s tests -v
+python3 tools/build_examples.py platformer
+python3 tests/emulator_smoke.py platformer --model 6128
+python3 tests/emulator_smoke.py platformer --model 464</code></pre>
+  <p>La última pareja depende de que el entorno tenga configurado el emulador empleado por el smoke. Un resultado correcto confirma el recorrido automatizado que codifique la prueba; no demuestra todas las rutas jugables posibles.</p>
+
+  <h2 id="capturas"><span class="step">12</span> Regenerar guía, capturas y PDF</h2>
+  <p>Las tres capturas de terminal no están editadas a mano: el script lee estructura y manifiesto, construye <code>platformer</code> y consulta los tamaños resultantes. Regénerelas desde la raíz:</p>
+  <pre><code>make platform-guide PYTHON=.venv-docs/bin/python</code></pre>
+  <p>Para regenerar imágenes sin recompilar, solo si ya existen artefactos actuales:</p>
+  <pre><code>.venv-docs/bin/python docs/images/platformer/generate_captures.py --skip-build
+.venv-docs/bin/python tools/build_manual.py \
+  --html docs/platform-game-guide.html \
+  --pdf docs/platform-game-guide.pdf \
+  --checksum docs/platform-game-guide.sha256</code></pre>
+  <p>Las dos capturas jugables proceden directamente del endpoint PNG del emulador. El smoke las toma al terminar la inicialización y al alcanzar la victoria:</p>
+  <pre><code>python3 tests/emulator_smoke.py platformer --model 6128 \
+  --screenshot-dir docs/images/platformer</code></pre>
+  <div class="note"><strong>Evidencia reproducible.</strong> Una captura solo se escribe después de que el smoke haya observado el estado correspondiente. El comando requiere que el wrapper configurado en <code>--emulator</code> pueda iniciar AmSpiriT-Lite y su servidor local.</div>
+
+  <h2>Referencias del repositorio</h2>
+  <ul>
+    <li><code>docs/manual.html</code>: API general y contratos.</li>
+    <li><code>docs/physics-profiles.md</code>: estado y configuración del perfil compacto.</li>
+    <li><code>docs/tilemap-collision.md</code>: consulta y resolución contra el mapa.</li>
+    <li><code>docs/tilemap-render.md</code>: descriptores y render completo/parcial.</li>
+    <li><code>docs/sprites.md</code>: descriptor, clipping, captura y restauración.</li>
+    <li><code>examples/platformer</code>: aplicación completa sobre la que se valida esta guía.</li>
+  </ul>
+</body>
+</html>

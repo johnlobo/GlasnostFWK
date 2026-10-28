@@ -13,5 +13,5 @@
     "extensions/tilemap_render.s",
     "extensions/platform_tilemap.s"
   ],
-  "game_sources": ["main.s", "assets.s"]
+  "game_sources": ["main.s", "assets.s", "game.inc"]
 }

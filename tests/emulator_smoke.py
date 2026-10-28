@@ -26,6 +26,11 @@ def get(path: str):
         return json.load(reply)
 
 
+def get_bytes(path: str) -> bytes:
+    with urllib.request.urlopen(API + path, timeout=10) as reply:
+        return reply.read()
+
+
 def post(path: str, data: dict):
     request = urllib.request.Request(
         API + path,
@@ -123,7 +128,9 @@ def set_keys(*, row0: int = 0xFF, row1: int = 0xFF) -> None:
     )
 
 
-def run_example(name: str, emulator: Path, model: str) -> None:
+def run_example(
+    name: str, emulator: Path, model: str, screenshot_dir: Path | None = None
+) -> None:
     directory = ROOT / ".build" / name
     dsk = ROOT / ".build" / "tests" / "GlasnostFWK-tests.dsk"
     noi = directory / "obj" / f"{name}.noi"
@@ -575,6 +582,11 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 raise RuntimeError(f"platformer initial state is invalid: {state.hex()}")
             if ram(score, 1) != b"\x00" or ram(status, 1) != b"\xA5":
                 raise RuntimeError("platformer initial score/status is invalid")
+            if screenshot_dir is not None:
+                screenshot_dir.mkdir(parents=True, exist_ok=True)
+                (screenshot_dir / f"platformer-{model}-start.png").write_bytes(
+                    get_bytes("/api/screenshot?crop=1")
+                )
             set_keys(row0=0xFE)
             wait_for(lambda: ram(player, 7)[1] < 184, 5, "platformer first jump")
             set_keys()
@@ -637,6 +649,16 @@ def run_example(name: str, emulator: Path, model: str) -> None:
             set_keys()
             if ram(score, 1) != b"\x04" or ram(status, 1) != b"\x5A":
                 raise RuntimeError("platformer did not collect all coins and win")
+            for coin_x in (16, 56):
+                restored_coin_cell = b"".join(
+                    ram(standard_screen_address(coin_x, y), 8)
+                    for y in range(168, 176)
+                )
+                if restored_coin_cell != bytes(64):
+                    raise RuntimeError(
+                        "platformer left pixels in a collected lower coin cell: "
+                        f"x={coin_x} data={restored_coin_cell.hex()}"
+                    )
             font = asm_hex_bytes_between(
                 ROOT / "src/ui/text.inc",
                 "_fwk_text_default_font:",
@@ -646,9 +668,17 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 ROOT / "src/ui/text.inc", "_fwk_text_mask_table_source:", None
             )
             score_four = font[13 * 18 : 14 * 18]
+            solid_tile = asm_hex_bytes_between(
+                ROOT / "examples/platformer/assets.s",
+                "platformer_tile_solid:",
+                "platformer_tile_one_way:",
+            )
+            hud_background = b"".join(
+                solid_tile[row * 8 + 6 : row * 8 + 8] for row in range(8)
+            ) + b"\x00\x00"
             expected_score_four = bytes(
-                ((0x55 if offset < 16 else 0x00) & mask[value]) | value
-                for offset, value in enumerate(score_four)
+                (background & mask[value]) | value
+                for background, value in zip(hud_background, score_four)
             )
             actual_score_four = b"".join(
                 ram(standard_screen_address(14, y), 2) for y in range(9)
@@ -658,6 +688,10 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                     "platformer HUD was not restored before score redraw: "
                     f"actual={actual_score_four.hex()} "
                     f"expected={expected_score_four.hex()}"
+                )
+            if screenshot_dir is not None:
+                (screenshot_dir / f"platformer-{model}-victory.png").write_bytes(
+                    get_bytes("/api/screenshot?crop=1")
                 )
         print(f"ok - {name} executes and advances frames ({model})")
     finally:
@@ -680,6 +714,11 @@ def main() -> int:
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")
+    parser.add_argument(
+        "--screenshot-dir",
+        type=Path,
+        help="guarda capturas PNG del inicio y victoria de platformer",
+    )
     args = parser.parse_args()
     try:
         get("/api/ping")
@@ -687,7 +726,7 @@ def main() -> int:
     except OSError:
         pass
     for name in args.examples:
-        run_example(name, args.emulator, args.model)
+        run_example(name, args.emulator, args.model, args.screenshot_dir)
     return 0
 
 

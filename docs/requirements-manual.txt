@@ -1,1 +1,2 @@
 weasyprint==70.0
+Pillow==13.0.0

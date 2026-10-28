@@ -1,7 +1,7 @@
 PYTHON ?= python3
 EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer
 
-.PHONY: all examples test generate report manual release clean
+.PHONY: all examples test generate report manual platform-guide release clean
 
 all: test
 
@@ -19,6 +19,12 @@ report: examples
 
 manual:
 	$(PYTHON) tools/build_manual.py
+
+platform-guide:
+	$(PYTHON) docs/images/platformer/generate_captures.py
+	$(PYTHON) tools/build_manual.py --html docs/platform-game-guide.html \
+		--pdf docs/platform-game-guide.pdf \
+		--checksum docs/platform-game-guide.sha256
 
 release: examples
 	@test -n "$(VERSION)" || (echo "VERSION is required (for example: make release VERSION=0.1.0)" >&2; exit 2)

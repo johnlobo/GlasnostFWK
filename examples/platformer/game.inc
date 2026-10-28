@@ -1,0 +1,32 @@
+;; Shared constants for the platformer tutorial example.
+
+PF_PLAYER_X       = 0
+PF_PLAYER_Y       = 1
+PF_PLAYER_VX      = 2
+PF_PLAYER_VY      = 3
+PF_PLAYER_WIDTH   = 4
+PF_PLAYER_HEIGHT  = 5
+PF_PLAYER_FLAGS   = 6
+PF_PLAYER_SIZE    = 7
+
+PF_PLAYER_WIDTH_BYTES = 8
+PF_PLAYER_HEIGHT_PX   = 8
+PF_PLAYER_START_X     = 16
+PF_PLAYER_START_Y     = 184
+
+PF_INPUT_LEFT     = 0x01
+PF_INPUT_RIGHT    = 0x02
+PF_INPUT_JUMP     = 0x04
+PF_TILE_GROUNDED = 0x02
+
+PF_SPEED          = 2
+PF_JUMP_SPEED     = -8
+PF_COIN_COUNT     = 4
+PF_COIN_STRIDE    = 3
+PF_COIN_REMOVED   = 0xFF
+PF_WIN_SCORE      = 4
+
+PF_STATUS_READY   = 0xA5
+PF_STATUS_WON     = 0x5A
+PF_HUD_ROWS       = 3
+PF_MAP_COLUMNS    = 10

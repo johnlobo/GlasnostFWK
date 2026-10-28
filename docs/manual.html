@@ -528,7 +528,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="collision"><td><code>collision</code></td><td>Prueba AABB entre dos entidades con offsets de campo configurables.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="platformer"><td><code>platformer</code></td><td>Esqueleto de plataformas: movimiento, salto, colisión con tilemap, monedas y victoria.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: movimiento, salto, colisión con tilemap, monedas, HUD y victoria.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>
@@ -536,6 +536,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
     </table>
     <p><code>vertical</code> y <code>platformer</code> son las dos escenas jugables. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
     <p>El HUD de <code>platformer</code> restaura las tres filas de tiles que ocupa antes de volver a dibujar texto enmascarado y solo se actualiza cuando cambia la puntuación. Este patrón evita acumular restos al sustituir glifos sobre un fondo no uniforme.</p>
+    <p>La guía específica <a href="platform-game-guide.html">Crear un juego de plataformas con GlasnostFWK</a> reconstruye el proyecto paso a paso, documenta la separación entre manifiesto, constantes, assets y ciclo de juego, e incluye capturas reproducibles de construcción, inicio y victoria.</p>
   </section>
 
   <section aria-labelledby="pruebas">
