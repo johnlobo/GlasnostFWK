@@ -561,4 +561,5 @@ remota `40610742319` terminó correctamente para el SHA completo
 Límites confirmados: la aplicación sigue siendo una escena de una sola pantalla,
 sin scroll, pendientes, enemigos ni animación. Las capturas proceden de
 AmSpiriT-Lite 1.15.3; no existe validación en hardware real. Esta fase todavía
-no tiene commit, push ni CI remota registrados.
+no tiene push ni CI remota registrados. Implementación y documentación:
+`6d7b928`.
