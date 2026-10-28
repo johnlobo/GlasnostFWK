@@ -500,7 +500,7 @@ escenas completas, no la medición básica ya registrada.
 - [x] Herramienta `tools/measure_perf.py` para reproducir la medición.
 - [x] Manual y PDF regenerados con cobertura de `perf`; suite host 53 pruebas.
 
-## Fase completada localmente: fuente sprite y números pequeños
+## Fase completada: fuente sprite, números pequeños y plataforma jugable
 
 - [x] El adaptador a `cpct_drawStringM0_asm` se sustituyó por el sistema de
   fuente gráfica verificado en `PocketFever`, `model01` y `DeckTower`.
@@ -534,5 +534,7 @@ Límites confirmados: hay que llamar `fwk_text_init` tras desactivar firmware;
 la tabla de máscara ocupa `0x0100..0x01FF`; los índices de color dependen de la
 paleta del juego y el pen 14 se reserva para sombra. No hay minúsculas, clipping,
 borrado automático ni reentrancia. Para sustituir texto enmascarado hay que
-restaurar o limpiar primero el fondo. Implementación registrada en el commit
-`263bbd4`; el push y la CI remota quedan pendientes del commit de cierre.
+restaurar o limpiar primero el fondo. Implementación registrada en `263bbd4` y
+estado persistido en `6b12268`; ambos se publicaron en `origin/main`. La CI
+remota `40610742319` terminó correctamente para el SHA completo
+`6b1226877394346c599e434b91fe6396d395424d`.
