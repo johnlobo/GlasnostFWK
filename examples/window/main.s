@@ -3,7 +3,7 @@
 
 .globl fwk_system_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_get_ptr
-.globl fwk_text_set_colors, fwk_text_draw
+.globl fwk_text_init, fwk_text_set_color, fwk_text_draw
 
 WINDOW_WIDTH = 20
 WINDOW_HEIGHT = 16
@@ -44,6 +44,7 @@ window_status:: .db 0
 _main::
     call fwk_system_init
     call fwk_video_init
+    call fwk_text_init
     ld a, #0x55
     call fwk_video_clear_visible
 
@@ -99,9 +100,8 @@ _window_show:
     ld ix, #window_descriptor
     call fwk_window_draw
     ret c
-    ld l, #15
-    ld h, #0
-    call fwk_text_set_colors
+    xor a
+    call fwk_text_set_color
     ld hl, #44
     ld c, #12
     call fwk_video_get_ptr

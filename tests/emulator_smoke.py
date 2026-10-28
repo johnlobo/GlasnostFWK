@@ -9,11 +9,14 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.build_test_disk import program_bin_name
 DEFAULT_EMULATOR = ROOT.parent / "tools" / "amspirit-lite" / "run.sh"
 API = "http://127.0.0.1:6128"
 
@@ -62,6 +65,13 @@ def symbol(noi: Path, name: str) -> int:
     return int(table[name], 16)
 
 
+def asm_hex_bytes_between(path: Path, start: str, end: str | None) -> bytes:
+    source = path.read_text(encoding="ascii").split(start, 1)[1]
+    if end is not None:
+        source = source.split(end, 1)[0]
+    return bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", source))
+
+
 def wait_for(predicate, timeout: float, label: str):
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -75,22 +85,41 @@ def wait_for(predicate, timeout: float, label: str):
     raise RuntimeError(f"timeout waiting for {label}")
 
 
-def hold_cursor_right(frames: int) -> None:
-    pressed = [0xFD] + [0xFF] * 15  # Key_CursorRight: row 0, bit 1, active low
+def hold_keys(*, row0: int = 0xFF, row1: int = 0xFF, frames: int, after: int = 2) -> None:
+    pressed = [row0, row1] + [0xFF] * 14
     released = [0xFF] * 16
     marker = f"GLASNOST_INPUT_DONE_{time.monotonic_ns()}"
     script = (
         f"keyboard_write({','.join(map(str, pressed))})\n"
         f"wait_frames({frames - 1})\n"
         f"keyboard_write({','.join(map(str, released))})\n"
-        "wait_frames(2)\n"
+        f"wait_frames({after})\n"
         f'print("{marker}")\n'
     )
     post_text("/api/script?lang=lua", script)
     wait_for(
         lambda: (status := get("/api/script"))["running"] is False and marker in status["output"],
         15,
-        "held CursorRight input",
+        "held keyboard input",
+    )
+
+
+def hold_cursor_right(frames: int) -> None:
+    hold_keys(row0=0xFD, frames=frames)
+
+
+def set_keys(*, row0: int = 0xFF, row1: int = 0xFF) -> None:
+    values = [row0, row1] + [0xFF] * 14
+    marker = f"GLASNOST_KEYS_SET_{time.monotonic_ns()}"
+    post_text(
+        "/api/script?lang=lua",
+        f"keyboard_write({','.join(map(str, values))})\nprint(\"{marker}\")\n",
+    )
+    wait_for(
+        lambda: (status := get("/api/script"))["running"] is False
+        and marker in status["output"],
+        5,
+        "keyboard state update",
     )
 
 
@@ -108,8 +137,68 @@ def run_example(name: str, emulator: Path, model: str) -> None:
     try:
         wait_for(lambda: get("/api/ping").get("ok"), 30, "emulator API")
         time.sleep(6)  # ROM/AMSDOS boot; sending RUN earlier is nondeterministic
-        post("/api/keytype", {"text": f'run"{name[:8]}\n'})
+        run_name = Path(program_bin_name(ROOT, name)).stem
+        post("/api/keytype", {"text": f'run"{run_name}\n'})
         wait_for(lambda: int.from_bytes(ram(frame, 2), "little") > 2, 30, f"{name} frame loop")
+        if name == "board":
+            status = symbol(noi, "board_text_status")
+            wait_for(lambda: ram(status, 1) == b"\xA5", 5, "sprite-font rendering")
+            if ram(0x0100, 16) != bytes.fromhex(
+                "ffaa5500aaaa00005500550000000000"
+            ):
+                raise RuntimeError("text transparency table was not installed at 0x0100")
+            title = b"".join(
+                ram(standard_screen_address(12, y), 26) for y in range(16, 25)
+            )
+            number_42 = b"".join(
+                ram(standard_screen_address(28, y), 4) for y in range(32, 37)
+            )
+            number_7 = b"".join(
+                ram(standard_screen_address(28, y), 2) for y in range(40, 45)
+            )
+            number_255 = b"".join(
+                ram(standard_screen_address(28, y), 6) for y in range(48, 53)
+            )
+            colorized_8s = b"".join(
+                ram(standard_screen_address(28, y), 30) for y in range(56, 61)
+            )
+            if not any(title):
+                raise RuntimeError("regular sprite-font title is absent from video RAM")
+            expected_42 = bytes.fromhex(
+                "aaaaffaa aaaa00aa ffaaffaa 00aaaa00 00aaffaa".replace(" ", "")
+            )
+            expected_7 = bytes.fromhex("ffaa00aa00aa00aa00aa")
+            expected_255 = bytes.fromhex(
+                "ffaaffaaffaa 00aaaa00aa00 ffaaffaaffaa "
+                "aa0000aa00aa ffaaffaaffaa".replace(" ", "")
+            )
+            small = asm_hex_bytes_between(
+                ROOT / "src/ui/text.inc",
+                "_fwk_text_default_small_digits:",
+                "_fwk_text_mask_table_source:",
+            )
+            color_table = asm_hex_bytes_between(
+                ROOT / "src/ui/text.s", "_fwk_text_swap_colors:", '.include "ui/text.inc"'
+            )
+            digit_8 = small[8 * 10 : 9 * 10]
+            expected_colorized_8s = bytearray()
+            for row in range(5):
+                source_pair = digit_8[row * 2 : row * 2 + 2]
+                for color in range(15):
+                    replacements = color_table[color * 4 : color * 4 + 4]
+                    mapping = dict(zip((0x55, 0xBF, 0xFF, 0xAA), replacements))
+                    expected_colorized_8s.extend(mapping.get(value, value) for value in source_pair)
+            if (
+                number_42 != expected_42
+                or number_7 != expected_7
+                or number_255 != expected_255
+                or colorized_8s != expected_colorized_8s
+            ):
+                raise RuntimeError(
+                    "small sprite-font numbers differ from their source pixels: "
+                    f"42={number_42.hex()} 7={number_7.hex()} "
+                    f"255={number_255.hex()} colors/8={colorized_8s.hex()}"
+                )
         if name == "video" and ram(0xC7D0, 1) != b"\xA5":
             raise RuntimeError("video hole witness was overwritten")
         if name == "resources128":
@@ -472,6 +561,104 @@ def run_example(name: str, emulator: Path, model: str) -> None:
                 5,
                 "vertical won sprite rendering",
             )
+        if name == "platformer":
+            player = symbol(noi, "platformer_player")
+            score = symbol(noi, "platformer_score")
+            status = symbol(noi, "platformer_status")
+            wait_for(
+                lambda: ram(status, 1) in {b"\xA5", b"\x5A"},
+                20,
+                "platformer scene initialization",
+            )
+            state = ram(player, 7)
+            if state != bytes((16, 184, 0, 0, 8, 8, 2)):
+                raise RuntimeError(f"platformer initial state is invalid: {state.hex()}")
+            if ram(score, 1) != b"\x00" or ram(status, 1) != b"\xA5":
+                raise RuntimeError("platformer initial score/status is invalid")
+            set_keys(row0=0xFE)
+            wait_for(lambda: ram(player, 7)[1] < 184, 5, "platformer first jump")
+            set_keys()
+            wait_for(
+                lambda: ram(player, 7)[1] == 184 and ram(player, 7)[6] == 0x02,
+                5,
+                "platformer first landing",
+            )
+            if ram(score, 1) != b"\x01":
+                raise RuntimeError("platformer did not collect the lower-left coin and land")
+            hold_keys(row0=0xFD, frames=20, after=1)
+            if not 48 <= ram(player, 1)[0] < 64:
+                raise RuntimeError(
+                    f"platformer right approach overshot: x={ram(player, 1)[0]}"
+                )
+            set_keys(row0=0xFE)
+            wait_for(lambda: ram(player, 7)[1] < 184, 5, "platformer second jump")
+            set_keys()
+            wait_for(
+                lambda: ram(player, 7)[1] == 184 and ram(player, 7)[6] == 0x02,
+                5,
+                "platformer second landing",
+            )
+            if ram(score, 1) != b"\x02":
+                raise RuntimeError(
+                    "platformer did not collect the lower-right coin: "
+                    f"player={ram(player, 7).hex()} score={ram(score, 1).hex()}"
+                )
+            hold_keys(row1=0xFE, frames=7, after=1)
+            if not 32 <= ram(player, 1)[0] <= 48:
+                raise RuntimeError(
+                    f"platformer platform approach overshot: x={ram(player, 1)[0]}"
+                )
+            expected_y = (152, 120, 88, 56, 24)
+            for landing_y in expected_y:
+                start_y = ram(player, 7)[1]
+                set_keys(row0=0xFE)
+                wait_for(
+                    lambda: ram(player, 7)[1] < start_y,
+                    5,
+                    f"platformer jump towards y={landing_y}",
+                )
+                set_keys()
+                wait_for(
+                    lambda: ram(player, 7)[1] == landing_y
+                    and ram(player, 7)[6] == 0x02,
+                    5,
+                    f"platformer landing at y={landing_y}",
+                )
+                climbed = ram(player, 7)
+                if climbed[1] != landing_y or climbed[6] != 0x02:
+                    raise RuntimeError(
+                        f"platformer did not land at y={landing_y}: {climbed.hex()}"
+                    )
+            set_keys(row1=0xFE)
+            wait_for(lambda: ram(score, 1) == b"\x03", 5, "platformer upper-left coin")
+            set_keys()
+            set_keys(row0=0xFD)
+            wait_for(lambda: ram(score, 1) == b"\x04", 5, "platformer upper-right coin")
+            set_keys()
+            if ram(score, 1) != b"\x04" or ram(status, 1) != b"\x5A":
+                raise RuntimeError("platformer did not collect all coins and win")
+            font = asm_hex_bytes_between(
+                ROOT / "src/ui/text.inc",
+                "_fwk_text_default_font:",
+                "_fwk_text_default_small_digits:",
+            )
+            mask = asm_hex_bytes_between(
+                ROOT / "src/ui/text.inc", "_fwk_text_mask_table_source:", None
+            )
+            score_four = font[13 * 18 : 14 * 18]
+            expected_score_four = bytes(
+                ((0x55 if offset < 16 else 0x00) & mask[value]) | value
+                for offset, value in enumerate(score_four)
+            )
+            actual_score_four = b"".join(
+                ram(standard_screen_address(14, y), 2) for y in range(9)
+            )
+            if actual_score_four != expected_score_four:
+                raise RuntimeError(
+                    "platformer HUD was not restored before score redraw: "
+                    f"actual={actual_score_four.hex()} "
+                    f"expected={expected_score_four.hex()}"
+                )
         print(f"ok - {name} executes and advances frames ({model})")
     finally:
         try:
@@ -489,7 +676,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

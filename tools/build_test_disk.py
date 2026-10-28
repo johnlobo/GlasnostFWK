@@ -35,6 +35,7 @@ DEFAULT_EXAMPLES = (
     "collision",
     "tilemask",
     "experimental",
+    "platformer",
 )
 DISK_NAME = "GlasnostFWK-tests.dsk"
 ADDRESS_RE = re.compile(
@@ -48,6 +49,23 @@ def amsdos_bin_name(example: str) -> str:
         stem = stem[:8]
     if not stem or not stem.replace("_", "A").isalnum():
         raise ValueError(f"cannot derive AMSDOS name from example: {example}")
+    return f"{stem}.BIN"
+
+
+def program_bin_name(root: Path, example: str) -> str:
+    """Return the catalog name, honoring a strict optional manifest override."""
+    manifest_path = root / "examples" / example / "example.json"
+    if not manifest_path.is_file():
+        return amsdos_bin_name(example)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    explicit = manifest.get("amsdos_name")
+    if explicit is None:
+        return amsdos_bin_name(example)
+    if not isinstance(explicit, str):
+        raise ValueError(f"amsdos_name must be a string: {manifest_path}")
+    stem = explicit.upper()
+    if not stem or len(stem) > 8 or not stem.replace("_", "A").isalnum():
+        raise ValueError(f"invalid amsdos_name in {manifest_path}: {explicit!r}")
     return f"{stem}.BIN"
 
 
@@ -71,7 +89,7 @@ def collect_entries(root: Path, examples: tuple[str, ...]) -> list[dict[str, str
         source = root / ".build" / example / "obj" / f"{example}.bin"
         if not source.is_file() or source.stat().st_size == 0:
             raise FileNotFoundError(f"missing example binary: {source}")
-        name = amsdos_bin_name(example)
+        name = program_bin_name(root, example)
         if name in names:
             raise ValueError(f"duplicate AMSDOS filename: {name}")
         load, run = binary_addresses(source.parent / "binaryAddresses.log")

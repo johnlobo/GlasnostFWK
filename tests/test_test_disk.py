@@ -13,6 +13,24 @@ class TestDiskTests(unittest.TestCase):
         self.assertEqual(
             build_test_disk.amsdos_bin_name("resources128"), "RESOURCE.BIN"
         )
+        root = Path(__file__).resolve().parents[1]
+        names = [
+            build_test_disk.program_bin_name(root, example)
+            for example in build_test_disk.DEFAULT_EXAMPLES
+        ]
+        self.assertEqual(len(names), len(set(names)))
+        self.assertEqual(
+            build_test_disk.program_bin_name(root, "platformer"), "PLATGAME.BIN"
+        )
+
+    def test_rejects_invalid_manifest_amsdos_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / "examples" / "sample" / "example.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text('{"amsdos_name": "TOO-LONG-NAME"}\n', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "invalid amsdos_name"):
+                build_test_disk.program_bin_name(root, "sample")
 
     def test_builds_one_disk_with_programs_and_payloads(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -28,7 +28,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
-make examples   # diecisiete ejemplos, incluidos tilemaps y sprites ordenados
+make examples   # veintidós ejemplos, incluidas dos escenas jugables
 make test       # pruebas host + construcción completa
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -36,7 +36,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT quedan en `.build/<ejemplo>/`; los diecisiete BIN de prueba se reúnen
+Los BIN y CDT quedan en `.build/<ejemplo>/`; los veintidós BIN de prueba se reúnen
 en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
 necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
 eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
@@ -57,13 +57,13 @@ de render se instala de forma aislada con
 
 - `src/core`: interrupción/sincronización, entrada y pool genérico.
 - `src/video`: direccionamiento, CRTC, limpieza y sprites con clipping, máscaras opcionales y orden.
-- `src/ui`: texto Mode 0 y ventanas con fondo restaurable.
+- `src/ui`: fuente sprite Mode 0 recoloreable, números pequeños y ventanas con fondo restaurable.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
 - `src/extensions`: movimiento, física, animación y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: diecisiete consumidores pequeños, sin copias internas del framework.
+- `examples`: veintidós consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 ## Vertical jugable

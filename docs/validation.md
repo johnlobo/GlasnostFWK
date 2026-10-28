@@ -1,12 +1,13 @@
 # Estado de validación
 
-Fecha: 2026-10-27 UTC.
+Fecha: 2026-10-28 UTC.
 
 ## Implementado
 
 - Núcleo de IRQ/VSYNC, entrada con estado/flancos y pool genérico.
 - Vídeo Mode 0 generado, CRTC explícito, tabla 16-bit y limpieza de regiones.
-- Texto Mode 0, audio AKG con música/SFX, copia bancaria 128 KB, lectura AMSDOS
+- Texto Mode 0 mediante sprites recoloreables de 2x9, números pequeños de 2x5,
+  audio AKG con música/SFX, copia bancaria 128 KB, lectura AMSDOS
   y descompresión ZX7B opcionales.
 - Cursor de animación opcional, independiente de entidad, render y política de
   juego.
@@ -25,16 +26,16 @@ Fecha: 2026-10-27 UTC.
   opaco y no integra todavía la máscara.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y diecisiete ejemplos, incluida una vertical jugable.
+- Generadores de vídeo/recursos y veintidós ejemplos, incluidas dos escenas jugables.
 - Frontera de dependencias y exclusión física de módulos.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
 ## Compilado
 
-Los diecisiete ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-dieciséis generan además `.cdt`. Sus diecisiete BIN y los dos payloads de
-`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 19
+Los veintidós ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+veintiuno generan además `.cdt`. Sus veintidós BIN y los dos payloads de
+`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 24
 entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
 porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md` contiene
 tamaños enlazados.
@@ -48,22 +49,31 @@ tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los diecisiete ejemplos y validación de nombres 8.3,
+- Construcción completa de los veintidós ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
 - Composición de máscara, offsets de clipping compartidos, preservación de un
   píxel Mode 0 con `0xF0`, span de máscara sin wrap y la invariante de datos cero
   bajo bits preservados.
 - Validación de ventanas: geometría válida, ajuste exacto, límites exteriores y
   rechazo de `y+height` con desbordamiento de 16 bits.
-- 53 pruebas host en total. El manual cubre los diecisiete ejemplos y diecinueve
-  módulos; su checksum corresponde al HTML que generó el PDF vigente.
+- 56 pruebas host en total. Las pruebas específicas de texto verifican los 918
+  bytes de los 51 glifos, los 100 bytes de los diez dígitos, la tabla de máscara
+  de 256 bytes y la presencia de la API y el mapeo original. El manual cubre
+  todos los ejemplos y módulos seleccionados; su checksum corresponde al HTML
+  que generó el PDF vigente.
 
 ## Ejecutado en emulador
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- Los diecisiete programas arrancaron desde el único `GlasnostFWK-tests.dsk` en
-  un CPC 6128 de 128 KB y avanzaron su contador de frames.
+- `board` instaló la tabla de transparencia exacta en `0x0100`, dibujó el título
+  con los glifos normales y produjo en VRAM los bytes exactos de `7`, `42` y
+  `255` con los números pequeños, además de un `8` con cada uno de los quince
+  índices válidos de recoloreado. Pasó en CPC 6128 y CPC 464.
+
+- Los veintidós programas arrancaron desde el único
+  `GlasnostFWK-tests.dsk` en un CPC 6128 de 128 KB y superaron sus comprobaciones
+  de estado y VRAM. `board` y `platformer` se repitieron además en CPC 464.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
   RAM normal -> banco 0 -> RAM normal.
@@ -119,16 +129,20 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   recogió los tres, el pool se compactó de cuatro registros a uno y se activó
   el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
   jugador, coleccionables y victoria. La misma prueba pasó en CPC 6128 y CPC 464.
+- `platformer` completó su recorrido jugable automatizado, recogió cuatro
+  monedas y alcanzó la victoria en CPC 6128 y CPC 464. Al cambiar el marcador,
+  restauró las tres filas de tiles bajo el HUD antes de redibujar; el smoke
+  comparó el glifo final con la composición exacta de fuente, máscara y fondo.
 
-La entrada está automatizada solo para `vertical`. `tilecoll`, `tilerender` y
+La entrada está automatizada para `vertical` y `platformer`. `tilecoll`, `tilerender` y
 `spriteclip` se inspeccionaron visualmente en emulador y su salida resultó
 visible. No se validó
 visualmente el perfil experimental 160x288 ni se capturó la salida analógica de
-audio. Dos ejecuciones completas expusieron carreras de observación en los
+audio. Dos ejecuciones completas históricas expusieron carreras de observación en los
 testigos finales de `animation` y `vertical`: ambos publican estado antes de
 dibujar en ese mismo frame. El smoke espera ahora explícitamente el byte de
-VRAM; las repeticiones aisladas ya habían pasado y una tercera batería completa
-pasó los diecisiete casos en una sola ejecución.
+VRAM; las repeticiones aisladas ya habían pasado y la batería actual de
+veintidós casos terminó en una sola ejecución correcta.
 
 ## Verificado en hardware
 
@@ -136,7 +150,8 @@ No verificado.
 
 ## Pendiente o bloqueado
 
-- Medir ciclos/tiempo de escena; no hay cifras ni promesa de 50 Hz.
+- Ampliar las mediciones de `performance.md` a escenas completas; las nueve
+  operaciones medidas no implican una promesa global de 50 Hz.
 - Validar la temporización CRTC 160x288 en varios tipos CRTC y hardware. El
   modelo de memoria sí está probado; la señal de vídeo no.
 - El tilemap continúa siendo de solo lectura. No hay edición, streaming,

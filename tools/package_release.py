@@ -10,8 +10,13 @@ import re
 import zipfile
 from pathlib import Path
 
+if __package__:
+    from .build_test_disk import program_bin_name
+else:
+    from build_test_disk import program_bin_name
+
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = ("minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental")
+EXAMPLES = ("minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer")
 TEST_DISK = "GlasnostFWK-tests.dsk"
 VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)
@@ -76,18 +81,22 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
         "version": version,
         "examples": list(EXAMPLES),
         "artifacts": formats_by_example,
+        "run_names": {
+            example: Path(program_bin_name(ROOT, example)).stem
+            for example in EXAMPLES
+        },
         "test_disk": f"tests/{TEST_DISK}",
-        "playable_example": "vertical",
-        "run": 'RUN"VERTICAL"',
+        "playable_examples": ["vertical", "platformer"],
     }
     instructions = (
         "GlasnostFWK CPC examples\n"
         "========================\n\n"
         f"Load tests/{TEST_DISK} in an Amstrad CPC emulator. It contains all\n"
         "example binaries and the auxiliary diskload payloads. Run the file\n"
-        "matching the example name. For the playable vertical slice use:\n\n"
+        "matching the catalog name recorded in manifest.json. Playable examples:\n\n"
         '    RUN"VERTICAL"\n\n'
-        "Move with the cursor keys and collect the three dots to the right.\n"
+        '    RUN"PLATGAME"\n\n'
+        "Both use the cursor keys; CursorUp jumps in PLATGAME.\n"
         "The remaining examples are focused technical demonstrations.\n"
     )
 

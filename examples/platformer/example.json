@@ -1,0 +1,17 @@
+{
+  "name": "platformer",
+  "amsdos_name": "PLATGAME",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s",
+    "video/sprite.s",
+    "ui/text.s",
+    "extensions/physics_platform.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s",
+    "extensions/platform_tilemap.s"
+  ],
+  "game_sources": ["main.s", "assets.s"]
+}

@@ -1,4 +1,5 @@
 import hashlib
+import json
 import tempfile
 import unittest
 import zipfile
@@ -22,8 +23,11 @@ class ReleasePackageTests(unittest.TestCase):
             for example in package_release.EXAMPLES:
                 (examples / example).mkdir(parents=True)
                 media = ["dsk"] if example == "diskload" else ["cdt", "dsk"]
+                example_manifest = {"media": media}
+                if example == "platformer":
+                    example_manifest["amsdos_name"] = "PLATGAME"
                 (examples / example / "example.json").write_text(
-                    '{"media": ' + str(media).replace("'", '"') + "}\n",
+                    json.dumps(example_manifest) + "\n",
                     encoding="utf-8",
                 )
                 (build / example / "obj").mkdir(parents=True)
@@ -51,10 +55,12 @@ class ReleasePackageTests(unittest.TestCase):
             )
             with zipfile.ZipFile(archive1) as archive:
                 names = archive.namelist()
-            self.assertEqual(len(names), 44)
+                release_manifest = json.loads(archive.read("manifest.json"))
+            self.assertEqual(len(names), 46)
             self.assertIn("README.txt", names)
             self.assertIn("manifest.json", names)
             self.assertIn(f"tests/{package_release.TEST_DISK}", names)
+            self.assertEqual(release_manifest["run_names"]["platformer"], "PLATGAME")
             self.assertNotIn("examples/vertical/vertical.dsk", names)
             self.assertNotIn("examples/diskload/diskload.dsk", names)
             self.assertNotIn("examples/diskload/diskload.cdt", names)

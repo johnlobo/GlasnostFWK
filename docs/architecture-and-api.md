@@ -19,9 +19,10 @@ copiarlos.
 
 ## Contratos
 
-Los costes temporales no se publican todavía: no se han medido en emulador y no
-se ha realizado un conteo de todos los caminos. Los tamaños enlazados sí se
-obtienen de los mapas SDCC en `build-sizes.md`.
+`performance.md` publica mediciones reproducibles en emulador para nueve
+operaciones representativas. No constituyen un conteo de todos los caminos ni
+una garantía global de 50 Hz. Los tamaños enlazados se obtienen de los mapas
+SDCC en `build-sizes.md`.
 
 ### Sistema
 
@@ -197,7 +198,8 @@ captura/restauración preservan `IX` y alteran también `IY`. El módulo usa scr
 interno y no es reentrante. El buffer, el orden de borrado/dibujo y la
 sincronización pertenecen al consumidor. El lote ordenado sigue usando solo el
 camino opaco; no hay color-key, mezcla alfa, recoloreado, dirty rectangles
-automáticos ni medición de ciclos. Detalles en `sprites.md`.
+automáticos. El coste de casos representativos está en `performance.md`.
+Detalles funcionales en `sprites.md`.
 
 ### Lote ordenado de sprites opcional
 
@@ -222,9 +224,25 @@ Detalles en `render-order.md`.
 
 ### Texto
 
-- `fwk_text_set_colors`: `L=foreground`, `H=background` (0..15); altera
-  `AF,BC,DE,HL`; hereda automodificación de CPCTelera y no funciona desde ROM.
-- `fwk_text_draw`: `IY=ASCII NUL`, `HL=vídeo`; altera `AF,BC,DE,HL`.
+Renderer Mode 0 enmascarado basado en la fuente sprite de los juegos originales:
+51 glifos de 2x9 bytes y diez dígitos pequeños de 2x5 bytes. Requiere
+`fwk_text_init` después de `fwk_system_init`; instala su tabla alineada de
+transparencia en `0x0100`, dirección reservada mientras el firmware esté
+desactivado.
+
+- `fwk_text_init`: instala los assets incorporados y la tabla de máscara.
+- `fwk_text_set_assets`: `HL=fuente 51*18`, `DE=dígitos 10*10`.
+- `fwk_text_set_color`: `A=índice 0..14`; carry indica índice inválido.
+- `fwk_text_set_colors`: alias de migración; usa `L` como nuevo índice e ignora
+  `H`. Conserva el símbolo, no la antigua semántica de números de pen.
+- `fwk_text_draw`: `IY=ASCII NUL`, `HL=vídeo`; admite espacio, `!`, `-`, `/`,
+  `0..9`, `:`, `>`, `?`, `@` y `A..Z`.
+- `fwk_text_draw_small_digit`: `A=0..9`, `HL=vídeo`; carry si no es un dígito.
+- `fwk_text_draw_small_u8`: `A=0..255`, `HL=vídeo`; decimal sin relleno.
+
+El índice de color selecciona la tabla original; no equivale necesariamente al
+número de pen de la paleta activa y el pen 14 se usa como sombra. No hay
+clipping ni borrado del fondo. El scratch de 18 bytes impide reentrancia.
 
 ### Ventanas opcionales
 

@@ -108,7 +108,7 @@
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
     <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
-    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo con máscara no tiene ciclos medidos ni se ha integrado en el lote ordenado.</div>
+    <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo enmascarado 6x8 tiene coste medido, pero no se ha integrado en el lote ordenado.</div>
   </section>
 
   <nav aria-labelledby="indice">
@@ -150,7 +150,7 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
 make generate
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los diecisiete consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los veintidós consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
 
     <h3>3.2 Construir un único ejemplo</h3>
     <pre><code>python3 tools/build_examples.py minimal
@@ -180,7 +180,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
       <tbody>
         <tr><td><code>src/core</code></td><td>Sistema, entrada y pool genérico.</td></tr>
         <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping, máscaras opcionales y orden explícito.</td></tr>
-        <tr><td><code>src/ui</code></td><td>Texto Mode 0 y ventanas con fondo restaurable.</td></tr>
+        <tr><td><code>src/ui</code></td><td>Fuente sprite Mode 0, números pequeños y ventanas con fondo restaurable.</td></tr>
         <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
         <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
         <tr><td><code>src/extensions</code></td><td>Movimiento, física, tilemaps, colisión, render y animación opcionales.</td></tr>
@@ -312,7 +312,7 @@ player_background: .ds 6 * 8</code></pre>
         <li><code>fwk_sprite_capture</code>: <code>IX=descriptor</code>, <code>DE=buffer</code>; guarda el fondo visible y devuelve <code>IY</code> al final.</li>
         <li><code>fwk_sprite_restore</code>: <code>IX=mismo descriptor</code>, <code>HL=buffer</code>; restaura el fondo visible y devuelve <code>IY</code> al final.</li>
       </ul>
-      <p>Carry indica dimensiones nulas, span de datos con wrap o, en el camino enmascarado, span de máscara con wrap; una imagen totalmente exterior es válida y no escribe si la máscara también es válida. Reserve al menos <code>width*height</code> bytes para los datos y otros tantos para la máscara. La máscara actúa bit a bit y es paralela a los datos. En Mode 0 cada píxel ocupa 4 bits, de modo que una máscara <code>0xF0</code> conserva un píxel y sustituye el otro; no es un color-key ni una mezcla alfa. Los dos dibujos preservan <code>IX</code> e <code>IY</code> y alteran <code>AF,BC,DE,HL</code>; captura y restauración preservan <code>IX</code> y alteran además <code>IY</code>. Ninguna es reentrante. Ambas rutinas de dibujo comparten <code>video/sprite.s</code>, así que todo ejemplo con sprites enlaza también el código enmascarado aunque no lo use. El lote ordenado sigue usando solo el camino opaco; no hay recoloreado, cola automática, dirty rectangles ni ciclos medidos. Véase <code>docs/sprites.md</code>.</p>
+      <p>Carry indica dimensiones nulas, span de datos con wrap o, en el camino enmascarado, span de máscara con wrap; una imagen totalmente exterior es válida y no escribe si la máscara también es válida. Reserve al menos <code>width*height</code> bytes para los datos y otros tantos para la máscara. La máscara actúa bit a bit y es paralela a los datos. En Mode 0 cada píxel ocupa 4 bits, de modo que una máscara <code>0xF0</code> conserva un píxel y sustituye el otro; no es un color-key ni una mezcla alfa. Los dos dibujos preservan <code>IX</code> e <code>IY</code> y alteran <code>AF,BC,DE,HL</code>; captura y restauración preservan <code>IX</code> y alteran además <code>IY</code>. Ninguna es reentrante. Ambas rutinas de dibujo comparten <code>video/sprite.s</code>, así que todo ejemplo con sprites enlaza también el código enmascarado aunque no lo use. El lote ordenado sigue usando solo el camino opaco; no hay recoloreado, cola automática ni dirty rectangles. Los costes representativos están en <code>docs/performance.md</code>. Véase <code>docs/sprites.md</code>.</p>
     </article>
 
     <article class="api" data-module="video/sprite_batch.s">
@@ -331,11 +331,34 @@ FWK_SPRITE_BATCH_DESCRIPTOR render_batch, render_entries, 8</code></pre>
 
     <article class="api" data-module="ui/text.s">
       <h3>6.7 Texto — <code>ui/text.s</code></h3>
+      <p>El módulo usa la fuente gráfica de los juegos originales: cada carácter es un sprite Mode 0 enmascarado de 2 bytes por 9 líneas. Incluye además los dígitos pequeños de 2 bytes por 5 líneas. No depende del dibujado de caracteres de CPCTelera.</p>
+      <pre><code>call fwk_system_init
+call fwk_video_init
+call fwk_text_init          ; instala fuentes y tabla de máscara en &amp;0100
+xor a                       ; color 0 de la tabla original
+call fwk_text_set_color
+
+ld hl, #40                  ; y
+ld c, #10                   ; x en bytes Mode 0
+call fwk_video_get_ptr
+ld iy, #message
+call fwk_text_draw
+
+ld hl, #56
+ld c, #10
+call fwk_video_get_ptr
+ld a, #123
+call fwk_text_draw_small_u8</code></pre>
       <ul>
-        <li><code>fwk_text_set_colors</code>: <code>L=foreground</code>, <code>H=background</code>, ambos 0..15.</li>
-        <li><code>fwk_text_draw</code>: <code>IY=cadena ASCII NUL</code>, <code>HL=puntero de vídeo</code>.</li>
+        <li><code>fwk_text_init</code>: selecciona los assets incorporados y copia la tabla de transparencia de 256 bytes a <code>&amp;0100</code>. Debe llamarse después de <code>fwk_system_init</code>, con el firmware desactivado.</li>
+        <li><code>fwk_text_set_color</code>: <code>A=0..14</code>; carry indica un índice inválido. Los índices reproducen esta secuencia de los juegos: blanco, magenta, naranja, azul brillante, rojo brillante, verde brillante, amarillo, verde, amarillo brillante, cian brillante, azul cielo, negro, blanco, rojo y rosa. El color visible depende de la paleta que el juego haya asignado a sus pens; pen 14 queda reservado como sombra fija.</li>
+        <li><code>fwk_text_set_colors</code>: alias de migración que conserva el símbolo y el registro de entrada; usa <code>L=0..14</code> e ignora <code>H</code>. Los antiguos números de pen no conservan su significado.</li>
+        <li><code>fwk_text_set_assets</code>: <code>HL=fuente normal</code>, <code>DE=dígitos pequeños</code>. Espera 51 frames consecutivos de 18 bytes y 10 frames consecutivos de 10 bytes.</li>
+        <li><code>fwk_text_draw</code>: <code>IY=cadena NUL</code>, <code>HL=puntero de vídeo</code>. Admite espacio, <code>!</code>, <code>-</code>, <code>/</code>, <code>0..9</code>, <code>:</code>, <code>&gt;</code>, <code>?</code>, <code>@</code> y <code>A..Z</code>.</li>
+        <li><code>fwk_text_draw_small_digit</code>: <code>A=0..9</code>, <code>HL=vídeo</code>; carry indica dígito inválido.</li>
+        <li><code>fwk_text_draw_small_u8</code>: <code>A=0..255</code>, <code>HL=vídeo</code>; imprime decimal sin ceros iniciales.</li>
       </ul>
-      <p>El adaptador usa las rutinas Mode 0 de CPCTelera. Su implementación subyacente es automodificable y no puede ejecutarse desde ROM.</p>
+      <p>Los caracteres no admitidos dejan una celda en blanco. Todas las rutinas dibujan sin clipping: el consumidor debe mantener cada sprite dentro de la pantalla. El renderer recolorea en un buffer interno de 18 bytes y no es reentrante. Como el enmascarado conserva el fondo, para sustituir texto ya dibujado hay que restaurar o limpiar primero su rectángulo.</p>
     </article>
 
     <article class="api" data-module="ui/window.s">
@@ -505,12 +528,14 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="collision"><td><code>collision</code></td><td>Prueba AABB entre dos entidades con offsets de campo configurables.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="platformer"><td><code>platformer</code></td><td>Esqueleto de plataformas: movimiento, salto, colisión con tilemap, monedas y victoria.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>
       </tbody>
     </table>
-    <p><code>vertical</code> es la única escena jugable. Los otros dieciséis son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p><code>vertical</code> y <code>platformer</code> son las dos escenas jugables. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p>El HUD de <code>platformer</code> restaura las tres filas de tiles que ocupa antes de volver a dibujar texto enmascarado y solo se actualiza cuando cambia la puntuación. Este patrón evita acumular restos al sustituir glifos sobre un fondo no uniforme.</p>
   </section>
 
   <section aria-labelledby="pruebas">
@@ -537,8 +562,8 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <h2 id="distribucion">10. Crear un paquete de distribución</h2>
     <pre><code>make release VERSION=0.2.0
 (cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
-    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los diecisiete BIN, dieciséis CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
-    <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.1.0</code>; el desarrollo posterior puede contener funciones aún no incluidas en esa release.</p>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los veintidós BIN, veintiún CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.2.0</code>; los cambios locales posteriores todavía no pertenecen a esa release.</p>
   </section>
 
   <section aria-labelledby="diagnostico">

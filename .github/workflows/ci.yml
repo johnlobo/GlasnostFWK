@@ -86,10 +86,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for example in minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical; do
+          for example in minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer; do
             test -s ".build/$example/obj/$example.bin"
           done
-          for example in minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 audio animation window vertical; do
+          for example in minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 audio animation window vertical collision tilemask experimental platformer; do
             test -s ".build/$example/$example.cdt"
           done
           test -s ".build/tests/GlasnostFWK-tests.dsk"

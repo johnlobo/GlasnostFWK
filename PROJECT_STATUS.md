@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-27 UTC. Última versión publicada: `v0.1.0`.
+Última actualización: 2026-10-28 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -15,11 +15,11 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los diecisiete ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; dieciséis construyen además CDT
-  y todos los BIN se reúnen en un único DSK de pruebas con 19 entradas.
-- La suite host contiene 53 pruebas; el manual cubre los diecisiete ejemplos y
-  diecinueve módulos seleccionados.
+- Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
+  y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
+- La suite host contiene 56 pruebas; el manual cubre todos los ejemplos y
+  módulos seleccionados.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -57,6 +57,14 @@ El detalle de qué se ha implementado, compilado y ejecutado está en
 
 Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 
+## Fase completada: distribución v0.2.0
+
+- [x] Tag remoto `v0.2.0` asociado exactamente a `13312a6`.
+- [x] GitHub Release pública, no borrador ni prerelease, publicada el
+  2026-10-27: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.2.0>.
+- [x] CI remota `40427399657` y workflow de release `40427406803` correctos
+  para el SHA completo `13312a6a3133b8c75ff7aee5ba9dc13caf9b3588`.
+
 ## Limitaciones confirmadas
 
 - No existe verificación en hardware real.
@@ -64,11 +72,11 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - El tilemap es de solo lectura. Su render no incluye transparencia, clipping,
   scroll sub-tile, bancos ni dirty rectangles automáticos; la colisión no
   resuelve pendientes ni colisión entre cuerpos.
-- Solo `vertical` es una escena jugable; los otros dieciséis ejemplos son
+- `vertical` y `platformer` son escenas jugables; los demás ejemplos son
   pruebas técnicas. `diskload` se ejecuta solo desde el DSK común porque
   requiere dos payloads auxiliares.
 - Los sprites enmascarados son una API separada del camino opaco y del lote
-  ordenado. No tienen ciclos medidos ni promesa de 50 Hz.
+  ordenado. Su coste 6x8 está medido, pero no existe una promesa global de 50 Hz.
 
 ## Fase completada: carga desde disco y ZX7B
 
@@ -470,12 +478,12 @@ ejemplo con sprites paga su código enlazado aunque no la use. No hay recoloread
 comprobación de capacidad del buffer, dirty rectangles automáticos ni ciclos
 medidos; no se promete 50 Hz para una escena enmascarada.
 
-## Siguiente fase pendiente de acordar
+## Decisión vigente sobre sprites enmascarados
 
-La fase de sprites enmascarados queda funcionalmente cerrada. Antes de integrarla
-en el lote ordenado o recomendarla para escenas a 50 Hz falta medir su coste y
-decidir si se añade una ruta enmascarada al batch. También sigue pendiente la
-validación en hardware real y la medición temporal general del framework.
+La fase quedó cerrada y su coste 6x8 se midió posteriormente. La ruta permanece
+separada del lote ordenado por su coste aproximado de 1,77 veces el camino opaco.
+Siguen pendientes la validación en hardware real y una garantía temporal para
+escenas completas, no la medición básica ya registrada.
 
 ## Fase completada: rendimiento medible y presupuesto de frame
 
@@ -491,3 +499,40 @@ validación en hardware real y la medición temporal general del framework.
   mantiene separada por su coste ~1,77× y se aplaza su integración en el lote.
 - [x] Herramienta `tools/measure_perf.py` para reproducir la medición.
 - [x] Manual y PDF regenerados con cobertura de `perf`; suite host 53 pruebas.
+
+## Fase completada localmente: fuente sprite y números pequeños
+
+- [x] El adaptador a `cpct_drawStringM0_asm` se sustituyó por el sistema de
+  fuente gráfica verificado en `PocketFever`, `model01` y `DeckTower`.
+- [x] Se incorporaron los 51 glifos originales de 2x9 bytes y los diez dígitos
+  pequeños de 2x5 bytes, junto con su tabla Mode 0 de recoloreado y sombra.
+- [x] `fwk_text_draw` conserva el contrato de cadena NUL y admite espacio, `!`,
+  `-`, `/`, `0..9`, `:`, `>`, `?`, `@` y `A..Z` con el mapeo original.
+- [x] Nuevas APIs: inicialización explícita, selección de 15 colores, assets
+  sustituibles, dígito pequeño y entero decimal de 8 bits sin ceros iniciales.
+- [x] La ruta de dígitos usa el blitter enmascarado estable y no copia el camino
+  de colorización que está documentado como defectuoso en el juego de origen.
+- [x] `board` dibuja texto normal, los valores pequeños `7`, `42` y `255` y
+  quince copias del `8`, una por cada índice de color válido.
+  AmSpiriT-Lite confirmó la tabla exacta en `0x0100` y los bytes exactos de los
+  tres números en VRAM para CPC 6128 y CPC 464.
+- [x] `window` pasó captura, texto, restauración y reapertura en CPC 6128 y CPC
+  464. `platformer`, que también consume el nuevo texto, pasó su recorrido
+  jugable automatizado en CPC 6128 y CPC 464.
+- [x] El HUD de `platformer` restaura sus tres filas de tiles antes de cambiar
+  texto enmascarado, separa verticalmente sus dos líneas y solo se redibuja al
+  cambiar la puntuación. El smoke compara el glifo final con la composición
+  limpia esperada en VRAM.
+- [x] `make test`: 56 pruebas host, veintidós BIN, veintiún CDT y un DSK común
+  de 24 entradas.
+- [x] La batería integral de los veintidós programas pasó en CPC 6128; `board`
+  y `platformer` pasaron además sus comprobaciones focalizadas en CPC 464.
+- [x] Manual HTML/PDF, arquitectura, matriz comparativa, procedencia y estado de
+  validación actualizados.
+
+Límites confirmados: hay que llamar `fwk_text_init` tras desactivar firmware;
+la tabla de máscara ocupa `0x0100..0x01FF`; los índices de color dependen de la
+paleta del juego y el pen 14 se reserva para sombra. No hay minúsculas, clipping,
+borrado automático ni reentrancia. Para sustituir texto enmascarado hay que
+restaurar o limpiar primero el fondo. Esta fase aún no tiene commit, push ni CI
+remota registrados.
