@@ -595,6 +595,7 @@ para el SHA completo `343701ae622cda40c91d70d8a2f5e222248148e8`.
   como tales; falta repetir `tools/measure_perf.py` con el emulador disponible.
 
 Implementación y documentación registradas en
-`3dfdeaf0e7df697228a854c526face48d836bc7c`. Al preparar este registro, `main`
-está un commit por delante de `origin/main`; el push todavía no se ha
-verificado. No existe validación en hardware real.
+`3dfdeaf0e7df697228a854c526face48d836bc7c`, con el primer registro de estado
+en `df1a2f69a367c6776c930423ba803a90ed6215f1`; ambos se publicaron en
+`origin/main`. No existe validación en hardware real ni CI remota confirmada
+para esta fase en el momento de cerrar el registro.
