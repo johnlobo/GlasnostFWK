@@ -564,3 +564,37 @@ AmSpiriT-Lite 1.15.3; no existe validación en hardware real. Implementación y
 documentación registradas en `6d7b928`, con estado en `343701a`; ambos se
 publicaron en `origin/main`. La CI remota `40619504621` terminó correctamente
 para el SHA completo `343701ae622cda40c91d70d8a2f5e222248148e8`.
+
+## Fase implementada: tiles mediante CPCTelera Next
+
+- [x] `extensions/tilemap_render` ya no contiene el blitter `LDIR` genérico:
+  valida las geometrías 2x4, 2x8, 4x4 y 4x8 bytes y despacha a
+  `cpct_drawTileAligned2x4_f_asm`, `cpct_drawTileAligned2x8_f_asm`,
+  `cpct_drawTileAligned4x4_f_asm` o `cpct_drawTileAligned4x8_f_asm`.
+- [x] La validación exige shifts coherentes y origen Y alineado, además de los
+  límites previos de mapa, pantalla, ids y span del tileset.
+- [x] `tilemap_render_masked` conserva la API de tilesets paralelos, valida
+  ambos spans, entrelaza un tile en 64 bytes internos y delega la composición en
+  `cpct_drawSpriteMasked_asm`.
+- [x] `platformer` usa tiles CPCTelera de 4x8 bytes (8x8 píxeles Mode 0), mapa y
+  viewport de 20x25, shifts 2/3 y monedas de una celda; mantiene las posiciones
+  físicas y el redibujado parcial.
+- [x] Manual HTML/PDF, guía HTML/PDF, arquitectura, README, validación,
+  documentación específica, checksums, capturas de terminal y tamaños de build
+  regenerados.
+- [x] `make test`: 61 pruebas host correctas; 22 BIN, 21 CDT y DSK compartido
+  con 24 entradas construidos correctamente contra CPCTelera Next.
+- [x] AmSpiriT-Lite 1.15.3 volvió a arrancar mediante la ruta alternativa de su
+  wrapper aunque `xvfb-run` y `Xvfb` siguen ausentes. `platformer`, `tilerender`
+  y `tilemask` pasaron sus estados y testigos VRAM en CPC 6128; `platformer`
+  completó además su recorrido en CPC 464.
+- [x] Las capturas jugables inicial y de victoria se regeneraron después de
+  pasar el smoke actual de `platformer` en CPC 6128 y la guía dejó de marcarlas
+  como históricas.
+- [ ] Las cifras de rendimiento del tilemap son históricas y están marcadas
+  como tales; falta repetir `tools/measure_perf.py` con el emulador disponible.
+
+Implementación y documentación registradas en
+`3dfdeaf0e7df697228a854c526face48d836bc7c`. Al preparar este registro, `main`
+está un commit por delante de `origin/main`; el push todavía no se ha
+verificado. No existe validación en hardware real.
