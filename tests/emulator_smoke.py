@@ -651,10 +651,10 @@ def run_example(
                 raise RuntimeError("platformer did not collect all coins and win")
             for coin_x in (16, 56):
                 restored_coin_cell = b"".join(
-                    ram(standard_screen_address(coin_x, y), 8)
+                    ram(standard_screen_address(coin_x, y), 4)
                     for y in range(168, 176)
                 )
-                if restored_coin_cell != bytes(64):
+                if restored_coin_cell != bytes(32):
                     raise RuntimeError(
                         "platformer left pixels in a collected lower coin cell: "
                         f"x={coin_x} data={restored_coin_cell.hex()}"
@@ -674,7 +674,7 @@ def run_example(
                 "platformer_tile_one_way:",
             )
             hud_background = b"".join(
-                solid_tile[row * 8 + 6 : row * 8 + 8] for row in range(8)
+                solid_tile[row * 4 + 2 : row * 4 + 4] for row in range(8)
             ) + b"\x00\x00"
             expected_score_four = bytes(
                 (background & mask[value]) | value

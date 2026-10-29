@@ -105,7 +105,9 @@ entre cuerpos. El contrato completo está en `tilemap-collision.md`.
 Descriptor mutable de 10 bytes: puntero al tileset Mode 0, cámara X/Y en tiles,
 origen de pantalla (`x` byte, `y` palabra), ancho/alto del viewport en tiles y
 número de gráficos. Cada gráfico ocupa `map.x_size * map.y_size` bytes
-contiguos, por filas y sin padding.
+contiguos, por filas y sin padding. El render opaco admite las geometrías
+CPCTelera 2x4, 2x8, 4x4 y 4x8 bytes y llama respectivamente a las primitivas
+`cpct_drawTileAligned*_f_asm`; el origen Y debe estar alineado al alto.
 
 - `fwk_tilemap_render_view`: `IX=tilemap`, `IY=render`; valida toda la
   geometría, el span del tileset y los ids seleccionados antes de escribir.
@@ -114,9 +116,10 @@ contiguos, por filas y sin padding.
   viewport; valida y redibuja solo esa celda.
 
 Ambas preservan `IX,IY`, alteran `AF,BC,DE,HL` y no son reentrantes por su
-scratch interno. No ofrecen clipping, transparencia, scroll sub-tile, doble
-buffer, bancos, dirty rectangles automáticos ni política de cámara. El mapa
-permanece de solo lectura. Detalles en `tilemap-render.md`.
+scratch interno. La variante enmascarada adapta sus tilesets paralelos a
+`cpct_drawSpriteMasked_asm`. No ofrecen clipping, scroll sub-tile, doble buffer,
+bancos, dirty rectangles automáticos ni política de cámara. El mapa permanece
+de solo lectura. Detalles en `tilemap-render.md`.
 
 ### Física 8.8 opcional
 

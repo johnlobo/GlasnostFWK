@@ -1,6 +1,6 @@
 # Estado de validación
 
-Fecha: 2026-10-28 UTC.
+Fecha: 2026-10-29 UTC.
 
 ## Implementado
 
@@ -15,8 +15,10 @@ Fecha: 2026-10-28 UTC.
   integrador 8.8 separado con fricción vectorial y rebote.
 - Consulta row-major de tilemap de solo lectura y resolución opcional de
   sólidos/plataformas de una dirección para el perfil de plataforma.
-- Render rectangular de tilemap Mode 0 con cámara, prevalidación completa y
-  actualización parcial explícita de una celda.
+- Render de tilemap Mode 0 con geometrías nativas 2x4/2x8/4x4/4x8, primitivas
+  alineadas de CPCTelera Next, cámara, prevalidación completa y actualización
+  parcial explícita de una celda; la variante enmascarada usa su blitter de
+  sprites enmascarados.
 - Sprites rectangulares Mode 0 con coordenadas de 16 bits con signo, clipping
   por los cuatro bordes y captura/restauración del fondo visible.
 - Dibujo enmascarado opcional sobre el mismo descriptor, con máscara paralela,

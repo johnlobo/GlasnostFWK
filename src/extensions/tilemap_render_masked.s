@@ -4,17 +4,17 @@
 
 .globl fwk_video_get_ptr
 .globl fwk_video_width_bytes, fwk_video_height
+.globl cpct_drawSpriteMasked_asm
 
 .area _DATA
-_fwk_trm_width:: .db 0
 _fwk_trm_count:: .db 0
 _fwk_trm_gptr:: .dw 0
 _fwk_trm_mptr:: .dw 0
+_fwk_trm_interleaved:: .ds 64
 _fwk_trm_row::        .db 0
 _fwk_trm_column::     .db 0
 _fwk_trm_tile_id::    .db 0
 _fwk_trm_screen_x::   .db 0
-_fwk_trm_lines::      .db 0
 _fwk_trm_tile_area::  .dw 0
 _fwk_trm_graphics::   .dw 0
 _fwk_trm_mask::       .dw 0
@@ -106,6 +106,37 @@ _fwk_trm_validate:
     ld a, FWK_TILEMAP_Y_SIZE(ix)
     or a
     jp z, _fwk_trm_invalid
+    cp #4
+    jr z, _fwk_trm_geometry_width
+    cp #8
+    jp nz, _fwk_trm_invalid
+_fwk_trm_geometry_width:
+    ld a, FWK_TILEMAP_X_SIZE(ix)
+    cp #2
+    jr nz, _fwk_trm_geometry_4wide
+    ld a, FWK_TILEMAP_X_SHIFT(ix)
+    cp #1
+    jp nz, _fwk_trm_invalid
+    jr _fwk_trm_geometry_height_shift
+_fwk_trm_geometry_4wide:
+    cp #4
+    jp nz, _fwk_trm_invalid
+    ld a, FWK_TILEMAP_X_SHIFT(ix)
+    cp #2
+    jp nz, _fwk_trm_invalid
+_fwk_trm_geometry_height_shift:
+    ld a, FWK_TILEMAP_Y_SIZE(ix)
+    cp #4
+    jr nz, _fwk_trm_geometry_8high
+    ld a, FWK_TILEMAP_Y_SHIFT(ix)
+    cp #2
+    jp nz, _fwk_trm_invalid
+    jr _fwk_trm_geometry_valid
+_fwk_trm_geometry_8high:
+    ld a, FWK_TILEMAP_Y_SHIFT(ix)
+    cp #3
+    jp nz, _fwk_trm_invalid
+_fwk_trm_geometry_valid:
     ld a, FWK_TILE_RENDER_VIEW_WIDTH(iy)
     or a
     jp z, _fwk_trm_invalid
@@ -150,6 +181,21 @@ _fwk_trm_area_loop:
     jp c, _fwk_trm_invalid
     djnz _fwk_trm_area_loop
     ld (_fwk_trm_tile_area), hl
+    ; Both parallel tilesets must fit without wrapping the address space.
+    ex de, hl
+    ld l, FWK_TILE_RENDER_TILESET(iy)
+    ld h, FWK_TILE_RENDER_TILESET+1(iy)
+    ld b, FWK_TILE_RENDER_TILE_COUNT(iy)
+_fwk_trm_graphics_span_loop:
+    add hl, de
+    jp c, _fwk_trm_invalid
+    djnz _fwk_trm_graphics_span_loop
+    ld hl, (_fwk_trm_mask_tileset)
+    ld b, FWK_TILE_RENDER_TILE_COUNT(iy)
+_fwk_trm_mask_span_loop:
+    add hl, de
+    jp c, _fwk_trm_invalid
+    djnz _fwk_trm_mask_span_loop
     ; screen bottom
     ld e, FWK_TILEMAP_Y_SIZE(ix)
     ld d, #0
@@ -266,56 +312,43 @@ _fwk_trm_y_loop:
     djnz _fwk_trm_y_loop
 _fwk_trm_y_ready:
     ld (_fwk_trm_screen_y), hl
-    ld a, FWK_TILEMAP_Y_SIZE(ix)
-    ld (_fwk_trm_lines), a
+    ;; CPCTelera consumes interleaved mask/colour pairs. Keep the framework's
+    ;; parallel tilesets public contract and prepare one bounded tile at a time.
+    ld hl, (_fwk_trm_graphics)
+    ld (_fwk_trm_gptr), hl
+    ld hl, (_fwk_trm_mask)
+    ld (_fwk_trm_mptr), hl
+    ld a, (_fwk_trm_tile_area)
+    ld (_fwk_trm_count), a
+    ld de, #_fwk_trm_interleaved
 
-_fwk_trm_line_loop:
+_fwk_trm_interleave_loop:
+    ld a, (_fwk_trm_count)
+    ld hl, (_fwk_trm_mptr)
+    ld a, (hl)
+    ld (de), a
+    inc de
+    inc hl
+    ld (_fwk_trm_mptr), hl
+    ld hl, (_fwk_trm_gptr)
+    ld a, (hl)
+    ld (de), a
+    inc de
+    inc hl
+    ld (_fwk_trm_gptr), hl
+    ld a, (_fwk_trm_count)
+    dec a
+    ld (_fwk_trm_count), a
+    jr nz, _fwk_trm_interleave_loop
+
     ld hl, (_fwk_trm_screen_y)
     ld a, (_fwk_trm_screen_x)
     ld c, a
     call fwk_video_get_ptr
     ex de, hl
-    ld hl, (_fwk_trm_graphics)
-    ld (_fwk_trm_gptr), hl
-    ld hl, (_fwk_trm_mask)
-    ld (_fwk_trm_mptr), hl
-    ld a, FWK_TILEMAP_X_SIZE(ix)
-    ld (_fwk_trm_width), a
-    ld (_fwk_trm_count), a
-
-_fwk_trm_byte_loop:
-    ld a, (_fwk_trm_count)
-    or a
-    jr z, _fwk_trm_line_done
-    ld hl, (_fwk_trm_mptr)
-    ld a, (hl)
-    ld b, a
-    ld a, (de)
-    and b
-    ld c, a
-    ld hl, (_fwk_trm_gptr)
-    ld a, (hl)
-    or c
-    ld (de), a
-    ld hl, (_fwk_trm_gptr)
-    inc hl
-    ld (_fwk_trm_gptr), hl
-    ld hl, (_fwk_trm_mptr)
-    inc hl
-    ld (_fwk_trm_mptr), hl
-    inc de
-    ld a, (_fwk_trm_count)
-    dec a
-    ld (_fwk_trm_count), a
-    jr _fwk_trm_byte_loop
-
-_fwk_trm_line_done:
-    ld hl, (_fwk_trm_screen_y)
-    inc hl
-    ld (_fwk_trm_screen_y), hl
-    ld a, (_fwk_trm_lines)
-    dec a
-    ld (_fwk_trm_lines), a
-    jr nz, _fwk_trm_line_loop
+    ld hl, #_fwk_trm_interleaved
+    ld c, FWK_TILEMAP_X_SIZE(ix)
+    ld b, FWK_TILEMAP_Y_SIZE(ix)
+    call cpct_drawSpriteMasked_asm
     or a
     ret

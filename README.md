@@ -99,10 +99,12 @@ resuelve sólidos y plataformas de una dirección sobre el estado producido por
 automáticamente techo, pared y suelo; contratos y límites están en
 `docs/tilemap-collision.md`.
 
-`extensions/tilemap_render` dibuja un viewport rectangular desde un tileset
-Mode 0, con cámara y destino propiedad del consumidor. Prevalida el render
-completo y permite redibujar una celda explícita. `tilerender` demuestra cambio
-de cámara y actualización parcial; véase `docs/tilemap-render.md`.
+`extensions/tilemap_render` dibuja un viewport desde un tileset Mode 0 mediante
+las primitivas alineadas 2x4, 2x8, 4x4 y 4x8 de CPCTelera Next, con cámara y
+destino propiedad del consumidor. Prevalida el render completo y permite
+redibujar una celda explícita. La variante enmascarada delega la composición en
+`cpct_drawSpriteMasked_asm`. `tilerender` demuestra cambio de cámara y
+actualización parcial; véase `docs/tilemap-render.md`.
 
 ## Sprites con clipping y máscaras
 

@@ -1,4 +1,8 @@
 import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def validate(map_width, map_height, tile_width, tile_height, screen_width,
@@ -6,6 +10,10 @@ def validate(map_width, map_height, tile_width, tile_height, screen_width,
              view_width, view_height, tile_count):
     if not all((map_width, map_height, tile_width, tile_height,
                 view_width, view_height, tile_count)):
+        return False
+    if (tile_width, tile_height) not in {(2, 4), (2, 8), (4, 4), (4, 8)}:
+        return False
+    if screen_y % tile_height:
         return False
     if camera_x + view_width > map_width or camera_y + view_height > map_height:
         return False
@@ -29,6 +37,28 @@ def tileset_fits(base, tile_width, tile_height, tile_count):
 
 
 class TilemapRenderTests(unittest.TestCase):
+    def test_only_cpctelera_next_tile_geometries_are_accepted(self):
+        base = (8, 8, 80, 200, 0, 0, 0, 0, 4, 4, 4)
+        for width, height in ((2, 4), (2, 8), (4, 4), (4, 8)):
+            self.assertTrue(validate(base[0], base[1], width, height, *base[2:]))
+        self.assertFalse(validate(base[0], base[1], 8, 8, *base[2:]))
+        self.assertFalse(validate(base[0], base[1], 4, 6, *base[2:]))
+
+    def test_renderer_dispatches_to_cpctelera_next_primitives(self):
+        source = (ROOT / "src/extensions/tilemap_render.s").read_text(encoding="ascii")
+        for instruction in (
+            "jp z, cpct_drawTileAligned2x4_f_asm",
+            "jp cpct_drawTileAligned2x8_f_asm",
+            "jp z, cpct_drawTileAligned4x4_f_asm",
+            "jp cpct_drawTileAligned4x8_f_asm",
+        ):
+            self.assertIn(instruction, source)
+        self.assertNotIn("ldir", source.lower())
+
+    def test_masked_renderer_uses_cpctelera_masked_primitive(self):
+        source = (ROOT / "src/extensions/tilemap_render_masked.s").read_text(encoding="ascii")
+        self.assertIn("call cpct_drawSpriteMasked_asm", source)
+
     def test_viewport_and_screen_bounds(self):
         args = (8, 6, 4, 8, 80, 200, 2, 1, 10, 32, 5, 4, 4)
         self.assertTrue(validate(*args))

@@ -17,6 +17,13 @@
 
 ## Resultados (CPC 6128, perfil estándar 160x200)
 
+> **Serie histórica previa al render CPCTelera Next (2026-10-27).** Los valores
+> de tilemap de esta tabla corresponden al render línea a línea sustituido el
+> 2026-10-29. No deben atribuirse a las nuevas rutas
+> `cpct_drawTileAligned*_f_asm`; hay que volver a ejecutar
+> `tools/measure_perf.py` en un emulador disponible antes de publicar cifras
+> comparativas nuevas. Las demás escenas no cambiaron en esta migración.
+
 | Escena | Frames | Llamadas | T-estados/llamada | Frames/llamada |
 |---|---:|---:|---:|---:|
 | Bucle vacío (sobrecarga) | 32 | 20000 | 128 | 0,0016 |

@@ -72,8 +72,8 @@ make --version</code></pre>
   <p>Si CPCTelera está en otra ruta, defina <code>CPCT_NEXT_PATH</code> al invocar el constructor. El valor predeterminado del repositorio es <code>/config/workspace/cpctelera_next/cpctelera</code>.</p>
   <div class="warning"><strong>Unidades.</strong> En el perfil estándar, X y el ancho usados por sprites y por este perfil de plataformas están expresados en bytes Mode 0; cada byte contiene dos píxeles. Y y la altura se expresan en scanlines. Mezclar píxeles con bytes desplaza colisiones y dibujos.</div>
   <figure>
-    <img src="images/platformer/platformer-6128-start.png" alt="Captura real de la escena inicial de platformer en un CPC 6128 emulado">
-    <figcaption>Captura 1. Escena inicial obtenida desde AmSpiriT-Lite 1.15.3, modelo CPC 6128, mediante el mismo smoke que comprueba el estado del juego.</figcaption>
+    <img src="images/platformer/platformer-6128-start.png" alt="Captura real de la escena inicial de platformer con tiles de CPCTelera Next">
+    <figcaption>Captura 1. Escena actual obtenida con AmSpiriT-Lite 1.15.3, modelo CPC 6128, después de que el smoke validara la inicialización del juego con tiles de 4x8 bytes.</figcaption>
   </figure>
 
   <h2 id="estructura"><span class="step">2</span> Crear la estructura</h2>
@@ -146,7 +146,7 @@ PF_JUMP_SPEED    = -8</code></pre>
 
   <h2 id="datos" class="page-break"><span class="step">4</span> Preparar mapa, tiles y sprites</h2>
   <h3>4.1 Mapa y tipos de colisión</h3>
-  <p>El mapa contiene identificadores de tile en orden de filas. Otra tabla traduce cada identificador a <code>FWK_TILE_PASSABLE</code>, <code>FWK_TILE_SOLID</code> o <code>FWK_TILE_ONE_WAY</code>. Un ejemplo mínimo de 10 columnas usa tiles de 8 bytes por 8 scanlines:</p>
+  <p>El mapa contiene identificadores de tile en orden de filas. Otra tabla traduce cada identificador a <code>FWK_TILE_PASSABLE</code>, <code>FWK_TILE_SOLID</code> o <code>FWK_TILE_ONE_WAY</code>. El ejemplo usa las rutinas nativas de CPCTelera Next con tiles de 4 bytes por 8 scanlines: 8x8 píxeles en Mode 0 y 20 columnas para cubrir la pantalla.</p>
   <pre><code>.include "cpctelera.h.s"
 .include "extensions/tilemap.inc"
 .include "extensions/tilemap_render.inc"
@@ -154,29 +154,29 @@ PF_JUMP_SPEED    = -8</code></pre>
 
 tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID, FWK_TILE_ONE_WAY
 level_map:
-    .db 1,1,1,1,1,1,1,1,1,1
-    .db 1,0,0,0,0,0,0,0,0,1
+    .db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
     ; ...añada las filas restantes...
-    .db 1,1,1,1,1,1,1,1,1,1
+    .db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 
-FWK_TILEMAP_DESCRIPTOR level_descriptor, level_map, tile_types, 10, 25, 3, 3, 8, 8, 3</code></pre>
-  <p>Los tamaños del tile deben ser potencias de dos coherentes con los desplazamientos: tamaño 8 implica shift 3. El descriptor usa ancho y alto de 8 bits. Las consultas fuera del mapa y los identificadores inválidos se tratan como error/transitable, no como una pared implícita.</p>
+FWK_TILEMAP_DESCRIPTOR level_descriptor, level_map, tile_types, 20, 25, 2, 3, 4, 8, 3</code></pre>
+  <p>Los tamaños deben ser coherentes con los desplazamientos: 4 bytes implica shift X 2 y 8 scanlines implica shift Y 3. El render opaco solo acepta las geometrías CPCTelera 2x4, 2x8, 4x4 y 4x8 bytes. Las consultas fuera del mapa y los identificadores inválidos se tratan como error/transitable, no como una pared implícita.</p>
 
   <h3>4.2 Tileset y vista</h3>
   <p>Cada gráfico ocupa exactamente <code>x_size * y_size</code> bytes Mode 0, por filas y sin padding. Concatenelos por identificador y describa la región visible:</p>
   <pre><code>tileset:
-    .rept 64
-        .db 0x00       ; tile 0: 8 bytes x 8 scanlines
+    .rept 32
+        .db 0x00       ; tile 0: 4 bytes x 8 scanlines
     .endm
-    .rept 64
+    .rept 32
         .db 0x55       ; tile 1
     .endm
-    .rept 64
+    .rept 32
         .db 0xF0       ; tile 2
     .endm
 
-FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 0, 0, 10, 25, 3</code></pre>
-  <p>La cámara y el viewport están en tiles; <code>screen_x</code> está en bytes Mode 0 y <code>screen_y</code> es una palabra. El render completo valida la geometría antes de escribir.</p>
+FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 0, 0, 20, 25, 3</code></pre>
+  <p>La cámara y el viewport están en tiles; <code>screen_x</code> está en bytes Mode 0 y <code>screen_y</code> es una palabra alineada al alto del tile. El render completo valida la geometría y llama a <code>cpct_drawTileAligned4x8_f_asm</code> para cada celda.</p>
 
   <h3>4.3 Sprite y buffer de fondo</h3>
   <pre><code>player_pixels:
@@ -341,8 +341,8 @@ no_jump:</code></pre>
   <p><code>fwk_tilemap_render_cell</code> recibe fila en <code>B</code> y columna en <code>C</code>, ambas relativas al viewport. Evita repintar todo el mapa por retirar un objeto.</p>
   <p>El texto con máscara conserva el fondo en los bits transparentes, pero al sustituir un glifo pueden quedar píxeles opacos del glifo anterior. Antes de redibujar una puntuación variable, restaure las celdas de tile que ocupa el HUD y después escriba el texto. Hágalo solo cuando cambie el valor.</p>
   <figure>
-    <img src="images/platformer/platformer-6128-victory.png" alt="Captura real del estado de victoria tras recoger las cuatro monedas">
-    <figcaption>Captura 4. El recorrido automatizado ha recogido las cuatro monedas, actualizado el HUD y publicado el estado de victoria en CPC 6128.</figcaption>
+    <img src="images/platformer/platformer-6128-victory.png" alt="Captura real del estado de victoria con tiles de CPCTelera Next">
+    <figcaption>Captura 4. El recorrido automatizado actual recogió las cuatro monedas, restauró sus celdas de 4x8 bytes, actualizó el HUD y publicó la victoria en CPC 6128.</figcaption>
   </figure>
 
   <h2 id="construir" class="page-break"><span class="step">9</span> Construir y ejecutar</h2>
@@ -419,7 +419,7 @@ python3 tests/emulator_smoke.py platformer --model 464</code></pre>
   --html docs/platform-game-guide.html \
   --pdf docs/platform-game-guide.pdf \
   --checksum docs/platform-game-guide.sha256</code></pre>
-  <p>Las dos capturas jugables proceden directamente del endpoint PNG del emulador. El smoke las toma al terminar la inicialización y al alcanzar la victoria:</p>
+  <p>Las dos capturas jugables se regeneran desde el endpoint PNG del emulador. El smoke las toma al terminar la inicialización y al alcanzar la victoria:</p>
   <pre><code>python3 tests/emulator_smoke.py platformer --model 6128 \
   --screenshot-dir docs/images/platformer</code></pre>
   <div class="note"><strong>Evidencia reproducible.</strong> Una captura solo se escribe después de que el smoke haya observado el estado correspondiente. El comando requiere que el wrapper configurado en <code>--emulator</code> pueda iniciar AmSpiriT-Lite y su servidor local.</div>

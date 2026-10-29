@@ -184,7 +184,6 @@ _pf_coin_loop:
     ld a, (hl)
     sla a
     sla a
-    sla a
     ld c, a
     inc hl
     ld a, (hl)
@@ -261,7 +260,6 @@ _pf_coin_draw_loop:
     push bc
     push hl
     ld a, (hl)
-    sla a
     sla a
     sla a
     ld (platformer_coin_sprite+FWK_SPRITE_X), a

@@ -414,7 +414,8 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
         <li><code>fwk_tilemap_render_view</code>: <code>IX=tilemap</code>, <code>IY=render</code>; prevalida cámara, pantalla, tileset e ids y dibuja todo el viewport.</li>
         <li><code>fwk_tilemap_render_cell</code>: además <code>B=fila</code>, <code>C=columna</code> relativas al viewport; redibuja solo esa celda.</li>
       </ul>
-      <p>Cada gráfico contiene <code>x_size*y_size</code> bytes Mode 0 contiguos. Carry indica error antes de escribir. Ambas rutinas preservan <code>IX/IY</code>, alteran <code>AF,BC,DE,HL</code> y no son reentrantes. No hay transparencia, clipping, scroll sub-tile, bancos ni dirty rectangles automáticos; el mapa no se modifica. Véase <code>docs/tilemap-render.md</code>.</p>
+      <p>Cada gráfico contiene <code>x_size*y_size</code> bytes Mode 0 contiguos. El render opaco admite exclusivamente las geometrías nativas de CPCTelera Next: 2x4, 2x8, 4x4 y 4x8 bytes (4x4, 4x8, 8x4 y 8x8 píxeles en Mode 0), exige que Y esté alineada al alto y despacha a <code>cpct_drawTileAligned*_f_asm</code>. La variante enmascarada conserva máscaras y color en tilesets paralelos, los entrelaza en un scratch de un tile y dibuja con <code>cpct_drawSpriteMasked_asm</code>.</p>
+      <p>Carry indica error antes de escribir. Ambas rutinas preservan <code>IX/IY</code>, alteran <code>AF,BC,DE,HL</code> y no son reentrantes. No hay clipping, scroll sub-tile, bancos ni dirty rectangles automáticos; el mapa no se modifica. Véase <code>docs/tilemap-render.md</code>.</p>
     </article>
 
     <article class="api" data-module="extensions/physics_8_8.s">

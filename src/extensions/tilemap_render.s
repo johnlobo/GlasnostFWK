@@ -1,15 +1,16 @@
-;; Rectangular Mode 0 tilemap renderer with a consumer-owned viewport.
+;; CPCTelera Next tilemap renderer with a consumer-owned viewport.
 .module fwk_tilemap_render
 .include "extensions/tilemap_render.inc"
 
 .globl fwk_video_get_ptr, fwk_video_width_bytes, fwk_video_height
+.globl cpct_drawTileAligned2x4_f_asm, cpct_drawTileAligned2x8_f_asm
+.globl cpct_drawTileAligned4x4_f_asm, cpct_drawTileAligned4x8_f_asm
 
 .area _DATA
 _fwk_tr_row:        .db 0
 _fwk_tr_column:     .db 0
 _fwk_tr_tile_id:    .db 0
 _fwk_tr_screen_x:   .db 0
-_fwk_tr_lines:      .db 0
 _fwk_tr_tile_area:  .dw 0
 _fwk_tr_graphics:   .dw 0
 _fwk_tr_screen_y:   .dw 0
@@ -104,6 +105,47 @@ _fwk_tr_validate:
     ld a, FWK_TILEMAP_Y_SIZE(ix)
     or a
     jp z, _fwk_tr_invalid
+
+    ;; CPCTelera Next exposes aligned tile primitives for exactly these four
+    ;; byte geometries. Reject everything else before the first video write.
+    cp #4
+    jr z, _fwk_tr_geometry_width
+    cp #8
+    jp nz, _fwk_tr_invalid
+_fwk_tr_geometry_width:
+    ld a, FWK_TILEMAP_X_SIZE(ix)
+    cp #2
+    jr nz, _fwk_tr_geometry_4wide
+    ld a, FWK_TILEMAP_X_SHIFT(ix)
+    cp #1
+    jp nz, _fwk_tr_invalid
+    jr _fwk_tr_geometry_height_shift
+_fwk_tr_geometry_4wide:
+    cp #4
+    jp nz, _fwk_tr_invalid
+    ld a, FWK_TILEMAP_X_SHIFT(ix)
+    cp #2
+    jp nz, _fwk_tr_invalid
+_fwk_tr_geometry_height_shift:
+    ld a, FWK_TILEMAP_Y_SIZE(ix)
+    cp #4
+    jr nz, _fwk_tr_geometry_8high
+    ld a, FWK_TILEMAP_Y_SHIFT(ix)
+    cp #2
+    jp nz, _fwk_tr_invalid
+    jr _fwk_tr_geometry_alignment
+_fwk_tr_geometry_8high:
+    ld a, FWK_TILEMAP_Y_SHIFT(ix)
+    cp #3
+    jp nz, _fwk_tr_invalid
+_fwk_tr_geometry_alignment:
+    ;; An aligned primitive must begin on its 4/8-scanline boundary.
+    ld a, FWK_TILEMAP_Y_SIZE(ix)
+    dec a
+    ld b, a
+    ld a, FWK_TILE_RENDER_SCREEN_Y(iy)
+    and b
+    jp nz, _fwk_tr_invalid
     ld a, FWK_TILE_RENDER_VIEW_WIDTH(iy)
     or a
     jp z, _fwk_tr_invalid
@@ -265,25 +307,24 @@ _fwk_tr_y_loop:
     djnz _fwk_tr_y_loop
 _fwk_tr_y_ready:
     ld (_fwk_tr_screen_y), hl
-    ld a, FWK_TILEMAP_Y_SIZE(ix)
-    ld (_fwk_tr_lines), a
-
-_fwk_tr_line_loop:
+    ;; Resolve the destination once, then let CPCTelera copy the complete tile.
     ld hl, (_fwk_tr_screen_y)
     ld a, (_fwk_tr_screen_x)
     ld c, a
     call fwk_video_get_ptr
     ex de, hl
     ld hl, (_fwk_tr_graphics)
-    ld b, #0
-    ld c, FWK_TILEMAP_X_SIZE(ix)
-    ldir
-    ld (_fwk_tr_graphics), hl
-    ld hl, (_fwk_tr_screen_y)
-    inc hl
-    ld (_fwk_tr_screen_y), hl
-    ld a, (_fwk_tr_lines)
-    dec a
-    ld (_fwk_tr_lines), a
-    jr nz, _fwk_tr_line_loop
-    ret
+
+    ;; Dispatch only to CPCTelera Next's aligned, unrolled primitives.
+    ld a, FWK_TILEMAP_X_SIZE(ix)
+    cp #2
+    jr nz, _fwk_tr_draw_4wide
+    ld a, FWK_TILEMAP_Y_SIZE(ix)
+    cp #4
+    jp z, cpct_drawTileAligned2x4_f_asm
+    jp cpct_drawTileAligned2x8_f_asm
+_fwk_tr_draw_4wide:
+    ld a, FWK_TILEMAP_Y_SIZE(ix)
+    cp #4
+    jp z, cpct_drawTileAligned4x4_f_asm
+    jp cpct_drawTileAligned4x8_f_asm
