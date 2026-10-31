@@ -17,12 +17,12 @@ Fecha: 2026-10-29 UTC.
   sólidos/plataformas de una dirección para el perfil de plataforma.
 - Render de tilemap Mode 0 con geometrías nativas 2x4/2x8/4x4/4x8, primitivas
   alineadas de CPCTelera Next, cámara, prevalidación completa y actualización
-  parcial explícita de una celda; la variante enmascarada usa su blitter de
-  sprites enmascarados.
+  parcial explícita de una celda; la variante transparente usa el color clave
+  configurado para el proyecto.
 - Sprites rectangulares Mode 0 con coordenadas de 16 bits con signo, clipping
   por los cuatro bordes y captura/restauración del fondo visible.
-- Dibujo enmascarado opcional sobre el mismo descriptor, con máscara paralela,
-  composición `(pantalla AND máscara) OR datos` y validación del span completo.
+- Dibujo transparente opcional sobre el mismo descriptor, con pen Mode 0
+  configurable, tabla implícita en `0x0100` y validación del span fuente.
 - Lote opcional de sprites con inserción estable por clave, restauración
   inversa y captura/dibujo directo para solapamientos; el lote usa el camino
   opaco y no integra todavía la máscara.
@@ -30,8 +30,50 @@ Fecha: 2026-10-29 UTC.
   texto, entrada y cierre permanecen en el consumidor.
 - Generadores de vídeo/recursos y veintidós ejemplos, incluidas dos escenas jugables.
 - Frontera de dependencias y exclusión física de módulos.
+- Inicialización generada por proyecto: código en `0x0200`, o en `0x0216` al
+  activar memoria extendida para reservar el stub de bancos en `0x0200`.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
+
+## Validación de configuración inicial (2026-10-29)
+
+- `make test` pasó 71 pruebas host, construyó 22 BIN, 21 CDT y el DSK común de
+  24 entradas.
+- Los proyectos normales enlazaron desde `0x0200`; `resources128`, con
+  `extended_memory=true`, enlazó desde `0x0216`, añadió automáticamente
+  `resources/bank.s` y superó la detección/copia bancaria en AmSpiriT-Lite CPC
+  6128; el fallback pasó también en CPC 464.
+- La sonda fija `0x7FF0` fue retirada tras contrastarla con DeckTower. La nueva
+  detección usa temporalmente `0x4000` bajo `DI` y restaura tanto RAM normal
+  como banco 0.
+- `spritemask` configuró el pen 3 y el smoke comparó los 256 bytes instalados en
+  `0x0100` con la tabla generada, además de sus testigos VRAM y clipping.
+- `board` verificó la tabla pen 0 y el texto; `tilemask` verificó el consumidor
+  transparente de tilemaps. Los cuatro casos pasaron en CPC 6128.
+- En un build sin transparencia (`spriteclip`) el símbolo
+  `fwk_sprite_draw_masked` no aparece en el NOI. Las pruebas host cubren los 16
+  pens y el rechazo de configuraciones inválidas.
+- Manual y guía de plataformas HTML/PDF se regeneraron y sus checksums pasaron.
+
+Las menciones posteriores a máscaras paralelas describen validaciones
+históricas de la implementación sustituida y no constituyen el contrato actual.
+
+## Validación de sprite transparente recoloreable (2026-10-29)
+
+- `fwk_sprite_draw_masked_recolor` valida pens 0..15, conserva el descriptor y
+  el clipping de cuatro bordes, sustituye un pen Mode 0 y compone después con
+  el color clave configurado.
+- Las pruebas host cubren reemplazo en los dos píxeles empaquetados, interacción
+  entre recoloreado y transparencia y rechazo de pens inválidos.
+- `spritemask` usa transparencia pen 3 y reemplaza pen 5 por pen 15 sobre fondo
+  no uniforme. Los testigos exactos de VRAM pasaron en AmSpiriT-Lite 1.15.3
+  para CPC 6128 y CPC 464.
+- Se comprobó que un proyecto sin transparencia no exporta el nuevo símbolo.
+- `make test` pasó 74 pruebas host, construyó 22 BIN, 21 CDT y el DSK común con
+  24 entradas. `make manual` regeneró PDF y checksum correctamente.
+
+No existe validación en hardware real y el coste temporal de la nueva ruta no
+se ha medido todavía.
 
 ## Compilado
 
@@ -132,12 +174,19 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   recogió los tres, el pool se compactó de cuatro registros a uno y se activó
   el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
   jugador, coleccionables y victoria. La misma prueba pasó en CPC 6128 y CPC 464.
-- `platformer` completó su recorrido jugable automatizado, recogió cuatro
-  monedas y alcanzó la victoria en CPC 6128 y CPC 464. Al cambiar el marcador,
-  restauró las tres filas de tiles bajo el HUD antes de redibujar; el smoke
-  comparó el glifo final con la composición exacta de fuente, máscara y tileset,
+- `platformer`, ya migrado a `entity_render`, completó su recorrido jugable
+  automatizado, recogió cuatro monedas y alcanzó la victoria en CPC 6128 y CPC
+  464. Jugador y monedas usan prefijos de entidad, buffers propios, propagación
+  dirty y orden por Y. La ruta prepara validación, solapamientos y orden antes
+  del VSYNC, y mantiene consecutivas las escrituras de restauración/dibujo. Al
+  cambiar el marcador, restauró dos celdas para el dígito o el tramo de estado;
+  el smoke comparó el glifo final con la composición exacta de fuente, máscara y tileset,
   y comprobó que las celdas de las monedas inferiores quedaron limpias. La ruta
   CPC 6128 produjo capturas PNG reales de la escena inicial y la victoria.
+  El diagnóstico posterior observó 20 actualizaciones durante 19 frames de tecla
+  programados con tres monedas visibles; el frame de activación explica la
+  actualización adicional. La misma prueba previa a la optimización solo había
+  observado 10. No se midieron ciclos ni hardware real.
 
 La entrada está automatizada para `vertical` y `platformer`. `tilecoll`, `tilerender` y
 `spriteclip` se inspeccionaron visualmente en emulador y su salida resultó
@@ -161,13 +210,10 @@ No verificado.
   modelo de memoria sí está probado; la señal de vídeo no.
 - El tilemap continúa siendo de solo lectura. No hay edición, streaming,
   transparencia, scroll sub-tile ni dirty rectangles automáticos.
-- El camino opaco sigue siendo la base del lote ordenado. La máscara es bit a
-  bit: en Mode 0 permite preservar un píxel de 4 bits y sustituir el otro del
-  mismo byte, sin color-key ni mezcla alfa. No está integrada en `sprite_batch`;
-  tampoco hay recoloreado ni comprobación de capacidad del buffer. El código
-  enmascarado comparte `video/sprite.s` y se enlaza en todo ejemplo con sprites.
-  El lote ordenado tiene capacidad fija y no ofrece eliminación ni cambio
-  automático de clave.
+- `entity_render` sustituye al lote opaco: admite opaco, máscara, recoloreado y
+  ambas opciones combinadas; valida capacidades y solapamiento de buffers
+  activos. Sigue trabajando con rectángulos completos, capacidad fija aportada
+  por el juego y sin mezcla alfa ni asignación dinámica.
 - Ciclos del dibujo enmascarado medidos en `docs/performance.md` (6x8 ≈ 11022
   T-estados). No se promete 50 Hz para una escena arbitraria.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:

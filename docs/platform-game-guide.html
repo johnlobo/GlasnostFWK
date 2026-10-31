@@ -40,10 +40,10 @@
   <header>
     <h1>Crear un juego de plataformas con GlasnostFWK</h1>
     <p class="lead">Tutorial mantenible, paso a paso, basado en el flujo de construcción y en las APIs presentes en el repositorio.</p>
-    <p class="meta">Edición: 28 de octubre de 2026 · Perfil estable <code>standard-160x200.json</code> · Ensamblador Z80</p>
+    <p class="meta">Edición: 31 de octubre de 2026 · Perfil estable <code>standard-160x200.json</code> · Ensamblador Z80</p>
   </header>
 
-  <div class="note"><strong>Alcance confirmado.</strong> Esta guía explica cómo montar un proyecto pequeño con movimiento, salto, tilemap, colisión, sprites y objetos coleccionables. No presupone cámara con scroll, pendientes, streaming de mapas ni un sistema universal de entidades: esas funciones no forman parte del contrato actual.</div>
+  <div class="note"><strong>Alcance confirmado.</strong> Esta guía explica cómo montar un proyecto pequeño con movimiento, salto, tilemap, colisión, sprites y objetos coleccionables sobre <code>video/entity_render</code>. No presupone cámara con scroll, pendientes, streaming de mapas ni asignación dinámica de entidades: esas funciones no forman parte del contrato actual.</div>
 
   <nav aria-label="Índice">
     <h2>Índice</h2>
@@ -105,11 +105,13 @@ touch examples/mi_plataformas/game.inc</code></pre>
   "name": "mi_plataformas",
   "amsdos_name": "MIPLATA",
   "profile": "standard-160x200.json",
+  "transparency": {"pen": 0},
   "modules": [
     "core/system.s",
     "core/input.s",
     "video/video.s",
     "video/sprite.s",
+    "video/entity_render.s",
     "ui/text.s",
     "extensions/physics_platform.s",
     "extensions/tilemap.s",
@@ -118,7 +120,7 @@ touch examples/mi_plataformas/game.inc</code></pre>
   ],
   "game_sources": ["main.s", "assets.s", "game.inc"]
 }</code></pre>
-  <p><code>game_sources</code> debe incluir <code>main.s</code>. Las rutas son relativas al directorio del ejemplo y el constructor rechaza rutas que escapen de él. <code>amsdos_name</code> se usa al integrar el BIN en el DSK común: debe contener entre uno y ocho caracteres AMSDOS válidos.</p>
+  <p><code>game_sources</code> debe incluir <code>main.s</code>. <code>transparency.pen=0</code> habilita el renderer transparente y coincide con el fondo de la fuente incorporada. Las rutas son relativas al directorio del ejemplo y el constructor rechaza rutas que escapen de él. <code>amsdos_name</code> se usa al integrar el BIN en el DSK común: debe contener entre uno y ocho caracteres AMSDOS válidos.</p>
   <figure>
     <img src="images/platformer/02-manifiesto.png" alt="Captura de terminal con el manifiesto JSON real de platformer">
     <figcaption>Captura 3. Manifiesto leído directamente de <code>examples/platformer/example.json</code>. Si el ejemplo evoluciona, el generador de capturas reflejará el cambio.</figcaption>
@@ -143,6 +145,7 @@ PF_INPUT_RIGHT   = 0x02
 PF_INPUT_JUMP    = 0x04
 PF_SPEED         = 2
 PF_JUMP_SPEED    = -8</code></pre>
+  <p>La ruta preparada mantiene una actualización por frame en el tramo diagnosticado con monedas visibles, por lo que <code>PF_SPEED=2</code> expresa directamente el ritmo horizontal original. No es una garantía general de rendimiento: mida de nuevo si cambia el número, tamaño o tipo de entidades.</p>
 
   <h2 id="datos" class="page-break"><span class="step">4</span> Preparar mapa, tiles y sprites</h2>
   <h3>4.1 Mapa y tipos de colisión</h3>
@@ -150,7 +153,7 @@ PF_JUMP_SPEED    = -8</code></pre>
   <pre><code>.include "cpctelera.h.s"
 .include "extensions/tilemap.inc"
 .include "extensions/tilemap_render.inc"
-.include "video/sprite.inc"
+.include "video/entity_render.inc"
 
 tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID, FWK_TILE_ONE_WAY
 level_map:
@@ -178,21 +181,29 @@ FWK_TILEMAP_DESCRIPTOR level_descriptor, level_map, tile_types, 20, 25, 2, 3, 4,
 FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 0, 0, 20, 25, 3</code></pre>
   <p>La cámara y el viewport están en tiles; <code>screen_x</code> está en bytes Mode 0 y <code>screen_y</code> es una palabra alineada al alto del tile. El render completo valida la geometría y llama a <code>cpct_drawTileAligned4x8_f_asm</code> para cada celda.</p>
 
-  <h3>4.3 Sprite y buffer de fondo</h3>
+  <h3>4.3 Prefijo de render y buffer de fondo</h3>
   <pre><code>player_pixels:
     .rept 8
         .db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
     .endm
 
-FWK_SPRITE_DESCRIPTOR player_sprite, player_pixels, 16, 184, 8, 8</code></pre>
-  <p>En la zona mutable reserve <code>width * height</code> bytes para guardar el fondo. Captura y restauración deben usar la misma posición del descriptor; restaure antes de modificar X/Y.</p>
+player_background: .ds 8 * 8
+player_entity:
+    FWK_ENTITY_RENDER_PREFIX player_pixels, 16, 184, 8, 8, 192, player_background, 64, FWK_ENTITY_RENDER_VISIBLE, 0, 0</code></pre>
+  <p>El prefijo ocupa 25 bytes y debe comenzar en el offset cero de la entidad. Contiene el descriptor de sprite compatible, <code>sort_y</code>, el buffer de fondo, su capacidad, la geometría anterior, flags y pens de recoloreado. Reserve como mínimo <code>width * height</code> bytes para cada entidad que pueda estar activa.</p>
 
   <h2 id="estado"><span class="step">5</span> Definir jugador, física y controles</h2>
-  <p>El perfil compacto usa un estado de siete bytes: <code>x, y, vx, vy, width, height, flags</code>. La configuración contiene ancho del mundo, suelo inclusivo, gravedad y caída máxima.</p>
+  <p>El perfil compacto usa un estado de siete bytes: <code>x, y, vx, vy, width, height, flags</code>. En este ejemplo comienza justo después del prefijo de render; así las rutinas de física reciben el subregistro compacto mediante <code>IY</code>, mientras el renderer recibe la base de la entidad mediante su array de punteros.</p>
   <pre><code>.include "extensions/physics_platform.inc"
 
-player_state:      .ds FWK_PLATFORM_STATE_SIZE
 player_background: .ds 8 * 8
+player_entity:
+    FWK_ENTITY_RENDER_PREFIX player_pixels, 16, 184, 8, 8, 192, player_background, 64, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+player_state: .ds FWK_PLATFORM_STATE_SIZE
+
+entity_ptrs: .dw player_entity, coin0_entity, coin1_entity
+render_work: .ds 3 * FWK_ENTITY_RENDER_WORK_SIZE
+FWK_ENTITY_RENDER_DESCRIPTOR render_list, entity_ptrs, 3, render_work, 3
 
 FWK_PLATFORM_CONFIG physics_config, 80, 255, 1, 8
 
@@ -213,9 +224,9 @@ bindings:
   <p>El suelo global en 255 actúa solo como límite de seguridad si el tilemap ya posee un suelo visible. El resolver de mapa establece <code>FWK_PLATFORM_TILE_GROUNDED</code> al aterrizar sobre tiles sólidos o plataformas de una dirección.</p>
 
   <h2 id="inicio"><span class="step">6</span> Inicializar el juego</h2>
-  <p>La secuencia mínima es: sistema, vídeo, módulos auxiliares, estado, entrada y escena estática.</p>
+  <p>La secuencia mínima es: configuración del proyecto, vídeo, módulos auxiliares, estado, entrada y escena estática. <code>fwk_project_init</code> inicializa el sistema e instala una sola vez la tabla de transparencia configurada.</p>
   <pre><code>_main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     call fwk_text_init
     xor a
@@ -241,28 +252,29 @@ bindings:
     ld ix, #level_descriptor
     ld iy, #level_view
     call fwk_tilemap_render_view
-    jp c, fatal_data_error</code></pre>
-  <p>Después dibuje objetos estáticos, capture el fondo del jugador y dibújelo. Si el render devuelve carry, el descriptor, el viewport o algún id de tile no son válidos.</p>
+    jp c, fatal_data_error
+
+    ld ix, #render_list
+    call fwk_entity_render_init
+    jp c, fatal_data_error
+    call fwk_entity_render_prepare_dirty
+    call restore_entities
+    call draw_entities</code></pre>
+  <p><code>fwk_entity_render_init</code> valida la lista y marca las entidades visibles para el primer dibujo. Si devuelve carry, revise punteros duplicados, capacidad del array auxiliar, flags, geometrías, spans y buffers.</p>
 
   <h2 id="bucle" class="page-break"><span class="step">7</span> Construir el bucle de juego</h2>
-  <p>El orden evita borrar la escena y garantiza que el resolver pueda reconstruir la posición anterior a partir de la velocidad:</p>
+  <p>El orden respeta la máquina de estados <code>IDLE -&gt; RESTORED -&gt; IDLE</code> y garantiza que el resolver pueda reconstruir la posición anterior a partir de la velocidad:</p>
   <ol>
     <li>Esperar el frame.</li>
-    <li>Restaurar el fondo en la posición anterior.</li>
     <li>Actualizar entrada y velocidades.</li>
     <li>Ejecutar física.</li>
     <li>Resolver inmediatamente la colisión con el tilemap.</li>
     <li>Aplicar reglas del juego.</li>
-    <li>Actualizar el descriptor del sprite.</li>
-    <li>Capturar el fondo nuevo y dibujar.</li>
+    <li>Sincronizar posición y <code>sort_y</code> del prefijo; activar <code>DIRTY</code> si cambió.</li>
+    <li>Marcar entidades afectadas por cambios externos del fondo.</li>
+    <li>Restaurar todas las entidades sucias, redibujar el fondo externo y dibujar las entidades.</li>
   </ol>
   <pre><code>game_loop:
-    call fwk_system_wait_frame
-
-    ld ix, #player_sprite
-    ld hl, #player_background
-    call fwk_sprite_restore
-
     call fwk_input_update
     call update_horizontal_velocity
     call try_jump
@@ -277,21 +289,34 @@ bindings:
     ; A contiene la mascara FWK_PLATFORM_HIT_*
 
     call update_rules
-    call draw_player
+    call sync_player_render
+
+    ; Prepare validacion, cierre y orden sin tocar VRAM.
+    ld ix, #render_list
+    call fwk_entity_render_prepare_dirty
+    jp c, fatal_render_error
+    ; Tras VSYNC no espere ni haga logica entre restauracion y dibujo.
+    call fwk_system_wait_frame
+    ld ix, #render_list
+    call fwk_entity_render_restore_dirty
+    jp c, fatal_render_error
+    ld ix, #render_list
+    call fwk_entity_render_draw_dirty
+    jp c, fatal_render_error
     jp game_loop</code></pre>
 
   <h3>7.1 Movimiento horizontal</h3>
   <pre><code>    ld a, (fwk_input_held)
     and #ACTION_LEFT
     jr z, check_right
-    ld a, #-2
+    ld a, #-4
     ld (player_state + FWK_PLATFORM_VX), a
     jr horizontal_done
 check_right:
     ld a, (fwk_input_held)
     and #ACTION_RIGHT
     jr z, stop_horizontal
-    ld a, #2
+    ld a, #4
     ld (player_state + FWK_PLATFORM_VX), a
     jr horizontal_done
 stop_horizontal:
@@ -311,35 +336,49 @@ horizontal_done:</code></pre>
 no_jump:</code></pre>
   <p>La velocidad es un byte con signo. La rutina de física aplica gravedad y caída máxima; el resolver corrige paredes, techo y suelo. No use velocidades que permitan atravesar un tile completo en un solo frame: no hay barrido continuo ni subdivisión automática.</p>
 
-  <h3>7.3 Restaurar y dibujar el jugador</h3>
-  <pre><code>draw_player:
+  <h3>7.3 Sincronizar el jugador con el renderer</h3>
+  <pre><code>sync_player_render:
+    ; Marque DIRTY solo si la posicion compacta ha cambiado.
     ld a, (player_state + FWK_PLATFORM_X)
-    ld (player_sprite + FWK_SPRITE_X), a
-    xor a
-    ld (player_sprite + FWK_SPRITE_X + 1), a
+    ld b, a
+    ld a, (player_entity + FWK_ENTITY_RENDER_X)
+    cp b
+    jr nz, player_changed
     ld a, (player_state + FWK_PLATFORM_Y)
-    ld (player_sprite + FWK_SPRITE_Y), a
+    ld b, a
+    ld a, (player_entity + FWK_ENTITY_RENDER_Y)
+    cp b
+    jr z, player_store
+player_changed:
+    ld hl, #player_entity + FWK_ENTITY_RENDER_FLAGS
+    set 1, (hl) ; FWK_ENTITY_RENDER_DIRTY
+player_store:
+    ld a, (player_state + FWK_PLATFORM_X)
+    ld (player_entity + FWK_ENTITY_RENDER_X), a
     xor a
-    ld (player_sprite + FWK_SPRITE_Y + 1), a
-
-    ld ix, #player_sprite
-    ld de, #player_background
-    call fwk_sprite_capture
-    ld ix, #player_sprite
-    call fwk_sprite_draw
+    ld (player_entity + FWK_ENTITY_RENDER_X + 1), a
+    ld a, (player_state + FWK_PLATFORM_Y)
+    ld (player_entity + FWK_ENTITY_RENDER_Y), a
+    ld l, a
+    ld h, #0
+    xor a
+    ld (player_entity + FWK_ENTITY_RENDER_Y + 1), a
+    ld de, #8
+    add hl, de
+    ld (player_entity + FWK_ENTITY_RENDER_SORT_Y), hl
     ret</code></pre>
-  <div class="warning"><strong>Detalle importante.</strong> El descriptor de sprite almacena X e Y en 16 bits con signo, mientras que el estado compacto usa bytes. Si escribe el byte bajo, inicialice también el byte alto; para este mundo positivo debe ser cero.</div>
+  <div class="warning"><strong>Detalle importante.</strong> No cambie entidades desde <code>prepare_dirty</code> hasta <code>draw_dirty</code>. Si modifica punteros o rangos de buffer en <code>IDLE</code>, llame a <code>revalidate</code>. El descriptor almacena X e Y en 16 bits con signo, mientras el estado compacto usa bytes; inicialice también el byte alto. <code>sort_y</code> es la clave estable de orden, no una coordenada usada por la física.</div>
 
   <h2 id="objetos"><span class="step">8</span> Añadir objetos coleccionables y HUD</h2>
-  <p>Una regla sencilla almacena cada objeto como <code>x_tile, y_tile, activo</code>. En cada frame, compare su rectángulo con el del jugador. Al recogerlo:</p>
+  <p>Una regla sencilla almacena cada objeto como <code>x_tile, y_tile, tipo, puntero_entidad</code>. En cada frame, compare su rectángulo con el del jugador. Al recogerlo:</p>
   <ol>
-    <li>marque la entrada como inactiva;</li>
-    <li>redibuje la celda estática mediante <code>fwk_tilemap_render_cell</code>;</li>
+    <li>marque la entrada lógica como inactiva;</li>
+    <li>quite <code>VISIBLE</code> y active <code>DIRTY</code> en su entidad;</li>
     <li>incremente la puntuación;</li>
     <li>marque el HUD como sucio.</li>
   </ol>
-  <p><code>fwk_tilemap_render_cell</code> recibe fila en <code>B</code> y columna en <code>C</code>, ambas relativas al viewport. Evita repintar todo el mapa por retirar un objeto.</p>
-  <p>El texto con máscara conserva el fondo en los bits transparentes, pero al sustituir un glifo pueden quedar píxeles opacos del glifo anterior. Antes de redibujar una puntuación variable, restaure las celdas de tile que ocupa el HUD y después escriba el texto. Hágalo solo cuando cambie el valor.</p>
+  <p>En el ciclo siguiente, <code>restore_dirty</code> repone el fondo capturado de la moneda y <code>draw_dirty</code> deja de dibujarla. Mantenga el puntero en la lista hasta completar ese ciclo; retirarlo antes impediría restaurar su fondo.</p>
+  <p>Reserve las filas 1 y 2 del mapa como interior negro del HUD y mantenga los bordes laterales fuera del texto. El ejemplo coloca puntuación en <code>x=8,y=8</code> y ayuda/estado en <code>x=32,y=8</code>. Como el texto con máscara no borra el glifo anterior, cada cambio normal restaura solo la columna de tile que contiene el dígito —dos celdas por sus nueve scanlines— y dibuja un único carácter. La victoria restaura únicamente las 18 celdas del tramo de estado. El HUD se actualiza después de <code>draw_dirty</code>, cuando el jugador ya vuelve a estar visible.</p>
   <figure>
     <img src="images/platformer/platformer-6128-victory.png" alt="Captura real del estado de victoria con tiles de CPCTelera Next">
     <figcaption>Captura 4. El recorrido automatizado actual recogió las cuatro monedas, restauró sus celdas de 4x8 bytes, actualizó el HUD y publicó la victoria en CPC 6128.</figcaption>
@@ -397,7 +436,8 @@ python3 -m json.tool .build/tests/catalog.json | less</code></pre>
       <tr><td>El jugador se desplaza el doble.</td><td>Revise si X se introdujo como píxeles; sprites y tiles usan bytes Mode 0.</td></tr>
       <tr><td>Atraviesa paredes o suelo.</td><td>Llame al resolver justo después de la física y mantenga la velocidad por debajo del tamaño del tile por frame.</td></tr>
       <tr><td>No puede saltar.</td><td>Compruebe el bit <code>FWK_PLATFORM_TILE_GROUNDED</code>, la máscara de acción y que usa <code>fwk_input_pressed</code>.</td></tr>
-      <tr><td>Quedan estelas.</td><td>Restaure antes de cambiar X/Y; reserve al menos <code>width*height</code> bytes para el fondo.</td></tr>
+      <tr><td>Quedan estelas.</td><td>Marque <code>DIRTY</code> al mover/cambiar/ocultar, complete <code>restore_dirty</code> y <code>draw_dirty</code>, y reserve al menos <code>width*height</code> bytes por buffer.</td></tr>
+      <tr><td>El renderer devuelve carry.</td><td>Revise estado de fase, punteros duplicados, flags, spans, capacidades y solapamiento entre buffers activos.</td></tr>
       <tr><td>El mapa no se dibuja.</td><td>Inspeccione carry tras <code>fwk_tilemap_render_view</code>, dimensiones, cámara, ids y <code>tile_count</code>.</td></tr>
       <tr><td>El BIN no aparece en el DSK común.</td><td>La construcción aislada no basta: sincronice las listas de integración y vuelva a ejecutar <code>make examples</code>.</td></tr>
     </tbody>
@@ -431,6 +471,7 @@ python3 tests/emulator_smoke.py platformer --model 464</code></pre>
     <li><code>docs/tilemap-collision.md</code>: consulta y resolución contra el mapa.</li>
     <li><code>docs/tilemap-render.md</code>: descriptores y render completo/parcial.</li>
     <li><code>docs/sprites.md</code>: descriptor, clipping, captura y restauración.</li>
+    <li><code>docs/render-order.md</code>: prefijo de entidad, ciclo dirty, solapamientos y orden.</li>
     <li><code>examples/platformer</code>: aplicación completa sobre la que se valida esta guía.</li>
   </ul>
 </body>

@@ -4,8 +4,9 @@
 ;; are recorded in docs/provenance.md.
 .module fwk_text
 .include "cpctelera.h.s"
+.include "project_config.inc"
 
-.globl cpct_drawSpriteMaskedAlignedTable_asm
+.globl fwk_transparency_draw
 
 FWK_TEXT_FONT_WIDTH       = 2
 FWK_TEXT_FONT_HEIGHT      = 9
@@ -13,8 +14,6 @@ FWK_TEXT_FONT_GLYPHS      = 51
 FWK_TEXT_SMALL_WIDTH      = 2
 FWK_TEXT_SMALL_HEIGHT     = 5
 FWK_TEXT_SMALL_GLYPHS     = 10
-FWK_TEXT_MASK_TABLE       = 0x0100
-
 .area _DATA
 
 _fwk_text_font:           .dw _fwk_text_default_font
@@ -35,14 +34,9 @@ _fwk_text_char_buffer:    .ds 18
 .area _CODE
 
 ;; fwk_text_init
-;; Installs the built-in fonts and copies the aligned transparency table to
-;; 0x0100. Call after fwk_system_init, while firmware remains disabled.
-;; Modified: AF, BC, DE, HL.
+;; Installs the built-in fonts. The project initializer has already installed
+;; the configured shared transparency table. Modified: HL, DE.
 fwk_text_init::
-    ld hl, #_fwk_text_mask_table_source
-    ld de, #FWK_TEXT_MASK_TABLE
-    ld bc, #256
-    ldir
     ld hl, #_fwk_text_default_font
     ld de, #_fwk_text_default_small_digits
     call fwk_text_set_assets
@@ -317,8 +311,7 @@ _fwk_text_store_byte:
 _fwk_text_small_dimensions:
     ld ix, #0x0502
 _fwk_text_dimensions_ready:
-    ld hl, #FWK_TEXT_MASK_TABLE
-    call cpct_drawSpriteMaskedAlignedTable_asm
+    call fwk_transparency_draw
     pop iy
     pop ix
     ret

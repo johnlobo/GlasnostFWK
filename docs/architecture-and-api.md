@@ -24,6 +24,27 @@ operaciones representativas. No constituyen un conteo de todos los caminos ni
 una garantía global de 50 Hz. Los tamaños enlazados se obtienen de los mapas
 SDCC en `build-sizes.md`.
 
+### Configuración e inicialización del proyecto
+
+El manifiesto admite las capacidades opcionales `"transparency": {"pen": 3}`
+y `"extended_memory": true`. El pen debe ser un entero Mode 0 entre 0 y 15. El
+generador crea la tabla de 256 máscaras en `0x0100` y enlaza
+`video/transparency.s`. La memoria extendida enlaza `resources/bank.s`, reserva
+el stub y scratch en `0x0200..0x0215` y desplaza el código de `0x0200` a
+`0x0216`, la primera dirección libre. La detección prueba temporalmente
+`0x4000`, con interrupciones
+deshabilitadas, y restaura tanto RAM normal como banco 0; no deja una sonda
+reservada dentro de `0x4000..0x7FFF`.
+
+- `fwk_project_init`: inicializa el sistema; después copia una sola vez la
+  tabla configurada y/o detecta la memoria extendida. Debe llamarse una sola vez.
+- Sin `transparency`, los módulos consumidores son rechazados y los símbolos
+  públicos transparentes no se ensamblan.
+- Sin `extended_memory`, el módulo bancario no puede seleccionarse.
+
+`fwk_system_init` continúa siendo el primitivo inferior para integraciones
+especiales, pero no instala capacidades del proyecto.
+
 ### Sistema
 
 - `fwk_system_init`: sin entrada/salida; altera `AF,BC,DE,HL`. Desactiva
@@ -116,8 +137,9 @@ CPCTelera 2x4, 2x8, 4x4 y 4x8 bytes y llama respectivamente a las primitivas
   viewport; valida y redibuja solo esa celda.
 
 Ambas preservan `IX,IY`, alteran `AF,BC,DE,HL` y no son reentrantes por su
-scratch interno. La variante enmascarada adapta sus tilesets paralelos a
-`cpct_drawSpriteMasked_asm`. No ofrecen clipping, scroll sub-tile, doble buffer,
+scratch interno. La variante transparente consume un único tileset con el pen
+clave configurado y usa la tabla compartida de `0x0100`. No ofrecen clipping,
+scroll sub-tile, doble buffer,
 bancos, dirty rectangles automáticos ni política de cámara. El mapa permanece
 de solo lectura. Detalles en `tilemap-render.md`.
 
@@ -183,57 +205,58 @@ bytes por filas, sin padding.
 
 - `fwk_sprite_draw`: `IX=descriptor`; valida dimensiones/span, recorta contra
   los cuatro bordes y dibuja el rectángulo visible de forma opaca.
-- `fwk_sprite_draw_masked`: `IX=descriptor`, `DE=máscara paralela`; valida
-  también el span de la máscara y compone bit a bit
-  `(pantalla AND máscara) OR datos`. Un bit 1 de la máscara conserva el fondo y
-  exige que el bit de datos correspondiente sea cero. En Mode 0 cada píxel ocupa
-  4 bits, así que se puede preservar un píxel y sustituir el otro del mismo byte.
+- `fwk_sprite_draw_masked`: `IX=descriptor`; solo existe si el manifiesto
+  declara `transparency.pen`. Conserva los píxeles cuyo pen coincide con el
+  color clave y copia los demás mediante la tabla implícita de `0x0100`.
+- `fwk_sprite_draw_masked_recolor`: `IX=descriptor`, `D=pen origen`,
+  `E=pen sustituto`; valida ambos pens, sustituye uno durante el render y aplica
+  después el color clave. Comparte clipping y validación con el resto.
 - `fwk_sprite_capture`: `IX=descriptor`, `DE=buffer`; guarda el fondo visible y
   devuelve `IY` al final de los bytes utilizados.
 - `fwk_sprite_restore`: `IX=mismo descriptor`, `HL=buffer`; repone el fondo
   visible y devuelve `IY` al final.
 
-Carry indica descriptor inválido, span de datos con wrap o, en la variante
-enmascarada, span de máscara con wrap. Una geometría completamente exterior es
-válida y no escribe; la máscara debe ser válida aunque el sprite esté fuera.
-Los dos dibujos preservan `IX` e `IY` y alteran `AF,BC,DE,HL`;
+Carry indica descriptor inválido o span de datos con wrap. Una geometría
+completamente exterior es válida y no escribe.
+Los tres dibujos preservan `IX` e `IY` y alteran `AF,BC,DE,HL`;
 captura/restauración preservan `IX` y alteran también `IY`. El módulo usa scratch
 interno y no es reentrante. El buffer, el orden de borrado/dibujo y la
-sincronización pertenecen al consumidor. El lote ordenado sigue usando solo el
-camino opaco; no hay color-key, mezcla alfa, recoloreado, dirty rectangles
-automáticos. El coste de casos representativos está en `performance.md`.
+sincronización pertenecen al consumidor. `entity_render` añade dirty rectangles
+de entidad y propagación por solapamiento; no hay mezcla alfa ni remap completa
+de paleta. El coste del nuevo recoloreado todavía no se ha medido; los casos
+históricos están en `performance.md`.
 Detalles funcionales en `sprites.md`.
 
-### Lote ordenado de sprites opcional
+### Render selectivo de entidades
 
-Descriptor de 4 bytes: puntero a entradas, count y capacidad. Cada entrada de
-6 bytes contiene puntero a descriptor de sprite, puntero a buffer, clave de
-orden y flags. Los datos y buffers pertenecen al consumidor.
+`video/entity_render.s` recibe un descriptor de ocho bytes con array contado de
+punteros, array auxiliar de cuatro bytes por slot, capacidades, contador
+afectado y estado. Los punteros nulos son huecos; los duplicados son error.
 
-- `fwk_sprite_batch_init`: `IX=lote`; valida capacidad y span, y fija count a
-  cero.
-- `fwk_sprite_batch_add`: `IX=lote`, `HL=sprite`, `DE=buffer`, `A=clave`;
-  inserta de forma estable y ascendente. Carry indica lote inválido o lleno.
-- `fwk_sprite_batch_restore`: restaura solo entradas capturadas en orden
-  inverso y limpia sus flags.
-- `fwk_sprite_batch_draw`: rechaza una segunda captura antes de escribir y,
-  con estado limpio, captura/dibuja en orden ascendente.
+- `fwk_entity_render_init`: inicializa el estado y marca las entidades visibles.
+- `fwk_entity_render_revalidate`: revalida punteros y rangos estructurales en `IDLE`.
+- `fwk_entity_render_mark_rect_dirty`: marca entidades tocadas por fondo externo.
+- `fwk_entity_render_prepare_dirty`: prevalida, propaga y ordena sin tocar VRAM.
+- `fwk_entity_render_restore_dirty`: restaura el orden ya preparado en orden inverso.
+- `fwk_entity_render_draw_dirty`: ordena por `sort_y`, captura y dibuja en orden directo.
 
-Las rutinas preservan el `IX` del lote al volver, alteran los registros
-principales e `IY`, usan scratch interno y no son reentrantes. Un error de
-sprite durante el pase puede dejar las entradas anteriores procesadas. No hay
-alta dinámica, eliminación, elección automática de clave ni sincronización.
-Detalles en `render-order.md`.
+El prefijo estándar de entidad ocupa 25 bytes y comienza con el descriptor de
+sprite de ocho bytes. La API admite opaco, máscara, recoloreado y su combinación.
+La ruta sincronizable exige `IDLE -> PREPARED -> RESTORED -> IDLE`. La llamada
+directa histórica a `restore_dirty` prepara internamente para conservar
+compatibilidad. Punteros y rangos se validan al inicializar o revalidar; no
+pueden cambiar durante la ruta preparada. El módulo usa scratch interno, no es
+reentrante y no desactiva interrupciones. Detalles en
+`render-order.md`.
 
 ### Texto
 
-Renderer Mode 0 enmascarado basado en la fuente sprite de los juegos originales:
+Renderer Mode 0 transparente basado en la fuente sprite de los juegos originales:
 51 glifos de 2x9 bytes y diez dígitos pequeños de 2x5 bytes. Requiere
-`fwk_text_init` después de `fwk_system_init`; instala su tabla alineada de
-transparencia en `0x0100`, dirección reservada mientras el firmware esté
-desactivado.
+un proyecto con `transparency.pen=0`. La tabla se instala en `0x0100` mediante
+`fwk_project_init`; después se llama a `fwk_text_init` para seleccionar assets.
 
-- `fwk_text_init`: instala los assets incorporados y la tabla de máscara.
+- `fwk_text_init`: instala los assets incorporados; no vuelve a copiar la tabla.
 - `fwk_text_set_assets`: `HL=fuente 51*18`, `DE=dígitos 10*10`.
 - `fwk_text_set_color`: `A=índice 0..14`; carry indica índice inválido.
 - `fwk_text_set_colors`: alias de migración; usa `L` como nuevo índice e ignora
@@ -282,7 +305,10 @@ visibles en el mapeo activo.
 
 ### Bancos 128 KB
 
-- `fwk_bank_init`: instala stub en `0x0200`, prueba `0x7FF0`, preserva bytes y
+- La capacidad se activa con `"extended_memory": true`; el código comienza en
+  `0x0216` y `fwk_project_init` llama automáticamente a `fwk_bank_init`.
+- `fwk_bank_init`: instala el stub en `0x0200`, prueba temporalmente `0x4000`,
+  preserva los bytes de RAM normal y banco 0, y
   devuelve `A=1/NZ` para RAM independiente o `A=0/Z`; altera `AF,BC,DE,HL`.
 - `fwk_bank_copy_from/to`: `A=0..3`, `HL=origen`, `DE=destino`, `BC=tamaño`;
   carry activo para banco inválido. El lado bancado debe estar en
@@ -297,7 +323,7 @@ ocultas del núcleo con 128 KB y reduce el riesgo de ejecutar código paginado.
 
 - `fwk_disk_init`: sin entrada/salida; altera `AF,B,C,DE,HL`, habilita
   interrupciones y reconecta la ROM 7 con `KL INIT BACK`. Debe ejecutarse antes
-  de `fwk_system_init`, que desactiva el firmware.
+  de `fwk_project_init`, que inicializa el sistema y desactiva el firmware.
 - `fwk_disk_load`: `HL=nombre`, `B=longitud del nombre`, `DE=destino`; devuelve
   carry activo y `BC=longitud lógica` si `CAS IN OPEN` tuvo éxito, o carry
   limpio si no pudo abrir. Altera `AF,DE,HL`. Lee con `CAS IN DIRECT` y cierra

@@ -55,7 +55,11 @@ class ArchitectureTests(unittest.TestCase):
         }
         self.assertNotIn("resources/bank.s", selections["minimal"])
         self.assertNotIn("extensions/motion_u8.s", selections["board"])
-        self.assertIn("resources/bank.s", selections["resources128"])
+        resources_manifest = json.loads(
+            (ROOT / "examples/resources128/example.json").read_text()
+        )
+        self.assertTrue(resources_manifest["extended_memory"])
+        self.assertNotIn("resources/bank.s", selections["resources128"])
         self.assertNotIn("resources/disk.s", selections["resources128"])
         self.assertIn("resources/disk.s", selections["diskload"])
         self.assertIn("resources/zx7b.s", selections["diskload"])
@@ -80,10 +84,18 @@ class ArchitectureTests(unittest.TestCase):
         self.assertNotIn("video/sprite.s", selections["minimal"])
         self.assertNotIn("ui/window.s", selections["spriteclip"])
         self.assertIn("video/sprite.s", selections["renderorder"])
-        self.assertIn("video/sprite_batch.s", selections["renderorder"])
-        self.assertNotIn("video/sprite_batch.s", selections["minimal"])
+        self.assertIn("video/entity_render.s", selections["renderorder"])
+        self.assertIn("video/entity_render.s", selections["platformer"])
+        self.assertNotIn("video/entity_render.s", selections["minimal"])
         self.assertIn("video/sprite.s", selections["spritemask"])
-        self.assertNotIn("video/sprite_batch.s", selections["spritemask"])
+        self.assertNotIn("video/entity_render.s", selections["spritemask"])
+
+    def test_transparency_consumers_declare_the_project_capability(self):
+        consumers = {"ui/text.s", "extensions/tilemap_render_masked.s"}
+        for path in (ROOT / "examples").glob("*/example.json"):
+            manifest = json.loads(path.read_text())
+            if consumers & set(manifest["modules"]):
+                self.assertIn("transparency", manifest, str(path))
 
 
 if __name__ == "__main__":

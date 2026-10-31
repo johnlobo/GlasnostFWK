@@ -36,6 +36,10 @@ class ManualTests(unittest.TestCase):
         for path in (ROOT / "examples").glob("*/example.json"):
             manifest = json.loads(path.read_text(encoding="utf-8"))
             modules.update(manifest["modules"])
+            if "transparency" in manifest:
+                modules.add("video/transparency.s")
+            if manifest.get("extended_memory", False):
+                modules.add("resources/bank.s")
         self.assertEqual(examples, self.coverage.examples)
         self.assertEqual(modules, self.coverage.modules)
 

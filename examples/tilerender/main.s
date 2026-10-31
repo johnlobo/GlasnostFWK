@@ -2,7 +2,7 @@
 .include "extensions/tilemap_render.inc"
 .include "extensions/tilemap_dirty.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_tilemap_render_view, fwk_tilemap_render_cell
 .globl fwk_tilemap_dirty_init, fwk_tilemap_dirty_mark, fwk_tilemap_dirty_flush
@@ -57,7 +57,7 @@ _tilerender_fail_loop:
     jr _tilerender_fail_loop
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ld l, #0
     ld h, #0x14

@@ -1,5 +1,5 @@
 .module example_resources128
-.globl fwk_system_init, fwk_bank_init, fwk_bank_copy_to, fwk_bank_copy_from
+.globl fwk_project_init, fwk_bank_copy_to, fwk_bank_copy_from
 
 .area _ASSETNORMAL (ABS)
 .org 0x9000
@@ -8,8 +8,7 @@ _result: .ds 8
 
 .area _CODE
 _main::
-    call fwk_system_init
-    call fwk_bank_init
+    call fwk_project_init
     jr z, _no_128k
     xor a
     ld hl, #_source

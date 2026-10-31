@@ -102,8 +102,8 @@ automáticamente techo, pared y suelo; contratos y límites están en
 `extensions/tilemap_render` dibuja un viewport desde un tileset Mode 0 mediante
 las primitivas alineadas 2x4, 2x8, 4x4 y 4x8 de CPCTelera Next, con cámara y
 destino propiedad del consumidor. Prevalida el render completo y permite
-redibujar una celda explícita. La variante enmascarada delega la composición en
-`cpct_drawSpriteMasked_asm`. `tilerender` demuestra cambio de cámara y
+redibujar una celda explícita. La variante transparente usa el mismo tileset
+con color clave y la tabla generada para el proyecto. `tilerender` demuestra cambio de cámara y
 actualización parcial; véase `docs/tilemap-render.md`.
 
 ## Sprites con clipping y máscaras
@@ -111,18 +111,45 @@ actualización parcial; véase `docs/tilemap-render.md`.
 `video/sprite` dibuja sprites rectangulares, recorta coordenadas con signo
 contra los cuatro bordes y captura/restaura el fondo visible en un buffer del
 consumidor. `fwk_sprite_draw` mantiene el camino opaco; `fwk_sprite_draw_masked`
-añade una máscara paralela y compone `(pantalla AND máscara) OR datos`, con
-transparencia bit a bit (en Mode 0, un píxel de 4 bits por cada mitad del byte).
+usa como color clave el pen Mode 0 declarado en `transparency.pen`. La tabla de
+256 bytes se genera y se instala en `0x0100` al llamar una sola vez a
+`fwk_project_init`. Si el proyecto no declara transparencia, la API
+enmascarada no se ensambla ni puede seleccionarse desde el manifiesto.
+`fwk_sprite_draw_masked_recolor` añade la sustitución de un pen por otro durante
+el dibujo sin modificar el asset y conserva el mismo clipping.
 `spriteclip` comprueba los cuatro bordes y una restauración recortada;
-`spritemask` demuestra composición, clipping y rechazo de spans inválidos. Véase
+`spritemask` demuestra composición, recoloreado, clipping y rechazo de pens y
+spans inválidos. Véase
 `docs/sprites.md`.
 
-`video/sprite_batch` añade un lote opcional: inserción estable por clave,
+## Configuración inicial del proyecto
+
+Todo ejemplo llama a `fwk_project_init`. El manifiesto puede declarar
+`"transparency": {"pen": 0}` y/o `"extended_memory": true`. El código comienza
+en `0x0200` por defecto. Al activar memoria extendida, el framework reserva en
+`0x0200..0x0215` el stub y su scratch, inicia la detección una sola vez y
+desplaza el código a la primera dirección libre, `0x0216`. La prueba usa
+temporalmente `0x4000`, restaura
+los bytes de RAM normal y banco 0 y no reserva ninguna dirección en
+`0x4000..0x7FFF`.
+
+`video/entity_render` añade render selectivo de entidades: orden estable por Y,
 restauración inversa y captura/dibujo directo para que varios sprites
 solapados mantengan un orden explícito. Los buffers continúan en manos del
-consumidor y no se introduce una entidad universal. El lote sigue usando el
-camino opaco. `renderorder` comprueba el ciclo completo; véase
+consumidor; solo se normaliza un prefijo de render de 25 bytes. Admite dibujo
+opaco, enmascarado y recoloreado. `renderorder` comprueba el ciclo completo; véase
 `docs/render-order.md`.
+
+La ruta sincronizada separa `fwk_entity_render_prepare_dirty` —validación,
+cierre y orden sin tocar VRAM— de `restore_dirty`/`draw_dirty`, que pueden
+ejecutarse consecutivamente tras VSYNC. Las identidades y rangos de buffer se
+validan en `init` o `revalidate`, fuera de la sección crítica.
+
+La aplicación `platformer` usa este renderer para el jugador y las cuatro
+monedas: mantiene el estado compacto de física detrás del prefijo y oculta
+coleccionables mediante `VISIBLE|DIRTY`. El HUD usa un panel interior y solo
+restaura el dígito o tramo de estado que cambia. La construcción paso a paso está en
+`docs/platform-game-guide.html`.
 
 ## Carga desde DSK y ZX7B
 

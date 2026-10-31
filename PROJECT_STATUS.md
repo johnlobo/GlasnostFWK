@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-28 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-10-29 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -18,7 +18,7 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
   `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
   y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 58 pruebas; el manual cubre todos los ejemplos y
+- La suite host contiene 71 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
@@ -519,8 +519,8 @@ escenas completas, no la medición básica ya registrada.
 - [x] `window` pasó captura, texto, restauración y reapertura en CPC 6128 y CPC
   464. `platformer`, que también consume el nuevo texto, pasó su recorrido
   jugable automatizado en CPC 6128 y CPC 464.
-- [x] El HUD de `platformer` restaura sus tres filas de tiles antes de cambiar
-  texto enmascarado, separa verticalmente sus dos líneas y solo se redibuja al
+- [x] El HUD de `platformer` restaura las celdas exactas antes de cambiar texto
+  enmascarado, mantiene puntuación/estado dentro del panel y solo se redibuja al
   cambiar la puntuación. El smoke compara el glifo final con la composición
   limpia esperada en VRAM.
 - [x] `make test`: 56 pruebas host, veintidós BIN, veintiún CDT y un DSK común
@@ -599,3 +599,180 @@ Implementación y documentación registradas en
 en `df1a2f69a367c6776c930423ba803a90ed6215f1`; ambos se publicaron en
 `origin/main`. No existe validación en hardware real ni CI remota confirmada
 para esta fase en el momento de cerrar el registro.
+
+## Fase implementada: configuración inicial de transparencia y bancos
+
+- [x] El manifiesto admite `transparency.pen` de 0 a 15 y
+  `extended_memory` booleano. El constructor rechaza tipos, rangos y
+  combinaciones de módulos incompatibles.
+- [x] `fwk_project_init` sustituye a la inicialización directa en los 22
+  ejemplos: inicializa el sistema y, una sola vez, instala la tabla de
+  transparencia y/o detecta memoria extendida.
+- [x] La tabla Mode 0 de 256 bytes se genera para el pen configurado y queda en
+  `0x0100`. Sprites, texto y tilemaps transparentes usan esa dirección
+  implícita y ya no reciben ni conservan una máscara paralela.
+- [x] Sin transparencia, los símbolos transparentes no se ensamblan y los
+  consumidores son rechazados. Los assets de texto incorporados exigen pen 0.
+- [x] El código comienza en `0x0200` por defecto. Con memoria extendida se añade
+  automáticamente `resources/bank.s`, stub y scratch ocupan
+  `0x0200..0x0215` y el código comienza inmediatamente después, en `0x0216`;
+  no se desperdicia el resto de la página baja hasta `0x02FF`.
+- [x] La reserva fija `0x7FF0`, procedente de un intento histórico descartado
+  en DeckTower, se eliminó. La detección usa temporalmente `0x4000` bajo `DI` y
+  restaura los bytes originales de RAM normal y banco 0; pasó en CPC 6128 y
+  CPC 464 emulados.
+- [x] `spritemask` usa pen 3 para probar un color no nulo. AmSpiriT-Lite 1.15.3
+  verificó la tabla completa, composición, clipping y testigos VRAM; `board`,
+  `tilemask` y `resources128` también pasaron en CPC 6128.
+- [x] `make test` pasó 71 pruebas host, 22 BIN, 21 CDT y el DSK compartido con
+  24 entradas. El NOI de `spriteclip` confirma que
+  `fwk_sprite_draw_masked` está ausente sin la capacidad.
+- [x] README, arquitectura, documentación específica, manual y guía de
+  plataformas HTML/PDF, checksums y tamaños fueron actualizados.
+
+Límites confirmados: solo se soporta transparencia configurable en Mode 0; la
+tabla ocupa `0x0100..0x01FF`; el blitter no ofrece clipping propio ni es
+reentrante; `sprite_batch` sigue siendo opaco. Las cifras históricas del dibujo
+enmascarado ya no representan esta implementación y deben volver a medirse. No
+hay validación en hardware real. Esta fase aún no tiene commit, push ni CI
+remota; se registrarán cuando el usuario solicite publicarla.
+
+## Fase implementada: sprite Mode 0 transparente y recoloreable
+
+- [x] Nueva API `fwk_sprite_draw_masked_recolor`: `IX=descriptor`, `D=pen
+  origen`, `E=pen sustituto`; ambos pens se validan en 0..15 antes de escribir.
+- [x] Conserva el clipping, la validación de span, el formato `width*height` y
+  los registros `IX/IY` del renderer de sprites existente.
+- [x] El reemplazo se realiza por píxel Mode 0 y antes de la transparencia:
+  sustituir por el color clave oculta el píxel y sustituir el color clave lo
+  vuelve opaco.
+- [x] Se reutiliza `cpct_pens2pixelPatternPairM0_asm`; la composición posterior
+  es propia porque el fast path alineado de CPCtelera presupone pen 0 y el
+  framework admite cualquier pen configurado.
+- [x] `spritemask` demuestra pen transparente 3, rechazo de pen inválido y
+  reemplazo 5→15. Los testigos VRAM pasaron en AmSpiriT-Lite 1.15.3 para CPC
+  6128 y CPC 464.
+- [x] `make test`: 74 pruebas host, 22 BIN, 21 CDT y DSK compartido con 24
+  entradas. `make manual` regeneró el PDF y su checksum; tamaños actualizados.
+
+Límites confirmados: se sustituye un único pen por llamada, no una tabla de 16
+pens; `sprite_batch` sigue siendo opaco; el coste temporal aún no se ha medido;
+no existe validación en hardware real. Esta ampliación aún no tiene commit,
+push ni CI remota.
+
+## Fase implementada: render selectivo de entidades
+
+- [x] `video/entity_render` reemplaza directamente a `video/sprite_batch`; el
+  módulo y sus pruebas antiguas se retiraron.
+- [x] Cada entidad empieza con un prefijo de render de 25 bytes: descriptor de
+  sprite compatible, `sort_y` signed de 16 bits, buffer/capacidad, geometría y
+  orden anteriores, flags y pens de recoloreado.
+- [x] La lista usa un array contado de punteros con huecos nulos, rechaza
+  duplicados y recibe del juego un array auxiliar de cuatro bytes por slot.
+- [x] `restore_dirty` calcula el cierre transitivo de solapamientos sobre la
+  unión de rectángulos anterior/actual, restaura en orden inverso y entra en
+  `RESTORED`; `draw_dirty` ordena establemente por Y, captura/dibuja y vuelve a
+  `IDLE`.
+- [x] Se admiten las cuatro rutas: opaca, enmascarada, opaca recoloreada y
+  enmascarada recoloreada. Sin transparencia, los flags enmascarados se
+  rechazan antes de escribir.
+- [x] `fwk_entity_render_mark_rect_dirty` permite coordinar cambios externos de
+  tiles/HUD. Se validan span de sprites, capacidad visible y solapamiento de
+  buffers activos antes de modificar VRAM; la propagación revierte sus flags si
+  la validación falla.
+- [x] `renderorder` migró al nuevo ciclo y prueba que una única entidad sucia
+  propaga el estado a su capa solapada. `perf` ejercita las cuatro rutas del
+  dispatcher; `spritemask` añade la ruta opaca recoloreada.
+- [x] Manual HTML/PDF, arquitectura, guía de render, migración, rendimiento,
+  procedencia y matriz comparativa se actualizaron.
+- [x] 73 pruebas host pasaron. Los 22 BIN, 21 CDT y el DSK común de 24 entradas
+  se construyeron correctamente. `renderorder`, `spritemask` y `perf` pasaron
+  en AmSpiriT-Lite/CPC 6128; `renderorder` y `spritemask` pasaron también en
+  CPC 464.
+
+Límites confirmados: no se han medido ciclos del nuevo cierre, ordenación ni
+dispatcher; no hay verificación en hardware real. La fase y las anteriores aún
+están sin commit/push/CI remota en este árbol de trabajo.
+
+## Aplicación migrada: `platformer` sobre `entity_render`
+
+- [x] Jugador y cuatro monedas empiezan por el prefijo estándar de 25 bytes y
+  se recorren mediante un array de punteros y un work array de cinco entradas.
+- [x] El estado compacto de física permanece inmediatamente detrás del prefijo;
+  las rutinas de plataforma reciben ese subregistro y el renderer recibe la
+  base de la entidad.
+- [x] El jugador solo activa `DIRTY` cuando cambia de posición y actualiza
+  `sort_y` con su borde inferior. Al recoger una moneda se quita `VISIBLE`, se
+  activa `DIRTY` y el ciclo restaura su fondo antes de dejar de dibujarla.
+- [x] El HUD ocupa una región que no solapa entidades; restaura solo las celdas
+  de texto modificadas y se actualiza después del dibujo de entidades.
+- [x] La guía HTML se reescribió con el prefijo, descriptor, buffers, array de
+  punteros, sincronización dirty y retirada segura de coleccionables.
+- [x] La construcción aislada y la regresión global terminaron correctamente:
+  22 BIN, 20 CDT y DSK compartido de 24 entradas. Tras reconstruir el DSK
+  completo, el recorrido automatizado volvió a pasar en AmSpiriT-Lite para CPC
+  6128 y CPC 464.
+- [x] Pasaron 74 pruebas host, incluida la comprobación arquitectónica de que el
+  ejemplo selecciona `entity_render` y ya no llama al ciclo manual de
+  captura/restauración.
+- [x] Se regeneraron las capturas de inicio/victoria, la guía HTML/PDF, su
+  checksum, el manual HTML/PDF, su checksum y el informe de tamaños.
+
+Observación histórica previa a la optimización posterior: la prueba de entrada
+mostró aproximadamente una actualización por cada dos frames y `PF_SPEED` se
+había elevado de 2 a 4. La fase posterior elimina esa compensación. Hardware
+real, temporización de raster y CI remota siguen sin verificar. Cambios aún sin
+commit/push.
+
+### Ajuste local de sincronización de `platformer`
+
+- [x] La espera de VSYNC se movió desde el inicio del bucle hasta inmediatamente
+  antes del bloque destructivo; la optimización posterior dejó el HUD después
+  de `restore_dirty -> draw_dirty`.
+- [x] Se mantiene una sola espera: insertar otra entre restauración y dibujo
+  dejaría visible únicamente el fondo durante un frame completo.
+- [x] La construcción aislada y el recorrido automatizado completo pasaron en
+  AmSpiriT-Lite para CPC 6128 y CPC 464 después del cambio.
+- [x] El 2026-10-31 el usuario confirmó en una prueba interactiva que el
+  parpadeo ha desaparecido y que la velocidad del personaje permanece estable.
+
+## Optimización local: preparación de render y HUD acotado
+
+- [x] `fwk_entity_render_prepare_dirty` ejecuta validación de frame, cierre de
+  solapamientos, preflight y orden anterior sin escribir VRAM. La ruta queda
+  `IDLE -> PREPARED -> RESTORED -> IDLE`.
+- [x] `restore_dirty` conserva compatibilidad preparando desde `IDLE`, pero
+  `platformer` usa explícitamente `prepare_dirty` antes de VSYNC y mantiene
+  consecutivos restore/draw después.
+- [x] Duplicados y rangos de buffer se validan fuera del frame en `init`; la
+  nueva `fwk_entity_render_revalidate` permite comprobar cambios estructurales
+  posteriores mientras la lista está en `IDLE`.
+- [x] El HUD ya no se mezcla con el borde: filas 1/2 tienen interior negro,
+  puntuación y ayuda comparten una línea y quedan dentro de los laterales.
+- [x] Una moneda normal restaura dos celdas y un único dígito; solo la victoria
+  sustituye las 18 celdas del tramo de estado. El HUD se actualiza después de
+  volver a dibujar las entidades.
+- [x] `PF_SPEED` vuelve de 4 a 2. Con tres monedas visibles, el diagnóstico pasó
+  de 10 a 20 actualizaciones durante 19 frames de tecla programados (incluye la
+  actualización del frame de activación), compatible con una iteración/frame.
+
+Validación local cerrada:
+
+- [x] 74 pruebas host, incluida la correspondencia HTML/PDF/checksum del
+  manual y de la guía de plataformas.
+- [x] Construcción global: 22 BIN, 20 CDT y DSK compartido de 24 entradas;
+  `docs/build-sizes.md` regenerado.
+- [x] `platformer` completó dos recorridos consecutivos en
+  AmSpiriT-Lite/CPC 6128 y otro en CPC 464. `renderorder` pasó en ambos
+  modelos y `perf` en CPC 6128.
+- [x] Las capturas de inicio y victoria se regeneraron y se inspeccionaron: el
+  texto queda dentro del panel negro y no invade el borde superior ni los
+  laterales.
+- [x] La prueba automatizada verifica que las monedas estáticas quedan sin
+  `DIRTY`, que las recogidas no se redibujan y que el fondo y el dígito del HUD
+  se restauran correctamente.
+
+La continuidad visual y la velocidad estable están confirmadas mediante la
+prueba interactiva del usuario. Siguen sin medirse ciclos exactos, no hay una
+validación independiente en hardware real y no se ha ejecutado CI remota.
+Cambios aún sin commit/push.

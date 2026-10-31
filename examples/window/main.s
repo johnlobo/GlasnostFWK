@@ -1,7 +1,7 @@
 .module example_window
 .include "ui/window.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_get_ptr
 .globl fwk_text_init, fwk_text_set_color, fwk_text_draw
 
@@ -42,7 +42,7 @@ window_status:: .db 0
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     call fwk_text_init
     ld a, #0x55

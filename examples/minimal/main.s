@@ -1,6 +1,6 @@
 .module example_minimal
 .include "cpctelera.h.s"
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update
 .globl fwk_input_held, fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 
@@ -15,7 +15,7 @@ _bindings:
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     xor a
     call fwk_video_clear_visible

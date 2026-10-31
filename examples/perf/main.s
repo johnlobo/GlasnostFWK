@@ -1,14 +1,14 @@
 .module example_perf
-.include "video/sprite_batch.inc"
+.include "video/entity_render.inc"
 .include "extensions/tilemap_render.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_system_frame_count
 .globl fwk_video_init, fwk_video_clear_visible
 .globl fwk_sprite_draw, fwk_sprite_draw_masked
 .globl fwk_sprite_capture, fwk_sprite_restore
-.globl fwk_sprite_batch_init, fwk_sprite_batch_add
-.globl fwk_sprite_batch_restore, fwk_sprite_batch_draw
+.globl fwk_entity_render_init, fwk_entity_render_restore_dirty
+.globl fwk_entity_render_draw_dirty
 .globl fwk_tilemap_render_view, fwk_tilemap_render_cell
 .globl cpct_setPALColour_asm
 
@@ -18,11 +18,6 @@ perf_sprite_pixels:
     .rept 48
         .db 0xAA
     .endm
-perf_sprite_masks:
-    .rept 48
-        .db 0x00
-    .endm
-
 FWK_SPRITE_DESCRIPTOR perf_sprite, perf_sprite_pixels, 20, 40, 6, 8
 
 ;; Batch: eight 4x4 sprites and their capture buffers.
@@ -30,13 +25,20 @@ perf_batch_sprite_pixels:
     .rept 16
         .db 0xF0
     .endm
-FWK_SPRITE_DESCRIPTOR perf_batch_sprite, perf_batch_sprite_pixels, 10, 30, 4, 4
-
 perf_batch_buffers:
     .ds 8 * 16
+perf_entity0: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,0,perf_batch_buffers+0,16,FWK_ENTITY_RENDER_VISIBLE,0,0
+perf_entity1: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,1,perf_batch_buffers+16,16,FWK_ENTITY_RENDER_VISIBLE|FWK_ENTITY_RENDER_MASKED,0,0
+perf_entity2: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,2,perf_batch_buffers+32,16,FWK_ENTITY_RENDER_VISIBLE|FWK_ENTITY_RENDER_RECOLOR,5,15
+perf_entity3: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,3,perf_batch_buffers+48,16,FWK_ENTITY_RENDER_VISIBLE|FWK_ENTITY_RENDER_MASKED|FWK_ENTITY_RENDER_RECOLOR,5,15
+perf_entity4: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,4,perf_batch_buffers+64,16,FWK_ENTITY_RENDER_VISIBLE,0,0
+perf_entity5: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,5,perf_batch_buffers+80,16,FWK_ENTITY_RENDER_VISIBLE,0,0
+perf_entity6: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,6,perf_batch_buffers+96,16,FWK_ENTITY_RENDER_VISIBLE,0,0
+perf_entity7: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,7,perf_batch_buffers+112,16,FWK_ENTITY_RENDER_VISIBLE,0,0
+perf_batch_entities: .dw perf_entity0,perf_entity1,perf_entity2,perf_entity3,perf_entity4,perf_entity5,perf_entity6,perf_entity7
 perf_batch_entries:
-    .ds 8 * FWK_SPRITE_BATCH_ENTRY_SIZE
-FWK_SPRITE_BATCH_DESCRIPTOR perf_batch, perf_batch_entries, 8
+    .ds 8 * FWK_ENTITY_RENDER_WORK_SIZE
+FWK_ENTITY_RENDER_DESCRIPTOR perf_batch, perf_batch_entities, 8, perf_batch_entries, 8
 
 ;; Tilemap fixture: 8x6 map, 4x4 tiles, 5x4 viewport.
 perf_tilemap_types:
@@ -148,7 +150,6 @@ _perf_sprite_opaque:
 
 _perf_sprite_masked:
     ld ix, #perf_sprite
-    ld de, #perf_sprite_masks
     call fwk_sprite_draw_masked
     ret
 
@@ -165,10 +166,17 @@ _perf_sprite_restore:
     ret
 
 _perf_batch8:
+    ld hl, #perf_entity0+FWK_ENTITY_RENDER_FLAGS
+    ld de, #FWK_ENTITY_RENDER_PREFIX_SIZE
+    ld b, #8
+_perf_batch_dirty:
+    set 1, (hl)
+    add hl, de
+    djnz _perf_batch_dirty
     ld ix, #perf_batch
-    call fwk_sprite_batch_draw
+    call fwk_entity_render_restore_dirty
     ld ix, #perf_batch
-    call fwk_sprite_batch_restore
+    call fwk_entity_render_draw_dirty
     ret
 
 _perf_tilemap_full:
@@ -186,40 +194,12 @@ _perf_tilemap_cell:
     ret
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
 
-    ;; Prepare batch: add the same 4x4 sprite eight times with increasing keys.
+    ;; Prepare the entity render list.
     ld ix, #perf_batch
-    call fwk_sprite_batch_init
-    ld b, #8
-_perf_batch_add_loop:
-    push bc
-    ld ix, #perf_batch
-    ld hl, #perf_batch_sprite
-    ld de, #perf_batch_buffers
-    ;; DE += (8 - b) * 16
-    ld a, b
-    dec a
-    ld c, a
-    ld a, #0
-    ld hl, #perf_batch_buffers
-    or a
-    jr z, _perf_batch_offset_done
-_perf_batch_offset_loop:
-    ld de, #16
-    add hl, de
-    dec c
-    jr nz, _perf_batch_offset_loop
-_perf_batch_offset_done:
-    ex de, hl
-    ld hl, #perf_batch_sprite
-    ld a, #8
-    sub b
-    ld ix, #perf_batch
-    call fwk_sprite_batch_add
-    pop bc
-    djnz _perf_batch_add_loop
+    call fwk_entity_render_init
 
     ;; Results start at the beginning of the table.
     ld hl, #perf_results

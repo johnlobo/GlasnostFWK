@@ -36,7 +36,8 @@ el tamaño original. Los payloads permanecen fuera del binario enlazado.
 2. El juego llama a `fwk_disk_load` y valida `BC` y el contenido cargado.
 3. Si corresponde, calcula ambos punteros finales y llama a
    `fwk_zx7b_unpack`.
-4. Solo entonces llama a `fwk_system_init`, que desactiva el firmware.
+4. Solo entonces llama a `fwk_project_init`, que inicializa el sistema y
+   desactiva el firmware.
 
 `fwk_disk_load` reserva conceptualmente `0xF800..0xFFFF` para la cabecera. Los
 destinos, el código y la pila deben quedar fuera de esa región. La API no

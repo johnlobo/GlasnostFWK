@@ -2,7 +2,7 @@
 .include "cpctelera.h.s"
 .include "audio/akg.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible
 .globl audio_songStart, audio_sfxSoundEffects
 
@@ -12,7 +12,7 @@ audio_command_ack:: .db 0
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     xor a
     call fwk_video_clear_visible

@@ -5,7 +5,7 @@
     "core/system.s",
     "video/video.s",
     "video/sprite.s",
-    "video/sprite_batch.s"
+    "video/entity_render.s"
   ],
   "game_sources": ["main.s"]
 }

@@ -1,5 +1,5 @@
 .module example_experimental
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_configure_crtc, fwk_video_clear_visible
 .globl fwk_video_width_bytes, fwk_video_height
 
@@ -9,7 +9,7 @@ experimental_status:: .db 0
 .area _CODE
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     call fwk_video_configure_crtc
     ld a, #0xAA

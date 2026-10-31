@@ -5,6 +5,8 @@ FWK_SPRITE_WIDTH = 6
 FWK_SPRITE_HEIGHT = 7
 FWK_SPRITE_DESCRIPTOR_SIZE = 8
 
+.include "project_config.inc"
+
 .macro FWK_SPRITE_DESCRIPTOR label, data, x, y, width, height
 label:
     .dw data
@@ -14,6 +16,10 @@ label:
 .endm
 
 .globl fwk_sprite_draw
+.globl fwk_sprite_draw_recolor
+.if FWK_TRANSPARENCY_ENABLED
 .globl fwk_sprite_draw_masked
+.globl fwk_sprite_draw_masked_recolor
+.endif
 .globl fwk_sprite_capture
 .globl fwk_sprite_restore

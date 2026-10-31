@@ -1,7 +1,7 @@
 .module example_tilecoll
 .include "extensions/platform_tilemap.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_physics_platform_step, fwk_platform_tilemap_resolve
 .globl cpct_setPALColour_asm
@@ -98,7 +98,7 @@ _draw_wall:
     ret
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ld l, #0
     ld h, #0x14              ; HW_BLACK

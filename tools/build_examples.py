@@ -11,10 +11,58 @@ import shutil
 import subprocess
 from pathlib import Path
 
+try:
+    from tools.project_config import (
+        BANK_PROBE,
+        ProjectCapabilities,
+        generate_include,
+        generate_source,
+        parse_capabilities,
+    )
+except ModuleNotFoundError:  # Direct execution: python3 tools/build_examples.py
+    from project_config import (
+        BANK_PROBE,
+        ProjectCapabilities,
+        generate_include,
+        generate_source,
+        parse_capabilities,
+    )
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CPCT = Path("/config/workspace/cpctelera_next/cpctelera")
 AMSDOS_NAME = re.compile(r"^[A-Z0-9][A-Z0-9_]{0,7}\.[A-Z0-9]{1,3}$")
 SYMBOL_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+TRANSPARENCY_MODULE = "video/transparency.s"
+TRANSPARENCY_REQUIRED_MODULES = {"ui/text.s", "extensions/tilemap_render_masked.s"}
+EXTENDED_MEMORY_MODULE = "resources/bank.s"
+
+
+def effective_modules(
+    name: str, requested_modules: object, capabilities: ProjectCapabilities
+) -> list[str]:
+    if not isinstance(requested_modules, list) or any(
+        not isinstance(module, str) for module in requested_modules
+    ):
+        raise ValueError(f"{name}: modules must be a list of paths")
+    if capabilities.transparency_pen is None:
+        unavailable = sorted(TRANSPARENCY_REQUIRED_MODULES & set(requested_modules))
+        if unavailable:
+            raise ValueError(
+                f"{name}: transparency must be configured for {', '.join(unavailable)}"
+            )
+        if TRANSPARENCY_MODULE in requested_modules:
+            raise ValueError(f"{name}: {TRANSPARENCY_MODULE} requires transparency")
+    if "ui/text.s" in requested_modules and capabilities.transparency_pen != 0:
+        raise ValueError(f"{name}: built-in text assets require transparency pen 0")
+    if EXTENDED_MEMORY_MODULE in requested_modules and not capabilities.extended_memory:
+        raise ValueError(f"{name}: {EXTENDED_MEMORY_MODULE} requires extended_memory=true")
+
+    modules = list(requested_modules)
+    if capabilities.transparency_pen is not None and TRANSPARENCY_MODULE not in modules:
+        modules.append(TRANSPARENCY_MODULE)
+    if capabilities.extended_memory and EXTENDED_MEMORY_MODULE not in modules:
+        modules.append(EXTENDED_MEMORY_MODULE)
+    return modules
 
 
 def _safe_example_file(example: Path, relative: str) -> Path:
@@ -126,6 +174,10 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     if not example.is_dir():
         raise ValueError(f"unknown example: {name}")
     manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
+    profile_path = ROOT / "profiles" / manifest["profile"]
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    capabilities = parse_capabilities(manifest, profile["mode"])
+    modules = effective_modules(name, manifest["modules"], capabilities)
     target = ROOT / ".build" / name
     if target.exists():
         shutil.rmtree(target)
@@ -142,7 +194,7 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination = target / "src" / "game" / relative_path
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-    for relative in manifest["modules"]:
+    for relative in modules:
         source = ROOT / "src" / relative
         if not source.is_file():
             raise ValueError(f"{name}: missing module {relative}")
@@ -171,11 +223,17 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
     disk_files = stage_disk_files(example, manifest, target, cpct_path)
+    (target / "src" / "project_config.inc").write_text(
+        generate_include(capabilities), encoding="ascii"
+    )
+    (target / "src" / "project_config.s").write_text(
+        generate_source(capabilities), encoding="ascii"
+    )
     generated = target / "generated"
     subprocess.run(
         [
             "python3", str(ROOT / "tools" / "gen_video.py"),
-            str(ROOT / "profiles" / manifest["profile"]),
+            str(profile_path),
             "--out-dir", str(generated),
         ],
         check=True,
@@ -206,7 +264,12 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     config = re.sub(
         r"^TARGET\s*:=.*$", f"TARGET  := {' '.join(targets)}", config, flags=re.MULTILINE
     )
-    config = config.replace("Z80CODELOC := 0x4000", "Z80CODELOC := 0x4000")
+    config = re.sub(
+        r"^Z80CODELOC\s*:=.*$",
+        f"Z80CODELOC := 0x{capabilities.code_start:04X}",
+        config,
+        flags=re.MULTILINE,
+    )
     config = config.replace("Z80CCINCLUDE  := -I$(CPCT_SRC)", "Z80CCINCLUDE  := -I$(CPCT_SRC) -I$(SRCDIR)")
     (target / "cfg" / "build_config.mk").write_text(config, encoding="utf-8")
     (target / "selected-modules.json").write_text(
@@ -214,10 +277,17 @@ def stage_example(name: str, cpct_path: Path) -> Path:
             {
                 "example": name,
                 "game_sources": game_sources,
-                "modules": manifest["modules"],
+                "modules": modules,
                 "cpct_modules": cpct_modules,
                 "media": media,
                 "disk_files": disk_files,
+                "transparency": (
+                    {"pen": capabilities.transparency_pen}
+                    if capabilities.transparency_pen is not None
+                    else None
+                ),
+                "extended_memory": capabilities.extended_memory,
+                "code_start": capabilities.code_start,
                 "cpct_path": str(cpct_path),
             },
             indent=2,
@@ -227,13 +297,37 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     return target
 
 
+def _noi_value(text: str, symbol: str) -> int:
+    match = re.search(rf"^DEF {re.escape(symbol)} 0x([0-9A-Fa-f]+)$", text, re.MULTILINE)
+    if match is None:
+        raise ValueError(f"missing linker symbol {symbol}")
+    return int(match.group(1), 16)
+
+
+def validate_linked_memory(target: Path, name: str, capabilities: ProjectCapabilities) -> None:
+    noi = target / "obj" / f"{name}.noi"
+    text = noi.read_text(encoding="ascii")
+    if capabilities.extended_memory:
+        init_start = _noi_value(text, "fwk_bank_init")
+        init_end = _noi_value(text, "_fwk_bank_init_end")
+        if init_start <= BANK_PROBE < init_end:
+            raise ValueError(
+                f"{name}: bank initializer 0x{init_start:04X}-0x{init_end - 1:04X} "
+                f"overlaps its transient probe at 0x{BANK_PROBE:04X}"
+            )
+
+
 def build(name: str, cpct_path: Path) -> None:
     if not (cpct_path / "cpctelera.lib").is_file():
         raise ValueError(f"invalid CPCT_PATH: {cpct_path}")
     target = stage_example(name, cpct_path)
+    manifest = json.loads((ROOT / "examples" / name / "example.json").read_text(encoding="utf-8"))
+    profile = json.loads((ROOT / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
+    capabilities = parse_capabilities(manifest, profile["mode"])
     env = os.environ.copy()
     env["CPCT_PATH"] = str(cpct_path)
     subprocess.run(["make", "--no-print-directory"], cwd=target, env=env, check=True)
+    validate_linked_memory(target, name, capabilities)
 
 
 def main() -> int:

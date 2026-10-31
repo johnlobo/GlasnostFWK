@@ -2,7 +2,7 @@
 .include "disk_files.inc"
 
 .globl fwk_disk_init, fwk_disk_load, fwk_zx7b_unpack
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 
 DISKLOAD_RAW_ADDR = 0x9000
 DISKLOAD_PACKED_ADDR = 0x9200
@@ -95,7 +95,7 @@ _record_failure:
     ld (diskload_status), a
 
 _start_runtime:
-    call fwk_system_init
+    call fwk_project_init
 _loop:
     call fwk_system_wait_frame
     jr _loop

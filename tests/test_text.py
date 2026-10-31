@@ -15,7 +15,7 @@ def bytes_between(source: str, start: str, end: str | None) -> list[int]:
 
 
 class TextModuleTests(unittest.TestCase):
-    def test_default_asset_geometry_and_mask_table(self) -> None:
+    def test_default_asset_geometry(self) -> None:
         source = (ROOT / "src/ui/text.inc").read_text(encoding="ascii")
         font = bytes_between(
             source, "_fwk_text_default_font:", "_fwk_text_default_small_digits:"
@@ -23,12 +23,10 @@ class TextModuleTests(unittest.TestCase):
         small = bytes_between(
             source,
             "_fwk_text_default_small_digits:",
-            "_fwk_text_mask_table_source:",
+            None,
         )
-        mask = bytes_between(source, "_fwk_text_mask_table_source:", None)
         self.assertEqual(len(font), 51 * 2 * 9)
         self.assertEqual(len(small), 10 * 2 * 5)
-        self.assertEqual(len(mask), 256)
         self.assertEqual(
             hashlib.sha256(bytes(font)).hexdigest(),
             "b7d98821663e779adce7bf5a0aeab2f343f37fed6e6fb97352b445715e68d6db",
@@ -36,10 +34,6 @@ class TextModuleTests(unittest.TestCase):
         self.assertEqual(
             hashlib.sha256(bytes(small)).hexdigest(),
             "ad6e15edca2bb6f5aa7a41a04f694a197ede84ce7dbb3c82b2c647b8e7fe5dc0",
-        )
-        self.assertEqual(
-            hashlib.sha256(bytes(mask)).hexdigest(),
-            "d7457bfca930cee5cd4e836f99ca9196334e51a23ee2fd66df04b8911dbc362c",
         )
 
     def test_public_api_and_original_character_mapping_are_present(self) -> None:

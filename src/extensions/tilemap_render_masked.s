@@ -1,32 +1,23 @@
 ;; Masked rectangular Mode 0 tilemap renderer.
 .module fwk_tilemap_render_masked
+.include "cpctelera.h.s"
 .include "extensions/tilemap_render_masked.inc"
 
 .globl fwk_video_get_ptr
 .globl fwk_video_width_bytes, fwk_video_height
-.globl cpct_drawSpriteMasked_asm
+.globl fwk_transparency_draw
 
 .area _DATA
-_fwk_trm_count:: .db 0
-_fwk_trm_gptr:: .dw 0
-_fwk_trm_mptr:: .dw 0
-_fwk_trm_interleaved:: .ds 64
 _fwk_trm_row::        .db 0
 _fwk_trm_column::     .db 0
 _fwk_trm_tile_id::    .db 0
 _fwk_trm_screen_x::   .db 0
+_fwk_trm_height::     .db 0
 _fwk_trm_tile_area::  .dw 0
 _fwk_trm_graphics::   .dw 0
-_fwk_trm_mask::       .dw 0
 _fwk_trm_screen_y::   .dw 0
-_fwk_trm_mask_tileset::.dw 0
 
 .area _CODE
-
-;; Bind the parallel mask tileset used by the masked renderers.
-fwk_tilemap_render_masked_bind::
-    ld (_fwk_trm_mask_tileset), hl
-    ret
 
 ;; fwk_tilemap_render_view_masked
 fwk_tilemap_render_view_masked::
@@ -181,7 +172,7 @@ _fwk_trm_area_loop:
     jp c, _fwk_trm_invalid
     djnz _fwk_trm_area_loop
     ld (_fwk_trm_tile_area), hl
-    ; Both parallel tilesets must fit without wrapping the address space.
+    ; The colour-key tileset must fit without wrapping the address space.
     ex de, hl
     ld l, FWK_TILE_RENDER_TILESET(iy)
     ld h, FWK_TILE_RENDER_TILESET+1(iy)
@@ -190,12 +181,6 @@ _fwk_trm_graphics_span_loop:
     add hl, de
     jp c, _fwk_trm_invalid
     djnz _fwk_trm_graphics_span_loop
-    ld hl, (_fwk_trm_mask_tileset)
-    ld b, FWK_TILE_RENDER_TILE_COUNT(iy)
-_fwk_trm_mask_span_loop:
-    add hl, de
-    jp c, _fwk_trm_invalid
-    djnz _fwk_trm_mask_span_loop
     ; screen bottom
     ld e, FWK_TILEMAP_Y_SIZE(ix)
     ld d, #0
@@ -269,19 +254,6 @@ _fwk_trm_graphics_loop:
 _fwk_trm_graphics_ready:
     ld (_fwk_trm_graphics), hl
 
-    ; mask graphics (parallel tileset)
-    ld hl, (_fwk_trm_mask_tileset)
-    ld de, (_fwk_trm_tile_area)
-    ld a, (_fwk_trm_tile_id)
-    or a
-    jr z, _fwk_trm_mask_ready
-    ld b, a
-_fwk_trm_mask_loop:
-    add hl, de
-    djnz _fwk_trm_mask_loop
-_fwk_trm_mask_ready:
-    ld (_fwk_trm_mask), hl
-
     ; screen x
     ld a, FWK_TILE_RENDER_SCREEN_X(iy)
     ld e, FWK_TILEMAP_X_SIZE(ix)
@@ -312,43 +284,22 @@ _fwk_trm_y_loop:
     djnz _fwk_trm_y_loop
 _fwk_trm_y_ready:
     ld (_fwk_trm_screen_y), hl
-    ;; CPCTelera consumes interleaved mask/colour pairs. Keep the framework's
-    ;; parallel tilesets public contract and prepare one bounded tile at a time.
-    ld hl, (_fwk_trm_graphics)
-    ld (_fwk_trm_gptr), hl
-    ld hl, (_fwk_trm_mask)
-    ld (_fwk_trm_mptr), hl
-    ld a, (_fwk_trm_tile_area)
-    ld (_fwk_trm_count), a
-    ld de, #_fwk_trm_interleaved
-
-_fwk_trm_interleave_loop:
-    ld a, (_fwk_trm_count)
-    ld hl, (_fwk_trm_mptr)
-    ld a, (hl)
-    ld (de), a
-    inc de
-    inc hl
-    ld (_fwk_trm_mptr), hl
-    ld hl, (_fwk_trm_gptr)
-    ld a, (hl)
-    ld (de), a
-    inc de
-    inc hl
-    ld (_fwk_trm_gptr), hl
-    ld a, (_fwk_trm_count)
-    dec a
-    ld (_fwk_trm_count), a
-    jr nz, _fwk_trm_interleave_loop
-
     ld hl, (_fwk_trm_screen_y)
     ld a, (_fwk_trm_screen_x)
     ld c, a
     call fwk_video_get_ptr
     ex de, hl
-    ld hl, #_fwk_trm_interleaved
-    ld c, FWK_TILEMAP_X_SIZE(ix)
-    ld b, FWK_TILEMAP_Y_SIZE(ix)
-    call cpct_drawSpriteMasked_asm
+    ld bc, (_fwk_trm_graphics)
+    ld a, FWK_TILEMAP_Y_SIZE(ix)
+    ld (_fwk_trm_height), a
+    ld a, FWK_TILEMAP_X_SIZE(ix)
+    push ix
+    push iy
+    ld__ixl_a
+    ld a, (_fwk_trm_height)
+    ld__ixh_a
+    call fwk_transparency_draw
+    pop iy
+    pop ix
     or a
     ret

@@ -1,9 +1,9 @@
 .module example_tilemask
 .include "extensions/tilemap_render_masked.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible
-.globl fwk_tilemap_render_view_masked, fwk_tilemap_render_masked_bind
+.globl fwk_tilemap_render_view_masked
 .globl cpct_setPALColour_asm
 
 .area _DATA
@@ -20,26 +20,16 @@ tilemask_tileset:
     .rept 16
         .db 0x00
     .endm
-tilemask_maskset:
-    .rept 16
-        .db 0x00
-    .endm
-    .rept 16
-        .db 0xFF
-    .endm
 FWK_TILE_RENDER_DESCRIPTOR tilemask_view, tilemask_tileset, 0, 0, 10, 20, 5, 2, 2
 tilemask_status:: .db 0
 
 .area _CODE
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     xor a
     call fwk_video_clear_visible
-
-    ld hl, #tilemask_maskset
-    call fwk_tilemap_render_masked_bind
 
     ld ix, #tilemask_map_descriptor
     ld iy, #tilemask_view

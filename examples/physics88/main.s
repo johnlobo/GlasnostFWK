@@ -1,6 +1,6 @@
 .module example_physics88
 .include "extensions/physics_8_8.inc"
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_physics_8_8_step
 .globl cpct_setPALColour_asm
@@ -15,7 +15,7 @@ physics88_status:: .db 0
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ;; Do not inherit the BASIC palette: 0xAA alternates pens 15 and 0.
     ld l, #0

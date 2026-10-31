@@ -1,6 +1,7 @@
 {
   "name": "window",
   "profile": "standard-160x200.json",
+  "transparency": {"pen": 0},
   "modules": ["core/system.s", "video/video.s", "ui/text.s", "ui/window.s"],
   "game_sources": ["main.s"]
 }

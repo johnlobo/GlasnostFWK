@@ -55,9 +55,10 @@ class TilemapRenderTests(unittest.TestCase):
             self.assertIn(instruction, source)
         self.assertNotIn("ldir", source.lower())
 
-    def test_masked_renderer_uses_cpctelera_masked_primitive(self):
+    def test_masked_renderer_uses_project_transparency(self):
         source = (ROOT / "src/extensions/tilemap_render_masked.s").read_text(encoding="ascii")
-        self.assertIn("call cpct_drawSpriteMasked_asm", source)
+        self.assertIn("call fwk_transparency_draw", source)
+        self.assertNotIn("mask_tileset", source)
 
     def test_viewport_and_screen_bounds(self):
         args = (8, 6, 4, 8, 80, 200, 2, 1, 10, 32, 5, 4, 4)

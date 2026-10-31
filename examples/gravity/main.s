@@ -1,6 +1,6 @@
 .module example_gravity
 .include "extensions/physics_platform.inc"
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_physics_platform_step
 .globl cpct_setPALColour_asm
@@ -14,7 +14,7 @@ gravity_status:: .db 0
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ;; Do not inherit the BASIC palette: 0xF0 is pen 5 in Mode 0.
     ld l, #0

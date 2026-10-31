@@ -1,9 +1,9 @@
 .module example_video
-.globl fwk_system_init, fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
+.globl fwk_project_init, fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ld hl, #0xC7D0
     ld (hl), #0xA5                    ;; witness in first standard-screen hole

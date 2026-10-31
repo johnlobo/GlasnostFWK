@@ -1,9 +1,17 @@
 .module example_platformer_assets
 .include "cpctelera.h.s"
-.include "video/sprite.inc"
+.include "video/entity_render.inc"
 .include "game/game.inc"
+.include "extensions/behavior.inc"
 
 .area _DATA
+
+.globl platformer_coin0_entity, platformer_coin1_entity
+.globl platformer_coin2_entity, platformer_coin3_entity
+.globl fwk_behavior_action_idle, fwk_behavior_action_wait, fwk_behavior_action_set_timer
+.globl fwk_behavior_action_set_vx, fwk_behavior_action_set_vy, fwk_behavior_action_drive_vx
+.globl fwk_behavior_cond_true, fwk_behavior_cond_timeout
+.globl platformer_coin2_entity, platformer_coin3_entity
 
 ;; Tile behaviours: empty, solid, one-way platform and decorative/non-solid.
 platformer_types:
@@ -13,8 +21,8 @@ platformer_types:
 ;; the viewport covers the standard 160x200 screen exactly.
 platformer_map:
     .db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-    .db 1,1,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,1,1
+    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
+    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
     .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
     .db 1,1,0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0,1,1
     .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
@@ -86,7 +94,7 @@ platformer_view::
 
 ;; Opaque sprites deliberately contain their own black silhouette. The player
 ;; still captures/restores the background every frame.
-platformer_player_pixels:
+platformer_player_pixels::
     .db 0x00,0x00,0x3C,0x3C,0x3C,0x3C,0x00,0x00
     .db 0x00,0x3C,0xFF,0xFF,0xFF,0xFF,0x3C,0x00
     .db 0x00,0x3C,0xCF,0xFF,0xFF,0xCF,0x3C,0x00
@@ -96,25 +104,27 @@ platformer_player_pixels:
     .db 0x00,0x00,0x3C,0x00,0x00,0x3C,0x00,0x00
     .db 0x00,0x3C,0x3C,0x00,0x00,0x3C,0x3C,0x00
 
-platformer_player_sprite::
-    .dw platformer_player_pixels
-    .dw 0, 0
-    .db PF_PLAYER_WIDTH_BYTES, PF_PLAYER_HEIGHT_PX
-
-platformer_coin_pixels:
-    .db 0x00,0xAA,0xAA,0x00
-    .db 0x00,0xFF,0xFF,0x00
-    .db 0xAA,0x55,0x55,0xAA
-    .db 0xAA,0xFF,0xFF,0xAA
-    .db 0xAA,0xFF,0xFF,0xAA
-    .db 0x00,0xFF,0xFF,0x00
-    .db 0x00,0xAA,0xAA,0x00
+platformer_coin_pixels::
+    .db 0x00,0x55,0x55,0x00
+    .db 0x00,0x55,0x55,0x00
+    .db 0x55,0x55,0x55,0x55
+    .db 0x55,0x55,0x55,0x55
+    .db 0x55,0x55,0x55,0x55
+    .db 0x00,0x55,0x55,0x00
+    .db 0x00,0x55,0x55,0x00
     .db 0x00,0x00,0x00,0x00
 
-platformer_coin_sprite::
-    .dw platformer_coin_pixels
-    .dw 0, 0
-    .db 4, 8
+;; Shared opaque enemy asset (2 bytes x 6 scanlines). Avoiding a colour-key
+;; composition keeps the two moving patrols inside the example's frame budget.
+platformer_enemy_pixels::
+    .db 0x3C,0x3C,0x3C,0x3C
+    .db 0xFF,0xFF,0xFF,0xFF
+    .db 0xCF,0xCF,0xCF,0xCF
+    .db 0xFF,0xFF,0xFF,0xFF
+    .db 0xF0,0xF0,0xF0,0xF0
+    .db 0x55,0x55,0x55,0x55
+    .db 0xAA,0xAA,0xAA,0xAA
+    .db 0x00,0x00,0x00,0x00
 
 platformer_config::
     ;; Tile collision owns the visible floor; 255 is only a safety bound.
@@ -130,6 +140,100 @@ platformer_bindings::
     .dw 0
     .db 0
 
-;; x tile, y tile, kind. Kind is reserved for future collectible variants.
+;; x tile, y tile, kind, render entity. Kind is reserved for variants.
 platformer_coins::
-    .db 4,3,1, 14,3,1, 4,21,1, 14,21,1
+    .db 4,3,1
+    .dw platformer_coin0_entity
+    .db 14,3,1
+    .dw platformer_coin1_entity
+    .db 4,21,1
+    .dw platformer_coin2_entity
+    .db 14,21,1
+    .dw platformer_coin3_entity
+
+platformer_player_pixels2::
+    .db 0x00,0x3C,0x3C,0x00,0x00,0x3C,0x3C,0x00
+    .db 0x00,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0x00
+    .db 0x3C,0x55,0x55,0x3C,0x3C,0x55,0x55,0x3C
+    .db 0x3C,0xFF,0xFF,0x3C,0x3C,0xFF,0xFF,0x3C
+    .db 0x3C,0xFF,0xFF,0x3C,0x3C,0xFF,0xFF,0x3C
+    .db 0x00,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0x00
+    .db 0x00,0xAA,0xAA,0x00,0x00,0xAA,0xAA,0x00
+    .db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+
+platformer_enemy_pixels2::
+    .db 0x3C,0x3C,0x3C,0x3C
+    .db 0xFF,0xFF,0xFF,0xFF
+    .db 0xF0,0xF0,0xF0,0xF0
+    .db 0xFF,0xFF,0xFF,0xFF
+    .db 0xCF,0xCF,0xCF,0xCF
+    .db 0x55,0x55,0x55,0x55
+    .db 0xAA,0xAA,0xAA,0xAA
+    .db 0x00,0x00,0x00,0x00
+
+platformer_door_pixels::
+    .db 0xFF,0xFF,0xFF,0xFF
+    .db 0x80,0x00,0x00,0x01
+    .db 0x80,0x00,0x00,0x01
+    .db 0x80,0x00,0x00,0x01
+    .db 0x80,0x00,0x00,0x01
+    .db 0x80,0x00,0x00,0x01
+    .db 0x80,0x00,0x00,0x01
+    .db 0xFF,0xFF,0xFF,0xFF
+
+;; Second screen map (copy, can be edited)
+platformer_map2:
+    .db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+    .db 1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1
+
+platformer_map2_descriptor::
+    .dw platformer_map2, platformer_types
+    .db 20, 25, 2, 3, 4, 8, 4
+
+platformer_view2::
+    .dw platformer_tileset
+    .db 0, 0, 0
+    .dw 0
+    .db 20, 25, 4
+
+
+platformer_enemy_h_program::
+    FWK_BEHAVIOR_DRIVE_VX 1, 1
+    FWK_BEHAVIOR_CONDITIONS_END
+
+platformer_enemy_v_program::
+    FWK_BEHAVIOR_SET_VY 2
+    FWK_BEHAVIOR_WAIT 30, platformer_enemy_v_turn
+platformer_enemy_v_turn::
+    FWK_BEHAVIOR_SET_VY -2
+    FWK_BEHAVIOR_WAIT 30, platformer_enemy_v_program
+
+platformer_enemy_v2_program::
+    FWK_BEHAVIOR_SET_VY 2
+    FWK_BEHAVIOR_WAIT 20, platformer_enemy_v2_turn
+platformer_enemy_v2_turn::
+    FWK_BEHAVIOR_SET_VY -2
+    FWK_BEHAVIOR_WAIT 20, platformer_enemy_v2_program

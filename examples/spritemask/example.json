@@ -1,6 +1,7 @@
 {
   "name": "spritemask",
   "profile": "standard-160x200.json",
+  "transparency": {"pen": 3},
   "modules": [
     "core/system.s",
     "video/video.s",

@@ -73,9 +73,8 @@ que pueda interrumpir otra llamada.
 
 - Mapas, cámara y viewport usan contadores de tiles de 8 bits.
 - El camino opaco solo admite 2x4, 2x8, 4x4 y 4x8 bytes y no hace clipping.
-- `tilemap_render_masked` conserva tilesets paralelos de máscara y color,
-  prepara pares máscara/color y delega el dibujo a
-  `cpct_drawSpriteMasked_asm`.
+- `tilemap_render_masked` requiere `transparency.pen`, consume un único tileset
+  con ese pen como color clave y usa la tabla implícita instalada en `0x0100`.
 - El tileset debe ser contiguo y permanecer visible; no hay bancos automáticos.
 - No hay scroll sub-tile, doble buffer, dirty rectangles automáticos ni
   conversión de formatos gráficos.

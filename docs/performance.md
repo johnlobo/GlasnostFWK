@@ -22,7 +22,9 @@
 > 2026-10-29. No deben atribuirse a las nuevas rutas
 > `cpct_drawTileAligned*_f_asm`; hay que volver a ejecutar
 > `tools/measure_perf.py` en un emulador disponible antes de publicar cifras
-> comparativas nuevas. Las demás escenas no cambiaron en esta migración.
+> comparativas nuevas. Además, el camino enmascarado se ha sustituido por la
+> transparencia configurable de color clave; su cifra histórica tampoco debe
+> atribuirse a la implementación actual. Las demás escenas no cambiaron.
 
 | Escena | Frames | Llamadas | T-estados/llamada | Frames/llamada |
 |---|---:|---:|---:|---:|
@@ -45,13 +47,20 @@ Un frame a 50 Hz son `79872` T-estados. Referencias útiles:
 - Un tilemap completo 5x4 cuesta ~0,83 frames; una celda ~0,06 frames.
 - El lote de 8 sprites 4x4 (captura + dibujo + restauración) cuesta ~1,18 frames.
 
-## Decisión sobre `sprite_batch`
+## Decisión sobre `entity_render`
 
-- `fwk_sprite_draw_masked` sigue siendo una API separada del camino opaco.
-- El lote ordenado (`sprite_batch`) sigue siendo solo opaco: la máscara bit a bit
-  exige leer y escribir cada byte y cuesta ~1,77× el camino opaco, por lo que
-  integrarla en el mismo lote mezclaría rutas con costes muy distintos.
-- Si se necesita ordenar sprites enmascarados, se añadirá un lote específico o
-  un modo explícito en una fase posterior, con sus propias mediciones.
+- `fwk_sprite_draw_masked` sigue siendo una API separada del camino opaco y usa
+  el color clave configurado para el proyecto.
+- `fwk_sprite_draw_masked_recolor` es también una ruta separada. Su coste aún
+  no se ha medido y no debe inferirse de la cifra histórica del enmascarado.
+- `entity_render` selecciona por flags las rutas opaca, enmascarada, recoloreada
+  y enmascarada-recoloreada. La cifra histórica del lote ya no mide este módulo
+  y debe repetirse antes de usarla para presupuestar un frame.
+- La ruta preparada valida identidades y rangos estructurales en `init` o
+  `revalidate`; por frame calcula cierre/preflight/orden antes del VSYNC y deja
+  consecutivas restauración y captura/dibujo. En `platformer`, con tres monedas
+  visibles, pasó de 10 a 20 actualizaciones durante una entrada programada de
+  19 frames (el frame de activación añade una actualización). Es una observación
+  de cadencia, no una medición de T-estados.
 - No se promete 50 Hz para escenas arbitrarias; la decisión se toma con estas
   cifras, no con estimaciones.

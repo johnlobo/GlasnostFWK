@@ -203,6 +203,8 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <pre><code>{
   "name": "mi_juego",
   "profile": "standard-160x200.json",
+  "transparency": {"pen": 0},
+  "extended_memory": false,
   "modules": [
     "core/system.s",
     "core/input.s",
@@ -220,26 +222,28 @@ python3 tools/build_examples.py animation vertical</code></pre>
         <tr><td><code>profile</code></td><td>JSON de vídeo situado en <code>profiles/</code>.</td></tr>
         <tr><td><code>modules</code></td><td>Fuentes del framework relativos a <code>src/</code>.</td></tr>
         <tr><td><code>game_sources</code></td><td>Fuentes <code>.s</code>/<code>.inc</code> del consumidor. Debe incluir <code>main.s</code>.</td></tr>
+        <tr><td><code>transparency</code></td><td>Opcional: <code>{"pen": 0..15}</code>. Genera la tabla Mode 0 en <code>0x0100</code> y habilita las APIs transparentes. Los assets de texto incorporados requieren pen 0.</td></tr>
+        <tr><td><code>extended_memory</code></td><td>Opcional, booleano. Habilita bancos, reserva stub y scratch en <code>0x0200..0x0215</code> y mueve el código a la primera dirección libre, <code>0x0216</code>.</td></tr>
         <tr><td><code>cpct_modules</code></td><td>Fuentes concretos de CPCTelera que deben compilarse, por ejemplo el player AKG.</td></tr>
         <tr><td><code>media</code></td><td>Lista con <code>"dsk"</code>, <code>"cdt"</code> o ambos. Por defecto genera ambos.</td></tr>
         <tr><td><code>disk_files</code></td><td>Payloads adicionales para DSK: fuente, codificación, nombre AMSDOS, símbolo y compresión.</td></tr>
       </tbody>
     </table>
-    <p>Las rutas absolutas, recorridos <code>..</code>, ficheros inexistentes, nombres AMSDOS inválidos y símbolos duplicados se rechazan antes de construir.</p>
+    <p>Las rutas absolutas, recorridos <code>..</code>, ficheros inexistentes, nombres AMSDOS inválidos, símbolos duplicados y combinaciones de capacidades inválidas se rechazan antes de construir. Sin memoria extendida el código comienza en <code>0x0200</code>; con ella comienza en <code>0x0216</code>, justo después del scratch bancario. La detección usa temporalmente <code>0x4000</code>, restaura RAM normal y banco 0 y no reserva una dirección dentro de la ventana bancaria.</p>
 
     <h3>5.3 Fuente principal</h3>
     <pre><code>.module mi_juego
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
 loop:
     call fwk_system_wait_frame
     jr loop</code></pre>
-    <p>Declare con <code>.globl</code> únicamente las funciones que use. Los módulos ausentes del manifiesto no se copian ni enlazan.</p>
+    <p><code>fwk_project_init</code> inicializa el sistema e instala una sola vez las capacidades declaradas: tabla de transparencia y detección bancaria. Declare con <code>.globl</code> únicamente las funciones que use. Los módulos ausentes del manifiesto no se copian ni enlazan.</p>
   </section>
 
   <section aria-labelledby="modulos">
@@ -308,33 +312,38 @@ player_background: .ds 6 * 8</code></pre>
       <p>El descriptor de ocho bytes contiene puntero a datos, X/Y con signo de 16 bits, ancho en bytes Mode 0 y alto en scanlines. Las coordenadas negativas permiten entrar o salir por arriba e izquierda; los datos son <code>width*height</code> bytes por filas y sin padding.</p>
       <ul>
         <li><code>fwk_sprite_draw</code>: <code>IX=descriptor</code>; valida, recorta contra los cuatro bordes y dibuja el rectángulo visible de forma opaca.</li>
-        <li><code>fwk_sprite_draw_masked</code>: <code>IX=descriptor</code>, <code>DE=máscara paralela</code>; aplica <code>(pantalla AND máscara) OR datos</code> sobre el mismo rectángulo recortado. Un bit 1 de la máscara conserva el fondo; los bits de datos cubiertos por esos unos deben ser cero. Valida también el span completo de la máscara.</li>
+        <li><code>fwk_sprite_draw_recolor</code>: <code>IX=descriptor</code>, <code>D=pen origen</code>, <code>E=pen sustituto</code>; reemplaza un pen Mode 0 sin transparencia.</li>
+        <li><code>fwk_sprite_draw_masked</code>: <code>IX=descriptor</code>; conserva los píxeles cuyo pen coincide con <code>transparency.pen</code> y copia los demás mediante la tabla implícita de <code>0x0100</code>. El símbolo solo existe cuando el proyecto activa transparencia.</li>
+        <li><code>fwk_sprite_draw_masked_recolor</code>: <code>IX=descriptor</code>, <code>D=pen origen</code>, <code>E=pen sustituto</code>; sustituye un pen Mode 0 durante el dibujo y aplica después la transparencia configurada. Rechaza valores fuera de 0..15 antes de escribir.</li>
         <li><code>fwk_sprite_capture</code>: <code>IX=descriptor</code>, <code>DE=buffer</code>; guarda el fondo visible y devuelve <code>IY</code> al final.</li>
         <li><code>fwk_sprite_restore</code>: <code>IX=mismo descriptor</code>, <code>HL=buffer</code>; restaura el fondo visible y devuelve <code>IY</code> al final.</li>
       </ul>
-      <p>Carry indica dimensiones nulas, span de datos con wrap o, en el camino enmascarado, span de máscara con wrap; una imagen totalmente exterior es válida y no escribe si la máscara también es válida. Reserve al menos <code>width*height</code> bytes para los datos y otros tantos para la máscara. La máscara actúa bit a bit y es paralela a los datos. En Mode 0 cada píxel ocupa 4 bits, de modo que una máscara <code>0xF0</code> conserva un píxel y sustituye el otro; no es un color-key ni una mezcla alfa. Los dos dibujos preservan <code>IX</code> e <code>IY</code> y alteran <code>AF,BC,DE,HL</code>; captura y restauración preservan <code>IX</code> y alteran además <code>IY</code>. Ninguna es reentrante. Ambas rutinas de dibujo comparten <code>video/sprite.s</code>, así que todo ejemplo con sprites enlaza también el código enmascarado aunque no lo use. El lote ordenado sigue usando solo el camino opaco; no hay recoloreado, cola automática ni dirty rectangles. Los costes representativos están en <code>docs/performance.md</code>. Véase <code>docs/sprites.md</code>.</p>
+      <p>Carry indica pens o dimensiones inválidos y span de datos con wrap; una imagen totalmente exterior es válida y no escribe. Reserve <code>width*height</code> bytes para los datos. Los dibujos preservan <code>IX</code> e <code>IY</code> y alteran <code>AF,BC,DE,HL</code>; captura y restauración preservan <code>IX</code> y alteran además <code>IY</code>. Ninguna es reentrante. <code>fwk_sprite_draw_recolor</code> ofrece la misma sustitución sin máscara. El recoloreado sustituye un solo pen, no remapea toda la paleta; al ejecutarse antes de la composición, sustituir por el color clave vuelve transparentes esos píxeles. Véase <code>docs/sprites.md</code>.</p>
     </article>
 
-    <article class="api" data-module="video/sprite_batch.s">
-      <h3>6.6 Orden de sprites — <code>video/sprite_batch.s</code></h3>
-      <pre><code>render_entries: .ds 8 * FWK_SPRITE_BATCH_ENTRY_SIZE
-FWK_SPRITE_BATCH_DESCRIPTOR render_batch, render_entries, 8</code></pre>
-      <p>El descriptor de cuatro bytes guarda puntero, count y capacidad; cada entrada de seis bytes guarda sprite, buffer de fondo, clave de 8 bits y flag de captura.</p>
+    <article class="api" data-module="video/entity_render.s">
+      <h3>6.6 Render selectivo — <code>video/entity_render.s</code></h3>
+      <pre><code>entity_ptrs: .dw player, enemy, 0, effect
+render_work: .ds 4 * FWK_ENTITY_RENDER_WORK_SIZE
+FWK_ENTITY_RENDER_DESCRIPTOR render_list, entity_ptrs, 4, render_work, 4</code></pre>
+      <p>Cada entidad comienza con <code>FWK_ENTITY_RENDER_PREFIX</code>, un bloque de 25 bytes cuyos primeros ocho son compatibles con las rutinas individuales de sprite. Los flags públicos son <code>VISIBLE</code>, <code>DIRTY</code>, <code>MASKED</code> y <code>RECOLOR</code>; <code>HAS_BACKGROUND</code> lo gestiona el framework.</p>
       <ul>
-        <li><code>fwk_sprite_batch_init</code>: <code>IX=lote</code>; valida el almacenamiento y vacía el lote.</li>
-        <li><code>fwk_sprite_batch_add</code>: <code>IX=lote</code>, <code>HL=sprite</code>, <code>DE=buffer</code>, <code>A=clave</code>; inserta de forma estable y ascendente.</li>
-        <li><code>fwk_sprite_batch_restore</code>: restaura las capas en orden inverso y limpia sus flags.</li>
-        <li><code>fwk_sprite_batch_draw</code>: exige estado limpio y captura/dibuja en orden directo.</li>
+        <li><code>fwk_entity_render_init</code>: inicializa la lista y marca las entidades visibles para el primer dibujo.</li>
+        <li><code>fwk_entity_render_revalidate</code>: revalida punteros y rangos de buffers modificados mientras la lista está en <code>IDLE</code>.</li>
+        <li><code>fwk_entity_render_mark_rect_dirty</code>: marca entidades afectadas por cambios del fondo.</li>
+        <li><code>fwk_entity_render_prepare_dirty</code>: valida el frame, propaga solapamientos y prepara el orden anterior sin escribir VRAM.</li>
+        <li><code>fwk_entity_render_restore_dirty</code>: restaura en orden inverso la lista preparada; desde <code>IDLE</code> prepara internamente por compatibilidad.</li>
+        <li><code>fwk_entity_render_draw_dirty</code>: ordena establemente por <code>sort_y</code>, captura/dibuja y limpia <code>DIRTY</code>.</li>
       </ul>
-      <p>Por frame: restaure, actualice fondo y posiciones, y dibuje. Una clave mayor queda encima. Una segunda captura se rechaza antes de escribir; un error interno posterior puede dejar un pase parcial. Los buffers, claves y sincronización pertenecen al juego. El módulo no es reentrante, no asigna memoria ni añade transparencia. Véase <code>docs/render-order.md</code>.</p>
+      <p>Ruta sincronizada por frame: actualice y marque, llame a <code>prepare_dirty</code>, espere VSYNC y ejecute seguidos restauración y dibujo. La máquina de estados es <code>IDLE → PREPARED → RESTORED → IDLE</code>. Desde la preparación no cambie entidades ni arrays. Las identidades de puntero y rangos se comprueban en <code>init/revalidate</code>, no dentro de la sección posterior al VSYNC. Los punteros nulos son huecos; los duplicados son error. Para retirar una entidad quite <code>VISIBLE</code>, active <code>DIRTY</code>, complete el ciclo, cambie el slot y revalide. Véase <code>docs/render-order.md</code>.</p>
     </article>
 
     <article class="api" data-module="ui/text.s">
       <h3>6.7 Texto — <code>ui/text.s</code></h3>
       <p>El módulo usa la fuente gráfica de los juegos originales: cada carácter es un sprite Mode 0 enmascarado de 2 bytes por 9 líneas. Incluye además los dígitos pequeños de 2 bytes por 5 líneas. No depende del dibujado de caracteres de CPCTelera.</p>
-      <pre><code>call fwk_system_init
+      <pre><code>call fwk_project_init       ; instala tabla pen 0 en &amp;0100
 call fwk_video_init
-call fwk_text_init          ; instala fuentes y tabla de máscara en &amp;0100
+call fwk_text_init          ; selecciona las fuentes incorporadas
 xor a                       ; color 0 de la tabla original
 call fwk_text_set_color
 
@@ -350,7 +359,7 @@ call fwk_video_get_ptr
 ld a, #123
 call fwk_text_draw_small_u8</code></pre>
       <ul>
-        <li><code>fwk_text_init</code>: selecciona los assets incorporados y copia la tabla de transparencia de 256 bytes a <code>&amp;0100</code>. Debe llamarse después de <code>fwk_system_init</code>, con el firmware desactivado.</li>
+        <li><code>fwk_text_init</code>: selecciona los assets incorporados. El manifiesto debe declarar <code>transparency.pen=0</code>; <code>fwk_project_init</code> copia la tabla una sola vez antes de esta llamada.</li>
         <li><code>fwk_text_set_color</code>: <code>A=0..14</code>; carry indica un índice inválido. Los índices reproducen esta secuencia de los juegos: blanco, magenta, naranja, azul brillante, rojo brillante, verde brillante, amarillo, verde, amarillo brillante, cian brillante, azul cielo, negro, blanco, rojo y rosa. El color visible depende de la paleta que el juego haya asignado a sus pens; pen 14 queda reservado como sombra fija.</li>
         <li><code>fwk_text_set_colors</code>: alias de migración que conserva el símbolo y el registro de entrada; usa <code>L=0..14</code> e ignora <code>H</code>. Los antiguos números de pen no conservan su significado.</li>
         <li><code>fwk_text_set_assets</code>: <code>HL=fuente normal</code>, <code>DE=dígitos pequeños</code>. Espera 51 frames consecutivos de 18 bytes y 10 frames consecutivos de 10 bytes.</li>
@@ -385,6 +394,12 @@ window_buffer: .ds 20 * 16</code></pre>
       <p>Este perfil no es una entidad universal y no representa física 8.8. Es reentrante si el registro no se comparte.</p>
     </article>
 
+    <article class="api" data-module="extensions/behavior.s">
+      <h3>6.9b Comportamiento — <code>extensions/behavior.s</code></h3>
+      <p>Intérprete de bytecode para comportamientos. <code>fwk_behavior_run</code> recibe en <code>IX</code> un registro de 8 bytes: los 5 de movimiento compacto seguidos de puntero de programa y temporizador. Ejecuta acciones no bloqueantes y bloqueantes con tabla de condiciones.</p>
+      <p>Acciones: <code>fwk_behavior_action_idle</code>, <code>fwk_behavior_action_wait</code>, <code>fwk_behavior_action_set_timer</code>, <code>fwk_behavior_action_set_vx</code>, <code>fwk_behavior_action_set_vy</code>, <code>fwk_behavior_action_drive_vx</code>. Condiciones: <code>fwk_behavior_cond_true</code>, <code>fwk_behavior_cond_timeout</code>, además de funciones personalizadas.</p>
+    </article>
+
     <article class="api" data-module="extensions/physics_platform.s">
       <h3>6.10 Física de plataforma — <code>extensions/physics_platform.s</code></h3>
       <p><code>fwk_physics_platform_step</code> recibe <code>IY=estado</code> e <code>IX=configuración</code>. El estado de siete bytes contiene <code>x,y,vx,vy,width,height,flags</code>; la configuración define ancho del mundo, coordenada inclusiva del suelo, gravedad y caída máxima.</p>
@@ -414,7 +429,7 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
         <li><code>fwk_tilemap_render_view</code>: <code>IX=tilemap</code>, <code>IY=render</code>; prevalida cámara, pantalla, tileset e ids y dibuja todo el viewport.</li>
         <li><code>fwk_tilemap_render_cell</code>: además <code>B=fila</code>, <code>C=columna</code> relativas al viewport; redibuja solo esa celda.</li>
       </ul>
-      <p>Cada gráfico contiene <code>x_size*y_size</code> bytes Mode 0 contiguos. El render opaco admite exclusivamente las geometrías nativas de CPCTelera Next: 2x4, 2x8, 4x4 y 4x8 bytes (4x4, 4x8, 8x4 y 8x8 píxeles en Mode 0), exige que Y esté alineada al alto y despacha a <code>cpct_drawTileAligned*_f_asm</code>. La variante enmascarada conserva máscaras y color en tilesets paralelos, los entrelaza en un scratch de un tile y dibuja con <code>cpct_drawSpriteMasked_asm</code>.</p>
+      <p>Cada gráfico contiene <code>x_size*y_size</code> bytes Mode 0 contiguos. El render opaco admite exclusivamente las geometrías nativas de CPCTelera Next: 2x4, 2x8, 4x4 y 4x8 bytes (4x4, 4x8, 8x4 y 8x8 píxeles en Mode 0), exige que Y esté alineada al alto y despacha a <code>cpct_drawTileAligned*_f_asm</code>. La variante transparente usa un único tileset con el pen clave del proyecto y la tabla implícita de <code>0x0100</code>.</p>
       <p>Carry indica error antes de escribir. Ambas rutinas preservan <code>IX/IY</code>, alteran <code>AF,BC,DE,HL</code> y no son reentrantes. No hay clipping, scroll sub-tile, bancos ni dirty rectangles automáticos; el mapa no se modifica. Véase <code>docs/tilemap-render.md</code>.</p>
     </article>
 
@@ -455,18 +470,19 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
 
     <article class="api" data-module="resources/bank.s">
       <h3>6.17 Bancos de 128 KB — <code>resources/bank.s</code></h3>
+      <p>Active <code>"extended_memory": true</code>. El constructor añade este módulo, reserva <code>0x0200..0x0215</code>, sitúa el código desde <code>0x0216</code> y <code>fwk_project_init</code> ejecuta la detección una sola vez.</p>
       <ul>
         <li><code>fwk_bank_init</code>: detecta RAM adicional. Devuelve <code>A=1/NZ</code> o <code>A=0/Z</code> y actualiza <code>fwk_bank_has_128k</code>.</li>
         <li><code>fwk_bank_copy_from</code>: <code>A=banco 0..3</code>, <code>HL=origen bancado</code>, <code>DE=destino normal</code>, <code>BC=tamaño</code>.</li>
         <li><code>fwk_bank_copy_to</code>: mismo contrato, con origen normal y destino bancado.</li>
       </ul>
-      <p>El lado bancado debe estar entre <code>0x4000</code> y <code>0x7FFF</code>. El stub ocupa <code>0x0200</code>, prueba <code>0x7FF0</code> y deja las interrupciones habilitadas. Carry indica banco inválido.</p>
+      <p>El lado bancado debe estar entre <code>0x4000</code> y <code>0x7FFF</code>. El stub comienza en <code>0x0200</code>. La detección deshabilita interrupciones, usa temporalmente <code>0x4000</code>, restaura los dos bytes afectados y vuelve con interrupciones habilitadas. Las copias también restauran el mapeo normal antes de volver. Carry indica banco inválido.</p>
     </article>
 
     <article class="api" data-module="resources/disk.s">
       <h3>6.18 Carga AMSDOS — <code>resources/disk.s</code></h3>
       <ul>
-        <li><code>fwk_disk_init</code>: reconecta AMSDOS. Debe llamarse antes de <code>fwk_system_init</code>.</li>
+        <li><code>fwk_disk_init</code>: reconecta AMSDOS. Debe llamarse antes de <code>fwk_project_init</code>.</li>
         <li><code>fwk_disk_load</code>: <code>HL=nombre</code>, <code>B=longitud</code>, <code>DE=destino</code>. Carry y <code>BC=longitud lógica</code> indican apertura correcta.</li>
       </ul>
       <p>Usa <code>0xF800..0xFFFF</code> como buffer de cabecera y no es reentrante. El llamador debe verificar longitud y contenido; este backend no ofrece por sí solo integridad.</p>
@@ -515,7 +531,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="tilecoll"><td><code>tilecoll</code></td><td>Escenario cian y traza amarilla: consulta row-major, techo, pared y suelo sólido.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilerender"><td><code>tilerender</code></td><td>Viewport Mode 0: cambio de cámara, render completo y actualización de una celda.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="spriteclip"><td><code>spriteclip</code></td><td>Sprites opacos: clipping en cuatro bordes y captura/restauración del fondo visible.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="spritemask"><td><code>spritemask</code></td><td>Máscara paralela: transparencia bit a bit, composición, clipping y rechazo de span.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="spritemask"><td><code>spritemask</code></td><td>Color clave configurable: pen 3, tabla generada, composición, recoloreado 5→15, clipping y rechazo de pens/span.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="renderorder"><td><code>renderorder</code></td><td>Dos sprites solapados: orden estable, restauración inversa y redibujado tras cambiar el fondo.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="physics88"><td><code>physics88</code></td><td>Traza cian sobre negro: integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
@@ -529,14 +545,16 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="collision"><td><code>collision</code></td><td>Prueba AABB entre dos entidades con offsets de campo configurables.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: movimiento, salto, colisión con tilemap, monedas, HUD y victoria.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: física y tilemap con render selectivo de jugador/monedas, HUD y victoria.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>
+        <span data-module="video/transparency.s"></span>
       </tbody>
     </table>
     <p><code>vertical</code> y <code>platformer</code> son las dos escenas jugables. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
-    <p>El HUD de <code>platformer</code> restaura las tres filas de tiles que ocupa antes de volver a dibujar texto enmascarado y solo se actualiza cuando cambia la puntuación. Este patrón evita acumular restos al sustituir glifos sobre un fondo no uniforme.</p>
+    <p><code>platformer</code> integra <code>entity_render</code> con un array de punteros a jugador y monedas. La física conserva su subregistro compacto de siete bytes detrás del prefijo de 25 bytes; al mover el jugador o retirar una moneda activa <code>DIRTY</code>, restaura en orden inverso y redibuja por <code>sort_y</code>. Su HUD ocupa una línea negra interior: la actualización normal restaura solo las dos celdas del dígito y la victoria reemplaza únicamente el tramo de estado.</p>
+    <p>El ejemplo ejecuta lógica y <code>prepare_dirty</code> antes del VSYNC; después mantiene consecutivos <code>restore_dirty</code> y <code>draw_dirty</code>, y actualiza el HUD cuando las entidades ya vuelven a estar visibles. Con tres monedas todavía visibles, el diagnóstico automatizado observó 20 actualizaciones durante 19 frames de tecla programados —el frame de activación añade una actualización—, compatible con una iteración por frame. <code>PF_SPEED=2</code> vuelve a expresar la velocidad original. Esto sigue siendo una observación en emulador, no una medición de ciclos ni validación de hardware.</p>
     <p>La guía específica <a href="platform-game-guide.html">Crear un juego de plataformas con GlasnostFWK</a> reconstruye el proyecto paso a paso, documenta la separación entre manifiesto, constantes, assets y ciclo de juego, e incluye capturas reproducibles de construcción, inicio y victoria.</p>
   </section>
 
@@ -575,7 +593,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
       <tbody>
         <tr><td>No se encuentra CPCTelera.</td><td>Revise <code>CPCT_NEXT_PATH</code> o use <code>--cpct-path</code>; confirme que existen las herramientas y <code>cpctelera.lib</code>.</td></tr>
         <tr><td>El módulo no se enlaza.</td><td>Añádalo a <code>modules</code>; para fuentes del juego use <code>game_sources</code>; para el player externo use <code>cpct_modules</code>.</td></tr>
-        <tr><td>Entrada siempre vacía.</td><td>Llame a <code>fwk_system_init</code>, instale una tabla persistente terminada en cero y ejecute <code>fwk_input_update</code> cada frame.</td></tr>
+        <tr><td>Entrada siempre vacía.</td><td>Llame a <code>fwk_project_init</code>, instale una tabla persistente terminada en cero y ejecute <code>fwk_input_update</code> cada frame.</td></tr>
         <tr><td>El archivo DSK no carga.</td><td>Llame a <code>fwk_disk_init</code> antes de desactivar firmware; compruebe nombre 8.3, longitud y destino.</td></tr>
         <tr><td>ZX7B corrompe memoria.</td><td>Verifique últimos bytes de origen/destino y tamaños generados. No hay comprobación interna de límites.</td></tr>
         <tr><td>Audio no avanza.</td><td>Inicialice música, mantenga player/datos visibles y llame a <code>fwk_audio_start</code> después del sistema.</td></tr>
@@ -584,7 +602,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
         <tr><td>El cuerpo atraviesa un tile.</td><td>Compruebe tamaños/shifts, llame al resolver justo después del paso físico y mantenga el desplazamiento por eje por debajo del tamaño de tile.</td></tr>
         <tr><td>El viewport devuelve carry.</td><td>Compruebe cámara, destino, dimensiones no nulas, <code>tile_count</code>, ids seleccionados y que el tileset completo no haga wrap de 16 bits.</td></tr>
         <tr><td>El sprite no restaura bien.</td><td>No cambie X/Y entre captura y restauración, reserve <code>width*height</code> bytes y conserve visibles tanto los datos como el buffer.</td></tr>
-        <tr><td>La máscara no compone como se espera.</td><td>Recuerde que un bit 1 conserva el fondo y que los datos bajo esos bits deben ser cero. La máscara es paralela a los datos, tiene <code>width*height</code> bytes y actúa bit a bit: un patrón <code>0xF0</code>/<code>0x0F</code> permite preservar un píxel y sustituir el otro.</td></tr>
+        <tr><td>La transparencia no compone como se espera.</td><td>Compruebe que el manifiesto declara el mismo pen que usa el fondo transparente del asset, que llamó una sola vez a <code>fwk_project_init</code> y que no sobrescribió <code>0x0100..0x01FF</code>.</td></tr>
         <tr><td>Falla <code>make test</code> por el manual.</td><td>Documente el nuevo ejemplo/módulo en este HTML y ejecute <code>make manual</code>.</td></tr>
       </tbody>
     </table>

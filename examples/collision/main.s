@@ -1,7 +1,7 @@
 .module example_collision
 .include "extensions/collision_bodies.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_collision_aabb
 
 .area _DATA
@@ -12,7 +12,7 @@ collision_status:: .db 0
 .area _CODE
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     ld hl, #collision_entity_a
     ld de, #collision_entity_b
     ld b, #0

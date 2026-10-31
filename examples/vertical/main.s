@@ -3,7 +3,7 @@
 .include "core/pool.inc"
 .include "extensions/motion_u8.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update, fwk_input_held
 .globl fwk_pool_init, fwk_pool_alloc, fwk_pool_get, fwk_pool_remove, fwk_pool_foreach
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
@@ -180,7 +180,7 @@ _collect_next:
     jr _collect_loop
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     xor a
     call fwk_video_clear_visible

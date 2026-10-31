@@ -1,11 +1,12 @@
 .module example_renderorder
-.include "video/sprite_batch.inc"
+.include "video/entity_render.inc"
 
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_get_ptr
 .globl fwk_video_plot_byte
 .globl cpct_setPALColour_asm
 .globl renderorder_batch, renderorder_entries
+.globl renderorder_lower, renderorder_upper
 
 .area _DATA
 renderorder_lower_pixels:
@@ -21,13 +22,15 @@ renderorder_row_patterns:
     .db 0x11,0x22,0x33,0x44,0x55,0x66
     .db 0x77,0x88,0x99,0x12,0x23,0x34
 
-FWK_SPRITE_DESCRIPTOR renderorder_lower, renderorder_lower_pixels, 22, 42, 4, 6
-FWK_SPRITE_DESCRIPTOR renderorder_upper, renderorder_upper_pixels, 24, 44, 4, 6
 renderorder_lower_buffer: .ds 24
 renderorder_upper_buffer: .ds 24
-
-renderorder_entries: .ds 2 * FWK_SPRITE_BATCH_ENTRY_SIZE
-FWK_SPRITE_BATCH_DESCRIPTOR renderorder_batch, renderorder_entries, 2
+renderorder_lower:
+    FWK_ENTITY_RENDER_PREFIX renderorder_lower_pixels, 22, 42, 4, 6, 10, renderorder_lower_buffer, 24, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+renderorder_upper:
+    FWK_ENTITY_RENDER_PREFIX renderorder_upper_pixels, 24, 44, 4, 6, 20, renderorder_upper_buffer, 24, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+renderorder_entities: .dw renderorder_upper, renderorder_lower
+renderorder_entries: .ds 2 * FWK_ENTITY_RENDER_WORK_SIZE
+FWK_ENTITY_RENDER_DESCRIPTOR renderorder_batch, renderorder_entities, 2, renderorder_entries, 2
 
 renderorder_command:: .db 0
 renderorder_status::  .db 0
@@ -67,18 +70,18 @@ _renderorder_background_byte:
 
 _renderorder_restore:
     ld ix, #renderorder_batch
-    call fwk_sprite_batch_restore
+    call fwk_entity_render_restore_dirty
     jp c, _renderorder_fail
     ret
 
 _renderorder_draw:
     ld ix, #renderorder_batch
-    call fwk_sprite_batch_draw
+    call fwk_entity_render_draw_dirty
     jp c, _renderorder_fail
     ret
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ld l, #0
     ld h, #0x14
@@ -94,33 +97,13 @@ _main::
     call _renderorder_background
 
     ld ix, #renderorder_batch
-    call fwk_sprite_batch_init
+    call fwk_entity_render_init
     jp c, _renderorder_fail
 
-    ;; Add in reverse key order: stable insertion must store lower before upper.
-    ld ix, #renderorder_batch
-    ld hl, #renderorder_upper
-    ld de, #renderorder_upper_buffer
-    ld a, #20
-    call fwk_sprite_batch_add
-    jp c, _renderorder_fail
-    ld ix, #renderorder_batch
-    ld hl, #renderorder_lower
-    ld de, #renderorder_lower_buffer
-    ld a, #10
-    call fwk_sprite_batch_add
-    jp c, _renderorder_fail
-
-    ;; Capacity and double-capture failures must not alter the visible result.
-    ld ix, #renderorder_batch
-    ld hl, #renderorder_lower
-    ld de, #renderorder_lower_buffer
-    ld a, #30
-    call fwk_sprite_batch_add
-    jp nc, _renderorder_fail
+    call _renderorder_restore
     call _renderorder_draw
     ld ix, #renderorder_batch
-    call fwk_sprite_batch_draw
+    call fwk_entity_render_draw_dirty
     jp nc, _renderorder_fail
 
     ld a, #0xA5
@@ -138,6 +121,14 @@ _renderorder_loop:
     jr _renderorder_loop
 
 _renderorder_command_restore:
+    ;; Update all render data before restore; both sprites are explicit seeds.
+    ld hl, #30
+    ld (renderorder_lower+FWK_SPRITE_X), hl
+    ld hl, #60
+    ld (renderorder_lower+FWK_SPRITE_Y), hl
+    ld hl, #renderorder_lower+FWK_ENTITY_RENDER_FLAGS
+    set 1, (hl)
+    ;; Upper is not marked: overlap closure must propagate DIRTY to it.
     call _renderorder_restore
     xor a
     ld (renderorder_command), a
@@ -151,14 +142,6 @@ _renderorder_command_move:
     ld c, #23
     ld a, #0x55
     call fwk_video_plot_byte
-    ld hl, #30
-    ld (renderorder_lower+FWK_SPRITE_X), hl
-    ld hl, #60
-    ld (renderorder_lower+FWK_SPRITE_Y), hl
-    ld hl, #32
-    ld (renderorder_upper+FWK_SPRITE_X), hl
-    ld hl, #62
-    ld (renderorder_upper+FWK_SPRITE_Y), hl
     call _renderorder_draw
     xor a
     ld (renderorder_command), a
@@ -167,6 +150,12 @@ _renderorder_command_move:
     jr _renderorder_loop
 
 _renderorder_command_final_restore:
+    ld hl, #renderorder_lower+FWK_ENTITY_RENDER_FLAGS
+    res 0, (hl)
+    set 1, (hl)
+    ld hl, #renderorder_upper+FWK_ENTITY_RENDER_FLAGS
+    res 0, (hl)
+    set 1, (hl)
     call _renderorder_restore
     xor a
     ld (renderorder_command), a

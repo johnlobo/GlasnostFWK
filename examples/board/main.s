@@ -1,6 +1,6 @@
 .module example_board
 .include "cpctelera.h.s"
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update, fwk_input_pressed
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte, fwk_video_get_ptr
 .globl fwk_text_init, fwk_text_set_color, fwk_text_draw
@@ -21,7 +21,7 @@ _bindings:
 
 .area _CODE
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     call fwk_text_init
     xor a

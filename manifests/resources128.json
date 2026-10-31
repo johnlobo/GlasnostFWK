@@ -3,7 +3,6 @@
   "bank_window": {"start": "0x4000", "end": "0x7FFF"},
   "normal_reserved": [
     {"name": "framework-code", "start": "0x4000", "end": "0x6FFF"},
-    {"name": "bank-probe", "start": "0x7FF0", "end": "0x7FF0"},
     {"name": "stack", "start": "0xB800", "end": "0xBFFF"},
     {"name": "screen", "start": "0xC000", "end": "0xFFFF"}
   ],

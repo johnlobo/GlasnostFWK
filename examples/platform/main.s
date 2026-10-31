@@ -1,7 +1,7 @@
 .module example_platform
 .include "core/pool.inc"
 .include "extensions/motion_u8.inc"
-.globl fwk_system_init, fwk_system_wait_frame
+.globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_pool_init, fwk_pool_alloc, fwk_pool_foreach
 .globl fwk_video_init, fwk_video_clear_visible, fwk_video_plot_byte
 .globl fwk_motion_u8_step
@@ -20,7 +20,7 @@ _draw_entity:
     jp fwk_video_plot_byte
 
 _main::
-    call fwk_system_init
+    call fwk_project_init
     call fwk_video_init
     ld ix, #_entity_pool
     call fwk_pool_init

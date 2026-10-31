@@ -27,7 +27,7 @@ SCENES = [
     "sprite_draw_masked (6x8)",
     "sprite_capture (6x8)",
     "sprite_restore (6x8)",
-    "sprite_batch (8 x 4x4, draw+restore)",
+    "entity_render (8 x 4x4, restore+draw)",
     "tilemap_render_view (5x4 tiles)",
     "tilemap_render_cell (one tile)",
 ]
