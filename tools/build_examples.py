@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 
 try:
+    from tools import import_assets
     from tools.project_config import (
         BANK_PROBE,
         ProjectCapabilities,
@@ -20,6 +21,7 @@ try:
         parse_capabilities,
     )
 except ModuleNotFoundError:  # Direct execution: python3 tools/build_examples.py
+    import import_assets
     from project_config import (
         BANK_PROBE,
         ProjectCapabilities,
@@ -35,6 +37,8 @@ SYMBOL_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 TRANSPARENCY_MODULE = "video/transparency.s"
 TRANSPARENCY_REQUIRED_MODULES = {"ui/text.s", "extensions/tilemap_render_masked.s"}
 EXTENDED_MEMORY_MODULE = "resources/bank.s"
+ASSETS_DIR = "assets"
+LOCAL_BUILD_CONFIG = Path("cfg") / "build_config.mk"
 
 
 def effective_modules(
@@ -79,8 +83,128 @@ def _safe_example_file(example: Path, relative: str) -> Path:
     return source
 
 
+def _write_if_changed(path: Path, content: str, encoding: str = "utf-8") -> bool:
+    """Write ``content`` only when it differs, preserving mtimes for make.
+
+    CPCTelera's Makefiles are timestamp based. Rewriting an identical header or
+    configuration on every invocation would force a full rebuild, so staged
+    files are compared first and left untouched when their bytes match.
+    """
+    data = content.encode(encoding)
+    try:
+        if path.read_bytes() == data:
+            return False
+    except FileNotFoundError:
+        pass
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(data)
+    os.replace(temporary, path)
+    return True
+
+
+def _copy_if_changed(source: Path, destination: Path) -> bool:
+    """Copy ``source`` only when its bytes differ from ``destination``."""
+    data = source.read_bytes()
+    try:
+        if destination.read_bytes() == data:
+            return False
+    except FileNotFoundError:
+        pass
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(destination.name + ".tmp")
+    temporary.write_bytes(data)
+    os.replace(temporary, destination)
+    return True
+
+
+def select_project_config(example: Path, default: Path) -> Path:
+    """Return the CPCTelera build config used as this example's base.
+
+    Examples that ship ``cfg/build_config.mk`` get a real, editable CPCTelera
+    project configuration; the rest keep using the shared template.
+    """
+    local = example / LOCAL_BUILD_CONFIG
+    return local if local.is_file() else default
+
+
+def _config_label(config_path: Path) -> str:
+    try:
+        return str(config_path.resolve().relative_to(ROOT))
+    except ValueError:
+        return config_path.name
+
+
+def stage_assets(example: Path, target: Path) -> list[str]:
+    """Copy ``examples/<name>/assets`` into ``src/assets`` of the staged project.
+
+    Every file is copied so image and audio sources stay next to the generated
+    data. Files ending in ``.s`` are assembled because ``src/assets`` is a
+    source subdirectory, and ``.inc`` files can be included as
+    ``assets/<name>.inc``.
+    """
+    source_root = example / ASSETS_DIR
+    if not source_root.is_dir():
+        return []
+    destination_root = target / "src" / ASSETS_DIR
+    staged: list[str] = []
+    for source in sorted(source_root.rglob("*")):
+        relative = source.relative_to(source_root)
+        if source.is_symlink():
+            raise ValueError(f"unsafe asset symlink: {relative}")
+        if not source.is_file():
+            continue
+        destination = destination_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        staged.append(str(Path(ASSETS_DIR) / relative))
+    return staged
+
+
+def render_build_config(
+    config: str,
+    *,
+    name: str,
+    config_name: str,
+    cpct_path: Path,
+    targets: list[str],
+    code_start: int,
+) -> str:
+    """Rewrite the machine and manifest dependent lines of a build config.
+
+    Everything else in the file is preserved verbatim, so an example can add
+    flags, extra tools or include paths in its own ``cfg/build_config.mk``.
+    """
+
+    def substitute(pattern: str, replacement: str, label: str) -> str:
+        updated, count = re.subn(pattern, replacement, config, flags=re.MULTILINE)
+        if count != 1:
+            raise ValueError(
+                f"{name}: {config_name} must contain exactly one '{label}' assignment"
+            )
+        return updated
+
+    config = substitute(r"^CPCT_PATH\s*:=.*$", f"CPCT_PATH      := {cpct_path}/", "CPCT_PATH :=")
+    config = substitute(r"^PROJNAME\s*:=.*$", f"PROJNAME   := {name}", "PROJNAME :=")
+    config = substitute(r"^TARGET\s*:=.*$", f"TARGET  := {' '.join(targets)}", "TARGET :=")
+    config = substitute(
+        r"^Z80CODELOC\s*:=.*$", f"Z80CODELOC := 0x{code_start:04X}", "Z80CODELOC :="
+    )
+
+    def add_source_path(match: re.Match[str]) -> str:
+        line = match.group(0)
+        return line if "-I$(SRCDIR)" in line else f"{line} -I$(SRCDIR)"
+
+    config, count = re.subn(r"^Z80CCINCLUDE\s*:=.*$", add_source_path, config, flags=re.MULTILINE)
+    if count != 1:
+        raise ValueError(
+            f"{name}: {config_name} must contain exactly one 'Z80CCINCLUDE :=' assignment"
+        )
+    return config
+
+
 def stage_disk_files(
-    example: Path, manifest: dict, target: Path, cpct_path: Path
+    example: Path, manifest: dict, target: Path, cpct_path: Path,
+    staged_paths: set[Path] | None = None,
 ) -> list[dict]:
     entries = manifest.get("disk_files", [])
     if not isinstance(entries, list):
@@ -142,6 +266,10 @@ def stage_disk_files(
         else:
             shutil.copy2(scratch, destination)
 
+        if staged_paths is not None:
+            staged_paths.add(scratch.relative_to(target))
+            staged_paths.add(destination.relative_to(target))
+
         prefix = f"FWK_DISK_{symbol.upper()}"
         include_lines.extend(
             [
@@ -163,8 +291,10 @@ def stage_disk_files(
         )
 
     if entries:
-        (target / "src" / "disk_files.inc").write_text(
-            "\n".join(include_lines) + "\n", encoding="ascii"
+        _write_if_changed(
+            target / "src" / "disk_files.inc",
+            "\n".join(include_lines) + "\n",
+            encoding="ascii",
         )
     return staged
 
@@ -179,10 +309,20 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     capabilities = parse_capabilities(manifest, profile["mode"])
     modules = effective_modules(name, manifest["modules"], capabilities)
     target = ROOT / ".build" / name
-    if target.exists():
-        shutil.rmtree(target)
-    (target / "src" / "game").mkdir(parents=True)
-    (target / "cfg").mkdir(parents=True)
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "src").mkdir(parents=True, exist_ok=True)
+    (target / "src" / "game").mkdir(parents=True, exist_ok=True)
+    (target / "cfg").mkdir(parents=True, exist_ok=True)
+    (target / "dsk").mkdir(parents=True, exist_ok=True)
+    (target / ".disk-sources").mkdir(parents=True, exist_ok=True)
+    managed_dirs = [target / "src", target / "dsk", target / ".disk-sources"]
+    existing_managed = set()
+    for directory in managed_dirs:
+        if directory.exists():
+            for path in directory.rglob("*"):
+                if path.is_file():
+                    existing_managed.add(path.relative_to(target))
+    staged_managed = set()
     game_sources = manifest.get("game_sources", ["main.s"])
     if not game_sources or "main.s" not in game_sources:
         raise ValueError(f"{name}: game_sources must include main.s")
@@ -194,6 +334,11 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination = target / "src" / "game" / relative_path
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+        staged_managed.add(Path("src") / "game" / relative_path)
+    import_assets.ensure(example, cpct_path)
+    assets = stage_assets(example, target)
+    for item in assets:
+        staged_managed.add(Path("src") / item)
     for relative in modules:
         source = ROOT / "src" / relative
         if not source.is_file():
@@ -204,6 +349,8 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         include = source.with_suffix(".inc")
         if include.is_file():
             shutil.copy2(include, destination.with_suffix(".inc"))
+            staged_managed.add(Path("src") / Path(relative).with_suffix(".inc"))
+        staged_managed.add(Path("src") / relative)
     cpct_modules = manifest.get("cpct_modules", [])
     if not isinstance(cpct_modules, list):
         raise ValueError(f"{name}: cpct_modules must be a list")
@@ -222,13 +369,14 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination = target / "src" / "cpctelera" / relative_path
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-    disk_files = stage_disk_files(example, manifest, target, cpct_path)
-    (target / "src" / "project_config.inc").write_text(
-        generate_include(capabilities), encoding="ascii"
-    )
-    (target / "src" / "project_config.s").write_text(
-        generate_source(capabilities), encoding="ascii"
-    )
+        staged_managed.add(Path("src") / "cpctelera" / relative_path)
+    disk_files = stage_disk_files(example, manifest, target, cpct_path, staged_paths=staged_managed)
+    _write_if_changed(target / "src" / "project_config.inc", generate_include(capabilities), encoding="ascii")
+    _write_if_changed(target / "src" / "project_config.s", generate_source(capabilities), encoding="ascii")
+    staged_managed.add(Path("src") / "project_config.inc")
+    staged_managed.add(Path("src") / "project_config.s")
+    if disk_files:
+        staged_managed.add(Path("src") / "disk_files.inc")
     generated = target / "generated"
     subprocess.run(
         [
@@ -239,17 +387,12 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         check=True,
     )
     profile_name = Path(manifest["profile"]).stem
-    shutil.copy2(generated / f"{profile_name}.inc", target / "src" / "video_config.inc")
+    _copy_if_changed(generated / f"{profile_name}.inc", target / "src" / "video_config.inc")
+    staged_managed.add(Path("src") / "video_config.inc")
     makefile = (ROOT / "cfg" / "Makefile.template").read_text(encoding="utf-8")
-    (target / "Makefile").write_text(makefile, encoding="utf-8")
-    config = (ROOT / "cfg" / "build_config.template.mk").read_text(encoding="utf-8")
-    config = re.sub(
-        r"^CPCT_PATH\s*:=.*$",
-        f"CPCT_PATH      := {cpct_path}/",
-        config,
-        flags=re.MULTILINE,
-    )
-    config = re.sub(r"^PROJNAME\s*:=.*$", f"PROJNAME   := {name}", config, flags=re.MULTILINE)
+    _write_if_changed(target / "Makefile", makefile)
+    config_path = select_project_config(example, ROOT / "cfg" / "build_config.template.mk")
+    config = config_path.read_text(encoding="utf-8")
     media = manifest.get("media", ["cdt", "dsk"])
     if (
         not isinstance(media, list)
@@ -261,24 +404,26 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     targets = ["$(CDT)" if item == "cdt" else "$(DSK)" for item in media]
     if disk_files:
         targets.append("$(DSKINC)")
-    config = re.sub(
-        r"^TARGET\s*:=.*$", f"TARGET  := {' '.join(targets)}", config, flags=re.MULTILINE
-    )
-    config = re.sub(
-        r"^Z80CODELOC\s*:=.*$",
-        f"Z80CODELOC := 0x{capabilities.code_start:04X}",
+    config = render_build_config(
         config,
-        flags=re.MULTILINE,
+        name=name,
+        config_name=_config_label(config_path),
+        cpct_path=cpct_path,
+        targets=targets,
+        code_start=capabilities.code_start,
     )
-    config = config.replace("Z80CCINCLUDE  := -I$(CPCT_SRC)", "Z80CCINCLUDE  := -I$(CPCT_SRC) -I$(SRCDIR)")
-    (target / "cfg" / "build_config.mk").write_text(config, encoding="utf-8")
-    (target / "selected-modules.json").write_text(
+    (target / "cfg" / "build_config.mk").parent.mkdir(parents=True, exist_ok=True)
+    _write_if_changed(target / "cfg" / "build_config.mk", config)
+    _write_if_changed(
+        target / "selected-modules.json",
         json.dumps(
             {
                 "example": name,
                 "game_sources": game_sources,
                 "modules": modules,
                 "cpct_modules": cpct_modules,
+                "assets": assets,
+                "build_config": str(config_path),
                 "media": media,
                 "disk_files": disk_files,
                 "transparency": (
@@ -292,8 +437,16 @@ def stage_example(name: str, cpct_path: Path) -> Path:
             },
             indent=2,
         ) + "\n",
-        encoding="utf-8",
     )
+    # Remove staged files that are no longer produced, without touching obj/ so
+    # CPCTelera's timestamp rules stay authoritative.
+    for relative in existing_managed - staged_managed:
+        (target / relative).unlink(missing_ok=True)
+    for directory in managed_dirs:
+        if directory.exists():
+            for path in sorted(directory.rglob("*"), reverse=True):
+                if path.is_dir() and not any(path.iterdir()):
+                    path.rmdir()
     return target
 
 

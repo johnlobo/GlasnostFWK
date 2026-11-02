@@ -15,7 +15,7 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | perf | 5286 | 765 | 6051 |
 | physics88 | 1304 | 32 | 1336 |
 | platform | 1118 | 33 | 1151 |
-| platformer | 7747 | 1322 | 9069 |
+| platformer | 9271 | 1934 | 10205 |
 | renderorder | 3751 | 244 | 3995 |
 | resources128 | 472 | 6 | 36338 |
 | spriteclip | 1663 | 212 | 1875 |

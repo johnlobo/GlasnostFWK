@@ -1,130 +1,40 @@
 .module example_platformer_assets
+;; Static data for the platformer: tile behaviours, map descriptors, configuration,
+;; input bindings, coin table and behaviour programs. Graphics and maps are
+;; generated into assets/generated/ from the editable PNG and TMX sources.
 .include "cpctelera.h.s"
 .include "video/entity_render.inc"
 .include "game/game.inc"
 .include "extensions/behavior.inc"
+.include "assets/generated/assets.inc"
 
 .area _DATA
 
+.globl platformer_tileset
+.globl platformer_map, platformer_map2
+.globl platformer_palette
 .globl platformer_coin0_entity, platformer_coin1_entity
 .globl platformer_coin2_entity, platformer_coin3_entity
 .globl fwk_behavior_action_idle, fwk_behavior_action_wait, fwk_behavior_action_set_timer
 .globl fwk_behavior_action_set_vx, fwk_behavior_action_set_vy, fwk_behavior_action_drive_vx
 .globl fwk_behavior_cond_true, fwk_behavior_cond_timeout
-.globl platformer_coin2_entity, platformer_coin3_entity
 
 ;; Tile behaviours: empty, solid, one-way platform and decorative/non-solid.
 platformer_types:
     .db 0, 1, 2, 0
 
 ;; 20x25 cells. A CPCTelera 4x8-byte tile maps to 8x8 Mode 0 pixels, therefore
-;; the viewport covers the standard 160x200 screen exactly.
-platformer_map:
-    .db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,1,1
-    .db 1,1,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,1,1
-    .db 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
-    .db 1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1
-
+;; the viewport covers the standard 160x200 screen exactly. The level itself is
+;; converted from assets/src/level.tmx into generated/assets.s.
 platformer_map_descriptor::
     .dw platformer_map, platformer_types
-    .db 20, 25, 2, 3, 4, 8, 4
-
-platformer_tileset:
-platformer_tile_empty:
-    .rept 32
-        .db 0x00
-    .endm
-
-platformer_tile_solid:
-    .db 0x55,0x55,0xAA,0xAA
-    .db 0x55,0x55,0xAA,0xAA
-    .db 0xAA,0xAA,0x55,0x55
-    .db 0xAA,0xAA,0x55,0x55
-    .db 0x55,0x55,0xAA,0xAA
-    .db 0x55,0x55,0xAA,0xAA
-    .db 0xAA,0xAA,0x55,0x55
-    .db 0xAA,0xAA,0x55,0x55
-
-platformer_tile_one_way:
-    .db 0xFF,0xFF,0xFF,0xFF
-    .db 0xAA,0xAA,0xAA,0xAA
-    .db 0x00,0x11,0x00,0x11
-    .db 0x00,0x00,0x11,0x00
-    .db 0x00,0x11,0x11,0x00
-    .db 0x00,0x11,0x11,0x00
-    .db 0x00,0x00,0x00,0x00
-    .db 0x00,0x00,0x00,0x00
-
-platformer_tile_star:
-    .db 0x00,0x00,0x00,0x00
-    .db 0x00,0x30,0x30,0x00
-    .db 0x30,0xFC,0xFC,0x30
-    .db 0x00,0x30,0x30,0x00
-    .db 0x10,0x20,0x10,0x20
-    .db 0x00,0x00,0x00,0x00
-    .db 0x00,0x00,0x00,0x00
-    .db 0x00,0x00,0x00,0x00
+    .db PLATFORMER_MAP_WIDTH, PLATFORMER_MAP_HEIGHT, 2, 3, 4, 8, 4
 
 platformer_view::
     .dw platformer_tileset
     .db 0, 0, 0
     .dw 0
-    .db 20, 25, 4
-
-;; Opaque sprites deliberately contain their own black silhouette. The player
-;; still captures/restores the background every frame.
-platformer_player_pixels::
-    .db 0x00,0x00,0x3C,0x3C,0x3C,0x3C,0x00,0x00
-    .db 0x00,0x3C,0xFF,0xFF,0xFF,0xFF,0x3C,0x00
-    .db 0x00,0x3C,0xCF,0xFF,0xFF,0xCF,0x3C,0x00
-    .db 0x00,0x00,0xFF,0xFF,0xFF,0xFF,0x00,0x00
-    .db 0x00,0x3C,0x3C,0xFF,0xFF,0x3C,0x3C,0x00
-    .db 0x3C,0x00,0x3C,0xFF,0xFF,0x3C,0x00,0x3C
-    .db 0x00,0x00,0x3C,0x00,0x00,0x3C,0x00,0x00
-    .db 0x00,0x3C,0x3C,0x00,0x00,0x3C,0x3C,0x00
-
-platformer_coin_pixels::
-    .db 0x00,0x55,0x55,0x00
-    .db 0x00,0x55,0x55,0x00
-    .db 0x55,0x55,0x55,0x55
-    .db 0x55,0x55,0x55,0x55
-    .db 0x55,0x55,0x55,0x55
-    .db 0x00,0x55,0x55,0x00
-    .db 0x00,0x55,0x55,0x00
-    .db 0x00,0x00,0x00,0x00
-
-;; Shared opaque enemy asset (2 bytes x 6 scanlines). Avoiding a colour-key
-;; composition keeps the two moving patrols inside the example's frame budget.
-platformer_enemy_pixels::
-    .db 0x3C,0x3C,0x3C,0x3C
-    .db 0xFF,0xFF,0xFF,0xFF
-    .db 0xCF,0xCF,0xCF,0xCF
-    .db 0xFF,0xFF,0xFF,0xFF
-    .db 0xF0,0xF0,0xF0,0xF0
-    .db 0x55,0x55,0x55,0x55
-    .db 0xAA,0xAA,0xAA,0xAA
-    .db 0x00,0x00,0x00,0x00
+    .db PLATFORMER_MAP_WIDTH, PLATFORMER_MAP_HEIGHT, 4
 
 platformer_config::
     ;; Tile collision owns the visible floor; 255 is only a safety bound.
@@ -151,74 +61,17 @@ platformer_coins::
     .db 14,21,1
     .dw platformer_coin3_entity
 
-platformer_player_pixels2::
-    .db 0x00,0x3C,0x3C,0x00,0x00,0x3C,0x3C,0x00
-    .db 0x00,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0x00
-    .db 0x3C,0x55,0x55,0x3C,0x3C,0x55,0x55,0x3C
-    .db 0x3C,0xFF,0xFF,0x3C,0x3C,0xFF,0xFF,0x3C
-    .db 0x3C,0xFF,0xFF,0x3C,0x3C,0xFF,0xFF,0x3C
-    .db 0x00,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0x00
-    .db 0x00,0xAA,0xAA,0x00,0x00,0xAA,0xAA,0x00
-    .db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-
-platformer_enemy_pixels2::
-    .db 0x3C,0x3C,0x3C,0x3C
-    .db 0xFF,0xFF,0xFF,0xFF
-    .db 0xF0,0xF0,0xF0,0xF0
-    .db 0xFF,0xFF,0xFF,0xFF
-    .db 0xCF,0xCF,0xCF,0xCF
-    .db 0x55,0x55,0x55,0x55
-    .db 0xAA,0xAA,0xAA,0xAA
-    .db 0x00,0x00,0x00,0x00
-
-platformer_door_pixels::
-    .db 0xFF,0xFF,0xFF,0xFF
-    .db 0x80,0x00,0x00,0x01
-    .db 0x80,0x00,0x00,0x01
-    .db 0x80,0x00,0x00,0x01
-    .db 0x80,0x00,0x00,0x01
-    .db 0x80,0x00,0x00,0x01
-    .db 0x80,0x00,0x00,0x01
-    .db 0xFF,0xFF,0xFF,0xFF
-
-;; Second screen map (copy, can be edited)
-platformer_map2:
-    .db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    .db 1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1
-
+;; Second screen descriptor. Both the tileset and the animated sprites live in
+;; assets/generated/, converted from assets/src/*.png and level.tmx.
 platformer_map2_descriptor::
     .dw platformer_map2, platformer_types
-    .db 20, 25, 2, 3, 4, 8, 4
+    .db PLATFORMER_MAP2_WIDTH, PLATFORMER_MAP2_HEIGHT, 2, 3, 4, 8, 4
 
 platformer_view2::
     .dw platformer_tileset
     .db 0, 0, 0
     .dw 0
-    .db 20, 25, 4
-
+    .db PLATFORMER_MAP2_WIDTH, PLATFORMER_MAP2_HEIGHT, 4
 
 platformer_enemy_h_program::
     FWK_BEHAVIOR_DRIVE_VX 1, 1

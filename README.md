@@ -36,14 +36,57 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT quedan en `.build/<ejemplo>/`; los veintidós BIN de prueba se reúnen
-en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares que
-necesita `diskload`. Los DSK individuales usados internamente por CPCTelera se
-eliminan al terminar. `make test` no lanza emulador; el smoke opcional sí y usa
-ese único DSK para comprobar estado de RAM, no solo que el proceso arranque.
+Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintidós BIN de prueba se
+reúnen en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
+que necesita `diskload`. En esa construcción global los DSK individuales usados
+internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
+separado, `make` deja sus BIN, CDT y DSK también en la carpeta del ejemplo.
+`make test` no lanza emulador; el smoke opcional sí y usa ese único DSK para
+comprobar estado de RAM, no solo que el proceso arranque.
 Las versiones publicadas ofrecen los `.bin`, los CDT declarados y el DSK común
 en un ZIP con checksum; el estado y la siguiente acción se mantienen en
 [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
+### Un ejemplo por separado
+
+Cada consumidor se construye y ejecuta solo, como un proyecto CPCtelera:
+
+```sh
+cd examples/minimal
+make        # compila este ejemplo y deja BIN, CDT y DSK en la carpeta
+make run    # compila y abre el CDT o el DSK en el emulador
+make clean  # borra .build/minimal/ y las copias locales
+```
+
+`make` mantiene el proyecto generado en `.build/<ejemplo>/`, pero copia junto a
+las fuentes `examples/<ejemplo>/<ejemplo>.bin`, `.cdt` y `.dsk` (los que existan)
+para que puedas cogerlos directamente. Esas copias están ignoradas por git;
+`make clean` las elimina junto con el árbol de compilación. El framework nunca
+se copia al repositorio.
+
+`make run` usa el emulador indicado en `GLASNOST_EMULATOR` o, si no se indica,
+busca AmSpiriT-Lite junto al repositorio y, si no lo encuentra, MacAPE
+(`/Applications/MacAPE.app` o `~/Proyectos/macape`). Para forzarlo use
+`GLASNOST_EMULATOR=/ruta/a/cpct_macape`. Sin emulador imprime la ruta de la
+imagen para abrirla a mano.
+
+### Configuración CPCtelera y gráficos por ejemplo
+
+Un ejemplo puede llevar su propia configuración de proyecto en
+`cfg/build_config.mk`; si existe, el constructor la usa como base y solo
+reescribe los valores que gobierna `example.json` (`CPCT_PATH`, `PROJNAME`,
+`TARGET`, `Z80CODELOC` y `-I$(SRCDIR)`). Es el sitio para añadir flags,
+herramientas o rutas de inclusión.
+
+La carpeta `assets/` del ejemplo se copia a `src/assets` del proyecto generado:
+sus `.s` se ensamblan sin declararlos en el manifiesto, los `.inc` se incluyen
+como `assets/<archivo>.inc` y los PNG u originales quedan disponibles para las
+herramientas de CPCTelera. Si el ejemplo incluye `assets/assets.json`, el
+constructor convierte PNG y mapas Tiled solo cuando cambian y aplica compresión
+`zx7b` si se declara. `examples/platformer` es la referencia: tiles y sprites
+PNG, `level.tmx`, mapa comprimido y descompresión al iniciar. `make assets`
+ejecuta solo la conversión incremental; `assets/README.md` detalla el flujo y
+las herramientas.
 
 El manual de uso completo está disponible en
 [`docs/manual.html`](docs/manual.html) y [`docs/manual.pdf`](docs/manual.pdf).

@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-29 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-10-31 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -18,8 +18,11 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
   `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
   y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 71 pruebas; el manual cubre todos los ejemplos y
+- La suite host contiene 102 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
+- Cada ejemplo se compila y ejecuta por separado desde su carpeta con
+  `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
+  framework fuera de `.build/`.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -776,3 +779,127 @@ La continuidad visual y la velocidad estable están confirmadas mediante la
 prueba interactiva del usuario. Siguen sin medirse ciclos exactos, no hay una
 validación independiente en hardware real y no se ha ejecutado CI remota.
 Cambios aún sin commit/push.
+
+## Fase implementada: construcción y ejecución individual de ejemplos
+
+- [x] `examples/<nombre>/Makefile` incluye `cfg/example.mk`, de modo que cada
+  consumidor se compila solo con `make` desde su carpeta, igual que un proyecto
+  CPCtelera, reaprovechando `tools/build_examples.py`.
+- [x] `make run` compila y abre el CDT del ejemplo (que autorrancia) o su DSK
+  con el emulador indicado en `GLASNOST_EMULATOR` o, si no se indica, con
+  AmSpiriT-Lite junto al repositorio o con `amspirit-lite`/`amspirit` en
+  `PATH`. Sin emulador imprime la ruta de la imagen.
+- [x] `make clean` borra únicamente `.build/<nombre>/`; `.build/` sigue siendo
+  el único destino de los artefactos y `examples/` no recibe copias del
+  framework.
+- [x] `tests/test_example_targets.py` exige el envoltorio idéntico en los 22
+  ejemplos y comprueba en seco (`make -n`) que `build`, `clean` y `run` solo
+  afectan al ejemplo invocado.
+- [x] Documentado en `README.md` y en el manual; PDF y checksum regenerados.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Fase implementada: configuración CPCtelera y assets por ejemplo
+
+- [x] `examples/platformer` incluye `cfg/build_config.mk`, una configuración
+  CPCtelera real con licencia y estructura de proyecto. El constructor la usa
+  como base y solo reescribe `CPCT_PATH`, `PROJNAME`, `TARGET`, `Z80CODELOC` y
+  el `-I$(SRCDIR)`; el resto de flags y rutas se conservan.
+- [x] Los ejemplos sin configuración propia siguen usando
+  `cfg/build_config.template.mk`, sin cambios en los otros veintiún
+  consumidores.
+- [x] `examples/platformer/assets/README.md` documenta el flujo completo:
+  originales en `assets/src/`, manifiesto `assets.json`, paleta Mode 0 y datos
+  generados en `assets/generated/`.
+- [x] Cualquier carpeta `assets/` de un ejemplo se copia a `src/assets` del
+  proyecto generado: los `.s` se ensamblan sin tocar `game_sources`, los `.inc`
+  se incluyen como `assets/<archivo>.inc` y los originales quedan disponibles
+  para las herramientas. Los enlaces simbólicos se rechazan.
+- [x] `selected-modules.json` registra la configuración y los assets usados.
+- [x] Documentado en README y manual; PDF y checksum regenerados.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Fase implementada: conversión incremental de imágenes y tilemaps
+
+- [x] `tools/import_assets.py` convierte PNG Mode 0 con `img2cpc -of bin -nt` y
+  genera un único `.s` SDCC con etiquetas globales, además de un `.inc` con
+  tamaños y constantes.
+- [x] Las capas de Tiled se leen del CSV del `.tmx` aplicando la misma
+  reindexación que `cpct_tmx2csv`: `0` sigue siendo `0` y cada gid positivo se
+  reduce en uno. Se rechazan capas no CSV, tiles volteados y símbolos
+  duplicados.
+- [x] La conversión es incremental: `assets/generated/pipeline.json` guarda un
+  SHA-256 del manifiesto, la paleta y cada PNG/TMX, más el hash de las salidas.
+  Un `make` sin cambios no invoca `img2cpc` ni `zx7b`.
+- [x] `make assets` ejecuta solo esa comprobación/conversión; `make` la ejecuta
+  antes de compilar y `tools/build_examples.py` la integra en el flujo global.
+- [x] Los mapas declarados con `"compression": "zx7b"` se comprimen con
+  `tools/zx7b`; los bytes comprimidos quedan en ROM, el buffer en RAM y
+  `main.s` descomprime una vez al inicializar con `resources/zx7b.s`.
+- [x] Los datos generados se versionan para que una comprobación limpia no
+  requiera las herramientas; editar un original sí las exige y el error indica
+  cómo instalarlas (incluida la variante macOS con FreeImage de Homebrew).
+- [x] `tests/test_import_assets.py` cubre reindexación TMX, validación del
+  manifiesto, detección de fuentes obsoletas, símbolos y tamaños generados, y
+  la ida y vuelta de ZX7B contra las capas del `.tmx`.
+- [x] La música no se enlaza por defecto para no alterar el presupuesto de
+  frame ni el smoke; `assets/README.md` documenta el camino opt-in reutilizando
+  la canción MIT de `examples/audio`.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31);
+  `docs/build-sizes.md` regenerado.
+
+## Fase implementada: compilación incremental y artefactos locales
+
+- [x] `tools/build_examples.py` ya no borra `.build/<nombre>/` en cada ejecución:
+  conserva `obj/` y sincroniza solo las fuentes staging, de modo que CPCTelera
+  decide qué recompilar según sus dependencias.
+- [x] Las fuentes, cabeceras generadas (`project_config.*`, `video_config.inc`,
+  `disk_files.inc`) y la configuración se escriben solo si su contenido cambia,
+  preservando mtimes y evitando recompilaciones innecesarias.
+- [x] `make` en una carpeta de ejemplo no compila nada si las fuentes no han
+  cambiado, y recompila únicamente los ficheros afectados cuando cambian.
+- [x] `cfg/example.mk` copia tras compilar `BIN`, `CDT` y `DSK` a la carpeta del
+  ejemplo (ignorados por git) y `make clean` los elimina junto con
+  `.build/<nombre>/`.
+- [x] `tests/test_example_targets.py` cubre la copia y la limpieza de artefactos.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Fase implementada: emulador MacAPE
+
+- [x] Creado `cpctelera_next/cpctelera/tools/scripts/cpct_macape`, un wrapper
+  WinAPE-style para MacAPE que carga DSK/CDT/SNA y auto-ejecuta el primer
+  programa de un DSK con `/A` (o `/A:nombre`).
+- [x] `tools/run_example.py` detecta MacAPE automáticamente
+  (`/Applications/MacAPE.app`, `~/Proyectos/macape`) y añade `/A` al abrir un DSK.
+- [x] `make run` puede usar MacAPE mediante `GLASNOST_EMULATOR=.../cpct_macape`.
+- [x] Documentado en README y manual; PDF y checksum regenerados.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Fase implementada: paleta en códigos de firmware
+
+- [x] `assets/palette.json` usa ahora `"type": "firmware"` con 16 códigos de
+  firmware (0-26) en lugar de colores RGB.
+- [x] `tools/import_assets.py` valida la paleta firmware y genera un bloque
+  `platformer_palette` con los valores hardware equivalentes en
+  `assets/generated/assets.s`, más `PLATFORMER_PALETTE_SIZE` en `assets.inc`.
+- [x] `examples/platformer/main.s` carga la paleta generada con
+  `cpct_setPalette_asm` en la inicialización, eliminando los `cpct_setPALColour_asm`
+  codificados a mano.
+- [x] Los datos de imagen generados siguen siendo byte a byte idénticos a los
+  anteriores.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Corrección: visibilidad de la puerta en `platformer`
+
+- [x] `palette.json` se había regenerado con una permutación incorrecta de
+  códigos de firmware; restaurada la paleta prevista
+  `[0,1,2,3,4,24,6,7,8,9,4,11,12,13,14,20]`.
+- [x] Los PNG se regeneraron con los colores RGB equivalentes y `import_assets`
+  vuelve a producir los datos de puerta originales (`0xFF,0x80,...`).
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Corrección: puerta fuera de pantalla en `platformer`
+
+- [x] La puerta se declaraba en `X=144` (píxeles), pero `entity_render` interpreta
+  `X` en bytes; se corrige a `72` (144 píxeles) para que quede dentro de la
+  pantalla y se pueda capturar/dibujar.
+- [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).

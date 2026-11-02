@@ -1,5 +1,6 @@
 ;; Shared constants for the platformer tutorial example.
 
+;; Offsets inside the compact 7-byte player state.
 PF_PLAYER_X       = 0
 PF_PLAYER_Y       = 1
 PF_PLAYER_VX      = 2
@@ -9,11 +10,13 @@ PF_PLAYER_HEIGHT  = 5
 PF_PLAYER_FLAGS   = 6
 PF_PLAYER_SIZE    = 7
 
+;; Player size in bytes and pixels, plus the spawn position.
 PF_PLAYER_WIDTH_BYTES = 8
 PF_PLAYER_HEIGHT_PX   = 8
 PF_PLAYER_START_X     = 16
 PF_PLAYER_START_Y     = 184
 
+;; Enemy sprite size and patrol limits.
 PF_ENEMY_WIDTH_BYTES  = 4
 PF_ENEMY_HEIGHT_PX    = 8
 PF_ENEMY_H_START_X    = 36
@@ -27,11 +30,13 @@ PF_ENEMY_V_MAX_Y      = 152
 PF_LIVES_INITIAL      = 10
 PF_RENDER_COUNT       = 9
 
+;; Input action bits and tile-grounded flag.
 PF_INPUT_LEFT     = 0x01
 PF_INPUT_RIGHT    = 0x02
 PF_INPUT_JUMP     = 0x04
 PF_TILE_GROUNDED = 0x02
 
+;; Physics and coin tuning.
 PF_SPEED          = 2
 PF_JUMP_SPEED     = -8
 PF_COIN_COUNT     = 4
@@ -40,6 +45,16 @@ PF_COIN_STRIDE    = 5
 PF_COIN_REMOVED   = 0xFF
 PF_WIN_SCORE      = 4
 
+;; HUD vertical position in scanlines (top of the text row).
+PF_HUD_Y          = 10
+
+;; HUD text positions (byte column and scanline row).
+PF_HUD_COINS_X    = 0
+PF_HUD_COINS_Y    = PF_HUD_Y
+PF_HUD_HINT_X     = 24
+PF_HUD_HINT_Y     = PF_HUD_Y
+PF_HUD_LIVES_X    = 64
+PF_HUD_LIVES_Y    = PF_HUD_Y
 PF_STATUS_READY   = 0xA5
 PF_STATUS_WON     = 0x5A
 

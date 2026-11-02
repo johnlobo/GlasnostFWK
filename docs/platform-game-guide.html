@@ -64,7 +64,7 @@
   </nav>
 
   <h2 id="resultado">1. Resultado y requisitos</h2>
-  <p>El proyecto queda dividido en cuatro archivos: <code>example.json</code> elige perfil y módulos, <code>game.inc</code> comparte constantes, <code>assets.s</code> conserva datos estáticos, y <code>main.s</code> implementa estado, inicialización y bucle. El constructor prepara un proyecto CPCTelera aislado bajo <code>.build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
+  <p>El proyecto queda dividido en cuatro archivos: <code>example.json</code> elige perfil y módulos, <code>game.inc</code> comparte constantes, <code>assets.s</code> conserva descriptores y configuración, y <code>main.s</code> implementa estado, inicialización y bucle. Los gráficos y mapas editables viven en <code>assets/</code> y se convierten antes de compilar. El constructor prepara un proyecto CPCTelera aislado bajo <code>.build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
   <p>Antes de empezar, desde la raíz de GlasnostFWK, compruebe:</p>
   <pre><code>test -f /config/workspace/cpctelera_next/cpctelera/cpctelera.lib
 python3 --version
@@ -94,7 +94,7 @@ touch examples/mi_plataformas/game.inc</code></pre>
     <tbody>
       <tr><td><code>example.json</code></td><td>Dependencias explícitas, perfil de vídeo, nombre AMSDOS y fuentes del juego.</td></tr>
       <tr><td><code>game.inc</code></td><td>Offsets, máscaras y constantes compartidas entre código y assets.</td></tr>
-      <tr><td><code>assets.s</code></td><td>Mapa row-major, tabla de tipos, tileset, sprites, configuración, teclas y posiciones iniciales.</td></tr>
+      <tr><td><code>assets.s</code></td><td>Tabla de tipos, descriptores, configuración, teclas y posiciones iniciales. Los tiles, sprites y mapas convertidos se enlazan desde <code>assets/generated/</code>.</td></tr>
       <tr><td><code>main.s</code></td><td>Estado mutable, inicialización, lectura de entrada, física, reglas y render.</td></tr>
     </tbody>
   </table>
@@ -148,6 +148,7 @@ PF_JUMP_SPEED    = -8</code></pre>
   <p>La ruta preparada mantiene una actualización por frame en el tramo diagnosticado con monedas visibles, por lo que <code>PF_SPEED=2</code> expresa directamente el ritmo horizontal original. No es una garantía general de rendimiento: mida de nuevo si cambia el número, tamaño o tipo de entidades.</p>
 
   <h2 id="datos" class="page-break"><span class="step">4</span> Preparar mapa, tiles y sprites</h2>
+  <div class="note"><strong>En el ejemplo distribuido.</strong> Los tiles, sprites y mapas de <code>examples/platformer</code> ya no se escriben a mano en <code>assets.s</code>: viven en <code>assets/src/*.png</code> y <code>assets/src/level.tmx</code>. <code>make</code> ejecuta <code>tools/import_assets.py</code> y solo convierte cuando cambian los originales; el resultado se ensambla desde <code>assets/generated/assets.s</code>. Los fragmentos de esta sección muestran el formato que produce el pipeline y sirven para entender los datos, pero no hace falta copiarlos.</div>
   <h3>4.1 Mapa y tipos de colisión</h3>
   <p>El mapa contiene identificadores de tile en orden de filas. Otra tabla traduce cada identificador a <code>FWK_TILE_PASSABLE</code>, <code>FWK_TILE_SOLID</code> o <code>FWK_TILE_ONE_WAY</code>. El ejemplo usa las rutinas nativas de CPCTelera Next con tiles de 4 bytes por 8 scanlines: 8x8 píxeles en Mode 0 y 20 columnas para cubrir la pantalla.</p>
   <pre><code>.include "cpctelera.h.s"

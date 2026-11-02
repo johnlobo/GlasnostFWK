@@ -15,7 +15,8 @@
     "extensions/tilemap_render.s",
     "extensions/platform_tilemap.s",
     "extensions/motion_u8.s",
-    "extensions/behavior.s"
+    "extensions/behavior.s",
+    "resources/zx7b.s"
   ],
-  "game_sources": ["main.s", "assets.s", "game.inc"]
+  "game_sources": ["main.s", "assets.s", "game.inc", "globals.inc"]
 }

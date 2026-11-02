@@ -152,7 +152,14 @@ make examples
 make test</code></pre>
     <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los veintidós consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
 
-    <h3>3.2 Construir un único ejemplo</h3>
+    <h3>3.2 Construir y ejecutar un único ejemplo</h3>
+    <p>Cada ejemplo es un punto de entrada independiente, igual que un proyecto CPCtelera. Desde su propia carpeta:</p>
+    <pre><code>cd examples/minimal
+make        # compila este ejemplo y copia BIN, CDT y DSK a la carpeta
+make run    # compila y lo abre en el emulador
+make clean  # borra .build/minimal/ y las copias locales</code></pre>
+    <p><code>make</code> reutiliza <code>tools/build_examples.py</code> y deja el proyecto generado en <code>.build/&lt;nombre&gt;/</code>. Además copia junto a las fuentes <code>examples/&lt;nombre&gt;/&lt;nombre&gt;.bin</code>, <code>.cdt</code> y <code>.dsk</code> (los que existan), de modo que el ejecutable queda a mano en la carpeta del ejemplo; esas copias están ignoradas por git y <code>make clean</code> las elimina. El framework nunca se copia al repositorio. <code>make run</code> abre el CDT del ejemplo, que autorrancia, o su DSK, con el ejecutable indicado en <code>GLASNOST_EMULATOR</code> o, en su defecto, con AmSpiriT-Lite si está junto al repositorio y, si no, con MacAPE. Sin emulador disponible imprime la ruta de la imagen. El emulador también puede fijarse en la propia orden: <code>make run GLASNOST_EMULATOR=/ruta/al/emulador</code>.</p>
+    <p>Para lotes o automatización sigue disponible la herramienta de bajo nivel:</p>
     <pre><code>python3 tools/build_examples.py minimal
 python3 tools/build_examples.py animation vertical</code></pre>
     <p>Los resultados quedan en <code>.build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
@@ -231,7 +238,16 @@ python3 tools/build_examples.py animation vertical</code></pre>
     </table>
     <p>Las rutas absolutas, recorridos <code>..</code>, ficheros inexistentes, nombres AMSDOS inválidos, símbolos duplicados y combinaciones de capacidades inválidas se rechazan antes de construir. Sin memoria extendida el código comienza en <code>0x0200</code>; con ella comienza en <code>0x0216</code>, justo después del scratch bancario. La detección usa temporalmente <code>0x4000</code>, restaura RAM normal y banco 0 y no reserva una dirección dentro de la ventana bancaria.</p>
 
-    <h3>5.3 Fuente principal</h3>
+    <h3>5.3 Configuración CPCtelera y assets</h3>
+    <p>Un ejemplo puede incluir su propia configuración de proyecto CPCtelera en <code>cfg/build_config.mk</code>. Si existe, el constructor la usa como base en lugar de <code>cfg/build_config.template.mk</code>, de modo que los flags, herramientas y rutas que añada se conservan. Solo se reescriben los valores que gobierna el manifiesto: <code>CPCT_PATH</code>, <code>PROJNAME</code>, <code>TARGET</code>, <code>Z80CODELOC</code> y el <code>-I$(SRCDIR)</code> del ensamblador.</p>
+    <p>La carpeta <code>assets/</code> del ejemplo se copia a <code>src/assets</code> del proyecto generado. Sus <code>.s</code> se ensamblan sin declararlos en <code>game_sources</code>, los <code>.inc</code> se incluyen como <code>assets/&lt;archivo&gt;.inc</code> y los originales se copian para las herramientas. Además, si existe <code>assets/assets.json</code>, el constructor ejecuta <code>tools/import_assets.py</code> antes de compilar: convierte PNG Mode 0 con <code>img2cpc</code>, lee capas CSV de Tiled con la misma reindexación que <code>cpct_tmx2csv</code> y puede comprimir mapas con <code>zx7b</code>.</p>
+    <p>La conversión es incremental como en CPCtelera. El pipeline guarda en <code>assets/generated/pipeline.json</code> un SHA-256 del manifiesto, la paleta y cada PNG/TMX, más el hash de las salidas. Si nada cambió, <code>make</code> no invoca ninguna herramienta; si se edita un original, regenera <code>assets.s</code> y <code>assets.inc</code>. <code>make assets</code> ejecuta solo esa comprobación:</p>
+    <pre><code>cd examples/platformer
+make assets     # convierte PNG/TMX solo si cambiaron
+make            # convierte si hace falta y compila</code></pre>
+    <p><code>examples/platformer</code> es la referencia completa: PNG de tiles y sprites, <code>level.tmx</code> con dos capas, paleta Mode 0 definida en códigos de firmware y cargada al inicializar, mapa comprimido con <code>zx7b</code> y descompresión única al inicializar mediante <code>resources/zx7b.s</code>. La música no se enlaza por defecto para no alterar el presupuesto de frame ni el smoke; <code>assets/README.md</code> documenta cómo reutilizar la canción MIT de <code>examples/audio</code>. El resto de ejemplos siguen usando la plantilla compartida y no copian assets.</p>
+
+    <h3>5.4 Fuente principal</h3>
     <pre><code>.module mi_juego
 .globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init

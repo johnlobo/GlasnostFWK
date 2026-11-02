@@ -1,0 +1,20 @@
+.globl fwk_project_init, fwk_system_wait_frame, fwk_system_frame_count
+.globl fwk_video_init, fwk_video_clear_visible, fwk_video_get_ptr
+.globl fwk_input_init, fwk_input_set_bindings, fwk_input_update
+.globl fwk_input_held, fwk_input_pressed
+.globl fwk_physics_platform_step, fwk_platform_tilemap_resolve
+.globl fwk_tilemap_render_view, fwk_tilemap_render_cell
+.globl fwk_entity_render_init, fwk_entity_render_prepare_dirty
+.globl fwk_entity_render_restore_dirty, fwk_entity_render_draw_dirty
+.globl fwk_text_init, fwk_text_set_color, fwk_text_draw
+.globl fwk_zx7b_unpack
+.globl cpct_setPalette_asm
+.globl cpct_setPALColour_asm
+.globl platformer_map, platformer_map_packed
+.globl platformer_map2, platformer_map2_packed
+.globl platformer_map_descriptor, platformer_view, platformer_config
+.globl platformer_map2_descriptor, platformer_view2
+.globl platformer_palette
+.globl platformer_player_pixels, platformer_player_pixels2, platformer_coin_pixels, platformer_enemy_pixels, platformer_enemy_pixels2, platformer_door_pixels
+.globl platformer_bindings, platformer_coins
+.globl platformer_status, platformer_score, platformer_player
