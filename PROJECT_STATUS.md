@@ -1021,7 +1021,7 @@ Redactar y revisar layouts, offsets, máscaras, registros de llamada, errores,
 estados y restricciones del ECS. No se implementará el entity manager hasta
 aprobar esa especificación (puerta G1).
 
-### Fase 1: especificación candidata, pendiente de aprobación G1
+### Fase 1: completada, G1 aprobada
 
 - [x] Se contrastaron las decisiones con `model01` y `PocketFever`: ambos
   confirman AoS, máscara al principio, plantillas copiadas y punteros directos,
@@ -1047,9 +1047,17 @@ aprobar esa especificación (puerta G1).
   `601b6e84be5c562d63a236a6e20f736730208ea7` y verificada en el remoto.
 - [x] CI manual de la rama `41625865832` correcta: 111 pruebas host, los 22
   ejemplos, DSK común y artefactos distributables verificados.
-- [ ] Revisión del usuario y aprobación expresa de los ocho puntos de G1.
+- [x] El 2026-11-03 el usuario aprobó expresamente los ocho contratos de G1;
+  `docs/ecs-abi-2.0.md` pasa de candidata a normativa.
+- [x] Cierre G1 revalidado: manual HTML/PDF y checksum regenerados; `make check
+  CHECK_EXAMPLES=platformer` pasó 111 pruebas host en 0,979 s y confirmó el
+  ejemplo actualizado.
 
-Mientras G1 siga pendiente, la fase 2 permanece bloqueada por diseño, no por un
-fallo técnico. No se ejecutó smoke porque no cambió código Z80. La CI sí ejecutó
-la regresión global sobre el commit candidato; una nueva `make test` local se
-reserva para el cierre posterior a la aprobación si la revisión exige cambios.
+G1 queda alcanzada. No se ejecutó smoke porque no cambió código Z80. La CI
+ejecutó la regresión global sobre el contenido técnico de la especificación;
+el cierre documental se revalida después de retirar las marcas de candidata.
+
+### Siguiente fase: 2, entity manager
+
+Implementar slots estables, lifecycle, copia de plantillas, máscaras, locks y
+recorrido conforme a la ABI aprobada. No se ha iniciado todavía.

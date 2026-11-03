@@ -85,8 +85,9 @@ class EcsAbiSpecificationTests(unittest.TestCase):
         self.assertIn("docs/ecs-abi-2.0.md", master)
         self.assertIn("docs/ecs-abi-2.0.md", status)
         self.assertIn('href="ecs-abi-2.0.md"', manual)
-        self.assertIn("puerta G1", self.source)
-        self.assertIn("pendiente de aprobación", status)
+        self.assertIn("Puerta G1 aprobada", self.source)
+        self.assertIn("Fase 1: completada, G1 aprobada", status)
+        self.assertIn("Estado: normativa aprobada", self.source)
 
 
 if __name__ == "__main__":

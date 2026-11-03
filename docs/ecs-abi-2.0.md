@@ -1,8 +1,7 @@
 # Especificación ABI de GlasnostFWK ECS 2.0
 
-Estado: candidata normativa de fase 1, 2026-11-03. No autoriza todavía la
-implementación del entity manager. La puerta G1 requiere revisar y aceptar
-esta especificación.
+Estado: normativa aprobada en la puerta G1 el 2026-11-03. La implementación del
+entity manager corresponde a la fase 2 y todavía no existe.
 
 Este documento fija el contrato binario que compartirán el código generado,
 el framework y el juego. Las palabras **DEBE**, **NO DEBE**, **PUEDE** y
@@ -355,9 +354,9 @@ Cambiar tamaño, orden, offset, valor de flag, estado, registro de entrada o
 semántica de carry requiere incrementar la versión ABI. Añadir una rutina sin
 alterar contratos existentes puede incrementar solo `ECS_ABI_MINOR`.
 
-## 12. Puerta G1
+## 12. Puerta G1 aprobada
 
-Antes de comenzar la fase 2 deben aceptarse expresamente:
+El 2026-11-03 se aceptaron expresamente:
 
 1. el límite de 128 bytes motivado por desplazamientos indexados Z80;
 2. cabecera universal, orden de bloques y asignación de bits;
@@ -368,5 +367,5 @@ Antes de comenzar la fase 2 deben aceptarse expresamente:
 7. recorrido estable, locks y ciclo de frame;
 8. formato preliminar pero normativo de eventos de colisión.
 
-Hasta esa aceptación, este documento es una propuesta revisable y no debe
-usarse para implementar el manager.
+Estos ocho contratos son normativos para la fase 2. Cualquier cambio posterior
+debe registrarse como revisión de ABI antes de modificar la implementación.

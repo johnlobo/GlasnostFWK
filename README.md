@@ -104,9 +104,9 @@ de render se instala de forma aislada con
 
 La migración de la rama `ecs-v2` se gobierna por
 [`docs/ecs-2.0-master-plan.md`](docs/ecs-2.0-master-plan.md). La propuesta de
-ABI de la fase 1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md); todavía
-requiere aprobación G1 y no describe símbolos ECS enlazables en la versión
-actual.
+ABI aprobada en G1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md). Es el
+contrato normativo de la futura implementación, pero sus símbolos ECS aún no
+son enlazables en la versión actual.
 
 ## Mapa del repositorio
 
