@@ -6,6 +6,10 @@ Este documento es la referencia estable de alcance y decisiones. El punto
 operativo exacto para retomar una sesión se mantiene en `PROJECT_STATUS.md`,
 sección **Migración ECS 2.0: estado operativo**.
 
+La especificación candidata de la fase 1 está en `docs/ecs-abi-2.0.md`. Define
+el contrato binario propuesto, pero no queda aprobada hasta superar la puerta
+G1; no se implementará el manager antes de esa validación.
+
 ## Objetivo
 
 Sustituir la arquitectura actual por un modelo Entity-Component-System ligero

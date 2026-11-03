@@ -1020,3 +1020,32 @@ reproducible, con SHA y CI registrados y sin un fallo de recorrido ambiguo.
 Redactar y revisar layouts, offsets, máscaras, registros de llamada, errores,
 estados y restricciones del ECS. No se implementará el entity manager hasta
 aprobar esa especificación (puerta G1).
+
+### Fase 1: especificación candidata, pendiente de aprobación G1
+
+- [x] Se contrastaron las decisiones con `model01` y `PocketFever`: ambos
+  confirman AoS, máscara al principio, plantillas copiadas y punteros directos,
+  pero sus managers antiguos mezclan slots reutilizables con compactación y no
+  ofrecen una convención uniforme de errores. Esas limitaciones no se copian.
+- [x] `docs/ecs-abi-2.0.md` fija la propuesta de cabecera, bloques generados,
+  máscara de 16 bits, lifecycle, render, descriptor de manager, llamadas Z80,
+  errores, frame, colisión y compatibilidad.
+- [x] Se propone un límite de 128 bytes por entidad: los desplazamientos
+  indexados `IX+d`/`IY+d` solo alcanzan offsets 0..127. Es una restricción real
+  del ABI directo, no una preferencia estética.
+- [x] La especificación conserva slots estables y no añade `generation`; las
+  validaciones de procedencia pueden existir en debug, pero no se pagan en cada
+  acceso release.
+- [x] No se ha creado código de manager ni símbolos ECS enlazables.
+- [x] Se añadieron cinco pruebas de contrato para cabecera, lifecycle, API,
+  errores, render, colisión y referencias cruzadas. `make check
+  CHECK_EXAMPLES=platformer` pasó 111 pruebas host en 0,968 s y compiló el
+  ejemplo.
+- [x] Manual HTML/PDF y checksum regenerados; README, plan maestro y estado
+  enlazan la propuesta y advierten que aún no es una API ejecutable.
+- [ ] Revisión del usuario y aprobación expresa de los ocho puntos de G1.
+
+Mientras G1 siga pendiente, la fase 2 permanece bloqueada por diseño, no por un
+fallo técnico. No se ejecutó smoke porque no cambió código Z80. La regresión
+global `make test` se reserva para el cierre posterior a la aprobación, para no
+repetir la batería larga si la revisión exige cambios.

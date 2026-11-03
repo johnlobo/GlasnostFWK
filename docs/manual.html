@@ -101,13 +101,13 @@
     <span class="tag">Amstrad CPC · Z80</span>
     <h1>Manual de uso de GlasnostFWK</h1>
     <p class="subtitle">Construcción modular de juegos y pruebas técnicas con CPCTelera Next</p>
-    <p class="edition">Edición: 27 de octubre de 2026 · Idioma: castellano</p>
+    <p class="edition">Edición: 3 de noviembre de 2026 · Idioma: castellano</p>
   </header>
 
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
+    <p>Este manual describe el estado ejecutable comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. La rama <code>ecs-v2</code> contiene además la especificación candidata del futuro ABI ECS; todavía no existe una implementación ECS utilizable.</p>
     <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo enmascarado 6x8 tiene coste medido, pero no se ha integrado en el lote ordenado.</div>
   </section>
 
@@ -120,6 +120,7 @@
       <li><a href="#estructura">Estructura del repositorio</a></li>
       <li><a href="#proyecto">Crear un proyecto o ejemplo</a></li>
       <li><a href="#modulos">Referencia de módulos</a></li>
+      <li><a href="#ecs-abi">ABI ECS 2.0 propuesto</a></li>
       <li><a href="#recursos">Perfiles y recursos</a></li>
       <li><a href="#ejemplos">Ejemplos incluidos</a></li>
       <li><a href="#pruebas">Pruebas y emulación</a></li>
@@ -266,6 +267,10 @@ loop:
 
   <section aria-labelledby="modulos">
     <h2 id="modulos">6. Referencia de módulos</h2>
+    <h3 id="ecs-abi">6.0 ABI ECS 2.0 propuesto</h3>
+    <p>La fase 1 de la rama <code>ecs-v2</code> documenta el contrato binario candidato en <a href="ecs-abi-2.0.md"><code>docs/ecs-abi-2.0.md</code></a>. Propone entidades AoS de slots estables, máscara de componentes de 16 bits, estados separados de lifecycle, offsets generados, managers múltiples y llamadas Z80 con carry y código en A.</p>
+    <p>La entidad empieza por máscara, estado, tipo, X, Y, anchura y altura; después incorpora los bloques de componentes y campos propios del juego. X y anchura se expresan en bytes de pantalla, Y y altura en scanlines. El tamaño máximo propuesto es 128 bytes para que todos los campos sean accesibles mediante desplazamientos indexados Z80. Render ocupa siempre el bit 0 del perfil, aunque una entidad concreta puede no activarlo.</p>
+    <div class="box warning"><strong>Aún no es una API ejecutable.</strong> La puerta G1 sigue pendiente de aprobación. No use nombres como <code>fwk_ecs_entity_create</code> en un juego todavía: describen el ABI que deberá implementar la fase 2, no símbolos enlazables presentes en esta versión.</div>
     <p>Los contratos indican entradas, salidas y registros alterados. El llamador debe respetarlos; el framework no inserta comprobaciones de límites en tiempo de ejecución salvo donde se indique.</p>
 
     <article class="api" data-module="core/system.s">
