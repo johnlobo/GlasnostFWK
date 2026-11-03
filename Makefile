@@ -1,5 +1,5 @@
 PYTHON ?= python3
-EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer
+EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer ecsmanager
 CHECK_EXAMPLES ?= platformer
 
 .PHONY: all examples check test generate report manual platform-guide release clean

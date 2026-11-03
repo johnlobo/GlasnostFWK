@@ -107,7 +107,7 @@
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado ejecutable comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. La rama <code>ecs-v2</code> contiene además la especificación normativa del futuro ABI ECS, aprobada en G1; todavía no existe una implementación ECS utilizable.</p>
+    <p>Este manual describe el estado ejecutable comprobado del repositorio: núcleo de sistema, entrada, pool, entity manager ECS, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. La rama <code>ecs-v2</code> contiene la ABI ECS normativa aprobada en G1 y la primera implementación ejecutable de su manager.</p>
     <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo enmascarado 6x8 tiene coste medido, pero no se ha integrado en el lote ordenado.</div>
   </section>
 
@@ -120,7 +120,7 @@
       <li><a href="#estructura">Estructura del repositorio</a></li>
       <li><a href="#proyecto">Crear un proyecto o ejemplo</a></li>
       <li><a href="#modulos">Referencia de módulos</a></li>
-      <li><a href="#ecs-abi">ABI ECS 2.0 propuesto</a></li>
+      <li><a href="#ecs-abi">ABI y entity manager ECS 2.0</a></li>
       <li><a href="#recursos">Perfiles y recursos</a></li>
       <li><a href="#ejemplos">Ejemplos incluidos</a></li>
       <li><a href="#pruebas">Pruebas y emulación</a></li>
@@ -152,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="spritemask renderorder"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintidós consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintitrés consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -267,11 +267,28 @@ loop:
 
   <section aria-labelledby="modulos">
     <h2 id="modulos">6. Referencia de módulos</h2>
-    <h3 id="ecs-abi">6.0 ABI ECS 2.0 propuesto</h3>
-    <p>La fase 1 de la rama <code>ecs-v2</code> documenta el contrato binario aprobado en <a href="ecs-abi-2.0.md"><code>docs/ecs-abi-2.0.md</code></a>. Define entidades AoS de slots estables, máscara de componentes de 16 bits, estados separados de lifecycle, offsets generados, managers múltiples y llamadas Z80 con carry y código en A.</p>
+    <h3 id="ecs-abi">6.0 ABI y entity manager ECS 2.0</h3>
+    <p>La rama <code>ecs-v2</code> documenta el contrato binario aprobado en <a href="ecs-abi-2.0.md"><code>docs/ecs-abi-2.0.md</code></a>. Define entidades AoS de slots estables, máscara de componentes de 16 bits, estados separados de lifecycle, offsets generados, managers múltiples y llamadas Z80 con carry y código en A. La fase 2 implementa el manager en <code>core/ecs_manager.s</code>.</p>
     <p>La entidad empieza por máscara, estado, tipo, X, Y, anchura y altura; después incorpora los bloques de componentes y campos propios del juego. X y anchura se expresan en bytes de pantalla, Y y altura en scanlines. El tamaño máximo propuesto es 128 bytes para que todos los campos sean accesibles mediante desplazamientos indexados Z80. Render ocupa siempre el bit 0 del perfil, aunque una entidad concreta puede no activarlo.</p>
-    <div class="box warning"><strong>Aún no es una API ejecutable.</strong> G1 está aprobada, pero la fase 2 todavía no ha implementado el manager. No use nombres como <code>fwk_ecs_entity_create</code> en un juego: describen el ABI normativo que deberá implementar la siguiente fase, no símbolos enlazables presentes en esta versión.</div>
-    <p>Los contratos indican entradas, salidas y registros alterados. El llamador debe respetarlos; el framework no inserta comprobaciones de límites en tiempo de ejecución salvo donde se indique.</p>
+    <div class="box warning"><strong>Límite de esta fase.</strong> El manager ya es ejecutable, pero el generador de perfiles corresponde a la fase 3. El ejemplo técnico <code>ecsmanager</code> declara manualmente <code>"ecs_profile": "generated/ecs_profile.inc"</code>; el constructor lo instala como <code>ecs_profile.inc</code>. Todavía no debe copiarse ese fichero como si fuera el flujo definitivo de creación de proyectos.</div>
+    <p>Incluya <code>core/ecs_manager.s</code> en el manifiesto y <code>core/ecs_manager.inc</code> en el ensamblador. El perfil seleccionado debe definir <code>ECS_ENTITY_SIZE</code>, <code>ECS_COMPONENT_MASK</code>, los offsets <code>ECS_E_*</code> y el bit de render. Un descriptor reserva ocho bytes y referencia almacenamiento propiedad del juego:</p>
+    <pre><code>.include "ecs_profile.inc"
+.include "core/ecs_manager.inc"
+
+entities: .ds ECS_ENTITY_SIZE * 16
+FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
+    <article class="api" data-module="core/ecs_manager.s">
+      <h4>Operaciones del manager</h4>
+      <ul>
+        <li><code>fwk_ecs_manager_init</code>: <code>IX=manager</code>; valida storage, capacidad y stride, marca todos los slots <code>FREE</code> e inicializa contadores y locks.</li>
+        <li><code>fwk_ecs_entity_create</code>: <code>IX=manager</code>, <code>HL=plantilla ACTIVE</code>; copia el registro completo al primer slot libre y devuelve <code>IY=slot</code>.</li>
+        <li><code>fwk_ecs_entity_disable</code>, <code>fwk_ecs_entity_enable</code> y <code>fwk_ecs_entity_mark_destroy</code>: aplican únicamente las transiciones válidas y mantienen <code>ACTIVE_COUNT</code>.</li>
+        <li><code>fwk_ecs_entity_set_mask</code>: <code>BC=máscara</code>; rechaza bits ajenos al perfil y no permite retirar render mientras exista un fondo capturado.</li>
+        <li><code>fwk_ecs_system_run</code>: <code>BC=máscara requerida</code>, <code>HL=callback</code>; recorre slots activos en orden. El callback recibe <code>IX=manager</code> e <code>IY=entidad</code>, debe preservarlos y puede marcar destrucción.</li>
+        <li><code>fwk_ecs_manager_collect</code>: convierte <code>PENDING_DESTROY</code> en <code>FREE</code> y devuelve en <code>B</code> cuántos slots liberó.</li>
+      </ul>
+    </article>
+    <p>Éxito significa carry limpio y <code>A=0</code>; error significa carry activo y un código <code>FWK_ECS_ERR_*</code> en A. Las operaciones estructurales se rechazan durante locks. El recorrido usa un <code>CALL</code> automodificable, por lo que no es reentrante, no puede anidarse ni ejecutarse desde IRQ. La API valida descriptores, máscaras y pertenencia de punteros también en esta primera implementación; no existe coste de <code>generation</code> en cada acceso.</p>
 
     <article class="api" data-module="core/system.s">
       <h3>6.1 Sistema — <code>core/system.s</code></h3>
@@ -587,6 +604,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>

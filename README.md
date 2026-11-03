@@ -30,7 +30,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 make generate   # vídeo y manifiesto de recursos, deterministas
 make check      # pruebas host + platformer; bucle rápido durante desarrollo
 make check CHECK_EXAMPLES="spritemask renderorder"  # solo ejemplos afectados
-make examples   # veintidós ejemplos, incluidas dos escenas jugables
+make examples   # veintitrés ejemplos, incluidas dos escenas jugables
 make test       # pruebas host + construcción y DSK completos; cierre/commit
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -38,7 +38,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintidós BIN de prueba se
+Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintitrés BIN de prueba se
 reúnen en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
@@ -104,9 +104,9 @@ de render se instala de forma aislada con
 
 La migración de la rama `ecs-v2` se gobierna por
 [`docs/ecs-2.0-master-plan.md`](docs/ecs-2.0-master-plan.md). La propuesta de
-ABI aprobada en G1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md). Es el
-contrato normativo de la futura implementación, pero sus símbolos ECS aún no
-son enlazables en la versión actual.
+ABI aprobada en G1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md). La
+fase 2 implementa ya el entity manager y sus símbolos enlazables; el generador
+de perfiles y los sistemas ECS se incorporarán en las fases siguientes.
 
 ## Mapa del repositorio
 
@@ -118,7 +118,7 @@ son enlazables en la versión actual.
 - `src/extensions`: movimiento, física, animación y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: veintidós consumidores pequeños, sin copias internas del framework.
+- `examples`: veintitrés consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 La aplicación didáctica de plataformas dispone de una guía paso a paso con

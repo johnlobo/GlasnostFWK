@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-31 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-11-03 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -15,10 +15,10 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
-  y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 106 pruebas; el manual cubre todos los ejemplos y
+- Los veintitrés ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintidós construyen además CDT
+  y todos los BIN se reúnen en un único DSK de pruebas con 25 entradas.
+- La suite host contiene 114 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
@@ -1061,7 +1061,44 @@ G1 queda alcanzada. No se ejecutó smoke porque no cambió código Z80. La CI
 ejecutó la regresión global sobre el contenido técnico de la especificación;
 el cierre documental se revalida después de retirar las marcas de candidata.
 
-### Siguiente fase: 2, entity manager
+### Fase 2: completada, entity manager ejecutable
 
-Implementar slots estables, lifecycle, copia de plantillas, máscaras, locks y
-recorrido conforme a la ABI aprobada. No se ha iniciado todavía.
+- [x] `src/core/ecs_manager.s` implementa los ocho símbolos aprobados en G1:
+  inicialización, creación desde plantilla, destrucción diferida,
+  habilitación/deshabilitación, cambio de máscara, recorrido y recolección.
+- [x] Los slots son estables y se reutiliza siempre el primer `FREE`; no hay
+  compactación ni contador `generation`. `ACTIVE_COUNT` y `LIVE_COUNT` se
+  mantienen al aplicar cada transición.
+- [x] El manager valida descriptor, storage, capacidad, stride exacto del
+  perfil, máscaras y pertenencia de punteros. Las operaciones estructurales se
+  rechazan bajo lock; marcar destrucción sí está permitido durante recorrido.
+- [x] `fwk_ecs_system_run` filtra `ACTIVE` por inclusión de máscara, recorre en
+  orden de slot, propaga abortos y libera siempre el lock. `IX` e `IY` se
+  preservan conforme a la ABI.
+- [x] Retirar `RENDER` con `HAS_BACKGROUND` activo devuelve
+  `FWK_ECS_ERR_RENDER`; la aclaración se incorporó a la ABI normativa para no
+  perder una captura que el render deba restaurar.
+- [x] El staging acepta temporalmente `ecs_profile` y lo instala como
+  `ecs_profile.inc`. `examples/ecsmanager` aporta un fixture manual; la fase 3
+  debe reemplazarlo por generación desde manifiesto.
+- [x] El ejemplo ejecutable comprueba inicialización, tres creaciones, lleno,
+  disable/enable, máscara inválida, lock durante callback, destrucción,
+  recolección, reutilización estable, error de render y aborto de callback.
+- [x] Validación focalizada en AmSpiriT-Lite 1.15.3/CPC 6128: estado final
+  `0x5A`, tres slots `ACTIVE` con máscara `0x0003`, contadores `3/3`, lock cero
+  y render marcado `DIRTY` después de reactivar.
+- [x] Regresión local de cierre: 114 pruebas host, 23 BIN, 22 CDT y DSK común
+  de 25 entradas. `ECSMANAG.BIN` carga en `0x0200`, ejecuta en `0x022F` y ocupa
+  1.483 bytes de BIN enlazado (1.366 de código y 117 de datos).
+- [x] Manual HTML/PDF y checksum regenerados; informe de tamaños actualizado.
+
+No se repitió CPC 464 porque el manager no depende del modelo, memoria
+extendida, CRTC ni render físico. No existe validación en hardware real. El
+manager usa `CALL` automodificable para el callback y, como fija la ABI, no es
+reentrante, no puede anidarse ni llamarse desde IRQ.
+
+### Siguiente fase: 3, generador de perfiles ECS
+
+Generar `ecs_profile.inc` desde el manifiesto, resolver componentes y
+dependencias, validar offsets/tamaño/máscaras y retirar el fixture manual como
+flujo de configuración. La fase 3 no se ha iniciado.

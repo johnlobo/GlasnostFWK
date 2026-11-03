@@ -146,7 +146,7 @@ mantendrá su historial.
 ### P1: ECS jugable
 
 2. Entity manager: slots estables, ciclo de vida, plantillas y recorrido por
-   máscara.
+   máscara. **Completada el 2026-11-03.**
 3. Generador de perfiles y validación del manifiesto.
 4. Sistemas ECS de behavior y movimiento. Hito `2.0.0-alpha.1`.
 5. Crear `examples/platformer_ecs` sin alterar la referencia actual.

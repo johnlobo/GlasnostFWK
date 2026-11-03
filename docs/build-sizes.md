@@ -9,13 +9,14 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | board | 2945 | 81 | 3026 |
 | collision | 1346 | 35 | 1381 |
 | diskload | 495 | 49 | 544 |
+| ecsmanager | 1366 | 117 | 1483 |
 | experimental | 1073 | 9 | 1082 |
 | gravity | 1098 | 21 | 1119 |
 | minimal | 974 | 24 | 998 |
 | perf | 5286 | 765 | 6051 |
 | physics88 | 1304 | 32 | 1336 |
 | platform | 1118 | 33 | 1151 |
-| platformer | 9271 | 1934 | 10205 |
+| platformer | 9390 | 1992 | 11382 |
 | renderorder | 3751 | 244 | 3995 |
 | resources128 | 472 | 6 | 36338 |
 | spriteclip | 1663 | 212 | 1875 |

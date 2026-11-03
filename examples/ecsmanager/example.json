@@ -1,0 +1,10 @@
+{
+  "name": "ecsmanager",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/ecs_manager.s"
+  ],
+  "game_sources": ["main.s"],
+  "ecs_profile": "generated/ecs_profile.inc"
+}

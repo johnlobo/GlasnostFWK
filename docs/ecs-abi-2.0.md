@@ -1,7 +1,8 @@
 # Especificación ABI de GlasnostFWK ECS 2.0
 
-Estado: normativa aprobada en la puerta G1 el 2026-11-03. La implementación del
-entity manager corresponde a la fase 2 y todavía no existe.
+Estado: normativa aprobada en la puerta G1 el 2026-11-03. La API del entity
+manager definida en la sección 6.2 está implementada desde la fase 2; los
+sistemas y el generador de perfiles pertenecen a fases posteriores.
 
 Este documento fija el contrato binario que compartirán el código generado,
 el framework y el juego. Las palabras **DEBE**, **NO DEBE**, **PUEDE** y
@@ -48,7 +49,9 @@ coordenada positiva mayor de 255.
   implícito.
 - Todos los offsets públicos deben estar entre 0 y 127 para poder usarse con
   `IX+d`/`IY+d`. Por ello `ECS_ENTITY_SIZE` DEBE estar entre 1 y 128 bytes.
-- El stride del manager es `ECS_ENTITY_SIZE` y se almacena en un byte.
+- El stride del manager es exactamente `ECS_ENTITY_SIZE`, se almacena en un
+  byte y `fwk_ecs_manager_init` rechaza cualquier descriptor que no coincida
+  con el perfil seleccionado.
 - La capacidad de un manager está entre 1 y 255 slots.
 - `base + capacity * stride` NO DEBE superar `0x10000` ni envolver.
 - X y anchura usan bytes de pantalla; Y y altura usan scanlines. Anchura y
@@ -125,6 +128,10 @@ PENDING_DESTROY -> FREE          recolección al final del frame
 No existe resurrección desde `PENDING_DESTROY`. El juego NO DEBE escribir
 directamente `status` ni la máscara: usa la API para que render y los contadores
 del manager permanezcan coherentes.
+
+Retirar `ECS_C_RENDER` mediante `fwk_ecs_entity_set_mask` se rechaza con
+`FWK_ECS_ERR_RENDER` mientras `ECS_RENDER_HAS_BACKGROUND` esté activo. El
+llamador debe esperar a que la fase de render restaure y libere esa captura.
 
 ## 4. Bloque RENDER obligatorio en el perfil
 

@@ -251,6 +251,22 @@ def run_example(
                 raise RuntimeError("raw payload read from DSK differs from source")
             if ram(0x9400, 256) != witness:
                 raise RuntimeError("ZX7 decompressed payload differs from source")
+        if name == "ecsmanager":
+            status = symbol(noi, "ecsmanager_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS manager lifecycle")
+            manager = symbol(noi, "ecsmanager_manager")
+            storage = symbol(noi, "ecsmanager_storage")
+            descriptor = ram(manager, 8)
+            if descriptor[2:] != bytes((3, 25, 3, 3, 0, 1)):
+                raise RuntimeError(
+                    "ECS manager capacity/stride/counts/lock/flags differ: "
+                    f"{descriptor.hex()}"
+                )
+            slots = ram(storage, 75)
+            if any(slots[offset : offset + 3] != b"\x03\x00\x01" for offset in (0, 25, 50)):
+                raise RuntimeError("ECS stable slots do not retain mask/status")
+            if not slots[25 + 18] & 0x02:
+                raise RuntimeError("ECS enable did not mark render dirty")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")
@@ -817,7 +833,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

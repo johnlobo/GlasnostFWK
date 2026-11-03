@@ -335,6 +335,18 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
         staged_managed.add(Path("src") / "game" / relative_path)
+    ecs_profile = manifest.get("ecs_profile")
+    uses_ecs_manager = "core/ecs_manager.s" in modules
+    if uses_ecs_manager and not isinstance(ecs_profile, str):
+        raise ValueError(f"{name}: core/ecs_manager.s requires ecs_profile")
+    if ecs_profile is not None:
+        if not uses_ecs_manager:
+            raise ValueError(f"{name}: ecs_profile requires core/ecs_manager.s")
+        profile_source = _safe_example_file(example, ecs_profile)
+        if profile_source.suffix != ".inc":
+            raise ValueError(f"{name}: ecs_profile must be an .inc file")
+        _copy_if_changed(profile_source, target / "src" / "ecs_profile.inc")
+        staged_managed.add(Path("src") / "ecs_profile.inc")
     import_assets.ensure(example, cpct_path)
     assets = stage_assets(example, target)
     for item in assets:
@@ -420,6 +432,7 @@ def stage_example(name: str, cpct_path: Path) -> Path:
             {
                 "example": name,
                 "game_sources": game_sources,
+                "ecs_profile": ecs_profile,
                 "modules": modules,
                 "cpct_modules": cpct_modules,
                 "assets": assets,

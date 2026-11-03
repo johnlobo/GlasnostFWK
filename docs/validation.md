@@ -28,12 +28,30 @@ Fecha: 2026-10-29 UTC.
   opaco y no integra todavía la máscara.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y veintidós ejemplos, incluidas dos escenas jugables.
+- Generadores de vídeo/recursos y veintitrés ejemplos, incluidas dos escenas jugables.
+- Entity manager ECS con slots estables, copia de plantillas, lifecycle diferido,
+  máscaras de 16 bits, locks, recorrido por máscara y recolección.
 - Frontera de dependencias y exclusión física de módulos.
 - Inicialización generada por proyecto: código en `0x0200`, o en `0x0216` al
   activar memoria extendida para reservar el stub de bancos en `0x0200`.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
+
+## Validación del entity manager ECS, fase 2 (2026-11-03)
+
+- `make test` pasó 114 pruebas host, construyó 23 BIN y 22 CDT y generó el DSK
+  común con 25 entradas.
+- `ecsmanager` ejecutó en AmSpiriT-Lite 1.15.3/CPC 6128 desde el DSK común. El
+  smoke leyó la RAM y confirmó tres slots estables `ACTIVE`, máscara `0x0003`,
+  contadores `ACTIVE/LIVE=3/3`, lock liberado y `DIRTY` tras reactivar.
+- El recorrido ejecutable cubrió filtro por máscara, destrucción permitida
+  durante callback, rechazo de mutación estructural bajo lock, recolección y
+  reutilización del primer slot. También cubrió máscara fuera del perfil,
+  retirada insegura de render y normalización de aborto de callback.
+- El BIN enlazado mide 1.483 bytes: 1.366 de código y 117 de datos. Carga en
+  `0x0200` y ejecuta en `0x022F`.
+- No se ejecutó CPC 464 porque esta fase no cambia código dependiente del
+  modelo, bancos, CRTC ni representación de vídeo. No se probó hardware real.
 
 ## Validación de configuración inicial (2026-10-29)
 
@@ -77,9 +95,9 @@ se ha medido todavía.
 
 ## Compilado
 
-Los veintidós ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-veintiuno generan además `.cdt`. Sus veintidós BIN y los dos payloads de
-`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 24
+Los veintitrés ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+veintidós generan además `.cdt`. Sus veintitrés BIN y los dos payloads de
+`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 25
 entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
 porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md` contiene
 tamaños enlazados.
@@ -93,7 +111,7 @@ tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los veintidós ejemplos y validación de nombres 8.3,
+- Construcción completa de los veintitrés ejemplos y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
 - Composición de máscara, offsets de clipping compartidos, preservación de un
   píxel Mode 0 con `0xF0`, span de máscara sin wrap y la invariante de datos cero
