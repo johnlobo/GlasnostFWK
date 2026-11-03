@@ -39,8 +39,9 @@ Fecha: 2026-10-29 UTC.
 
 ## Validación del entity manager ECS, fase 2 (2026-11-03)
 
-- `make test` pasó 114 pruebas host, construyó 23 BIN y 22 CDT y generó el DSK
-  común con 25 entradas.
+- La regresión local `make test` pasó 114 pruebas host, construyó 23 BIN y 22
+  CDT y generó el DSK común con 25 entradas. La CI final añadió la prueba del
+  listado explícito de artefactos y pasó 115 pruebas.
 - `ecsmanager` ejecutó en AmSpiriT-Lite 1.15.3/CPC 6128 desde el DSK común. El
   smoke leyó la RAM y confirmó tres slots estables `ACTIVE`, máscara `0x0003`,
   contadores `ACTIVE/LIVE=3/3`, lock liberado y `DIRTY` tras reactivar.
@@ -52,6 +53,9 @@ Fecha: 2026-10-29 UTC.
   `0x0200` y ejecuta en `0x022F`.
 - No se ejecutó CPC 464 porque esta fase no cambia código dependiente del
   modelo, bancos, CRTC ni representación de vídeo. No se probó hardware real.
+- La CI manual `41630455820` terminó correctamente para
+  `7d209340fadbd32ddefd3f051b953db46b164775` y publicó 46 archivos en el
+  artefacto temporal `glasnostfwk-7d209340...` (ID `13227278502`).
 
 ## Validación de configuración inicial (2026-10-29)
 

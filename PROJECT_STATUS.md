@@ -18,7 +18,7 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Los veintitrés ejemplos construyen BIN con CPCTelera Next fijada en
   `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintidós construyen además CDT
   y todos los BIN se reúnen en un único DSK de pruebas con 25 entradas.
-- La suite host contiene 114 pruebas; el manual cubre todos los ejemplos y
+- La suite host contiene 115 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
@@ -1093,6 +1093,13 @@ el cierre documental se revalida después de retirar las marcas de candidata.
 - [x] Manual HTML/PDF y checksum regenerados; informe de tamaños actualizado.
 - [x] La CI comprueba explícitamente el BIN y CDT de `ecsmanager`, además de
   incluirlo en `make test` y en el DSK común.
+- [x] Implementación publicada en `ecs-v2` mediante
+  `3a9b1a573f628a8bed5e8b9bfe6c3d92a1b67594`; verificación explícita de
+  artefactos corregida y publicada en
+  `7d209340fadbd32ddefd3f051b953db46b164775`.
+- [x] CI manual `41630455820` correcta para `7d209340...`: 115 pruebas host,
+  23 ejemplos, BIN/CDT de `ecsmanager`, DSK común y artefacto temporal
+  `glasnostfwk-7d209340...` (ID `13227278502`) verificados.
 
 No se repitió CPC 464 porque el manager no depende del modelo, memoria
 extendida, CRTC ni render físico. No existe validación en hardware real. El
