@@ -53,6 +53,11 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ECS_ENTITY_SIZE", source)
         self.assertIn("ECS_C_RENDER_BIT", profile)
 
+    def test_ci_verifies_the_new_bin_and_cdt(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        artifact_section = workflow.split("Verify distributable artifacts", 1)[1]
+        self.assertGreaterEqual(artifact_section.count("ecsmanager"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

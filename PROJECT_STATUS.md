@@ -1091,6 +1091,8 @@ el cierre documental se revalida después de retirar las marcas de candidata.
   de 25 entradas. `ECSMANAG.BIN` carga en `0x0200`, ejecuta en `0x022F` y ocupa
   1.483 bytes de BIN enlazado (1.366 de código y 117 de datos).
 - [x] Manual HTML/PDF y checksum regenerados; informe de tamaños actualizado.
+- [x] La CI comprueba explícitamente el BIN y CDT de `ecsmanager`, además de
+  incluirlo en `make test` y en el DSK común.
 
 No se repitió CPC 464 porque el manager no depende del modelo, memoria
 extendida, CRTC ni render físico. No existe validación en hardware real. El
