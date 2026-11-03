@@ -1015,7 +1015,7 @@ fases y puertas de avance.
 Condición G0 alcanzada: la referencia no ECS está limpia, sincronizada y
 reproducible, con SHA y CI registrados y sin un fallo de recorrido ambiguo.
 
-### Siguiente fase: 1, especificación ABI ECS
+### Fase 1: objetivo
 
 Redactar y revisar layouts, offsets, máscaras, registros de llamada, errores,
 estados y restricciones del ECS. No se implementará el entity manager hasta
@@ -1043,9 +1043,13 @@ aprobar esa especificación (puerta G1).
   ejemplo.
 - [x] Manual HTML/PDF y checksum regenerados; README, plan maestro y estado
   enlazan la propuesta y advierten que aún no es una API ejecutable.
+- [x] Propuesta publicada en `ecs-v2` como
+  `601b6e84be5c562d63a236a6e20f736730208ea7` y verificada en el remoto.
+- [x] CI manual de la rama `41625865832` correcta: 111 pruebas host, los 22
+  ejemplos, DSK común y artefactos distributables verificados.
 - [ ] Revisión del usuario y aprobación expresa de los ocho puntos de G1.
 
 Mientras G1 siga pendiente, la fase 2 permanece bloqueada por diseño, no por un
-fallo técnico. No se ejecutó smoke porque no cambió código Z80. La regresión
-global `make test` se reserva para el cierre posterior a la aprobación, para no
-repetir la batería larga si la revisión exige cambios.
+fallo técnico. No se ejecutó smoke porque no cambió código Z80. La CI sí ejecutó
+la regresión global sobre el commit candidato; una nueva `make test` local se
+reserva para el cierre posterior a la aprobación si la revisión exige cambios.
