@@ -984,7 +984,7 @@ Plan aprobado el 2026-11-03 y persistido en
 arquitectura, SDK, toolchain, proyectos, paquetes, ciclo de vida, prioridades,
 fases y puertas de avance.
 
-### Fase activa: 0, punto de restauración
+### Fase 0: completada, punto de restauración
 
 - [x] Plan maestro consolidado y aprobado.
 - [x] `main` identificado en `8eacbb816d61499952e94b049dacd6dade4697bd`
@@ -1008,8 +1008,15 @@ fases y puertas de avance.
 - [x] Referencia funcional no ECS publicada en `main` como
   `5e9743630a3729fd137de557736df100e085e448`; `origin/main` se verificó en ese
   SHA y la CI remota `41623906057` terminó correctamente.
-- [ ] Crear y publicar `ecs-v2` desde ese commit.
+- [x] `ecs-v2` creada desde el cierre documentado de `main`
+  (`e757fd00d8cdb5ec2f72d17e06085ffb073cc90d`) y verificada en
+  `origin/ecs-v2` en ese mismo SHA. No contiene todavía implementación ECS.
 
-Condición de salida G0: `main` limpio, sincronizado y reproducible, SHA y CI
-registrados, sin un fallo de recorrido ambiguo. La siguiente fase será redactar
-y revisar el ABI ECS; no se implementará el manager antes de esa revisión.
+Condición G0 alcanzada: la referencia no ECS está limpia, sincronizada y
+reproducible, con SHA y CI registrados y sin un fallo de recorrido ambiguo.
+
+### Siguiente fase: 1, especificación ABI ECS
+
+Redactar y revisar layouts, offsets, máscaras, registros de llamada, errores,
+estados y restricciones del ECS. No se implementará el entity manager hasta
+aprobar esa especificación (puerta G1).
