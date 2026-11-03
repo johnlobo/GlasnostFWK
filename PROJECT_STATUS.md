@@ -1005,7 +1005,9 @@ fases y puertas de avance.
   de `diskload`). Manual y guía HTML/PDF con checksums regenerados.
 - [x] El recorrido completo se repitió correctamente en CPC 6128 después de
   reconstruir el DSK. CPC 464 y hardware real no se ejecutaron en este cierre.
-- [ ] Crear y publicar el commit de referencia de la versión no ECS en `main`.
+- [x] Referencia funcional no ECS publicada en `main` como
+  `5e9743630a3729fd137de557736df100e085e448`; `origin/main` se verificó en ese
+  SHA y la CI remota `41623906057` terminó correctamente.
 - [ ] Crear y publicar `ecs-v2` desde ese commit.
 
 Condición de salida G0: `main` limpio, sincronizado y reproducible, SHA y CI
