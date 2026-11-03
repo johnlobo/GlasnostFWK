@@ -1052,6 +1052,10 @@ aprobar esa especificación (puerta G1).
 - [x] Cierre G1 revalidado: manual HTML/PDF y checksum regenerados; `make check
   CHECK_EXAMPLES=platformer` pasó 111 pruebas host en 0,979 s y confirmó el
   ejemplo actualizado.
+- [x] Aprobación registrada y publicada en
+  `3a0eabc830ed29b4542a8500cdffb4c81b1b38ad`; `origin/ecs-v2` se verificó en
+  ese SHA. La CI manual `41628752201` terminó correctamente con 111 pruebas,
+  22 ejemplos, DSK común y artefacto `glasnostfwk-3a0eabc...`.
 
 G1 queda alcanzada. No se ejecutó smoke porque no cambió código Z80. La CI
 ejecutó la regresión global sobre el contenido técnico de la especificación;
