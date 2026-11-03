@@ -370,7 +370,7 @@ player_store:
     ret</code></pre>
   <div class="warning"><strong>Detalle importante.</strong> No cambie entidades desde <code>prepare_dirty</code> hasta <code>draw_dirty</code>. Si modifica punteros o rangos de buffer en <code>IDLE</code>, llame a <code>revalidate</code>. El descriptor almacena X e Y en 16 bits con signo, mientras el estado compacto usa bytes; inicialice también el byte alto. <code>sort_y</code> es la clave estable de orden, no una coordenada usada por la física.</div>
 
-  <h2 id="objetos"><span class="step">8</span> Añadir objetos coleccionables y HUD</h2>
+  <h2 id="objetos"><span class="step">8</span> Añadir objetos, enemigos, puerta y HUD</h2>
   <p>Una regla sencilla almacena cada objeto como <code>x_tile, y_tile, tipo, puntero_entidad</code>. En cada frame, compare su rectángulo con el del jugador. Al recogerlo:</p>
   <ol>
     <li>marque la entrada lógica como inactiva;</li>
@@ -379,10 +379,13 @@ player_store:
     <li>marque el HUD como sucio.</li>
   </ol>
   <p>En el ciclo siguiente, <code>restore_dirty</code> repone el fondo capturado de la moneda y <code>draw_dirty</code> deja de dibujarla. Mantenga el puntero en la lista hasta completar ese ciclo; retirarlo antes impediría restaurar su fondo.</p>
-  <p>Reserve las filas 1 y 2 del mapa como interior negro del HUD y mantenga los bordes laterales fuera del texto. El ejemplo coloca puntuación en <code>x=8,y=8</code> y ayuda/estado en <code>x=32,y=8</code>. Como el texto con máscara no borra el glifo anterior, cada cambio normal restaura solo la columna de tile que contiene el dígito —dos celdas por sus nueve scanlines— y dibuja un único carácter. La victoria restaura únicamente las 18 celdas del tramo de estado. El HUD se actualiza después de <code>draw_dirty</code>, cuando el jugador ya vuelve a estar visible.</p>
+  <p>Cada enemigo es otra entidad del mismo array y mantiene un registro <code>behavior</code> de ocho bytes separado del prefijo de render. Los tres pasan por el mismo adaptador: <code>fwk_behavior_run</code>, <code>fwk_motion_u8_step</code> y sincronización de X/Y, <code>sort_y</code>, sprite y <code>DIRTY</code>. El horizontal usa una primera espera de 19 ticks y tramos posteriores de 23 para conservar X=32..54. Los verticales comparten un programa inmutable de 49 ticks, pero no estado: cada registro guarda su propio cursor y temporizador. El planificador mantiene la cadencia previa actualizando horizontal y vertical derecho en frames alternos, y el vertical izquierdo en cada frame.</p>
+  <p>La detección mantiene una máscara de contactos del frame anterior y otra del actual: solo descuenta una vida cuando un bit cambia de separado a solapado. Los tres enemigos deben comprobarse de forma independiente y cada contacto sostenido conserva su bit hasta que los rectángulos vuelvan a separarse.</p>
+  <p>La puerta también forma parte del array, pero su flag <code>VISIBLE</code> permanece a cero durante el reinicio. Al recoger la cuarta moneda se activa <code>VISIBLE|DIRTY</code>; tocarla cambia al segundo mapa. Un reinicio genérico de flags no debe hacerla visible antes de tiempo.</p>
+  <p>Reserve las filas 1 y 2 del mapa como interior negro del HUD y mantenga los bordes laterales fuera del texto. El ejemplo coloca monedas en <code>x=0</code>, ayuda/estado en <code>x=24</code> y vidas en <code>x=64</code>, todos en <code>y=10</code>. Como el texto con máscara no borra el glifo anterior, restaure las celdas de tile cubiertas por el texto que va a cambiar: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para el contador completo y columnas 6–14 para todo el mensaje de ayuda. El HUD se actualiza después de <code>draw_dirty</code>, cuando el jugador ya vuelve a estar visible.</p>
   <figure>
     <img src="images/platformer/platformer-6128-victory.png" alt="Captura real del estado de victoria con tiles de CPCTelera Next">
-    <figcaption>Captura 4. El recorrido automatizado actual recogió las cuatro monedas, restauró sus celdas de 4x8 bytes, actualizó el HUD y publicó la victoria en CPC 6128.</figcaption>
+    <figcaption>Captura 4. Recorrido automatizado que recoge las cuatro monedas y publica la victoria en CPC 6128. La prueba conduce el movimiento hasta posiciones observables del jugador, sin suponer que un frame de vídeo equivale siempre a una iteración completa de lógica; también valida contactos, puerta, restauración del HUD y retirada de monedas.</figcaption>
   </figure>
 
   <h2 id="construir" class="page-break"><span class="step">9</span> Construir y ejecutar</h2>
@@ -426,6 +429,9 @@ python3 -m json.tool .build/tests/catalog.json | less</code></pre>
     <li>El fondo se restaura sin estelas al moverse.</li>
     <li>Un objeto recogido no reaparece y su celda queda limpia.</li>
     <li>El cambio de puntuación no conserva partes del dígito anterior.</li>
+    <li>Un contacto sostenido con un enemigo descuenta una sola vida; separarse y volver a tocarlo descuenta otra.</li>
+    <li>La puerta no aparece al iniciar y solo se muestra al reunir las cuatro monedas.</li>
+    <li>Los cambios de vidas y estado no dejan restos de texto ni invaden el borde.</li>
     <li>La condición de victoria puede observarse en RAM y en pantalla.</li>
   </ul>
 

@@ -23,10 +23,16 @@ PF_ENEMY_H_START_X    = 36
 PF_ENEMY_H_Y          = 122
 PF_ENEMY_H_MIN_X      = 32
 PF_ENEMY_H_MAX_X      = 54
+;; WAIT switches direction on its terminal tick, before motion is applied.
+PF_ENEMY_H_INITIAL_TICKS = 19  ;; 18 moves: initial X 36 -> right edge 54
+PF_ENEMY_H_LEG_TICKS     = 23  ;; 22 moves: complete 32 <-> 54 leg
 PF_ENEMY_V_X          = 64
+PF_ENEMY_V2_X         = 8
 PF_ENEMY_V_START_Y    = 56
 PF_ENEMY_V_MIN_Y      = 56
 PF_ENEMY_V_MAX_Y      = 152
+;; 49 ticks therefore produce 48 movements of two pixels: 56 <-> 152.
+PF_ENEMY_V_LEG_TICKS = 49
 PF_LIVES_INITIAL      = 10
 PF_RENDER_COUNT       = 9
 

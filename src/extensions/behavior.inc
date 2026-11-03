@@ -41,6 +41,7 @@ DESTROY_BEHAVIOR = 0
     FWK_BEHAVIOR_SET_TIMER _ticks
     .dw fwk_behavior_action_wait
     FWK_BEHAVIOR_CONDITION timeout, _next
+    FWK_BEHAVIOR_CONDITIONS_END
 .endm
 
 .macro FWK_BEHAVIOR_SET_TIMER _ticks
@@ -62,3 +63,9 @@ DESTROY_BEHAVIOR = 0
     .dw fwk_behavior_action_drive_vx
     .db _vx, _stride
 .endm
+
+.globl fwk_behavior_init, fwk_behavior_run
+.globl fwk_behavior_action_idle, fwk_behavior_action_wait
+.globl fwk_behavior_action_set_timer, fwk_behavior_action_set_vx
+.globl fwk_behavior_action_set_vy, fwk_behavior_action_drive_vx
+.globl fwk_behavior_cond_true, fwk_behavior_cond_timeout

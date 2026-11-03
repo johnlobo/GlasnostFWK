@@ -21,9 +21,6 @@ platformer_enemy_contacts:: .db 0
 platformer_current_level::  .db 0
 
 _platformer_enemy_contacts_next: .db 0
-_platformer_enemy_h_dx: .db 1
-_platformer_enemy_v_dy: .db 1
-_platformer_enemy_v2_dy: .db 1
 _platformer_enemy_phase: .db 0
 
 platformer_player_background::
@@ -52,10 +49,22 @@ platformer_coin3_entity::
     FWK_ENTITY_RENDER_PREFIX platformer_coin_pixels, 56, 168, 4, 8, 176, platformer_coin3_background, 32, FWK_ENTITY_RENDER_VISIBLE, 0, 0
 platformer_enemy_h_entity::
     FWK_ENTITY_RENDER_PREFIX platformer_enemy_pixels, PF_ENEMY_H_START_X, PF_ENEMY_H_Y, PF_ENEMY_WIDTH_BYTES, PF_ENEMY_HEIGHT_PX, PF_ENEMY_H_Y+PF_ENEMY_HEIGHT_PX, platformer_enemy_h_background, PF_ENEMY_WIDTH_BYTES*PF_ENEMY_HEIGHT_PX, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+platformer_enemy_h_behavior::
+    .db PF_ENEMY_H_START_X, PF_ENEMY_H_Y, 0, 0, 0
+    .dw platformer_enemy_h_program
+    .db 0
 platformer_enemy_v_entity::
     FWK_ENTITY_RENDER_PREFIX platformer_enemy_pixels, PF_ENEMY_V_X, PF_ENEMY_V_START_Y, PF_ENEMY_WIDTH_BYTES, PF_ENEMY_HEIGHT_PX, PF_ENEMY_V_START_Y+PF_ENEMY_HEIGHT_PX, platformer_enemy_v_background, PF_ENEMY_WIDTH_BYTES*PF_ENEMY_HEIGHT_PX, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+platformer_enemy_v_behavior::
+    .db PF_ENEMY_V_X, PF_ENEMY_V_START_Y, 0, 0, 0
+    .dw platformer_enemy_v_program
+    .db 0
 platformer_enemy_v2_entity::
-    FWK_ENTITY_RENDER_PREFIX platformer_enemy_pixels, 8, PF_ENEMY_V_START_Y, PF_ENEMY_WIDTH_BYTES, PF_ENEMY_HEIGHT_PX, PF_ENEMY_V_START_Y+PF_ENEMY_HEIGHT_PX, platformer_enemy_v2_background, PF_ENEMY_WIDTH_BYTES*PF_ENEMY_HEIGHT_PX, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+    FWK_ENTITY_RENDER_PREFIX platformer_enemy_pixels, PF_ENEMY_V2_X, PF_ENEMY_V_START_Y, PF_ENEMY_WIDTH_BYTES, PF_ENEMY_HEIGHT_PX, PF_ENEMY_V_START_Y+PF_ENEMY_HEIGHT_PX, platformer_enemy_v2_background, PF_ENEMY_WIDTH_BYTES*PF_ENEMY_HEIGHT_PX, FWK_ENTITY_RENDER_VISIBLE, 0, 0
+platformer_enemy_v2_behavior::
+    .db PF_ENEMY_V2_X, PF_ENEMY_V_START_Y, 0, 0, 0
+    .dw platformer_enemy_v_program
+    .db 0
 platformer_door_entity::
     FWK_ENTITY_RENDER_PREFIX platformer_door_pixels, 72, 160, 4, 8, 168, platformer_door_background, 32, 0, 0, 0
 
@@ -78,7 +87,7 @@ platformer_life_str:: .ascii "LIFE: 10"
     .db 0
 platformer_life_digits_str: .ascii "10"
     .db 0
-platformer_win_str:: .ascii "GOTO TO THE DOOR"
+platformer_win_str:: .ascii "GO TO THE DOOR"
     .db 0
 
 _platformer_hud_column: .db 0
@@ -235,12 +244,6 @@ _pf_reset_game:
     ld (_platformer_enemy_contacts_next), a
     ld a, #PF_LIVES_INITIAL
     ld (platformer_lives), a
-    ld a, #1
-    ld (_platformer_enemy_h_dx), a
-    ld (_platformer_enemy_v_dy), a
-    ld (_platformer_enemy_v2_dy), a
-    xor a
-    ld (_platformer_enemy_phase), a
     ld a, #PF_PLAYER_WIDTH_BYTES
     ld (platformer_player+PF_PLAYER_WIDTH), a
     ld a, #PF_PLAYER_HEIGHT_PX
@@ -383,11 +386,14 @@ _pf_update_player:
     ld (platformer_last_collision), a
     ret
 
-;; Enemy movement writes directly to the standard render prefix. Both patrols
-;; stay inside fixed, documented limits and mark only their own entity dirty.
-;; Update the horizontal patrolling enemy and mark it dirty when it moves.
+;; Enemy movement is synchronized with the standard render prefix. All three
+;; patrols stay inside fixed, documented limits and mark only their own entity
+;; dirty when their logical position changes.
+;; Alternate the two slower enemies. Their behavior programs own direction and
+;; duration; this scheduler preserves the original one-update-every-two-frames
+;; cadence. The left vertical enemy is updated separately every frame.
 ;; Routine: _pf_update_enemies
-;; Description: Updates the horizontal patrolling enemy and marks it dirty when moving.
+;; Description: Dispatches one of the two half-rate behavior enemies.
 ;; Input:  none
 ;; Output: enemy state updated
 _pf_update_enemies:
@@ -395,40 +401,9 @@ _pf_update_enemies:
     xor #1
     ld (_platformer_enemy_phase), a
     jr z, _pf_update_enemy_v
-    ld a, (_platformer_enemy_h_dx)
-    bit 7, a
-    jr nz, _pf_enemy_h_left
-    ld hl, #platformer_enemy_h_entity+FWK_ENTITY_RENDER_X
-    inc (hl)
-    ld a, (hl)
-    cp #PF_ENEMY_H_MAX_X
-    jr c, _pf_enemy_h_dirty
-    ld (hl), #PF_ENEMY_H_MAX_X
-    ld a, #-1
-    ld (_platformer_enemy_h_dx), a
-    jr _pf_enemy_h_dirty
-_pf_enemy_h_left:
-    ld hl, #platformer_enemy_h_entity+FWK_ENTITY_RENDER_X
-    dec (hl)
-    ld a, (hl)
-    cp #PF_ENEMY_H_MIN_X
-    jr nc, _pf_enemy_h_dirty
-    ld (hl), #PF_ENEMY_H_MIN_X
-    ld a, #1
-    ld (_platformer_enemy_h_dx), a
-_pf_enemy_h_dirty:
-    ld a, (_pf_anim_frame)
-    or a
-    jr z, _pf_enemy_h_sprite0
-    ld hl, #platformer_enemy_pixels2
-    jr _pf_enemy_h_sprite_set
-_pf_enemy_h_sprite0:
-    ld hl, #platformer_enemy_pixels
-_pf_enemy_h_sprite_set:
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_SPRITE_DATA), hl
-    ld hl, #platformer_enemy_h_entity+FWK_ENTITY_RENDER_FLAGS
-    set 1, (hl)
-    ret
+    ld ix, #platformer_enemy_h_behavior
+    ld iy, #platformer_enemy_h_entity
+    jp _pf_update_behavior_enemy
 
 ;; Update the first vertical patrolling enemy.
 ;; Routine: _pf_update_enemy_v
@@ -436,138 +411,112 @@ _pf_enemy_h_sprite_set:
 ;; Input:  none
 ;; Output: enemy state updated
 _pf_update_enemy_v:
-    ld a, (_platformer_enemy_v_dy)
-    bit 7, a
-    jr nz, _pf_enemy_v_up
-    ld hl, #platformer_enemy_v_entity+FWK_ENTITY_RENDER_Y
-    ld a, (hl)
-    add a, #2
-    ld (hl), a
-    cp #PF_ENEMY_V_MAX_Y
-    jr c, _pf_enemy_v_store
-    ld (hl), #PF_ENEMY_V_MAX_Y
-    ld a, #-1
-    ld (_platformer_enemy_v_dy), a
-    jr _pf_enemy_v_store
-_pf_enemy_v_up:
-    ld hl, #platformer_enemy_v_entity+FWK_ENTITY_RENDER_Y
-    ld a, (hl)
-    sub #2
-    ld (hl), a
-    cp #PF_ENEMY_V_MIN_Y
-    jr nc, _pf_enemy_v_store
-    ld (hl), #PF_ENEMY_V_MIN_Y
-    ld a, #1
-    ld (_platformer_enemy_v_dy), a
-_pf_enemy_v_store:
-    ld a, (platformer_enemy_v_entity+FWK_ENTITY_RENDER_Y)
-    add a, #PF_ENEMY_HEIGHT_PX
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_SORT_Y), a
-    xor a
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_SORT_Y+1), a
-    ld a, (_pf_anim_frame)
-    or a
-    jr z, _pf_enemy_v_sprite0
-    ld hl, #platformer_enemy_pixels2
-    jr _pf_enemy_v_sprite_set
-_pf_enemy_v_sprite0:
-    ld hl, #platformer_enemy_pixels
-_pf_enemy_v_sprite_set:
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_SPRITE_DATA), hl
-    ld hl, #platformer_enemy_v_entity+FWK_ENTITY_RENDER_FLAGS
-    set 1, (hl)
-    ret
+    ld ix, #platformer_enemy_v_behavior
+    ld iy, #platformer_enemy_v_entity
+    jp _pf_update_behavior_enemy
 
-;; Second vertical enemy on the left side.
-;; Update the second vertical enemy used to measure frame cost.
+;; Second vertical enemy on the left side, controlled by the behavior VM.
 ;; Routine: _pf_update_enemy_v2
-;; Description: Updates the second vertical enemy.
+;; Description: Runs its behavior, applies compact motion and syncs render state.
 ;; Input:  none
 ;; Output: enemy state updated
 _pf_update_enemy_v2:
-    ld a, (_platformer_enemy_v2_dy)
-    bit 7, a
-    jr nz, _pf_enemy_v2_up
-    ld hl, #platformer_enemy_v2_entity+FWK_ENTITY_RENDER_Y
-    ld a, (hl)
-    add a, #2
-    ld (hl), a
-    cp #PF_ENEMY_V_MAX_Y
-    jr c, _pf_enemy_v2_store
-    ld (hl), #PF_ENEMY_V_MAX_Y
-    ld a, #-1
-    ld (_platformer_enemy_v2_dy), a
-    jr _pf_enemy_v2_store
-_pf_enemy_v2_up:
-    ld hl, #platformer_enemy_v2_entity+FWK_ENTITY_RENDER_Y
-    ld a, (hl)
-    sub #2
-    ld (hl), a
-    cp #PF_ENEMY_V_MIN_Y
-    jr nc, _pf_enemy_v2_store
-    ld (hl), #PF_ENEMY_V_MIN_Y
-    ld a, #1
-    ld (_platformer_enemy_v2_dy), a
-_pf_enemy_v2_store:
-    ld a, (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_Y)
-    add a, #PF_ENEMY_HEIGHT_PX
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_SORT_Y), a
+    ld ix, #platformer_enemy_v2_behavior
+    ld iy, #platformer_enemy_v2_entity
+    ;; Fall through to the shared behavior/motion/render adapter.
+
+;; In: IX = 8-byte behavior record, IY = entity render prefix.
+;; Runs behavior and motion, then falls through to the shared synchronizer.
+_pf_update_behavior_enemy:
+    call fwk_behavior_run
+    push iy
+    push ix
+    pop iy
+    call fwk_motion_u8_step
+    pop iy
+
+;; In: IX = behavior record, IY = entity render prefix.
+;; Copies compact coordinates and animation into the renderer.
+_pf_sync_behavior_enemy:
+    ld a, FWK_BEHAVIOR_MOTION_X(ix)
+    ld b, a
+    ld a, FWK_ENTITY_RENDER_X(iy)
+    cp b
+    jr nz, _pf_behavior_enemy_changed
+    ld a, FWK_BEHAVIOR_MOTION_Y(ix)
+    ld b, a
+    ld a, FWK_ENTITY_RENDER_Y(iy)
+    cp b
+    jr z, _pf_behavior_enemy_store
+_pf_behavior_enemy_changed:
+    set 1, FWK_ENTITY_RENDER_FLAGS(iy)
+_pf_behavior_enemy_store:
+    ld a, FWK_BEHAVIOR_MOTION_X(ix)
+    ld FWK_ENTITY_RENDER_X(iy), a
     xor a
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_SORT_Y+1), a
+    ld FWK_ENTITY_RENDER_X+1(iy), a
+    ld a, FWK_BEHAVIOR_MOTION_Y(ix)
+    ld FWK_ENTITY_RENDER_Y(iy), a
+    ld b, a
+    xor a
+    ld FWK_ENTITY_RENDER_Y+1(iy), a
+    ld a, b
+    add a, #PF_ENEMY_HEIGHT_PX
+    ld FWK_ENTITY_RENDER_SORT_Y(iy), a
+    xor a
+    ld FWK_ENTITY_RENDER_SORT_Y+1(iy), a
     ld a, (_pf_anim_frame)
     or a
-    jr z, _pf_enemy_v2_sprite0
+    jr z, _pf_behavior_enemy_sprite0
     ld hl, #platformer_enemy_pixels2
-    jr _pf_enemy_v2_sprite_set
-_pf_enemy_v2_sprite0:
+    jr _pf_behavior_enemy_sprite_set
+_pf_behavior_enemy_sprite0:
     ld hl, #platformer_enemy_pixels
-_pf_enemy_v2_sprite_set:
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_SPRITE_DATA), hl
-    ld hl, #platformer_enemy_v2_entity+FWK_ENTITY_RENDER_FLAGS
-    set 1, (hl)
+_pf_behavior_enemy_sprite_set:
+    ld FWK_ENTITY_RENDER_SPRITE_DATA(iy), l
+    ld FWK_ENTITY_RENDER_SPRITE_DATA+1(iy), h
     ret
 
 ;; Routine: _pf_reset_enemies
-;; Description: Resets both vertical enemies to their initial positions.
+;; Description: Resets all behavior records and synchronizes their entities.
 ;; Input:  none
 ;; Output: enemy state reset
 _pf_reset_enemies:
-    ld a, #PF_ENEMY_H_START_X
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_X), a
     xor a
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_X+1), a
-    ld a, #PF_ENEMY_H_Y
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_Y), a
+    ld (_platformer_enemy_phase), a
+    ld ix, #platformer_enemy_h_behavior
+    ld b, #PF_ENEMY_H_START_X
+    ld c, #PF_ENEMY_H_Y
+    ld hl, #platformer_enemy_h_program
+    call _pf_reset_behavior_enemy
+    ld iy, #platformer_enemy_h_entity
+    call _pf_sync_behavior_enemy
+    ld ix, #platformer_enemy_v_behavior
+    ld b, #PF_ENEMY_V_X
+    ld c, #PF_ENEMY_V_START_Y
+    ld hl, #platformer_enemy_v_program
+    call _pf_reset_behavior_enemy
+    ld iy, #platformer_enemy_v_entity
+    call _pf_sync_behavior_enemy
+    ld ix, #platformer_enemy_v2_behavior
+    ld b, #PF_ENEMY_V2_X
+    ld c, #PF_ENEMY_V_START_Y
+    ld hl, #platformer_enemy_v_program
+    call _pf_reset_behavior_enemy
+    ld iy, #platformer_enemy_v2_entity
+    jp _pf_sync_behavior_enemy
+
+;; In: IX = behavior record, B/C = initial X/Y, HL = program.
+_pf_reset_behavior_enemy:
+    ld FWK_BEHAVIOR_MOTION_X(ix), b
+    ld FWK_BEHAVIOR_MOTION_Y(ix), c
     xor a
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_Y+1), a
-    ld a, #PF_ENEMY_H_Y+PF_ENEMY_HEIGHT_PX
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_SORT_Y), a
-    xor a
-    ld (platformer_enemy_h_entity+FWK_ENTITY_RENDER_SORT_Y+1), a
-    ld a, #PF_ENEMY_V_X
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_X), a
-    xor a
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_X+1), a
-    ld a, #PF_ENEMY_V_START_Y
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_Y), a
-    xor a
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_Y+1), a
-    ld a, #PF_ENEMY_V_START_Y+PF_ENEMY_HEIGHT_PX
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_SORT_Y), a
-    xor a
-    ld (platformer_enemy_v_entity+FWK_ENTITY_RENDER_SORT_Y+1), a
-    ld a, #8
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_X), a
-    xor a
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_X+1), a
-    ld a, #PF_ENEMY_V_START_Y
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_Y), a
-    xor a
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_Y+1), a
-    ld a, #PF_ENEMY_V_START_Y+PF_ENEMY_HEIGHT_PX
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_SORT_Y), a
-    xor a
-    ld (platformer_enemy_v2_entity+FWK_ENTITY_RENDER_SORT_Y+1), a
+    ld FWK_BEHAVIOR_MOTION_VX(ix), a
+    ld FWK_BEHAVIOR_MOTION_VY(ix), a
+    ld FWK_BEHAVIOR_MOTION_FLAGS(ix), a
+    ld FWK_BEHAVIOR_TIMER(ix), a
+    ld FWK_BEHAVIOR_PROGRAM(ix), l
+    ld FWK_BEHAVIOR_PROGRAM+1(ix), h
     ret
 
 ;; Copy the compact physics state into the render prefix. Only a real position
@@ -630,6 +579,9 @@ _pf_reset_render_loop:
     ld FWK_ENTITY_RENDER_FLAGS(iy), #FWK_ENTITY_RENDER_VISIBLE
     pop hl
     djnz _pf_reset_render_loop
+    ;; The exit is unlocked only after collecting all four coins.
+    ld hl, #platformer_door_entity+FWK_ENTITY_RENDER_FLAGS
+    ld (hl), #0
     ret
 
 ;; One life is lost on the transition from separated to overlapping for each
@@ -764,15 +716,18 @@ _pf_check_enemy_contacts:
 _pf_enemy_h_separate:
     ld ix, #platformer_enemy_v_entity
     call _pf_player_touches_enemy
-    jr nc, _pf_enemy_v_separate
+    jr nc, _pf_enemy_v2_check
     ld hl, #_platformer_enemy_contacts_next
     set 1, (hl)
     ld a, (platformer_enemy_contacts)
     bit 1, a
     call z, _pf_lose_life
+_pf_enemy_v2_check:
     ld ix, #platformer_enemy_v2_entity
     call _pf_player_touches_enemy
     jr nc, _pf_enemy_v_separate
+    ld hl, #_platformer_enemy_contacts_next
+    set 2, (hl)
     ld a, (platformer_enemy_contacts)
     bit 2, a
     call z, _pf_lose_life
@@ -979,20 +934,20 @@ _pf_update_hud_score:
     jr nz, _pf_update_hud_score_normal
     ;; All coins collected: replace "COINS: 4/4" with "ALL COINS".
     ld b, #1
-    ld c, #2
+    ld c, #0
 _pf_all_coins_restore_row1:
     call _pf_restore_hud_cell
     inc c
     ld a, c
-    cp #7
+    cp #5
     jr c, _pf_all_coins_restore_row1
     ld b, #2
-    ld c, #2
+    ld c, #0
 _pf_all_coins_restore_row2:
     call _pf_restore_hud_cell
     inc c
     ld a, c
-    cp #7
+    cp #5
     jr c, _pf_all_coins_restore_row2
     ld hl, #PF_HUD_COINS_Y
     ld c, #PF_HUD_COINS_X
@@ -1001,10 +956,10 @@ _pf_all_coins_restore_row2:
     jp fwk_text_draw
 _pf_update_hud_score_normal:
     ld b, #1
-    ld c, #5
+    ld c, #3
     call _pf_restore_hud_cell
     ld b, #2
-    ld c, #5
+    ld c, #3
     call _pf_restore_hud_cell
     ld a, (platformer_score)
     add a, #48
@@ -1017,7 +972,9 @@ _pf_update_hud_score_normal:
     ret
 
 _pf_draw_win_status:
-    ld a, #8
+    ;; Clear the complete previous hint (x=24..57), not only the shorter
+    ;; replacement text. At four bytes per tile this is columns 6..14.
+    ld a, #6
     ld (_platformer_hud_column), a
 _pf_hud_restore_status:
     ld b, #1
@@ -1031,7 +988,7 @@ _pf_hud_restore_status:
     ld a, (_platformer_hud_column)
     inc a
     ld (_platformer_hud_column), a
-    cp #16
+    cp #15
     jr c, _pf_hud_restore_status
     ld hl, #PF_HUD_HINT_Y
     ld c, #PF_HUD_HINT_X
@@ -1041,10 +998,10 @@ _pf_hud_restore_status:
 
 _pf_update_hud_lives:
     ld b, #1
-    ld c, #11
+    ld c, #19
     call _pf_restore_hud_cell
     ld b, #2
-    ld c, #11
+    ld c, #19
     call _pf_restore_hud_cell
     ld a, (platformer_lives)
     cp #10

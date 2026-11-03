@@ -18,7 +18,7 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
   `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
   y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 102 pruebas; el manual cubre todos los ejemplos y
+- La suite host contiene 106 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
@@ -903,3 +903,111 @@ Cambios aún sin commit/push.
   `X` en bytes; se corrige a `72` (144 píxeles) para que quede dentro de la
   pantalla y se pueda capturar/dibujar.
 - [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
+
+## Corrección: contactos, puerta y HUD de `platformer`
+
+- [x] El tercer enemigo vertical se comprueba aunque no haya contacto con el
+  primero y conserva su bit de contacto, por lo que un solapamiento sostenido
+  no descuenta una vida en cada frame.
+- [x] El reinicio de flags vuelve a ocultar explícitamente la puerta; recoger
+  las cuatro monedas sigue siendo la única ruta que activa `VISIBLE|DIRTY`.
+- [x] La restauración del HUD usa las columnas correspondientes a los bytes
+  reales del texto: 3 para puntuación, 19 para vidas, 0--4 para el contador y
+  6--14 para la ayuda/estado. El mensaje se corrigió a `GO TO THE DOOR`.
+- [x] `make test` pasó 103 pruebas host, construyó los 22 ejemplos y regeneró
+  el DSK común. El nuevo smoke focalizado comprobó contacto/latch del tercer
+  enemigo, puerta oculta y actualización de VRAM del HUD en CPC 6128 y 464.
+- [x] Manual y guía HTML/PDF, checksums y capturas reproducibles de terminal
+  regenerados.
+
+Límite detectado entonces: el recorrido completo de `platformer` en CPC 6128
+fallaba en la comprobación de movimiento existente: después de 20 frames de
+vídeo programados hacia la derecha obtenía `x=30`, fuera del intervalo esperado.
+La fase 0 confirmó que la prueba suponía incorrectamente una iteración de juego
+por frame de vídeo y sustituyó esa temporización por objetivos observables; no
+era una colisión en X=30. Hardware real continúa sin validar.
+
+## Corrección e integración: módulo `behavior`
+
+- [x] `FWK_BEHAVIOR_WAIT` termina ahora su tabla con
+  `FWK_BEHAVIOR_CONDITIONS_END`; mientras el temporizador estaba activo, la
+  macro anterior podía interpretar la acción siguiente como otra condición.
+- [x] `behavior.inc` exporta la API pública usada por sus macros y la suite
+  host comprueba el terminador.
+- [x] Los tres enemigos de `platformer` sustituyeron sus rebotes manuales por
+  registros de ocho bytes y un adaptador compartido
+  `fwk_behavior_run -> fwk_motion_u8_step -> entity_render`.
+- [x] El horizontal conserva X=32..54 con esperas de 19/23 ticks. Los dos
+  verticales comparten el mismo programa inmutable de 49 ticks para Y=56..152,
+  pero cada uno mantiene cursor y temporizador propios. El planificador conserva
+  la frecuencia previa: horizontal/vertical derecho alternos y vertical
+  izquierdo cada frame.
+- [x] Se eliminaron `_platformer_enemy_h_dx`, `_platformer_enemy_v_dy`, las
+  ramas manuales de incremento, clamp y cambio de sentido, el sincronizador
+  exclusivo del tercer enemigo y el programa vertical duplicado.
+- [x] El smoke focalizado observa avance y sincronización de los tres registros
+  `behavior`, además de contacto/latch, puerta y HUD, en CPC 6128. CPC 464 no
+  se repitió porque esta migración no cambia contratos dependientes del modelo;
+  la versión inmediatamente anterior del módulo sí había pasado allí.
+- [x] Tras migrar los tres enemigos, `make test` pasó 106 pruebas host,
+  construyó los 22 ejemplos y regeneró el DSK común. Manual y guía HTML/PDF,
+  checksums y capturas reproducibles se regeneraron; el smoke focalizado final
+  pasó en CPC 6128. CPC 464 conserva la validación de la versión inmediatamente
+  anterior, no de esta migración completa.
+
+Límites: `behavior` no ejecuta movimiento, colisión ni render por sí mismo; el
+consumidor debe componer esos pasos. Su presupuesto de 16 despachos usa estado
+global, por lo que no es reentrante ni debe invocarse de forma anidada o desde
+una interrupción. El recorrido jugable completo quedó recuperado en la fase 0;
+el hardware real sigue sin verificar.
+
+## Política de validación simplificada
+
+- [x] `make check` ejecuta las 106 pruebas host y compila únicamente los
+  consumidores indicados por `CHECK_EXAMPLES` (`platformer` por defecto), sin
+  reconstruir el DSK común.
+- [x] Durante una implementación se usan pruebas focalizadas o `make check`.
+  `make test` se ejecuta una sola vez al cerrar la tarea o antes del commit.
+- [x] Un cambio Z80 ejecutado recibe normalmente un smoke focalizado en CPC
+  6128. CPC 464 se reserva para cambios de modelo, memoria/bancos y releases.
+- [x] Manual/PDF, informe, DSK global y matrices amplias se regeneran una sola
+  vez al final cuando correspondan, no después de cada ajuste intermedio.
+- [x] Flujo comprobado: `make check CHECK_EXAMPLES=platformer` pasó las 106
+  pruebas host en 0,893 s y confirmó que `platformer` estaba actualizado sin
+  reconstruir el DSK. Al cerrar la migración de los tres enemigos se ejecutó
+  una sola vez `make test` como regresión completa final.
+
+## Migración ECS 2.0: estado operativo
+
+Plan aprobado el 2026-11-03 y persistido en
+`docs/ecs-2.0-master-plan.md`. Ese documento contiene las decisiones de
+arquitectura, SDK, toolchain, proyectos, paquetes, ciclo de vida, prioridades,
+fases y puertas de avance.
+
+### Fase activa: 0, punto de restauración
+
+- [x] Plan maestro consolidado y aprobado.
+- [x] `main` identificado en `8eacbb816d61499952e94b049dacd6dade4697bd`
+  antes del commit de cierre; el árbol contiene la integración todavía no
+  confirmada de contactos/puerta/HUD, corrección de `behavior`, migración de los
+  tres enemigos y política de validación simplificada.
+- [x] Fallo reproducido: X=30 tras 20 frames de vídeo. No era una colisión; el
+  smoke suponía incorrectamente que cada frame de vídeo completaba una
+  iteración de juego.
+- [x] El recorrido mantiene las direcciones hasta alcanzar posiciones
+  observables del jugador, con timeout y comprobación de intervalo. También se
+  actualizaron sus referencias obsoletas a la tabla de transparencia y a la
+  antigua posición del HUD.
+- [x] Validación focalizada CPC 6128: recorrido completo de `platformer`, smoke
+  de behavior/contactos/puerta/HUD y `board` correctos.
+- [x] Regresión global final del 2026-11-03: 106 pruebas host en 0,888 s, 22
+  ejemplos construidos y DSK común de 24 entradas (22 programas y dos payloads
+  de `diskload`). Manual y guía HTML/PDF con checksums regenerados.
+- [x] El recorrido completo se repitió correctamente en CPC 6128 después de
+  reconstruir el DSK. CPC 464 y hardware real no se ejecutaron en este cierre.
+- [ ] Crear y publicar el commit de referencia de la versión no ECS en `main`.
+- [ ] Crear y publicar `ecs-v2` desde ese commit.
+
+Condición de salida G0: `main` limpio, sincronizado y reproducible, SHA y CI
+registrados, sin un fallo de recorrido ambiguo. La siguiente fase será redactar
+y revisar el ABI ECS; no se implementará el manager antes de esa revisión.

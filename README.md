@@ -28,8 +28,10 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
+make check      # pruebas host + platformer; bucle rápido durante desarrollo
+make check CHECK_EXAMPLES="spritemask renderorder"  # solo ejemplos afectados
 make examples   # veintidós ejemplos, incluidas dos escenas jugables
-make test       # pruebas host + construcción completa
+make test       # pruebas host + construcción y DSK completos; cierre/commit
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
 make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
@@ -41,7 +43,11 @@ reúnen en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliar
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
 separado, `make` deja sus BIN, CDT y DSK también en la carpeta del ejemplo.
-`make test` no lanza emulador; el smoke opcional sí y usa ese único DSK para
+`make check` ejecuta toda la suite host, que es rápida, pero solo compila los
+ejemplos indicados en `CHECK_EXAMPLES` y no reconstruye el DSK común. Es el
+objetivo normal mientras se desarrolla. `make test` se reserva para el cierre
+de una tarea o el commit y se ejecuta una sola vez. Ninguno lanza el emulador;
+el smoke opcional sí y usa el DSK común para
 comprobar estado de RAM, no solo que el proceso arranque.
 Las versiones publicadas ofrecen los `.bin`, los CDT declarados y el DSK común
 en un ZIP con checksum; el estado y la siguiente acción se mantienen en

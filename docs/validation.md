@@ -180,13 +180,14 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   dirty y orden por Y. La ruta prepara validación, solapamientos y orden antes
   del VSYNC, y mantiene consecutivas las escrituras de restauración/dibujo. Al
   cambiar el marcador, restauró dos celdas para el dígito o el tramo de estado;
-  el smoke comparó el glifo final con la composición exacta de fuente, máscara y tileset,
-  y comprobó que las celdas de las monedas inferiores quedaron limpias. La ruta
-  CPC 6128 produjo capturas PNG reales de la escena inicial y la victoria.
-  El diagnóstico posterior observó 20 actualizaciones durante 19 frames de tecla
-  programados con tres monedas visibles; el frame de activación explica la
-  actualización adicional. La misma prueba previa a la optimización solo había
-  observado 10. No se midieron ciclos ni hardware real.
+  el smoke comparó el glifo intermedio con la fuente vigente y comprobó que las
+  celdas de las monedas inferiores quedaron limpias. La ruta CPC 6128 produjo
+  capturas PNG reales de la escena inicial y la victoria. La regresión de fase
+  0 dejó de identificar frames de vídeo con iteraciones de juego: mantiene cada
+  dirección hasta alcanzar una posición observable, con timeout y comprobación
+  posterior del intervalo. Así conserva el recorrido funcional aunque el coste
+  de render haga que una iteración abarque más de un frame. No se midieron
+  ciclos ni hardware real.
 
 La entrada está automatizada para `vertical` y `platformer`. `tilecoll`, `tilerender` y
 `spriteclip` se inspeccionaron visualmente en emulador y su salida resultó
@@ -223,8 +224,24 @@ No verificado.
 
 ## Comandos reproducibles
 
+La validación cotidiana se divide en niveles para evitar repetir la matriz
+completa tras cada edición:
+
+1. Durante el cambio: `make check CHECK_EXAMPLES="..."`, o el módulo unittest
+   concreto mientras se depura.
+2. Si cambió código Z80 ejecutado: un smoke del ejemplo afectado en CPC 6128.
+   CPC 464 solo es obligatorio para cambios dependientes del modelo, bancos,
+   memoria o para una release.
+3. Al cerrar una tarea o antes del commit: una única ejecución de `make test`.
+4. PDF, informe de tamaños, DSK global y matriz amplia de emulador se regeneran
+   una vez al final, y no después de cada ajuste intermedio.
+
+`make check` ejecuta todas las pruebas host, pero compila solo los nombres de
+`CHECK_EXAMPLES` y no reemplaza el DSK común.
+
 ```sh
 cd /config/workspace/GlasnostFWK
+make check CHECK_EXAMPLES=platformer
 make test
 make report
 python3 tests/emulator_smoke.py

@@ -7,6 +7,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EntityRenderTests(unittest.TestCase):
+    @staticmethod
+    def _routine(source: str, start: str, end: str) -> str:
+        return source.split(start, 1)[1].split(end, 1)[0]
+
     def test_replaces_sprite_batch(self):
         self.assertFalse((ROOT / "src/video/sprite_batch.s").exists())
         self.assertFalse((ROOT / "src/video/sprite_batch.inc").exists())
@@ -23,6 +27,35 @@ class EntityRenderTests(unittest.TestCase):
         self.assertIn("call fwk_entity_render_draw_dirty", source)
         self.assertNotIn("call fwk_sprite_capture", source)
         self.assertNotIn("call fwk_sprite_restore", source)
+
+    def test_platformer_contact_door_and_hud_regressions(self):
+        source = (ROOT / "examples/platformer/main.s").read_text()
+
+        reset = self._routine(source, "_pf_reset_render_flags:", ";; One life")
+        self.assertIn(
+            "ld hl, #platformer_door_entity+FWK_ENTITY_RENDER_FLAGS\n"
+            "    ld (hl), #0",
+            reset,
+        )
+
+        contacts = self._routine(
+            source, "_pf_check_enemy_contacts:", "_pf_lose_life:"
+        )
+        self.assertIn("jr nc, _pf_enemy_v2_check", contacts)
+        self.assertIn("_pf_enemy_v2_check:", contacts)
+        self.assertIn("set 2, (hl)", contacts)
+
+        score = self._routine(source, "_pf_update_hud_score:", "_pf_draw_win_status:")
+        self.assertIn("ld c, #0", score)
+        self.assertIn("cp #5", score)
+        self.assertEqual(score.count("ld c, #3"), 2)
+
+        status = self._routine(source, "_pf_draw_win_status:", "_pf_update_hud_lives:")
+        self.assertIn("ld a, #6", status)
+        self.assertIn("cp #15", status)
+
+        lives = self._routine(source, "_pf_update_hud_lives:", ";; Routine: _pf_restore_hud_cell")
+        self.assertEqual(lives.count("ld c, #19"), 2)
 
     def test_confirmed_layout_and_flags_are_exported(self):
         include = (ROOT / "src/video/entity_render.inc").read_text()

@@ -37,6 +37,7 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `src/resources/zx7b.s` | `DeckTower/src/sys/compression.s`; `cpct_zx7b_decrunch_s_asm` de CPCTelera Next | Adaptador sin buffer ni packs concretos; compresor y descompresor proceden de la dependencia fijada | GPL-3.0; enlace con LGPL-3.0 |
 | `tools/gen_resources.py` | tabla fija de `DeckTower/src/sys/loader.s` | Sustitución nueva mediante manifiesto validado | GPL-3.0 |
 | `src/extensions/motion_u8.*` | movimiento de coordenadas enteras observado en model01 | Perfil compacto nuevo; no pretende ser física completa | GPL-3.0 |
+| `src/extensions/behavior.*` | intérprete de comportamiento de `model01` | Reimplementación como programa enlazado sobre un registro compacto de ocho bytes; sin componentes, entidades ni reglas del juego original | GPL-3.0 |
 | `src/extensions/physics_platform.*` | `model01/src/sys/physics.s`, `config.h.s` y `entity.h.s` | Reimplementación separada del núcleo portable: velocidad byte, gravedad, caída máxima, dimensiones, límites y suelo; sin mapa ni entidad de model01 | GPL-3.0 |
 | `src/extensions/tilemap.*` | `model01/src/sys/map.s` y configuración de mapa | Consulta row-major reimplementada con descriptor y tabla de tipos del consumidor; sin salas, render, entidades ni escritura | GPL-3.0 |
 | `src/extensions/platform_tilemap.*` | `model01/src/sys/physics.s`, `map.s` y tipos de tile | Contrato nuevo compuesto sobre `physics_platform`; sólido por ejes y plataforma de una dirección solo para suelo, sin reglas ni componentes de model01 | GPL-3.0 |

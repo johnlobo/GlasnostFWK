@@ -148,9 +148,11 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
     <h3>3.1 Construir todo</h3>
     <pre><code>cd /config/workspace/GlasnostFWK
 make generate
+make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. <code>make examples</code> construye los veintidós consumidores y crea un único disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> ejecuta la suite host y vuelve a construirlos, pero no abre el emulador.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="spritemask renderorder"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintidós consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
     <p>Cada ejemplo es un punto de entrada independiente, igual que un proyecto CPCtelera. Desde su propia carpeta:</p>
@@ -412,8 +414,26 @@ window_buffer: .ds 20 * 16</code></pre>
 
     <article class="api" data-module="extensions/behavior.s">
       <h3>6.9b Comportamiento — <code>extensions/behavior.s</code></h3>
-      <p>Intérprete de bytecode para comportamientos. <code>fwk_behavior_run</code> recibe en <code>IX</code> un registro de 8 bytes: los 5 de movimiento compacto seguidos de puntero de programa y temporizador. Ejecuta acciones no bloqueantes y bloqueantes con tabla de condiciones.</p>
-      <p>Acciones: <code>fwk_behavior_action_idle</code>, <code>fwk_behavior_action_wait</code>, <code>fwk_behavior_action_set_timer</code>, <code>fwk_behavior_action_set_vx</code>, <code>fwk_behavior_action_set_vy</code>, <code>fwk_behavior_action_drive_vx</code>. Condiciones: <code>fwk_behavior_cond_true</code>, <code>fwk_behavior_cond_timeout</code>, además de funciones personalizadas.</p>
+      <p>Intérprete de programas enlazados para comportamientos. <code>fwk_behavior_run</code> recibe en <code>IX</code> un registro de 8 bytes: <code>x,y,vx,vy,flags</code>, puntero de programa de 16 bits y temporizador. Las cinco primeras posiciones son directamente compatibles con <code>motion_u8</code>; el intérprete cambia estado y velocidades, pero el consumidor debe llamar después a <code>fwk_motion_u8_step</code> y sincronizar su entidad de render.</p>
+      <pre><code>enemy_state:
+    .db 8, 56, 0, 0, 0
+    .dw enemy_program
+    .db 0
+
+enemy_program:
+    FWK_BEHAVIOR_SET_VY 2
+    FWK_BEHAVIOR_WAIT 49, enemy_turn
+enemy_turn:
+    FWK_BEHAVIOR_SET_VY -2
+    FWK_BEHAVIOR_WAIT 49, enemy_program
+
+    ld ix, #enemy_state
+    call fwk_behavior_run
+    ld iy, #enemy_state
+    call fwk_motion_u8_step</code></pre>
+      <p><code>FWK_BEHAVIOR_WAIT</code> fija el temporizador, ejecuta una espera no bloqueante y termina internamente su tabla de condiciones. Los ticks válidos son 1–255; cero desborda a 255 en el primer decremento. Las acciones instantáneas pueden encadenarse en el mismo frame, con un máximo de 16 despachos. Las tablas escritas a mano deben acabar con <code>FWK_BEHAVIOR_CONDITIONS_END</code>.</p>
+      <p>Acciones: <code>idle</code>, <code>wait</code>, <code>set_timer</code>, <code>set_vx</code>, <code>set_vy</code> y <code>drive_vx</code>. Condiciones incorporadas: <code>true</code> y <code>timeout</code>. Una condición personalizada recibe <code>IX=registro</code>, debe preservar <code>IX/DE</code> y devuelve verdadero con Z activo. Puntero de programa cero desactiva el comportamiento. El contador de despachos es global: no llame al intérprete de forma anidada ni desde una interrupción.</p>
+      <p>Los tres enemigos de <code>platformer</code> son el ejemplo ejecutable y comparten un único adaptador <code>behavior → motion_u8 → entity_render</code>. El horizontal usa tramos temporizados para recorrer X=32..54; los dos verticales reutilizan el mismo programa inmutable de 49 ticks para Y=56..152, pero cada registro conserva su propio cursor y temporizador. El planificador llama al horizontal y al vertical derecho en frames alternos para mantener su velocidad anterior, mientras el vertical izquierdo se actualiza en cada frame. La sincronización copia X/Y y <code>sort_y</code> al prefijo y marca <code>DIRTY</code> solo cuando cambia la posición.</p>
     </article>
 
     <article class="api" data-module="extensions/physics_platform.s">
@@ -561,7 +581,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="collision"><td><code>collision</code></td><td>Prueba AABB entre dos entidades con offsets de campo configurables.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: física y tilemap con render selectivo de jugador/monedas, HUD y victoria.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>
@@ -569,8 +589,9 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
       </tbody>
     </table>
     <p><code>vertical</code> y <code>platformer</code> son las dos escenas jugables. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
-    <p><code>platformer</code> integra <code>entity_render</code> con un array de punteros a jugador y monedas. La física conserva su subregistro compacto de siete bytes detrás del prefijo de 25 bytes; al mover el jugador o retirar una moneda activa <code>DIRTY</code>, restaura en orden inverso y redibuja por <code>sort_y</code>. Su HUD ocupa una línea negra interior: la actualización normal restaura solo las dos celdas del dígito y la victoria reemplaza únicamente el tramo de estado.</p>
-    <p>El ejemplo ejecuta lógica y <code>prepare_dirty</code> antes del VSYNC; después mantiene consecutivos <code>restore_dirty</code> y <code>draw_dirty</code>, y actualiza el HUD cuando las entidades ya vuelven a estar visibles. Con tres monedas todavía visibles, el diagnóstico automatizado observó 20 actualizaciones durante 19 frames de tecla programados —el frame de activación añade una actualización—, compatible con una iteración por frame. <code>PF_SPEED=2</code> vuelve a expresar la velocidad original. Esto sigue siendo una observación en emulador, no una medición de ciclos ni validación de hardware.</p>
+    <p><code>platformer</code> integra <code>entity_render</code> con un array de punteros a jugador, monedas, tres enemigos y la puerta. La física conserva su subregistro compacto de siete bytes detrás del prefijo de 25 bytes; al mover el jugador o retirar una moneda activa <code>DIRTY</code>, restaura en orden inverso y redibuja por <code>sort_y</code>. Cada enemigo descuenta una vida solo al comenzar un contacto, no durante todos los frames del solapamiento. La puerta permanece oculta hasta reunir las cuatro monedas y permite pasar al segundo nivel.</p>
+    <p>El HUD ocupa una línea negra interior. Antes de redibujar texto restaura las celdas de tile que realmente cubre cada tramo: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para sustituir el contador completo y columnas 6–14 para retirar todo el mensaje de ayuda. Así no quedan restos de glifos anteriores ni se altera el borde.</p>
+    <p>El ejemplo ejecuta lógica y <code>prepare_dirty</code> antes del VSYNC; después mantiene consecutivos <code>restore_dirty</code> y <code>draw_dirty</code>, y actualiza el HUD cuando las entidades ya vuelven a estar visibles. El recorrido automatizado conduce los tramos horizontales hasta posiciones observables del jugador: el coste de render puede hacer que una iteración de juego abarque más de un frame de vídeo, por lo que no equipara un número fijo de frames del emulador con actualizaciones de lógica. El recorrido completo, el smoke focalizado de comportamiento/contactos/puerta/HUD y la prueba de texto pasan en CPC 6128. La versión focalizada inmediatamente anterior pasó también en CPC 464; la fase 0 no repite ese modelo porque no cambia contratos de memoria o modelo. No existe validación en hardware real.</p>
     <p>La guía específica <a href="platform-game-guide.html">Crear un juego de plataformas con GlasnostFWK</a> reconstruye el proyecto paso a paso, documenta la separación entre manifiesto, constantes, assets y ciclo de juego, e incluye capturas reproducibles de construcción, inicio y victoria.</p>
   </section>
 
@@ -632,7 +653,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
       <li>Si aparece un módulo seleccionable, marque su sección con <code>data-module="ruta/del/modulo.s"</code>.</li>
       <li>Si aparece un ejemplo, añada una fila con <code>data-example="nombre"</code>.</li>
       <li>Regenerar PDF y checksum: <code>make manual</code>.</li>
-      <li>Ejecute <code>make test</code> y registre el resultado real en <code>PROJECT_STATUS.md</code>.</li>
+      <li>Durante la edición use <code>make check CHECK_EXAMPLES="ejemplos afectados"</code>. Al cerrar el cambio, ejecute <code>make test</code> una sola vez y registre el resultado real en <code>PROJECT_STATUS.md</code>.</li>
     </ol>
     <pre><code>python3 -m venv .venv-docs
 .venv-docs/bin/python -m pip install -r docs/requirements-manual.txt

@@ -74,19 +74,18 @@ platformer_view2::
     .db PLATFORMER_MAP2_WIDTH, PLATFORMER_MAP2_HEIGHT, 4
 
 platformer_enemy_h_program::
-    FWK_BEHAVIOR_DRIVE_VX 1, 1
-    FWK_BEHAVIOR_CONDITIONS_END
+    FWK_BEHAVIOR_SET_VX 1
+    FWK_BEHAVIOR_WAIT PF_ENEMY_H_INITIAL_TICKS, platformer_enemy_h_left
+platformer_enemy_h_left::
+    FWK_BEHAVIOR_SET_VX -1
+    FWK_BEHAVIOR_WAIT PF_ENEMY_H_LEG_TICKS, platformer_enemy_h_right
+platformer_enemy_h_right::
+    FWK_BEHAVIOR_SET_VX 1
+    FWK_BEHAVIOR_WAIT PF_ENEMY_H_LEG_TICKS, platformer_enemy_h_left
 
 platformer_enemy_v_program::
     FWK_BEHAVIOR_SET_VY 2
-    FWK_BEHAVIOR_WAIT 30, platformer_enemy_v_turn
+    FWK_BEHAVIOR_WAIT PF_ENEMY_V_LEG_TICKS, platformer_enemy_v_turn
 platformer_enemy_v_turn::
     FWK_BEHAVIOR_SET_VY -2
-    FWK_BEHAVIOR_WAIT 30, platformer_enemy_v_program
-
-platformer_enemy_v2_program::
-    FWK_BEHAVIOR_SET_VY 2
-    FWK_BEHAVIOR_WAIT 20, platformer_enemy_v2_turn
-platformer_enemy_v2_turn::
-    FWK_BEHAVIOR_SET_VY -2
-    FWK_BEHAVIOR_WAIT 20, platformer_enemy_v2_program
+    FWK_BEHAVIOR_WAIT PF_ENEMY_V_LEG_TICKS, platformer_enemy_v_program

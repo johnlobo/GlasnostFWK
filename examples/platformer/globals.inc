@@ -8,6 +8,7 @@
 .globl fwk_entity_render_restore_dirty, fwk_entity_render_draw_dirty
 .globl fwk_text_init, fwk_text_set_color, fwk_text_draw
 .globl fwk_zx7b_unpack
+.globl fwk_behavior_run, fwk_motion_u8_step
 .globl cpct_setPalette_asm
 .globl cpct_setPALColour_asm
 .globl platformer_map, platformer_map_packed
@@ -17,4 +18,5 @@
 .globl platformer_palette
 .globl platformer_player_pixels, platformer_player_pixels2, platformer_coin_pixels, platformer_enemy_pixels, platformer_enemy_pixels2, platformer_door_pixels
 .globl platformer_bindings, platformer_coins
+.globl platformer_enemy_h_program, platformer_enemy_v_program
 .globl platformer_status, platformer_score, platformer_player

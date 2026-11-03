@@ -1,7 +1,8 @@
 PYTHON ?= python3
 EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer
+CHECK_EXAMPLES ?= platformer
 
-.PHONY: all examples test generate report manual platform-guide release clean
+.PHONY: all examples check test generate report manual platform-guide release clean
 
 all: test
 
@@ -13,6 +14,11 @@ generate:
 examples: generate
 	$(PYTHON) tools/build_examples.py $(EXAMPLES)
 	$(PYTHON) tools/build_test_disk.py $(EXAMPLES)
+
+check: generate
+	@test -n "$(strip $(CHECK_EXAMPLES))" || (echo "CHECK_EXAMPLES is required" >&2; exit 2)
+	$(PYTHON) -m unittest discover -s tests -q
+	$(PYTHON) tools/build_examples.py $(CHECK_EXAMPLES)
 
 report: examples
 	$(PYTHON) tools/build_report.py
