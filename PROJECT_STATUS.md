@@ -1180,8 +1180,8 @@ No se ejecutó CPC 464 porque el sistema está restringido a coordenadas `u8`
 ya validadas en CPC 6128 y no cambia el modelo de bancos, CRTC ni loader. No
 existe validación en hardware real.
 
-### Siguiente fase: 4, sistemas ECS de behavior y movimiento
+### Siguiente fase: 5, ejemplo `platformer_ecs`
 
-Definir primero sus contratos y campos de catálogo, implementar ambos sistemas
-sobre `fwk_ecs_system_run` y alcanzar el hito funcional `2.0.0-alpha.1` sin
-alterar todavía el `platformer` de referencia.
+Crear `examples/platformer_ecs` con entidades y sistemas ECS, sin alterar el
+`platformer` de referencia. La migración debe reutilizar los contratos de
+behavior y movimiento ya cerrados y dejar preparada la paridad posterior.
