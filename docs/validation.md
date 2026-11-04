@@ -37,6 +37,24 @@ Fecha: 2026-11-04 UTC.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
 
+## Validación de sistemas ECS de behavior y movimiento, fase 4
+
+- El catálogo ECS define `MOTION` (`velocity_x`, `velocity_y`, `flags`) y
+  `BEHAVIOR` (`program`, `timer`, `state`), con dependencia `BEHAVIOR -> MOTION`.
+- `core/ecs_behavior.s` adapta el intérprete de behavior existente mediante un
+  registro temporal privado; `core/ecs_motion.s` integra velocidades `u8` con
+  saturación al perfil de vídeo y marca render dirty.
+- `ecsmanager` selecciona ambos componentes, ejecuta cuatro ciclos behavior ->
+  movimiento y comprueba la posición y velocidad generadas.
+- Se corrigió el staging para invalidar objetos CPCTelera cuando cambia el
+  perfil ECS; sin esta invalidación el build podía enlazar un layout anterior.
+- Smoke focalizado correcto en AmSpiriT-Lite 1.15.3/CPC 6128 después de
+  reconstruir los objetos con el perfil de 32 bytes.
+- `make test` pasó 125 pruebas host, construyó 23 BIN y 22 CDT y generó el DSK
+  común con 25 entradas. `ecsmanager` ocupa 1.973 bytes enlazados.
+
+El commit/push y la CI remota se registrarán al publicar el cierre.
+
 ## Validación del generador de perfiles ECS, fase 3 (2026-11-04)
 
 - `make test` pasó 123 pruebas host, construyó 23 BIN y 22 CDT y generó el DSK

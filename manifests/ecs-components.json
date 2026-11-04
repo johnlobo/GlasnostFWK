@@ -19,6 +19,26 @@
         {"name": "sort_offset_y", "type": "i16"},
         {"name": "previous_sort_y", "type": "i16"}
       ]
+    },
+    {
+      "name": "motion",
+      "required": false,
+      "dependencies": [],
+      "fields": [
+        {"name": "velocity_x", "type": "velocity_x"},
+        {"name": "velocity_y", "type": "velocity_y"},
+        {"name": "flags", "type": "u8"}
+      ]
+    },
+    {
+      "name": "behavior",
+      "required": false,
+      "dependencies": ["motion"],
+      "fields": [
+        {"name": "program", "type": "pointer"},
+        {"name": "timer", "type": "u8"},
+        {"name": "state", "type": "u8"}
+      ]
     }
   ]
 }

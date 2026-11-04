@@ -9,7 +9,7 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | board | 2945 | 81 | 3026 |
 | collision | 1346 | 35 | 1381 |
 | diskload | 495 | 49 | 544 |
-| ecsmanager | 1366 | 117 | 1483 |
+| ecsmanager | 1791 | 182 | 1973 |
 | experimental | 1073 | 9 | 1082 |
 | gravity | 1098 | 21 | 1119 |
 | minimal | 974 | 24 | 998 |

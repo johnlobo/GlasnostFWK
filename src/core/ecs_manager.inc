@@ -49,3 +49,4 @@ name::
 .globl fwk_ecs_entity_mark_destroy, fwk_ecs_entity_disable
 .globl fwk_ecs_entity_enable, fwk_ecs_entity_set_mask
 .globl fwk_ecs_system_run, fwk_ecs_manager_collect
+.globl fwk_ecs_system_behavior, fwk_ecs_system_motion_u8

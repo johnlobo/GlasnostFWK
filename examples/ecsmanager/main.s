@@ -1,6 +1,7 @@
 .module example_ecsmanager
 .include "ecs_profile.inc"
 .include "core/ecs_manager.inc"
+.include "extensions/behavior.inc"
 
 .globl fwk_project_init, fwk_system_wait_frame
 
@@ -10,14 +11,24 @@ ECSMANAGER_CAPACITY = 3
 ecsmanager_storage:: .ds ECS_ENTITY_SIZE * ECSMANAGER_CAPACITY
 FWK_ECS_MANAGER_DESCRIPTOR ecsmanager_manager, ecsmanager_storage, ECSMANAGER_CAPACITY
 
+ecsmanager_behavior_right:
+    FWK_BEHAVIOR_SET_VX 1
+    FWK_BEHAVIOR_WAIT 8, ecsmanager_behavior_left
+ecsmanager_behavior_left:
+    FWK_BEHAVIOR_SET_VX 0xFF
+    FWK_BEHAVIOR_WAIT 8, ecsmanager_behavior_right
+
 ecsmanager_template:
-    .dw ECS_C_RENDER | ECS_C_TEST
+    .dw ECS_C_RENDER | ECS_C_MOTION | ECS_C_BEHAVIOR | ECS_C_TEST
     .db ECS_STATUS_ACTIVE, 7, 10, 20, 2, 8
     .dw 0
     .db 0, 0, 0, 0
     .dw 0, 0
     .db ECS_RENDER_VISIBLE, 0, 0
     .dw 0, 0
+    .db 0, 0, 0
+    .dw ecsmanager_behavior_right
+    .db 0, 0
 
 ecsmanager_status:: .db 0
 ecsmanager_callbacks:: .db 0
@@ -80,6 +91,27 @@ _main::
     ld a, FWK_ECS_MANAGER_ACTIVE_COUNT(ix)
     cp #3
     ld a, #0xE1
+    jp nz, _ecsmanager_fail
+
+    ;; Behavior and motion are explicit ECS systems. Four ticks move the
+    ;; first entity from X=10 to X=14 and leave its generated fields coherent.
+    ld b, #4
+_ecsmanager_system_loop:
+    push bc
+    call fwk_ecs_system_behavior
+    call _ecsmanager_expect_ok
+    call fwk_ecs_system_motion_u8
+    call _ecsmanager_expect_ok
+    pop bc
+    djnz _ecsmanager_system_loop
+    ld iy, (ecsmanager_first_slot)
+    ld a, ECS_E_X(iy)
+    cp #14
+    ld a, #0xED
+    jp nz, _ecsmanager_fail
+    ld a, ECS_E_MOTION_VELOCITY_X(iy)
+    cp #1
+    ld a, #0xEE
     jp nz, _ecsmanager_fail
 
     ;; Full manager must be reported without altering counts.
@@ -157,7 +189,7 @@ _main::
     cp #FWK_ECS_ERR_MASK
     jp nz, _ecsmanager_fail
     ld a, ECS_E_COMPONENTS(iy)
-    cp #(ECS_C_RENDER | ECS_C_TEST)
+    cp #(ECS_C_RENDER | ECS_C_MOTION | ECS_C_BEHAVIOR | ECS_C_TEST)
     ld a, #0xE7
     jp nz, _ecsmanager_fail
 

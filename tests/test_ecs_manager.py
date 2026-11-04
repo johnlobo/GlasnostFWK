@@ -1,6 +1,9 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
+
+from tools.build_examples import _invalidate_objects_if_profile_changed
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,8 +43,12 @@ class ECSManagerTests(unittest.TestCase):
         )
         main = (ROOT / "examples/ecsmanager/main.s").read_text()
         self.assertIn("core/ecs_manager.s", manifest["modules"])
-        self.assertEqual(manifest["ecs"]["components"], ["test"])
+        self.assertEqual(manifest["ecs"]["components"], ["behavior", "test"])
+        self.assertIn("core/ecs_behavior.s", manifest["modules"])
+        self.assertIn("core/ecs_motion.s", manifest["modules"])
         self.assertIn("call fwk_ecs_system_run", main)
+        self.assertIn("call fwk_ecs_system_behavior", main)
+        self.assertIn("call fwk_ecs_system_motion_u8", main)
         self.assertIn("call fwk_ecs_manager_collect", main)
         self.assertIn("ld a, #0x5A", main)
 
@@ -53,10 +60,31 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ECS_ENTITY_SIZE", source)
         self.assertIn("ECS_C_RENDER_BIT", profile)
 
+    def test_behavior_and_motion_system_contract_is_exported(self):
+        manager_include = (ROOT / "src/core/ecs_manager.inc").read_text()
+        behavior = (ROOT / "src/core/ecs_behavior.s").read_text()
+        motion = (ROOT / "src/core/ecs_motion.s").read_text()
+        self.assertIn("fwk_ecs_system_behavior", manager_include)
+        self.assertIn("fwk_ecs_system_motion_u8", manager_include)
+        self.assertIn("fwk_ecs_system_run", behavior)
+        self.assertIn("fwk_ecs_system_run", motion)
+        self.assertIn("ECS_E_BEHAVIOR_PROGRAM", behavior)
+        self.assertIn("ECS_E_MOTION_VELOCITY_X", motion)
+
     def test_ci_verifies_the_new_bin_and_cdt(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         artifact_section = workflow.split("Verify distributable artifacts", 1)[1]
         self.assertGreaterEqual(artifact_section.count("ecsmanager"), 2)
+
+    def test_profile_change_invalidates_staged_objects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            (target / "obj" / "core").mkdir(parents=True)
+            (target / "obj" / "core" / "ecs_manager.rel").write_bytes(b"old")
+            _invalidate_objects_if_profile_changed(target, False)
+            self.assertTrue((target / "obj").exists())
+            _invalidate_objects_if_profile_changed(target, True)
+            self.assertFalse((target / "obj").exists())
 
 
 if __name__ == "__main__":

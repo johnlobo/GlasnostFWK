@@ -105,8 +105,10 @@ de render se instala de forma aislada con
 La migración de la rama `ecs-v2` se gobierna por
 [`docs/ecs-2.0-master-plan.md`](docs/ecs-2.0-master-plan.md). La propuesta de
 ABI aprobada en G1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md). La
-fase 2 implementa el entity manager y la fase 3 genera su layout desde el
-manifiesto. Los sistemas ECS se incorporarán en las fases siguientes.
+fase 2 implementa el entity manager, la fase 3 genera su layout desde el
+manifiesto y la fase 4 incorpora los sistemas ECS iniciales de behavior y
+movimiento. La paridad completa con el juego de referencia queda para fases
+posteriores.
 
 ## Mapa del repositorio
 

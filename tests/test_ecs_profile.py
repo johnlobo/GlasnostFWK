@@ -38,19 +38,15 @@ class ECSProfileTests(unittest.TestCase):
         self.assertEqual(committed.read_text(encoding="ascii"), generated.include)
         self.assertEqual(
             [item["name"] for item in generated.preview["components"]],
-            ["render", "test"],
+            ["render", "motion", "behavior", "test"],
         )
-        self.assertEqual(generated.preview["entity_size"], 25)
-        self.assertIn("ECS_COMPONENT_VALID_MASK = 0x0003", generated.include)
+        self.assertEqual(generated.preview["entity_size"], 32)
+        self.assertIn("ECS_COMPONENT_VALID_MASK = 0x000F", generated.include)
 
     def test_dependencies_are_inserted_before_the_requester(self):
         data = manifest(
             components=["actor"],
             custom_components=[
-                {"name": "motion", "dependencies": [], "fields": [
-                    {"name": "vx", "type": "velocity_x"},
-                    {"name": "vy", "type": "velocity_y"},
-                ]},
                 {"name": "actor", "dependencies": ["motion"], "fields": []},
             ],
         )
@@ -62,8 +58,8 @@ class ECSProfileTests(unittest.TestCase):
         self.assertEqual(generated.preview["inserted_dependencies"], ["motion"])
         self.assertIn("ECS_C_MOTION_BIT = 1", generated.include)
         self.assertIn("ECS_C_ACTOR_BIT = 2", generated.include)
-        self.assertIn("ECS_E_MOTION_VX = 25", generated.include)
-        self.assertIn("ECS_E_MOTION_VY = 26", generated.include)
+        self.assertIn("ECS_E_MOTION_VELOCITY_X = 25", generated.include)
+        self.assertIn("ECS_E_MOTION_VELOCITY_Y = 26", generated.include)
 
         explicitly_requested = copy.deepcopy(data)
         explicitly_requested["ecs"]["components"] = ["actor", "motion"]
@@ -75,14 +71,7 @@ class ECSProfileTests(unittest.TestCase):
             x_format="u16",
             y_format="fixed_8_8",
             components=["motion"],
-            custom_components=[{
-                "name": "motion",
-                "dependencies": [],
-                "fields": [
-                    {"name": "vx", "type": "velocity_x"},
-                    {"name": "vy", "type": "velocity_y"},
-                ],
-            }],
+            custom_components=[],
             fields=[{"name": "health", "type": "u8"}],
         )
         generated = generate(data, PORTFOLIO, STANDARD)
@@ -91,8 +80,8 @@ class ECSProfileTests(unittest.TestCase):
         self.assertIn("ECS_E_Y = 6", generated.include)
         self.assertIn("ECS_E_WIDTH = 8", generated.include)
         fields = {item["symbol"]: item for item in generated.preview["fields"]}
-        self.assertEqual(fields["ECS_E_MOTION_VX"]["type"], "i16")
-        self.assertEqual(fields["ECS_E_MOTION_VY"]["type"], "fixed_8_8")
+        self.assertEqual(fields["ECS_E_MOTION_VELOCITY_X"]["type"], "i16")
+        self.assertEqual(fields["ECS_E_MOTION_VELOCITY_Y"]["type"], "fixed_8_8")
         self.assertEqual(fields["ECS_E_HEALTH"]["offset"] + 1, generated.preview["entity_size"])
 
     def test_rejects_unknown_duplicate_cyclic_and_excess_components(self):

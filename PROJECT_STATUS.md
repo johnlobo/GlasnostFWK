@@ -1144,12 +1144,35 @@ reentrante, no puede anidarse ni llamarse desde IRQ.
   23 BIN, 22 CDT, DSK común y artefacto temporal
   `glasnostfwk-6127a2ba...` (ID `13308661285`) verificados.
 
-El catálogo incorporado contiene por ahora solo `render`, el único componente
-con layout normativo aprobado. Los componentes de `behavior` y movimiento se
-definirán en la fase 4; anticipar ahora sus campos convertiría una hipótesis en
-ABI. No se ejecutó CPC 464 porque el generador es host-side y el include
-resultante conserva el layout ejecutado en fase 2. No existe validación en
-hardware real.
+El cierre de la fase 3 dejó únicamente `render` en el catálogo. La fase 4 añade
+ahora `motion` y `behavior` con contratos explícitos; física, colisión y
+animación siguen fuera del portfolio normativo. No se ejecutó CPC 464 porque
+esta fase solo usa coordenadas `u8` ya validadas en CPC 6128. No existe
+validación en hardware real.
+
+### Fase 4: completada localmente, sistemas ECS de behavior y movimiento
+
+- [x] El catálogo añade `MOTION` (`velocity_x`, `velocity_y`, `flags`) y
+  `BEHAVIOR` (`program`, `timer`, `state`), con dependencia `BEHAVIOR -> MOTION`.
+- [x] `src/core/ecs_behavior.s` adapta el intérprete de behavior existente a
+  los campos de entidad mediante un registro temporal privado y copia de vuelta
+  velocidades, programa y temporizador.
+- [x] `src/core/ecs_motion.s` implementa movimiento `u8` con saturación contra
+  `ECS_X_MAX/ECS_Y_MAX` y activa `ECS_RENDER_DIRTY` al cambiar X/Y.
+- [x] `ecsmanager` selecciona ambos componentes, ejecuta cuatro ciclos
+  behavior -> movimiento y verifica posición y velocidad resultantes.
+- [x] El staging invalida los objetos CPCTelera cuando cambia el include
+  generado; así no se enlaza un layout ECS anterior por reutilización de `.rel`.
+- [x] Validación focalizada: 21 pruebas host del área ECS/manual, build de
+  `ecsmanager` y smoke correcto en AmSpiriT-Lite 1.15.3/CPC 6128.
+- [x] Regresión global: 125 pruebas host, 23 BIN, 22 CDT y DSK común de 25
+  entradas. `ecsmanager` enlaza 1.973 bytes (1.791 código, 182 datos).
+- [x] Manual HTML/PDF, checksum, ABI, README, informe de tamaños y validación
+  actualizados.
+- [ ] Falta publicar el commit de cierre y verificar la CI remota.
+
+La fase no se marcará completamente cerrada hasta publicar el commit y verificar
+la CI remota.
 
 ### Siguiente fase: 4, sistemas ECS de behavior y movimiento
 

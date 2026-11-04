@@ -313,6 +313,14 @@ def generate(manifest: dict, portfolio: dict, video_profile: dict | None = None)
         upper = name.upper()
         lines.extend((f"ECS_C_{upper}_BIT = {bit}", f"ECS_C_{upper} = 0x{1 << bit:04X}"))
     lines.extend((f"ECS_COMPONENT_VALID_MASK = 0x{valid_mask:04X}", ""))
+    if video_profile is not None:
+        lines.extend(
+            (
+                f"ECS_X_MAX = {video_profile['width_bytes'] - 1}",
+                f"ECS_Y_MAX = {video_profile['height_lines'] - 1}",
+                "",
+            )
+        )
     for symbol, field_offset, _, _ in offsets:
         lines.append(f"ECS_E_{symbol} = {field_offset}")
     lines.append(f"ECS_ENTITY_SIZE = {offset}")

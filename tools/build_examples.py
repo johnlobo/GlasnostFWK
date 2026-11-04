@@ -119,6 +119,17 @@ def _copy_if_changed(source: Path, destination: Path) -> bool:
     return True
 
 
+def _invalidate_objects_if_profile_changed(target: Path, changed: bool) -> None:
+    """Invalidate CPCTelera objects when the generated ABI include changes.
+
+    CPCTelera's generated make rules do not track ``src/ecs_profile.inc`` as an
+    explicit dependency of every framework object that includes it. Leaving
+    those objects in place can therefore link a previous entity layout.
+    """
+    if changed:
+        shutil.rmtree(target / "obj", ignore_errors=True)
+
+
 def select_project_config(example: Path, default: Path) -> Path:
     """Return the CPCTelera build config used as this example's base.
 
@@ -310,6 +321,23 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
     modules = effective_modules(name, manifest["modules"], capabilities)
+    if {"core/ecs_motion.s", "core/ecs_behavior.s"} & set(modules):
+        ecs_config = manifest.get("ecs")
+        if not isinstance(ecs_config, dict) or ecs_config.get("x_format") != "u8" or ecs_config.get("y_format") != "u8":
+            raise ValueError(
+                f"{name}: ECS behavior/motion systems currently require x_format=u8 and y_format=u8"
+            )
+        selected_components = ecs_config.get("components", [])
+        if not isinstance(selected_components, list):
+            raise ValueError(f"{name}: ecs components must be a list")
+        if (
+            "core/ecs_motion.s" in modules
+            and "motion" not in selected_components
+            and "behavior" not in selected_components
+        ):
+            raise ValueError(f"{name}: core/ecs_motion.s requires the motion component")
+        if "core/ecs_behavior.s" in modules and "behavior" not in selected_components:
+            raise ValueError(f"{name}: core/ecs_behavior.s requires the behavior component")
     target = ROOT / ".build" / name
     target.mkdir(parents=True, exist_ok=True)
     (target / "src").mkdir(parents=True, exist_ok=True)
@@ -356,7 +384,10 @@ def stage_example(name: str, cpct_path: Path) -> Path:
                 f"examples/{name}/example.json --output "
                 f"examples/{name}/generated/ecs_profile.inc"
             )
-        _write_if_changed(target / "src" / "ecs_profile.inc", generated_profile.include, encoding="ascii")
+        profile_changed = _write_if_changed(
+            target / "src" / "ecs_profile.inc", generated_profile.include, encoding="ascii"
+        )
+        _invalidate_objects_if_profile_changed(target, profile_changed)
         staged_managed.add(Path("src") / "ecs_profile.inc")
     import_assets.ensure(example, cpct_path)
     assets = stage_assets(example, target)

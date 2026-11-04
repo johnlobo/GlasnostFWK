@@ -337,13 +337,27 @@ tratarlo como error de capacidad, no como una situación normal.
 
 ## 10. Behavior, animación y datos compartidos
 
+- `MOTION` almacena por entidad `velocity_x`, `velocity_y` y `flags`. Las
+  velocidades usan el formato con signo compatible con X/Y; en la fase 4 el
+  sistema ejecutable exige coordenadas `u8`, satura en `0..ECS_X_MAX` y
+  `0..ECS_Y_MAX` y activa `ECS_RENDER_DIRTY` si cambia una coordenada.
 - `BEHAVIOR` almacena por entidad cursor, timer y estado; el programa es un
-  puntero inmutable y puede compartirse.
+  puntero inmutable y puede compartirse. En la fase 4 depende de `MOTION` y el
+  adaptador copia de vuelta las velocidades, el puntero y el temporizador tras
+  ejecutar el intérprete de bytecode; `state` queda disponible para el juego.
+- `fwk_ecs_system_behavior` y `fwk_ecs_system_motion_u8` reciben
+  `IX=manager`, filtran mediante `fwk_ecs_system_run` y respetan su orden,
+  lock y convención de carry. El orden recomendado por frame es behavior y
+  después movimiento.
 - `ANIMATION` almacena por entidad frame y timer; su descriptor y frames son
   inmutables y compartibles.
 - Los sistemas procesan una entidad compatible una vez por llamada explícita.
 - Ningún sistema conserva un puntero implícito a «la entidad actual» después
   de retornar.
+
+La fase 4 no convierte todavía `MOTION` en física: no hay gravedad, colisión,
+fricción ni integración 8.8. Tampoco migra el `platformer`; esas capacidades
+pertenecen a fases posteriores.
 
 ## 11. Código generado y compatibilidad
 

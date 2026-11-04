@@ -257,15 +257,15 @@ def run_example(
             manager = symbol(noi, "ecsmanager_manager")
             storage = symbol(noi, "ecsmanager_storage")
             descriptor = ram(manager, 8)
-            if descriptor[2:] != bytes((3, 25, 3, 3, 0, 1)):
+            if descriptor[2:] != bytes((3, 32, 3, 3, 0, 1)):
                 raise RuntimeError(
                     "ECS manager capacity/stride/counts/lock/flags differ: "
                     f"{descriptor.hex()}"
                 )
-            slots = ram(storage, 75)
-            if any(slots[offset : offset + 3] != b"\x03\x00\x01" for offset in (0, 25, 50)):
+            slots = ram(storage, 96)
+            if any(slots[offset : offset + 3] != b"\x0F\x00\x01" for offset in (0, 32, 64)):
                 raise RuntimeError("ECS stable slots do not retain mask/status")
-            if not slots[25 + 18] & 0x02:
+            if not slots[32 + 18] & 0x02:
                 raise RuntimeError("ECS enable did not mark render dirty")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
