@@ -1185,3 +1185,29 @@ existe validación en hardware real.
 Crear `examples/platformer_ecs` con entidades y sistemas ECS, sin alterar el
 `platformer` de referencia. La migración debe reutilizar los contratos de
 behavior y movimiento ya cerrados y dejar preparada la paridad posterior.
+
+### Fase 5: completada, integración vertical `platformer_ecs`
+
+- [x] Se añadió `examples/platformer_ecs` como consumidor aislado del ABI ECS
+  2.0, sin modificar `examples/platformer`.
+- [x] El manifiesto selecciona manager, behavior, motion, vídeo y sprites;
+  `ecs_profile.inc` contiene `render`, `motion` y `behavior` en una entidad de
+  32 bytes.
+- [x] La escena crea un player ECS y dos enemigos ECS. Los enemigos usan los
+  programas behavior compartidos y `fwk_ecs_system_motion_u8`; el player usa
+  render/motion sin behavior.
+- [x] Se añadió un puente temporal de render que adapta el puntero de sprite y
+  las coordenadas ECS a `fwk_sprite_draw`. Recorre todos los slots
+  renderizables; no pretende ser todavía el renderer ECS dirty/multi-manager de
+  la fase 9.
+- [x] El nuevo BIN usa el nombre AMSDOS `PECS.BIN` para evitar la colisión de
+  ocho caracteres con `PLATFORM.BIN`, y se incluye en el DSK común y la CI.
+- [x] Smoke focalizado correcto en AmSpiriT-Lite 1.15.3/CPC 6128:
+  `platformer_ecs` crea los tres slots, mantiene al player inmóvil y observa
+  movimiento de los enemigos.
+- [x] Manual HTML/PDF y checksum regenerados; el plan y la validación reflejan
+  la integración y sus límites.
+
+La siguiente fase es la 6: añadir input de entidades, física principal y
+tilemaps ECS. No se debe presentar `platformer_ecs` como paridad completa con
+la referencia hasta cerrar las fases 6-10.

@@ -267,6 +267,31 @@ def run_example(
                 raise RuntimeError("ECS stable slots do not retain mask/status")
             if not slots[32 + 18] & 0x02:
                 raise RuntimeError("ECS enable did not mark render dirty")
+        if name == "platformer_ecs":
+            status = symbol(noi, "platformer_ecs_status")
+            player = symbol(noi, "platformer_ecs_player")
+            enemy_h = symbol(noi, "platformer_ecs_enemy_h")
+            enemy_v = symbol(noi, "platformer_ecs_enemy_v")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS platformer initialization")
+            storage = symbol(noi, "platformer_ecs_storage")
+            if ram(storage, 3) != b"\x03\x00\x01":
+                raise RuntimeError("ECS platformer player slot is not active with render/motion")
+            enemy_h_slot = int.from_bytes(ram(enemy_h, 2), "little")
+            enemy_v_slot = int.from_bytes(ram(enemy_v, 2), "little")
+            initial_h = ram(enemy_h_slot + 4, 2)
+            initial_v = ram(enemy_v_slot + 4, 2)
+            wait_for(
+                lambda: ram(enemy_h_slot + 4, 1)[0] != initial_h[0]
+                or ram(enemy_v_slot + 4, 1)[0] != initial_v[0],
+                5,
+                "ECS platformer behavior/motion",
+            )
+            player_slot = int.from_bytes(ram(player, 2), "little")
+            if ram(player_slot + 4, 2) != bytes((10, 80)):
+                raise RuntimeError(
+                    "ECS platformer idle player moved unexpectedly: "
+                    f"{ram(player_slot + 4, 2).hex()}"
+                )
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")
@@ -833,7 +858,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "platformer_ecs"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

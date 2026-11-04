@@ -1,0 +1,20 @@
+{
+  "name": "platformer_ecs",
+  "amsdos_name": "PECS",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/ecs_manager.s",
+    "core/ecs_behavior.s",
+    "core/ecs_motion.s",
+    "extensions/behavior.s",
+    "video/video.s",
+    "video/sprite.s"
+  ],
+  "game_sources": ["main.s"],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": ["behavior"]
+  }
+}

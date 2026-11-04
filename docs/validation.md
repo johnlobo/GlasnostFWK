@@ -334,3 +334,16 @@ python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical
 ```
+
+### Fase 5 ECS: plataforma aislada
+
+- `make test` pasó 125 pruebas host, construyó 24 BIN, 23 CDT y el DSK común
+  con 26 entradas.
+- `python3 tests/emulator_smoke.py platformer_ecs` pasó en AmSpiriT-Lite
+  1.15.3/CPC 6128: el player y dos enemigos se crean como slots ECS, los
+  sistemas behavior/motion avanzan los enemigos y el puente de render dibuja
+  los sprites.
+- La prueba es una integración vertical limitada: el ejemplo todavía
+  renderiza todos los slots mediante un puente temporal, y no tiene input,
+  física, tilemap ni colisiones ECS. Esas capacidades pertenecen a las fases
+  6-9.
