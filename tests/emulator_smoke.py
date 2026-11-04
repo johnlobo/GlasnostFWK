@@ -274,8 +274,8 @@ def run_example(
             enemy_v = symbol(noi, "platformer_ecs_enemy_v")
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS platformer initialization")
             storage = symbol(noi, "platformer_ecs_storage")
-            if ram(storage, 3) != b"\x03\x00\x01":
-                raise RuntimeError("ECS platformer player slot is not active with render/motion")
+            if ram(storage, 3) != b"\x1B\x00\x01":
+                raise RuntimeError("ECS platformer player slot is not active with input/platform components")
             enemy_h_slot = int.from_bytes(ram(enemy_h, 2), "little")
             enemy_v_slot = int.from_bytes(ram(enemy_v, 2), "little")
             initial_h = ram(enemy_h_slot + 4, 2)
@@ -287,11 +287,11 @@ def run_example(
                 "ECS platformer behavior/motion",
             )
             player_slot = int.from_bytes(ram(player, 2), "little")
-            if ram(player_slot + 4, 2) != bytes((10, 80)):
-                raise RuntimeError(
-                    "ECS platformer idle player moved unexpectedly: "
-                    f"{ram(player_slot + 4, 2).hex()}"
-                )
+            landed = ram(player_slot + 4, 2)
+            if landed[0] != 10 or landed[1] > 192:
+                raise RuntimeError(f"ECS platformer initial physics state is invalid: {landed.hex()}")
+            if ram(standard_screen_address(0, 192), 1) == b"\x00":
+                raise RuntimeError("ECS platformer tilemap floor was not rendered")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")

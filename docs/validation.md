@@ -347,3 +347,17 @@ python3 tests/emulator_smoke.py --model 464 vertical
   renderiza todos los slots mediante un puente temporal, y no tiene input,
   física, tilemap ni colisiones ECS. Esas capacidades pertenecen a las fases
   6-9.
+
+### Fase 6 ECS: adaptadores iniciales
+
+- El perfil `platformer_ecs` incorpora `INPUT` y `PLATFORM`, con dependencias
+  explícitas hacia `MOTION`.
+- `core/ecs_input.s` adapta el estado global de entrada a velocidad y salto;
+  `core/ecs_platform.s` adapta el estado de entidad al contrato legacy de
+  física de plataforma y resolución contra tilemap.
+- `platformer_ecs` renderiza un tilemap 20x25 mediante las primitivas
+  CPCTelera Next y compila los dos nuevos sistemas dentro del BIN común.
+- `make test` pasó 125 pruebas host, construyó 24 BIN, 23 CDT y el DSK común.
+- Smoke CPC 6128 correcto para ejecución, avance de frames y render del suelo.
+  La entrada interactiva aún no queda validada de forma aislada en este smoke;
+  se mantiene como pendiente de la continuación de la fase 6.

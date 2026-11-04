@@ -285,7 +285,7 @@ loop:
   "fields": [{"name": "health", "type": "u8"}]
 }</code></pre>
     <p><code>RENDER</code> se inserta siempre como bit 0. El resto conserva el orden solicitado, insertando antes sus dependencias. Se rechazan nombres o tipos inválidos, duplicados, ciclos, componentes desconocidos, más de 16 componentes, coordenadas incapaces de representar el perfil de vídeo y entidades mayores de 128 bytes.</p>
-    <div class="box warning"><strong>Portfolio actual.</strong> <code>RENDER</code>, <code>MOTION</code> y <code>BEHAVIOR</code> tienen layout normativo en la fase 4. Física, colisión y animación todavía no se han añadido al portfolio porque sus campos y sistemas corresponden a fases posteriores.</div>
+    <div class="box warning"><strong>Portfolio actual.</strong> <code>RENDER</code>, <code>MOTION</code>, <code>BEHAVIOR</code>, <code>INPUT</code> y <code>PLATFORM</code> tienen layout normativo en la fase 6. Colisión entre entidades, animación y renderer ECS dirty/multi-manager siguen siendo fases posteriores.</div>
     <p>El include versionado está en <code>generated/ecs_profile.inc</code>. Antes de cambiarlo puede obtener una vista JSON de componentes resueltos, dependencias insertadas, campos, offsets, tamaños y diferencias sin escribir:</p>
     <pre><code>python3 tools/gen_ecs_profile.py examples/ecsmanager/example.json \
   --output examples/ecsmanager/generated/ecs_profile.inc --preview
@@ -304,6 +304,14 @@ FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
     <article class="api" data-module="core/ecs_motion.s">
       <h4>Sistema ECS de movimiento — <code>core/ecs_motion.s</code></h4>
       <p>Requiere el componente <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_motion_u8</code> recibe <code>IX=manager</code>, suma las velocidades con signo a X/Y, satura contra <code>ECS_X_MAX/ECS_Y_MAX</code> y activa <code>ECS_RENDER_DIRTY</code> cuando cambia la posición. No implementa gravedad, colisión ni física 8.8.</p>
+    </article>
+    <article class="api" data-module="core/ecs_input.s">
+      <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
+      <p><code>fwk_ecs_system_input</code> recibe <code>IX=manager</code>, recorre entidades con <code>INPUT</code> y traduce el estado global de <code>fwk_input_update</code> a velocidad horizontal y salto. El campo <code>action_mask</code> usa izquierda <code>0x01</code>, derecha <code>0x02</code> y salto <code>0x04</code>. El sistema conserva el contrato de callback del manager y marca render dirty al iniciar un salto.</p>
+    </article>
+    <article class="api" data-module="core/ecs_platform.s">
+      <h4>Sistema ECS de plataforma — <code>core/ecs_platform.s</code></h4>
+      <p><code>fwk_ecs_system_platform</code> adapta cada entidad <code>PLATFORM</code> al estado legacy de siete bytes, llama a <code>fwk_physics_platform_step</code> y a <code>fwk_platform_tilemap_resolve</code>, y copia X/Y, velocidades y flags de vuelta. La entidad aporta punteros a la configuración física y al descriptor de tilemap. No resuelve colisión entre cuerpos.</p>
     </article>
     <article class="api" data-module="core/ecs_manager.s">
       <h4>Operaciones del manager</h4>

@@ -7,7 +7,14 @@
     "core/ecs_manager.s",
     "core/ecs_behavior.s",
     "core/ecs_motion.s",
+    "core/ecs_input.s",
+    "core/ecs_platform.s",
     "extensions/behavior.s",
+    "extensions/physics_platform.s",
+    "extensions/tilemap.s",
+    "extensions/platform_tilemap.s",
+    "extensions/tilemap_render.s",
+    "core/input.s",
     "video/video.s",
     "video/sprite.s"
   ],
@@ -15,6 +22,6 @@
   "ecs": {
     "x_format": "u8",
     "y_format": "u8",
-    "components": ["behavior"]
+    "components": ["behavior", "input", "platform"]
   }
 }

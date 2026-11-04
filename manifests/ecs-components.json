@@ -39,6 +39,23 @@
         {"name": "timer", "type": "u8"},
         {"name": "state", "type": "u8"}
       ]
+    },
+    {
+      "name": "input",
+      "required": false,
+      "dependencies": ["motion"],
+      "fields": [
+        {"name": "action_mask", "type": "u8"}
+      ]
+    },
+    {
+      "name": "platform",
+      "required": false,
+      "dependencies": ["motion"],
+      "fields": [
+        {"name": "config", "type": "pointer"},
+        {"name": "tilemap", "type": "pointer"}
+      ]
     }
   ]
 }

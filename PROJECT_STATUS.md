@@ -1215,3 +1215,24 @@ behavior y movimiento ya cerrados y dejar preparada la paridad posterior.
 La siguiente fase es la 6: añadir input de entidades, física principal y
 tilemaps ECS. No se debe presentar `platformer_ecs` como paridad completa con
 la referencia hasta cerrar las fases 6-10.
+
+### Fase 6: en curso, adaptadores iniciales de input, plataforma y tilemap
+
+- [x] El portfolio ECS añade `input` y `platform`; `platform` depende de
+  `motion` y el perfil generado de `platformer_ecs` queda en 37 bytes por
+  entidad.
+- [x] `src/core/ecs_input.s` adapta `fwk_input_held/pressed` a velocidad
+  horizontal y salto según `action_mask`.
+- [x] `src/core/ecs_platform.s` adapta cada entidad al estado de siete bytes de
+  `physics_platform`, ejecuta `platform_tilemap_resolve` y copia de vuelta
+  posición, velocidad y flags, marcando render dirty cuando cambia la posición.
+- [x] `platformer_ecs` contiene un tilemap estático 20x25 y lo dibuja con
+  `fwk_tilemap_render_view`, manteniendo el render ECS como puente temporal.
+- [x] Regresión local: 125 pruebas host, 24 BIN, 23 CDT y DSK común; smoke CPC
+  6128 correcto para ejecución, frames y suelo visible.
+- [ ] La entrada interactiva de `platformer_ecs` aún no está demostrada de
+  forma aislada en el smoke; no se declara cerrada la paridad jugable de esta
+  fase hasta completar esa prueba y validar el ciclo de salto/aterrizaje.
+
+La continuación inmediata sigue siendo la fase 6: aislar y cerrar la prueba de
+entrada y física/tilemap antes de pasar a colisiones ECS entre entidades.
