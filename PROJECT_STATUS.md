@@ -1207,6 +1207,10 @@ behavior y movimiento ya cerrados y dejar preparada la paridad posterior.
   movimiento de los enemigos.
 - [x] Manual HTML/PDF y checksum regenerados; el plan y la validación reflejan
   la integración y sus límites.
+- [x] Commit publicado en `ecs-v2` como `c1c14c47dd1b0401c363cf2cc2b2249ba4ba9c3f`;
+  `origin/ecs-v2` se verificó en ese SHA.
+- [x] CI manual `41811578372` correcta: job `126511876002` completado en 19 s,
+  host tests, 24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
 
 La siguiente fase es la 6: añadir input de entidades, física principal y
 tilemaps ECS. No se debe presentar `platformer_ecs` como paridad completa con
