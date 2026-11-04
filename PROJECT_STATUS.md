@@ -1106,7 +1106,7 @@ extendida, CRTC ni render físico. No existe validación en hardware real. El
 manager usa `CALL` automodificable para el callback y, como fija la ABI, no es
 reentrante, no puede anidarse ni llamarse desde IRQ.
 
-### Fase 3: completada localmente, generador de perfiles ECS
+### Fase 3: completada, generador de perfiles ECS
 
 - [x] `tools/gen_ecs_profile.py` genera de forma determinista
   `ecs_profile.inc` desde el bloque `ecs` del manifiesto y el catálogo
@@ -1137,13 +1137,19 @@ reentrante, no puede anidarse ni llamarse desde IRQ.
 - [x] Smoke focalizado posterior al build global correcto en
   AmSpiriT-Lite 1.15.3/CPC 6128: `ecsmanager` ejecuta y avanza frames.
 - [x] Manual HTML/PDF, checksum, ABI, README e informe de tamaños actualizados.
+- [x] Implementación publicada en `ecs-v2` como
+  `6127a2ba4e553be8a22b13779596d242fc434bb8`; `origin/ecs-v2` se verificó en
+  ese mismo SHA.
+- [x] CI manual `41802820638` correcta para `6127a2ba...`: 123 pruebas host,
+  23 BIN, 22 CDT, DSK común y artefacto temporal
+  `glasnostfwk-6127a2ba...` (ID `13308661285`) verificados.
 
 El catálogo incorporado contiene por ahora solo `render`, el único componente
 con layout normativo aprobado. Los componentes de `behavior` y movimiento se
 definirán en la fase 4; anticipar ahora sus campos convertiría una hipótesis en
 ABI. No se ejecutó CPC 464 porque el generador es host-side y el include
 resultante conserva el layout ejecutado en fase 2. No existe validación en
-hardware real. El commit, push y CI remota se registrarán al cerrar esta fase.
+hardware real.
 
 ### Siguiente fase: 4, sistemas ECS de behavior y movimiento
 

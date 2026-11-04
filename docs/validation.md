@@ -56,9 +56,10 @@ Fecha: 2026-11-04 UTC.
 - El catálogo contiene únicamente `render`, porque es el único componente con
   layout normativo aprobado. `behavior` y movimiento se especificarán en la
   fase 4.
-
-La CI remota y los identificadores definitivos de commit se registrarán tras
-publicar el cierre de fase.
+- La implementación se publicó como
+  `6127a2ba4e553be8a22b13779596d242fc434bb8`. La CI manual
+  `41802820638` terminó correctamente y publicó el artefacto temporal
+  `glasnostfwk-6127a2ba...` (ID `13308661285`, 113.077 bytes).
 
 ## Validación del entity manager ECS, fase 2 (2026-11-03)
 

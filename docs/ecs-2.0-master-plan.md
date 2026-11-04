@@ -147,8 +147,8 @@ mantendrá su historial.
 
 2. Entity manager: slots estables, ciclo de vida, plantillas y recorrido por
    máscara. **Completada el 2026-11-03.**
-3. Generador de perfiles y validación del manifiesto. **Completada localmente
-   el 2026-11-04; cierre remoto pendiente de registrar.**
+3. Generador de perfiles y validación del manifiesto. **Completada el
+   2026-11-04.**
 4. Sistemas ECS de behavior y movimiento. Hito `2.0.0-alpha.1`.
 5. Crear `examples/platformer_ecs` sin alterar la referencia actual.
 
