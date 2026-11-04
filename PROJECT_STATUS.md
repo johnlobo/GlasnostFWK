@@ -1233,6 +1233,10 @@ la referencia hasta cerrar las fases 6-10.
 - [ ] La entrada interactiva de `platformer_ecs` aún no está demostrada de
   forma aislada en el smoke; no se declara cerrada la paridad jugable de esta
   fase hasta completar esa prueba y validar el ciclo de salto/aterrizaje.
+- [x] Implementación publicada en `ecs-v2` como
+  `e5bc741e29ab169e29378687ee08c3ae53bbc051`; CI manual
+  `41816216332`/job `126527519587` correcta en 25 s, con 125 pruebas host,
+  24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
 
 La continuación inmediata sigue siendo la fase 6: aislar y cerrar la prueba de
 entrada y física/tilemap antes de pasar a colisiones ECS entre entidades.
