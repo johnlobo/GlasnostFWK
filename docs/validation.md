@@ -53,7 +53,12 @@ Fecha: 2026-11-04 UTC.
 - `make test` pasó 125 pruebas host, construyó 23 BIN y 22 CDT y generó el DSK
   común con 25 entradas. `ecsmanager` ocupa 1.973 bytes enlazados.
 
-El commit/push y la CI remota se registrarán al publicar el cierre.
+- La implementación se publicó como
+  `6bf71a011a9b4f065437f20ca6d74be02c80b50a`. La CI manual
+  `41807544677` terminó correctamente en 17 segundos y publicó el artefacto
+  temporal `glasnostfwk-6bf71a...` (ID `13309469104`, 114053 bytes).
+- No se ejecutó CPC 464 ni hardware real: el sistema actual exige coordenadas
+  `u8` y no cambia el modelo de bancos, CRTC ni loader.
 
 ## Validación del generador de perfiles ECS, fase 3 (2026-11-04)
 

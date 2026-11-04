@@ -1150,7 +1150,7 @@ animación siguen fuera del portfolio normativo. No se ejecutó CPC 464 porque
 esta fase solo usa coordenadas `u8` ya validadas en CPC 6128. No existe
 validación en hardware real.
 
-### Fase 4: completada localmente, sistemas ECS de behavior y movimiento
+### Fase 4: completada, sistemas ECS de behavior y movimiento
 
 - [x] El catálogo añade `MOTION` (`velocity_x`, `velocity_y`, `flags`) y
   `BEHAVIOR` (`program`, `timer`, `state`), con dependencia `BEHAVIOR -> MOTION`.
@@ -1169,10 +1169,16 @@ validación en hardware real.
   entradas. `ecsmanager` enlaza 1.973 bytes (1.791 código, 182 datos).
 - [x] Manual HTML/PDF, checksum, ABI, README, informe de tamaños y validación
   actualizados.
-- [ ] Falta publicar el commit de cierre y verificar la CI remota.
+- [x] Implementación publicada en `ecs-v2` como
+  `6bf71a011a9b4f065437f20ca6d74be02c80b50a`; `origin/ecs-v2` se verificó en
+  ese mismo SHA.
+- [x] CI manual `41807544677` correcta para `6bf71a0...`: 125 pruebas host,
+  23 BIN, 22 CDT, DSK común y artefacto temporal
+  `glasnostfwk-6bf71a0...` (ID `13309469104`) verificados.
 
-La fase no se marcará completamente cerrada hasta publicar el commit y verificar
-la CI remota.
+No se ejecutó CPC 464 porque el sistema está restringido a coordenadas `u8`
+ya validadas en CPC 6128 y no cambia el modelo de bancos, CRTC ni loader. No
+existe validación en hardware real.
 
 ### Siguiente fase: 4, sistemas ECS de behavior y movimiento
 

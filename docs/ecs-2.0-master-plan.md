@@ -149,8 +149,8 @@ mantendrá su historial.
    máscara. **Completada el 2026-11-03.**
 3. Generador de perfiles y validación del manifiesto. **Completada el
    2026-11-04.**
-4. Sistemas ECS de behavior y movimiento. **Completada localmente el
-   2026-11-04; cierre remoto pendiente de registrar.** Hito `2.0.0-alpha.1`.
+4. Sistemas ECS de behavior y movimiento. **Completada el 2026-11-04.** Hito
+   `2.0.0-alpha.1`.
 5. Crear `examples/platformer_ecs` sin alterar la referencia actual.
 
 ### P2: paridad y sustitución
