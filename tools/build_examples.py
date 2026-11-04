@@ -13,6 +13,7 @@ from pathlib import Path
 
 try:
     from tools import import_assets
+    from tools.gen_ecs_profile import DEFAULT_PORTFOLIO, generate as generate_ecs_profile
     from tools.project_config import (
         BANK_PROBE,
         ProjectCapabilities,
@@ -22,6 +23,7 @@ try:
     )
 except ModuleNotFoundError:  # Direct execution: python3 tools/build_examples.py
     import import_assets
+    from gen_ecs_profile import DEFAULT_PORTFOLIO, generate as generate_ecs_profile
     from project_config import (
         BANK_PROBE,
         ProjectCapabilities,
@@ -335,17 +337,26 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
         staged_managed.add(Path("src") / "game" / relative_path)
-    ecs_profile = manifest.get("ecs_profile")
     uses_ecs_manager = "core/ecs_manager.s" in modules
-    if uses_ecs_manager and not isinstance(ecs_profile, str):
-        raise ValueError(f"{name}: core/ecs_manager.s requires ecs_profile")
-    if ecs_profile is not None:
+    ecs_config = manifest.get("ecs")
+    if uses_ecs_manager and not isinstance(ecs_config, dict):
+        raise ValueError(f"{name}: core/ecs_manager.s requires ecs configuration")
+    if ecs_config is not None:
         if not uses_ecs_manager:
-            raise ValueError(f"{name}: ecs_profile requires core/ecs_manager.s")
-        profile_source = _safe_example_file(example, ecs_profile)
-        if profile_source.suffix != ".inc":
-            raise ValueError(f"{name}: ecs_profile must be an .inc file")
-        _copy_if_changed(profile_source, target / "src" / "ecs_profile.inc")
+            raise ValueError(f"{name}: ecs configuration requires core/ecs_manager.s")
+        portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
+        generated_profile = generate_ecs_profile(manifest, portfolio, profile)
+        profile_source = example / "generated" / "ecs_profile.inc"
+        if (
+            not profile_source.is_file()
+            or profile_source.read_text(encoding="ascii") != generated_profile.include
+        ):
+            raise ValueError(
+                f"{name}: stale ECS profile; run python3 tools/gen_ecs_profile.py "
+                f"examples/{name}/example.json --output "
+                f"examples/{name}/generated/ecs_profile.inc"
+            )
+        _write_if_changed(target / "src" / "ecs_profile.inc", generated_profile.include, encoding="ascii")
         staged_managed.add(Path("src") / "ecs_profile.inc")
     import_assets.ensure(example, cpct_path)
     assets = stage_assets(example, target)
@@ -432,7 +443,9 @@ def stage_example(name: str, cpct_path: Path) -> Path:
             {
                 "example": name,
                 "game_sources": game_sources,
-                "ecs_profile": ecs_profile,
+                "generated_ecs_profile": (
+                    "generated/ecs_profile.inc" if ecs_config is not None else None
+                ),
                 "modules": modules,
                 "cpct_modules": cpct_modules,
                 "assets": assets,

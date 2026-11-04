@@ -1,0 +1,24 @@
+{
+  "abi": {"major": 2, "minor": 0},
+  "components": [
+    {
+      "name": "render",
+      "required": true,
+      "dependencies": [],
+      "fields": [
+        {"name": "sprite", "type": "pointer"},
+        {"name": "previous_x", "type": "x_format"},
+        {"name": "previous_y", "type": "y_format"},
+        {"name": "previous_width", "type": "u8"},
+        {"name": "previous_height", "type": "u8"},
+        {"name": "background", "type": "pointer"},
+        {"name": "background_cap", "type": "u16"},
+        {"name": "flags", "type": "u8"},
+        {"name": "source_pen", "type": "u8"},
+        {"name": "replacement_pen", "type": "u8"},
+        {"name": "sort_offset_y", "type": "i16"},
+        {"name": "previous_sort_y", "type": "i16"}
+      ]
+    }
+  ]
+}

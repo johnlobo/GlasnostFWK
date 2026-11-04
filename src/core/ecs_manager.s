@@ -100,7 +100,7 @@ _fwk_ecs_validate_manager:
 ;; Validate BC against the component mask selected by the profile.
 ;; Modified: AF, HL.
 _fwk_ecs_validate_mask:
-    ld hl, #ECS_COMPONENT_MASK
+    ld hl, #ECS_COMPONENT_VALID_MASK
     ld a, l
     cpl
     and c

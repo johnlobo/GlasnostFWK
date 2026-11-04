@@ -1,6 +1,6 @@
 # Estado de validación
 
-Fecha: 2026-10-29 UTC.
+Fecha: 2026-11-04 UTC.
 
 ## Implementado
 
@@ -36,6 +36,29 @@ Fecha: 2026-10-29 UTC.
   activar memoria extendida para reservar el stub de bancos en `0x0200`.
 - Manual HTML/PDF en castellano con cobertura automática de todos los ejemplos
   y módulos seleccionados.
+
+## Validación del generador de perfiles ECS, fase 3 (2026-11-04)
+
+- `make test` pasó 123 pruebas host, construyó 23 BIN y 22 CDT y generó el DSK
+  común con 25 entradas.
+- Las pruebas específicas cubrieron generación determinista, orden e inserción
+  de dependencias, formatos de coordenadas y velocidades, rechazos del
+  manifiesto, detección de include obsoleto, diferencias de layout y preview
+  sin escritura.
+- El perfil generado de `ecsmanager` conserva el layout ejecutable anterior de
+  25 bytes y la máscara válida `0x0003`; ya no existe el fixture manual como
+  entrada de configuración.
+- Después de la reconstrucción global, el smoke focalizado de `ecsmanager`
+  volvió a pasar en AmSpiriT-Lite 1.15.3/CPC 6128 y confirmó que el programa
+  ejecuta y avanza frames.
+- No se ejecutó CPC 464: el generador solo se ejecuta en el host y su salida
+  conserva el layout ya validado. No se probó hardware real.
+- El catálogo contiene únicamente `render`, porque es el único componente con
+  layout normativo aprobado. `behavior` y movimiento se especificarán en la
+  fase 4.
+
+La CI remota y los identificadores definitivos de commit se registrarán tras
+publicar el cierre de fase.
 
 ## Validación del entity manager ECS, fase 2 (2026-11-03)
 

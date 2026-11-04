@@ -105,8 +105,8 @@ de render se instala de forma aislada con
 La migración de la rama `ecs-v2` se gobierna por
 [`docs/ecs-2.0-master-plan.md`](docs/ecs-2.0-master-plan.md). La propuesta de
 ABI aprobada en G1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md). La
-fase 2 implementa ya el entity manager y sus símbolos enlazables; el generador
-de perfiles y los sistemas ECS se incorporarán en las fases siguientes.
+fase 2 implementa el entity manager y la fase 3 genera su layout desde el
+manifiesto. Los sistemas ECS se incorporarán en las fases siguientes.
 
 ## Mapa del repositorio
 

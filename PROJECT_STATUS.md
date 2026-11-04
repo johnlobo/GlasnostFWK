@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-11-03 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-11-04 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -1106,8 +1106,47 @@ extendida, CRTC ni render físico. No existe validación en hardware real. El
 manager usa `CALL` automodificable para el callback y, como fija la ABI, no es
 reentrante, no puede anidarse ni llamarse desde IRQ.
 
-### Siguiente fase: 3, generador de perfiles ECS
+### Fase 3: completada localmente, generador de perfiles ECS
 
-Generar `ecs_profile.inc` desde el manifiesto, resolver componentes y
-dependencias, validar offsets/tamaño/máscaras y retirar el fixture manual como
-flujo de configuración. La fase 3 no se ha iniciado.
+- [x] `tools/gen_ecs_profile.py` genera de forma determinista
+  `ecs_profile.inc` desde el bloque `ecs` del manifiesto y el catálogo
+  versionado `manifests/ecs-components.json`.
+- [x] El generador resuelve primero las dependencias, conserva `render` en el
+  bit 0 y admite hasta 16 componentes entre catálogo y definiciones propias
+  del proyecto.
+- [x] Los formatos de coordenadas configurables son `u8`, `u16` y `fixed_8_8`;
+  los campos admiten tipos escalares, punteros y bloques `bytes[n]`. Los tipos
+  derivados `x_format`, `y_format`, `velocity_x` y `velocity_y` siguen la
+  configuración del proyecto.
+- [x] Se validan esquema, nombres, tipos, duplicados, dependencias desconocidas
+  o cíclicas, rango del perfil de vídeo, máximo de 16 bits, nombres reservados
+  y límite ABI de 128 bytes por entidad.
+- [x] `--preview` muestra el layout y sus cambios sin escribir; `--check` y el
+  objetivo `make generate` impiden construir con un include versionado
+  obsoleto. `make generate-ecs` es la operación explícita de regeneración.
+- [x] `tools/build_examples.py` exige el bloque `ecs` cuando se selecciona el
+  manager, comprueba el include versionado y prepara ese contenido para el
+  ensamblado. La entrada temporal `ecs_profile` de la fase 2 fue eliminada.
+- [x] `ecsmanager` genera el mismo layout de 25 bytes y la misma máscara
+  `0x0003` que el fixture anterior. El manager consume ahora el nombre
+  normativo `ECS_COMPONENT_VALID_MASK`.
+- [x] Ocho pruebas nuevas cubren reproducibilidad, dependencias, formatos,
+  rechazos, detección de include obsoleto, diferencias de layout y preview sin
+  escritura. La regresión local pasó 123 pruebas host, construyó 23 BIN y 22
+  CDT y generó el DSK común con 25 entradas.
+- [x] Smoke focalizado posterior al build global correcto en
+  AmSpiriT-Lite 1.15.3/CPC 6128: `ecsmanager` ejecuta y avanza frames.
+- [x] Manual HTML/PDF, checksum, ABI, README e informe de tamaños actualizados.
+
+El catálogo incorporado contiene por ahora solo `render`, el único componente
+con layout normativo aprobado. Los componentes de `behavior` y movimiento se
+definirán en la fase 4; anticipar ahora sus campos convertiría una hipótesis en
+ABI. No se ejecutó CPC 464 porque el generador es host-side y el include
+resultante conserva el layout ejecutado en fase 2. No existe validación en
+hardware real. El commit, push y CI remota se registrarán al cerrar esta fase.
+
+### Siguiente fase: 4, sistemas ECS de behavior y movimiento
+
+Definir primero sus contratos y campos de catálogo, implementar ambos sistemas
+sobre `fwk_ecs_system_run` y alcanzar el hito funcional `2.0.0-alpha.1` sin
+alterar todavía el `platformer` de referencia.

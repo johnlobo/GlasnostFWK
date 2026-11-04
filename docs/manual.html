@@ -101,13 +101,13 @@
     <span class="tag">Amstrad CPC · Z80</span>
     <h1>Manual de uso de GlasnostFWK</h1>
     <p class="subtitle">Construcción modular de juegos y pruebas técnicas con CPCTelera Next</p>
-    <p class="edition">Edición: 3 de noviembre de 2026 · Idioma: castellano</p>
+    <p class="edition">Edición: 4 de noviembre de 2026 · Idioma: castellano</p>
   </header>
 
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado ejecutable comprobado del repositorio: núcleo de sistema, entrada, pool, entity manager ECS, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. La rama <code>ecs-v2</code> contiene la ABI ECS normativa aprobada en G1 y la primera implementación ejecutable de su manager.</p>
+    <p>Este manual describe el estado ejecutable comprobado del repositorio: núcleo de sistema, entrada, pool, entity manager ECS, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. La rama <code>ecs-v2</code> contiene la ABI ECS normativa, el manager ejecutable y la generación validada de perfiles ECS desde el manifiesto.</p>
     <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo enmascarado 6x8 tiene coste medido, pero no se ha integrado en el lote ordenado.</div>
   </section>
 
@@ -269,9 +269,33 @@ loop:
     <h2 id="modulos">6. Referencia de módulos</h2>
     <h3 id="ecs-abi">6.0 ABI y entity manager ECS 2.0</h3>
     <p>La rama <code>ecs-v2</code> documenta el contrato binario aprobado en <a href="ecs-abi-2.0.md"><code>docs/ecs-abi-2.0.md</code></a>. Define entidades AoS de slots estables, máscara de componentes de 16 bits, estados separados de lifecycle, offsets generados, managers múltiples y llamadas Z80 con carry y código en A. La fase 2 implementa el manager en <code>core/ecs_manager.s</code>.</p>
-    <p>La entidad empieza por máscara, estado, tipo, X, Y, anchura y altura; después incorpora los bloques de componentes y campos propios del juego. X y anchura se expresan en bytes de pantalla, Y y altura en scanlines. El tamaño máximo propuesto es 128 bytes para que todos los campos sean accesibles mediante desplazamientos indexados Z80. Render ocupa siempre el bit 0 del perfil, aunque una entidad concreta puede no activarlo.</p>
-    <div class="box warning"><strong>Límite de esta fase.</strong> El manager ya es ejecutable, pero el generador de perfiles corresponde a la fase 3. El ejemplo técnico <code>ecsmanager</code> declara manualmente <code>"ecs_profile": "generated/ecs_profile.inc"</code>; el constructor lo instala como <code>ecs_profile.inc</code>. Todavía no debe copiarse ese fichero como si fuera el flujo definitivo de creación de proyectos.</div>
-    <p>Incluya <code>core/ecs_manager.s</code> en el manifiesto y <code>core/ecs_manager.inc</code> en el ensamblador. El perfil seleccionado debe definir <code>ECS_ENTITY_SIZE</code>, <code>ECS_COMPONENT_MASK</code>, los offsets <code>ECS_E_*</code> y el bit de render. Un descriptor reserva ocho bytes y referencia almacenamiento propiedad del juego:</p>
+    <p>La entidad empieza por máscara, estado, tipo, X, Y, anchura y altura; después incorpora los bloques de componentes y campos propios del juego. X y anchura se expresan en bytes de pantalla, Y y altura en scanlines. El tamaño máximo es 128 bytes para que todos los campos sean accesibles mediante desplazamientos indexados Z80. Render ocupa siempre el bit 0 del perfil, aunque una entidad concreta puede no activarlo.</p>
+    <p>La fase 3 genera el perfil desde el objeto <code>ecs</code> del manifiesto. <code>x_format</code> e <code>y_format</code> admiten <code>u8</code>, <code>u16</code> o <code>fixed_8_8</code>. Los componentes propios declaran dependencias y campos; los tipos disponibles son <code>u8</code>, <code>i8</code>, <code>u16</code>, <code>i16</code>, <code>fixed_8_8</code>, <code>pointer</code> y <code>bytes[n]</code>. <code>velocity_x</code> y <code>velocity_y</code> resuelven automáticamente una velocidad compatible con la coordenada.</p>
+    <pre><code>"ecs": {
+  "x_format": "u8",
+  "y_format": "u8",
+  "components": ["actor"],
+  "custom_components": [
+    {
+      "name": "motion",
+      "dependencies": [],
+      "fields": [
+        {"name": "vx", "type": "velocity_x"},
+        {"name": "vy", "type": "velocity_y"}
+      ]
+    },
+    {"name": "actor", "dependencies": ["motion"], "fields": []}
+  ],
+  "fields": [{"name": "health", "type": "u8"}]
+}</code></pre>
+    <p><code>RENDER</code> se inserta siempre como bit 0. El resto conserva el orden solicitado, insertando antes sus dependencias. Se rechazan nombres o tipos inválidos, duplicados, ciclos, componentes desconocidos, más de 16 componentes, coordenadas incapaces de representar el perfil de vídeo y entidades mayores de 128 bytes.</p>
+    <div class="box warning"><strong>Portfolio actual.</strong> En esta fase solo <code>RENDER</code> tiene layout incorporado porque es el único bloque de componente fijado por la ABI. <code>BEHAVIOR</code>, movimiento, física, colisión y animación se añadirán al portfolio cuando sus fases definan formalmente sus campos; no se han inventado layouts provisionales.</div>
+    <p>El include versionado está en <code>generated/ecs_profile.inc</code>. Antes de cambiarlo puede obtener una vista JSON de componentes resueltos, dependencias insertadas, campos, offsets, tamaños y diferencias sin escribir:</p>
+    <pre><code>python3 tools/gen_ecs_profile.py examples/ecsmanager/example.json \
+  --output examples/ecsmanager/generated/ecs_profile.inc --preview
+make generate-ecs   # escribe el include después de revisar la vista previa
+make check CHECK_EXAMPLES=ecsmanager  # falla si el include vuelve a quedar obsoleto</code></pre>
+    <p>El generador publica <code>ECS_ABI_MAJOR/MINOR</code>, formatos y tamaños X/Y, <code>ECS_C_*</code>, <code>ECS_COMPONENT_VALID_MASK</code>, todos los offsets <code>ECS_E_*</code> y <code>ECS_ENTITY_SIZE</code>. Incluya <code>core/ecs_manager.s</code> en el manifiesto y <code>core/ecs_manager.inc</code> en el ensamblador. Un descriptor reserva ocho bytes y referencia almacenamiento propiedad del juego:</p>
     <pre><code>.include "ecs_profile.inc"
 .include "core/ecs_manager.inc"
 

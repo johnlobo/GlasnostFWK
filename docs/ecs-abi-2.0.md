@@ -63,6 +63,11 @@ coordenada positiva mayor de 255.
 El generador produce `generated/ecs_profile.inc`. Todos los consumidores
 DEBEN usar sus símbolos; ningún sistema debe codificar offsets numéricos.
 
+Los identificadores de formato generados son `ECS_FORMAT_U8=1`,
+`ECS_FORMAT_U16=2` y `ECS_FORMAT_FIXED_8_8=3`. `ECS_X_FORMAT` y
+`ECS_Y_FORMAT` contienen uno de esos valores; sus tamaños se publican por
+separado.
+
 ### 3.1 Cabecera universal
 
 | Símbolo generado | Offset | Tamaño | Contenido |
@@ -85,8 +90,10 @@ Después de la cabecera aparecen, sin huecos:
 1. los bloques de campos de componentes, en orden ascendente de bit;
 2. los campos universales propios del juego, en el orden del manifiesto.
 
-El generador publica cada offset como `ECS_E_<NOMBRE>` y termina con
-`ECS_ENTITY_SIZE`. Reordenar componentes o campos es un cambio de ABI.
+El generador publica los campos de componente como
+`ECS_E_<COMPONENTE>_<CAMPO>`, los campos universales como `ECS_E_<CAMPO>` y
+termina con `ECS_ENTITY_SIZE`. Reordenar componentes o campos es un cambio de
+layout que debe revisarse antes de regenerar.
 
 ### 3.2 Máscara de componentes
 

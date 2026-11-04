@@ -6,5 +6,13 @@
     "core/ecs_manager.s"
   ],
   "game_sources": ["main.s"],
-  "ecs_profile": "generated/ecs_profile.inc"
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": ["test"],
+    "custom_components": [
+      {"name": "test", "dependencies": [], "fields": []}
+    ],
+    "fields": []
+  }
 }

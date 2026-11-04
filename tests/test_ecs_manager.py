@@ -40,7 +40,7 @@ class ECSManagerTests(unittest.TestCase):
         )
         main = (ROOT / "examples/ecsmanager/main.s").read_text()
         self.assertIn("core/ecs_manager.s", manifest["modules"])
-        self.assertEqual(manifest["ecs_profile"], "generated/ecs_profile.inc")
+        self.assertEqual(manifest["ecs"]["components"], ["test"])
         self.assertIn("call fwk_ecs_system_run", main)
         self.assertIn("call fwk_ecs_manager_collect", main)
         self.assertIn("ld a, #0x5A", main)
@@ -49,7 +49,7 @@ class ECSManagerTests(unittest.TestCase):
         source = (ROOT / "src/core/ecs_manager.s").read_text()
         profile = (ROOT / "examples/ecsmanager/generated/ecs_profile.inc").read_text()
         self.assertIn('.include "ecs_profile.inc"', source)
-        self.assertIn("ECS_COMPONENT_MASK", source)
+        self.assertIn("ECS_COMPONENT_VALID_MASK", source)
         self.assertIn("ECS_ENTITY_SIZE", source)
         self.assertIn("ECS_C_RENDER_BIT", profile)
 

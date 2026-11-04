@@ -7,8 +7,8 @@ operativo exacto para retomar una sesión se mantiene en `PROJECT_STATUS.md`,
 sección **Migración ECS 2.0: estado operativo**.
 
 La especificación normativa de la fase 1 está en `docs/ecs-abi-2.0.md`. La
-puerta G1 fue aprobada el 2026-11-03; la fase 2 debe implementar ese contrato y
-registrar cualquier revisión de ABI antes de cambiarlo.
+puerta G1 fue aprobada el 2026-11-03; las implementaciones posteriores deben
+registrar cualquier aclaración de ABI antes de cambiar el contrato.
 
 ## Objetivo
 
@@ -147,7 +147,8 @@ mantendrá su historial.
 
 2. Entity manager: slots estables, ciclo de vida, plantillas y recorrido por
    máscara. **Completada el 2026-11-03.**
-3. Generador de perfiles y validación del manifiesto.
+3. Generador de perfiles y validación del manifiesto. **Completada localmente
+   el 2026-11-04; cierre remoto pendiente de registrar.**
 4. Sistemas ECS de behavior y movimiento. Hito `2.0.0-alpha.1`.
 5. Crear `examples/platformer_ecs` sin alterar la referencia actual.
 
