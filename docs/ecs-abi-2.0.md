@@ -379,7 +379,10 @@ cada una, las B por slot ascendente. Cada par en contacto emite `ENTER` si no
 estaba en la tabla anterior y `STAY` si estaba, en ese orden de recorrido. A
 continuación se emite un `EXIT` por cada par de la tabla anterior que ya no
 está en contacto (porque no solapa, o porque una entidad ya no está `ACTIVE`,
-fue destruida o liberada), en el orden de la tabla anterior. La tabla nueva
+fue destruida o liberada), en el orden de la tabla anterior. «Ya no está en
+contacto» se evalúa en vivo sobre las entidades actuales, no por ausencia en el
+recorrido de esta llamada: son equivalentes mientras el descriptor se use
+siempre con el mismo par de managers, que es el uso soportado. La tabla nueva
 contiene los pares en contacto en orden de recorrido.
 
 **Entrega.** Primero se calculan todos los eventos y se actualiza la tabla;
@@ -397,8 +400,9 @@ distinto de cero se conserva el contrato de `fwk_ecs_system_run`).
 **Capacidad.** El buffer de eventos y la tabla de pares tienen capacidad fija.
 Si un evento no cabe se descarta, se activa `FWK_ECS_COLLISION_OVERFLOW` y la
 llamada devuelve `FWK_ECS_ERR_OVERFLOW` después de entregar los conservados.
-Un par en contacto que no cabe en la tabla no se recuerda: su `ENTER` se
-repetirá en la llamada siguiente mientras siga en contacto. Nunca se escribe
+Un par en contacto que no cabe en la tabla también activa
+`FWK_ECS_COLLISION_OVERFLOW` y no se recuerda: su `ENTER` se repetirá en la
+llamada siguiente mientras siga en contacto. Nunca se escribe
 fuera de ningún buffer. `FWK_ECS_COLLISION_FLAGS` se pone a cero al empezar
 cada llamada.
 

@@ -152,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veinticinco consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintiséis consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -646,6 +646,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisiones ECS: reproduce un escenario generado por un modelo Python y registra eventos, callbacks y desbordamiento.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsfuzz"><td><code>ecsfuzz</code></td><td>Fuzz diferencial del sistema de colisión: <code>tests/ecs_collision_fuzz.py</code> carga lotes de casos en RAM por la API del emulador y compara el registro contra un modelo escrito desde el ABI (capacidades 0 a 255, bordes aritméticos, callbacks, errores, bytes guarda).</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer_ecs"><td><code>platformer_ecs</code></td><td>Esqueleto ECS de plataformas: tres entidades, behavior y movimiento, con un puente temporal al pintado de sprites.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>

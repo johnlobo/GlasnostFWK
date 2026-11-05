@@ -1,0 +1,16 @@
+{
+  "name": "ecsfuzz",
+  "amsdos_name": "ECSFUZZ",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/ecs_manager.s",
+    "core/ecs_collision.s"
+  ],
+  "game_sources": ["main.s"],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": ["collision"]
+  }
+}

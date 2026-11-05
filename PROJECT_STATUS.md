@@ -1244,4 +1244,52 @@ la referencia hasta cerrar las fases 6-10.
   `41816216332`/job `126527519587` correcta en 25 s, con 125 pruebas host,
   24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
 
-La continuación inmediata es la fase 7: colisiones ECS entre entidades.
+### Fase 7: completada, colisiones ECS y eventos de contacto
+
+- [x] ABI 9.1 (`docs/ecs-abi-2.0.md`): estado de contacto en una tabla de
+  pares propia del sistema, orden determinista, entrega con bloqueo de
+  recorrido, capacidad fija con overflow observable. Todo error de validación
+  deja el estado intacto.
+- [x] Componente `collision` (`ECS_E_COLLISION_ROLES`) y
+  `src/core/ecs_collision.{inc,s}`: `fwk_ecs_system_collision` con eventos
+  `ENTER`/`STAY`/`EXIT`, uno o dos managers, 955 bytes de código y 25 de datos.
+- [x] `tools/ecs_collision_model.py`: modelo de referencia y escenario de 35
+  pasos, fuente única del ejemplo `ecscollision` (saturación en 255, tamaño
+  cero, `BUSY`, manager nulo, abortos de callback, desbordamiento).
+- [x] Fuzz diferencial: `examples/ecsfuzz` + `tests/ecs_collision_fuzz.py`,
+  con un segundo modelo escrito desde el ABI. 13 suites de correctitud con
+  0 discrepancias (capacidades 0 a 255, aritmética 81x81 por eje, callbacks,
+  errores, managers de 255 slots, tablas llenas, bytes guarda).
+- [x] Torneo: dos variantes independientes, crítico ciego y una ronda de
+  revisión. Ganó la iteración directa de slots. La variante descartada
+  (reunir participantes en listas) imponía un máximo de 32 por manager, que el
+  ABI no admite.
+- [x] Decisión del 2026-11-05: el torneo se cierra con la variante ganadora
+  tras la ronda 2. El crítico de esa ronda dio FAIL para "listo para
+  publicar": corrección sin fallos (0 discrepancias en unas 2.500 llamadas
+  diferenciales) pero con dos hallazgos altos. Se corrigió el segundo; el
+  primero queda abierto por decisión de cierre.
+  - Corregido: con `COLLISION` en un bit de máscara 8 a 15 el módulo no
+    ensamblaba (`bit n, ECS_E_COMPONENTS(ix)` solo vale para bits 0 a 7).
+    Ahora direcciona el byte correcto; `tests/test_ecs_collision_assembly.py`
+    ensambla con `COLLISION` en el bit 1 y en el 9 y falla con el código previo.
+  - Corregido: aclaraciones de ABI 9.1 sobre EXIT evaluado en vivo y sobre
+    `OVERFLOW` cuando un par no cabe en la tabla; cabecera con el requisito de
+    ejecución desde RAM (código automodificable).
+- [ ] Abierto, alto, rendimiento: el coste es participantes de A por capacidad
+  de B, no participantes por participantes. En fotogramas de 50 Hz por llamada:
+  16+16 en managers ajustados 0,95 (1,6 con 16 contactos); 16+16 en managers de
+  224 slots 3,4; 32+32 ajustados 3,3; 32+32 en 224 slots 7,6; 255+255 todos
+  vivos 193. Un juego querría gastar entre el 10 % y el 25 % de un fotograma.
+  Mejora propuesta por el crítico: lista compacta de punteros de participantes
+  por manager, parada en `ACTIVE_COUNT` y test de slot vacío en línea; el
+  sistema bajaría 16+16 a unos 0,3 fotogramas.
+- [ ] Abierto, medio: el barrido de EXIT reevalúa todo par previo aunque el
+  recorrido lo haya reconfirmado, y `find_prev` busca linealmente en cada
+  contacto; un recorrido por fusión (ambas tablas están en orden de recorrido)
+  daría marcas de "visto" y coste lineal. 16 colliders contra 16 collisionables
+  con 255 pares persistentes cuestan 8,1 fotogramas.
+- [ ] Limitación: el sistema no es reentrante (estado y dirección del callback
+  en `_DATA`); un callback no debe volver a llamarlo con otros managers.
+- [ ] Siguiente: rendimiento del sistema de colisión (ver arriba) y fase 8,
+  animación ECS.

@@ -155,9 +155,7 @@ mantendrá su historial.
 
 ### P2: paridad y sustitución
 
-6. Input de entidades, física principal y tilemaps. **En curso: adaptadores ECS
-   y vertical de tilemap implementados; falta cerrar la validación de entrada y
-   la paridad jugable.**
+6. Input de entidades, física principal y tilemaps. **Completada el 2026-11-05.**
 7. Colisiones ECS y eventos de contacto.
 8. Animación ECS.
 9. Render ECS multi-manager; fase de mayor riesgo.

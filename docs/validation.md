@@ -383,3 +383,31 @@ python3 tests/emulator_smoke.py --model 464 vertical
   el puente de render redibuja todo el tilemap en cada iteración y el bucle
   corre a unas 1,3 iteraciones por segundo en AmSpiriT-Lite. Los timeouts del
   smoke están dimensionados para ese ritmo.
+
+### Fase 7 ECS: colisiones y eventos de contacto
+
+- `fwk_ecs_system_collision` (`core/ecs_collision.s`) implementa ABI 9 y 9.1:
+  AABB `u8` con sumas saturadas a 255 y extensiones nulas que nunca solapan,
+  roles `COLLIDER`/`COLLISIONABLE`, uno o dos managers, `ENTER`/`STAY`/`EXIT`
+  con tabla de pares, buffers de capacidad fija con `OVERFLOW`, entrega bajo
+  `FWK_ECS_LOCK_TRAVERSAL` liberado también al abortar el callback.
+- Escenario `examples/ecscollision`: 35 pasos generados desde
+  `tools/ecs_collision_model.py`; el smoke compara el registro del emulador con
+  el modelo byte a byte. CPC 6128 y CPC 464 correctos.
+- Fuzz diferencial (`python3 tests/ecs_collision_fuzz.py SUITE...`, necesita
+  `ecsfuzz` construido): `caps cb arith0 arith1 arithS0 arithS1 dense rnd1 rnd2
+  rnd3 single big big2`, 0 discrepancias en CPC 6128. Cada llamada registra
+  resultado, flags, eventos, bloqueos, `IX`/`IY`, argumentos del callback y
+  bytes guarda alrededor de los buffers.
+- Defectos que el torneo sacó a la luz y no cubría el escenario: un máximo de
+  32 participantes por manager (variante descartada), `PAIR_COUNT` sin
+  limitar a la capacidad, una máscara de roles con bits reservados que daba
+  falsos positivos tras una optimización, y `.globl` de sistemas ausentes en
+  `ecs_manager.inc` que impedían enlazar proyectos sin `MOTION`/`BEHAVIOR`.
+- Rendimiento medido por el crítico, en fotogramas de 50 Hz por llamada
+  (AmSpiriT-Lite, 1,0 = 80.000 T): 16+16 en dos managers ajustados 0,95 (1,6
+  con 16 contactos); 16+16 en managers de 224 slots 3,4; 32+32 ajustados 3,3;
+  32+32 en managers de 224 slots 7,6; 255+255 todos vivos 193. El coste crece
+  con participantes de A por capacidad de B; la mejora propuesta (listas
+  compactas de participantes) está registrada como pendiente en
+  `PROJECT_STATUS.md`.
