@@ -37,9 +37,15 @@ ecscollision_events_tiny: .ds 2 * FWK_ECS_COLLISION_EVENT_SIZE
 ecscollision_pairs_tiny0: .ds 2 * FWK_ECS_COLLISION_PAIR_SIZE
 ecscollision_pairs_tiny1: .ds 2 * FWK_ECS_COLLISION_PAIR_SIZE
 
+ecscollision_events_edge: .ds 8 * FWK_ECS_COLLISION_EVENT_SIZE
+ecscollision_pairs_edge0: .ds 8 * FWK_ECS_COLLISION_PAIR_SIZE
+ecscollision_pairs_edge1: .ds 8 * FWK_ECS_COLLISION_PAIR_SIZE
+
 FWK_ECS_COLLISION_STATE ecscollision_state_intra, _ecscollision_callback, ecscollision_events_intra, 8, ecscollision_pairs_intra0, ecscollision_pairs_intra1, 8
 FWK_ECS_COLLISION_STATE ecscollision_state_inter, _ecscollision_callback, ecscollision_events_inter, 8, ecscollision_pairs_inter0, ecscollision_pairs_inter1, 8
 FWK_ECS_COLLISION_STATE ecscollision_state_tiny, _ecscollision_callback, ecscollision_events_tiny, 2, ecscollision_pairs_tiny0, ecscollision_pairs_tiny1, 2
+
+FWK_ECS_COLLISION_STATE ecscollision_state_edge, _ecscollision_callback, ecscollision_events_edge, 8, ecscollision_pairs_edge0, ecscollision_pairs_edge1, 8
 
 .include "game/scenario.inc"
 
@@ -50,6 +56,8 @@ _ecscollision_cb: .ds ECSCOLLISION_CB_ENTRY * ECSCOLLISION_CB_MAX
 _ecscollision_cb_count: .db 0
 _ecscollision_cb_ptr: .dw 0
 _ecscollision_destroy: .db 0
+_ecscollision_abort: .db 0
+_ecscollision_null: .db 0
 _ecscollision_step_ptr: .dw 0
 _ecscollision_step_index: .db 0
 _ecscollision_mode: .db 0
@@ -145,6 +153,17 @@ _ecscollision_callback:
     call fwk_ecs_entity_mark_destroy
     ret c
 _ecscollision_callback_done:
+    ld a, (_ecscollision_abort)
+    or a
+    jr z, _ecscollision_callback_ok
+    cp #2
+    ld a, #0x77
+    jr z, _ecscollision_callback_abort
+    xor a
+_ecscollision_callback_abort:
+    scf
+    ret
+_ecscollision_callback_ok:
     xor a
     ret
 
@@ -250,12 +269,57 @@ _ecscollision_position_loop:
     cp #ECSCOLLISION_ENTITIES
     jr nz, _ecscollision_position_loop
 
-    ;; Command: 1 disable, 2 enable, 3 destroy-on-enter for this step.
+    ;; Commands: 1 disable, 2 enable, 3 destroy-on-enter, 4..7 zero/restore
+    ;; width/height, 8 lock manager A, 9 null manager, 10/11 callback aborts.
     ld a, (_ecscollision_cmd)
     or a
-    jr z, _ecscollision_command_done
+    jp z, _ecscollision_command_done
     cp #3
-    jr z, _ecscollision_command_destroy
+    jp z, _ecscollision_command_destroy
+    jp c, _ecscollision_command_state
+    cp #8
+    jp c, _ecscollision_command_size
+    jp z, _ecscollision_command_lock
+    cp #9
+    jp z, _ecscollision_command_null
+    cp #10
+    jp z, _ecscollision_command_abort_zero
+    ld a, #2
+    ld (_ecscollision_abort), a
+    jp _ecscollision_command_done
+_ecscollision_command_abort_zero:
+    ld a, #1
+    ld (_ecscollision_abort), a
+    jp _ecscollision_command_done
+_ecscollision_command_null:
+    ld a, #1
+    ld (_ecscollision_null), a
+    jp _ecscollision_command_done
+_ecscollision_command_lock:
+    ld ix, #ecscollision_manager_a
+    ld FWK_ECS_MANAGER_LOCK(ix), #FWK_ECS_LOCK_TRAVERSAL
+    jp _ecscollision_command_done
+_ecscollision_command_size:
+    ld a, (_ecscollision_arg)
+    call _ecscollision_entity_ptr
+    ld a, (_ecscollision_cmd)
+    cp #5
+    jr c, _ecscollision_width_zero
+    jr z, _ecscollision_width_restore
+    cp #7
+    jr c, _ecscollision_height_zero
+    ld ECS_E_HEIGHT(iy), #8
+    jp _ecscollision_command_done
+_ecscollision_width_zero:
+    ld ECS_E_WIDTH(iy), #0
+    jp _ecscollision_command_done
+_ecscollision_width_restore:
+    ld ECS_E_WIDTH(iy), #4
+    jp _ecscollision_command_done
+_ecscollision_height_zero:
+    ld ECS_E_HEIGHT(iy), #0
+    jp _ecscollision_command_done
+_ecscollision_command_state:
     ld a, (_ecscollision_arg)
     call _ecscollision_entity_ptr
     ld a, (_ecscollision_cmd)
@@ -295,9 +359,19 @@ _ecscollision_mode_not_intra:
     ld ix, #ecscollision_state_inter
     jr _ecscollision_run
 _ecscollision_mode_tiny:
+    cp #2
+    jr nz, _ecscollision_mode_edge
     ld ix, #ecscollision_state_tiny
+    jr _ecscollision_run
+_ecscollision_mode_edge:
+    ld ix, #ecscollision_state_edge
 _ecscollision_run:
     ld (_ecscollision_state), ix
+    ld a, (_ecscollision_null)
+    or a
+    jr z, _ecscollision_call
+    ld hl, #0
+_ecscollision_call:
     call fwk_ecs_system_collision
     push af
     pop hl
@@ -306,6 +380,29 @@ _ecscollision_run:
     ld a, l
     and #1
     ld (_ecscollision_carry), a
+    xor a
+    ld (_ecscollision_abort), a
+    ld (_ecscollision_null), a
+
+    ;; The system must never leave a traversal lock behind (callback abort
+    ;; included) and must not clear a lock it did not set (BUSY).
+    ld a, (_ecscollision_cmd)
+    cp #8
+    jr nz, _ecscollision_expect_unlocked
+    ld a, (ecscollision_manager_a + FWK_ECS_MANAGER_LOCK)
+    cp #FWK_ECS_LOCK_TRAVERSAL
+    ld a, #0xE6
+    jp nz, _ecscollision_fail
+    xor a
+    ld (ecscollision_manager_a + FWK_ECS_MANAGER_LOCK), a
+    jr _ecscollision_lock_ok
+_ecscollision_expect_unlocked:
+    ld a, (ecscollision_manager_a + FWK_ECS_MANAGER_LOCK)
+    ld hl, #ecscollision_manager_b + FWK_ECS_MANAGER_LOCK
+    or (hl)
+    ld a, #0xE7
+    jp nz, _ecscollision_fail
+_ecscollision_lock_ok:
 
     ;; Destroy step: free the entities the callback marked.
     ld a, (_ecscollision_cmd)

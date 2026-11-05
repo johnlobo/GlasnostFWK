@@ -65,9 +65,26 @@ class CollisionModelTests(unittest.TestCase):
         self.assertEqual(last.events, [(1, 2, X)])
         self.assertEqual((last.carry, last.result, last.flags, last.pair_count), (0, 0, 0, 0))
 
+    def test_edge_cases_saturation_zero_size_and_errors(self):
+        self.assertEqual(self.events(22), [(0, 1, E)])           # x saturates at 255
+        self.assertEqual(self.events(23), [(0, 1, X)])           # zero width
+        self.assertEqual(self.events(24), [(0, 1, E)])
+        self.assertEqual(self.events(25), [(0, 1, X)])           # zero height
+        self.assertEqual(self.events(26), [(0, 1, E)])
+        self.assertEqual(self.events(28), [(0, 1, E)])           # y saturates at 255
+        busy, null = self.records[29], self.records[30]
+        self.assertEqual((busy.carry, busy.result, busy.callbacks), (1, 0x06, []))
+        self.assertEqual((null.carry, null.result, null.callbacks), (1, 0x01, []))
+        self.assertEqual(busy.pair_count, 1)                      # state untouched
+        zero, coded = self.records[31], self.records[32]
+        self.assertEqual((zero.result, zero.callbacks, zero.pair_count), (0x09, [(X, 0, 1)], 0))
+        self.assertEqual((coded.result, coded.callbacks, coded.pair_count), (0x77, [(E, 0, 1)], 1))
+        self.assertEqual(self.events(33), [(0, 1, S)])           # abort still committed the pair
+
     def test_callbacks_are_the_kept_events_in_order(self):
         for record in self.records:
-            self.assertEqual(record.callbacks, [(k, a, b) for a, b, k in record.events])
+            if record.result in (0, 0x0A):
+                self.assertEqual(record.callbacks, [(k, a, b) for a, b, k in record.events])
 
     def test_pair_membership_is_never_duplicated_or_reversed(self):
         for step, record in zip(model.SCENARIO, self.records):

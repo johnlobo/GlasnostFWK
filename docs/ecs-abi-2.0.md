@@ -359,8 +359,10 @@ Layout público (el resto es privado de la implementación):
 **Llamada.** `fwk_ecs_system_collision`: `IX`=descriptor, `HL`=manager A,
 `DE`=manager B. Si `HL==DE` se evalúa un único manager. Salida: carry limpio y
 `A=0`, o carry activo y `A=FWK_ECS_ERR_*`. Preserva `IX`/`IY`. Un manager
-bloqueado devuelve `FWK_ECS_ERR_BUSY` sin tocar el estado; un manager no
-inicializado o un puntero nulo, `FWK_ECS_ERR_MANAGER`/`ARGUMENT`.
+bloqueado devuelve `FWK_ECS_ERR_BUSY`; un manager no inicializado o un
+puntero nulo, `FWK_ECS_ERR_MANAGER`/`ARGUMENT`. Todo error de validación deja
+el estado del sistema (eventos, flags, tabla de pares) exactamente como estaba
+y no modifica el bloqueo de ningún manager.
 
 **Participantes.** Solo entidades `ACTIVE` con el bit `COLLISION`. Un par
 `{e1,e2}` es válido si `e1` es `COLLIDER` y `e2` `COLLISIONABLE`, o al revés.

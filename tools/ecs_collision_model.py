@@ -32,11 +32,14 @@ ROLES = (COLLIDER, COLLISIONABLE, COLLIDER | COLLISIONABLE, COLLIDER,
 A_IDS = (0, 1, 2, 3)
 B_IDS = (4, 5, 6)
 
-MODE_INTRA, MODE_INTER, MODE_TINY = 0, 1, 2
-CMD_NONE, CMD_DISABLE, CMD_ENABLE, CMD_DESTROY_ON_ENTER = 0, 1, 2, 3
+MODE_INTRA, MODE_INTER, MODE_TINY, MODE_EDGE = 0, 1, 2, 3
+(CMD_NONE, CMD_DISABLE, CMD_ENABLE, CMD_DESTROY_ON_ENTER, CMD_WIDTH_ZERO, CMD_WIDTH_RESTORE,
+ CMD_HEIGHT_ZERO, CMD_HEIGHT_RESTORE, CMD_LOCK, CMD_NULL_MANAGER, CMD_ABORT_ZERO,
+ CMD_ABORT_CODE) = range(12)
+ERR_ARGUMENT, ERR_BUSY, ERR_CALLBACK, ABORT_CODE = 0x01, 0x06, 0x09, 0x77
 
 # (event capacity, pair capacity) per mode. Mode 2 is deliberately tiny.
-CAPACITY = {MODE_INTRA: (8, 8), MODE_INTER: (8, 8), MODE_TINY: (2, 2)}
+CAPACITY = {MODE_INTRA: (8, 8), MODE_INTER: (8, 8), MODE_TINY: (2, 2), MODE_EDGE: (8, 8)}
 
 PARK = ((0, 0), (20, 40), (40, 80), (60, 120), (10, 160), (30, 180), (50, 190))
 
@@ -82,6 +85,20 @@ SCENARIO = (
     Step(MODE_TINY, _at(a0=(20, 40), a1=(20, 40), a2=(20, 40)), note="untracked pair stays dropped"),
     Step(MODE_TINY, _at(a1=(20, 40), a2=(20, 40)), note="EXIT dropped by a full event buffer"),
     Step(MODE_TINY, _at(), note="remaining tracked pair exits cleanly"),
+    Step(MODE_EDGE, _at(), note="edge state starts empty"),
+    Step(MODE_EDGE, _at(a0=(254, 40), a1=(253, 40)), note="x sums saturate at 255: still overlap"),
+    Step(MODE_EDGE, _at(a0=(254, 40), a1=(253, 40)), CMD_WIDTH_ZERO, 1, "zero width never overlaps"),
+    Step(MODE_EDGE, _at(a0=(254, 40), a1=(253, 40)), CMD_WIDTH_RESTORE, 1, "width back: ENTER"),
+    Step(MODE_EDGE, _at(a0=(254, 40), a1=(253, 40)), CMD_HEIGHT_ZERO, 0, "zero height never overlaps"),
+    Step(MODE_EDGE, _at(a0=(254, 40), a1=(253, 40)), CMD_HEIGHT_RESTORE, 0, "height back: ENTER"),
+    Step(MODE_EDGE, _at(), note="parked: EXIT"),
+    Step(MODE_EDGE, _at(a0=(40, 252), a1=(40, 251)), note="y sums saturate at 255: overlap"),
+    Step(MODE_EDGE, _at(a0=(40, 252), a1=(40, 251)), CMD_LOCK, 0, "locked manager: BUSY, state untouched"),
+    Step(MODE_EDGE, _at(a0=(40, 252), a1=(40, 251)), CMD_NULL_MANAGER, 0, "null manager: ARGUMENT, state untouched"),
+    Step(MODE_EDGE, _at(), CMD_ABORT_ZERO, 0, "callback aborts with A=0: CALLBACK, pairs committed"),
+    Step(MODE_EDGE, _at(a0=(20, 40), a1=(20, 40)), CMD_ABORT_CODE, 0, "callback aborts with A=0x77, kept"),
+    Step(MODE_EDGE, _at(a0=(20, 40), a1=(20, 40)), note="pair was committed before delivery: STAY"),
+    Step(MODE_EDGE, _at(), note="final EXIT"),
 )
 
 STATUS_ACTIVE, STATUS_DISABLED, STATUS_PENDING, STATUS_FREE = "active", "disabled", "pending", "free"
@@ -103,6 +120,8 @@ class Model:
     status: dict = field(default_factory=lambda: {i: STATUS_ACTIVE for i in range(7)})
     pos: dict = field(default_factory=dict)
     pairs: dict = field(default_factory=lambda: {m: [] for m in CAPACITY})
+    last: dict = field(default_factory=lambda: {m: ([], 0) for m in CAPACITY})
+    size: dict = field(default_factory=lambda: {i: [WIDTH, HEIGHT] for i in range(7)})
 
     def active(self, ident: int) -> bool:
         return self.status[ident] == STATUS_ACTIVE
@@ -110,11 +129,14 @@ class Model:
     def overlaps(self, a: int, b: int) -> bool:
         ax, ay = self.pos[a]
         bx, by = self.pos[b]
+        (aw, ah), (bw, bh) = self.size[a], self.size[b]
+        if 0 in (aw, ah, bw, bh):
+            return False
         return (
-            ax < min(255, bx + WIDTH)
-            and bx < min(255, ax + WIDTH)
-            and ay < min(255, by + HEIGHT)
-            and by < min(255, ay + HEIGHT)
+            ax < min(255, bx + bw)
+            and bx < min(255, ax + aw)
+            and ay < min(255, by + bh)
+            and by < min(255, ay + ah)
         )
 
     def in_contact(self, a: int, b: int) -> bool:
@@ -139,6 +161,26 @@ class Model:
         elif step.cmd == CMD_ENABLE:
             assert self.status[step.arg] == STATUS_DISABLED
             self.status[step.arg] = STATUS_ACTIVE
+
+        elif step.cmd == CMD_WIDTH_ZERO:
+            self.size[step.arg][0] = 0
+        elif step.cmd == CMD_WIDTH_RESTORE:
+            self.size[step.arg][0] = WIDTH
+        elif step.cmd == CMD_HEIGHT_ZERO:
+            self.size[step.arg][1] = 0
+        elif step.cmd == CMD_HEIGHT_RESTORE:
+            self.size[step.arg][1] = HEIGHT
+
+        if step.cmd in (CMD_LOCK, CMD_NULL_MANAGER):
+            # Validation errors leave the whole state untouched: the log shows
+            # the previous call's events and flags and no callbacks.
+            events, flags = self.last[step.mode]
+            return StepRecord(
+                index=index, carry=1,
+                result=ERR_BUSY if step.cmd == CMD_LOCK else ERR_ARGUMENT,
+                flags=flags, pair_count=len(self.pairs[step.mode]),
+                events=list(events), callbacks=[],
+            )
 
         event_cap, pair_cap = CAPACITY[step.mode]
         previous = self.pairs[step.mode]
@@ -168,6 +210,15 @@ class Model:
                 overflow = True
         self.pairs[step.mode] = current
 
+        self.last[step.mode] = (list(events), 1 if overflow else 0)
+        if step.cmd in (CMD_ABORT_ZERO, CMD_ABORT_CODE):
+            # The callback stops delivery at the first event.
+            return StepRecord(
+                index=index, carry=1,
+                result=ERR_CALLBACK if step.cmd == CMD_ABORT_ZERO else ABORT_CODE,
+                flags=1 if overflow else 0, pair_count=len(current), events=events,
+                callbacks=[(events[0][2], events[0][0], events[0][1])],
+            )
         callbacks = []
         for a, b, kind in events:
             callbacks.append((kind, a, b))

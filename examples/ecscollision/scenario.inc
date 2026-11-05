@@ -22,5 +22,19 @@ ecscollision_steps:
     .db 2, 0, 0, 20, 40, 20, 40, 20, 40, 60, 120, 10, 160, 30, 180, 50, 190  ; 18: untracked pair stays dropped
     .db 2, 0, 0, 0, 0, 20, 40, 20, 40, 60, 120, 10, 160, 30, 180, 50, 190  ; 19: EXIT dropped by a full event buffer
     .db 2, 0, 0, 0, 0, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 20: remaining tracked pair exits cleanly
+    .db 3, 0, 0, 0, 0, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 21: edge state starts empty
+    .db 3, 0, 0, 254, 40, 253, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 22: x sums saturate at 255: still overlap
+    .db 3, 4, 1, 254, 40, 253, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 23: zero width never overlaps
+    .db 3, 5, 1, 254, 40, 253, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 24: width back: ENTER
+    .db 3, 6, 0, 254, 40, 253, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 25: zero height never overlaps
+    .db 3, 7, 0, 254, 40, 253, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 26: height back: ENTER
+    .db 3, 0, 0, 0, 0, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 27: parked: EXIT
+    .db 3, 0, 0, 40, 252, 40, 251, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 28: y sums saturate at 255: overlap
+    .db 3, 8, 0, 40, 252, 40, 251, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 29: locked manager: BUSY, state untouched
+    .db 3, 9, 0, 40, 252, 40, 251, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 30: null manager: ARGUMENT, state untouched
+    .db 3, 10, 0, 0, 0, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 31: callback aborts with A=0: CALLBACK, pairs committed
+    .db 3, 11, 0, 20, 40, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 32: callback aborts with A=0x77, kept
+    .db 3, 0, 0, 20, 40, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 33: pair was committed before delivery: STAY
+    .db 3, 0, 0, 0, 0, 20, 40, 40, 80, 60, 120, 10, 160, 30, 180, 50, 190  ; 34: final EXIT
     .db 0xFF
-ECSCOLLISION_STEP_COUNT = 21
+ECSCOLLISION_STEP_COUNT = 35
