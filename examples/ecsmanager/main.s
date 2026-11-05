@@ -30,6 +30,20 @@ ecsmanager_template:
     .dw ecsmanager_behavior_right
     .db 0, 0
 
+;; Motion edge cases: x, y, vx, vy, expected x, expected y. Covers positions
+;; above 127 (the old sign-flag check zeroed them), saturation at both ends,
+;; underflow on each axis, and out-of-range positions moving backwards.
+ecsmanager_motion_probe_table:
+    .db 78, 198, 3, 3, 79, 199
+    .db 2, 2, 0xFD, 0xFD, 0, 0
+    .db 2, 130, 0xFD, 0xFD, 0, 127
+    .db 70, 130, 1, 1, 71, 131
+    .db 70, 190, 0, 5, 70, 195
+    .db 200, 250, 0xFF, 0xFF, 79, 199
+    .db 255, 255, 1, 1, 79, 199
+    .db 79, 199, 0, 0, 79, 199
+ECSMANAGER_MOTION_PROBES = 8
+
 ecsmanager_status:: .db 0
 ecsmanager_callbacks:: .db 0
 ecsmanager_first_slot:: .dw 0
@@ -67,6 +81,34 @@ _ecsmanager_callback_lock_fail:
 _ecsmanager_abort_callback:
     xor a
     scf
+    ret
+
+;; In: HL=probe row, IX=manager. Out: Z when motion produced the expected
+;; position; HL points at the expected y byte.
+_ecsmanager_motion_probe:
+    ld iy, (ecsmanager_first_slot)
+    ld a, (hl)
+    inc hl
+    ld ECS_E_X(iy), a
+    ld a, (hl)
+    inc hl
+    ld ECS_E_Y(iy), a
+    ld a, (hl)
+    inc hl
+    ld ECS_E_MOTION_VELOCITY_X(iy), a
+    ld a, (hl)
+    inc hl
+    ld ECS_E_MOTION_VELOCITY_Y(iy), a
+    push hl
+    call fwk_ecs_system_motion_u8
+    pop hl
+    ld iy, (ecsmanager_first_slot)
+    ld a, (hl)
+    inc hl
+    cp ECS_E_X(iy)
+    ret nz
+    ld a, (hl)
+    cp ECS_E_Y(iy)
     ret
 
 _main::
@@ -113,6 +155,23 @@ _ecsmanager_system_loop:
     cp #1
     ld a, #0xEE
     jp nz, _ecsmanager_fail
+
+    ;; Motion arithmetic edge cases, then restore the first entity.
+    ld hl, #ecsmanager_motion_probe_table
+    ld b, #ECSMANAGER_MOTION_PROBES
+_ecsmanager_motion_probe_loop:
+    push bc
+    call _ecsmanager_motion_probe
+    pop bc
+    ld a, #0xEF
+    jp nz, _ecsmanager_fail
+    inc hl
+    djnz _ecsmanager_motion_probe_loop
+    ld iy, (ecsmanager_first_slot)
+    ld ECS_E_X(iy), #14
+    ld ECS_E_Y(iy), #20
+    ld ECS_E_MOTION_VELOCITY_X(iy), #1
+    ld ECS_E_MOTION_VELOCITY_Y(iy), #0
 
     ;; Full manager must be reported without altering counts.
     ld hl, #ecsmanager_template

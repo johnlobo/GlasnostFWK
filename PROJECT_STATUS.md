@@ -1216,7 +1216,7 @@ La siguiente fase es la 6: añadir input de entidades, física principal y
 tilemaps ECS. No se debe presentar `platformer_ecs` como paridad completa con
 la referencia hasta cerrar las fases 6-10.
 
-### Fase 6: en curso, adaptadores iniciales de input, plataforma y tilemap
+### Fase 6: completada, adaptadores de input, plataforma y tilemap
 
 - [x] El portfolio ECS añade `input` y `platform`; `platform` depende de
   `motion` y el perfil generado de `platformer_ecs` queda en 37 bytes por
@@ -1230,13 +1230,18 @@ la referencia hasta cerrar las fases 6-10.
   `fwk_tilemap_render_view`, manteniendo el render ECS como puente temporal.
 - [x] Regresión local: 125 pruebas host, 24 BIN, 23 CDT y DSK común; smoke CPC
   6128 correcto para ejecución, frames y suelo visible.
-- [ ] La entrada interactiva de `platformer_ecs` aún no está demostrada de
-  forma aislada en el smoke; no se declara cerrada la paridad jugable de esta
-  fase hasta completar esa prueba y validar el ciclo de salto/aterrizaje.
+- [x] Cierre de la fase 6: el smoke inicial ocultaba tres defectos (carrera
+  de lectura de vídeo, nacimiento no aéreo del jugador, y `ecs_motion.s` con
+  doble integración de entidades `PLATFORM` y desbordamiento por signo). Los
+  tres están corregidos y el smoke demuestra caída, aterrizaje en y=184,
+  desplazamiento izquierda/derecha y ciclo de salto/aterrizaje. Detalle en
+  `docs/validation.md`.
+- [ ] Pendiente de seguimiento: el puente de render redibuja todo en cada
+  iteración (~1,3 it/s en AmSpiriT-Lite); se resuelve con el render por
+  suciedad de fases posteriores.
 - [x] Implementación publicada en `ecs-v2` como
   `e5bc741e29ab169e29378687ee08c3ae53bbc051`; CI manual
   `41816216332`/job `126527519587` correcta en 25 s, con 125 pruebas host,
   24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
 
-La continuación inmediata sigue siendo la fase 6: aislar y cerrar la prueba de
-entrada y física/tilemap antes de pasar a colisiones ECS entre entidades.
+La continuación inmediata es la fase 7: colisiones ECS entre entidades.

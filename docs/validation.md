@@ -358,6 +358,28 @@ python3 tests/emulator_smoke.py --model 464 vertical
 - `platformer_ecs` renderiza un tilemap 20x25 mediante las primitivas
   CPCTelera Next y compila los dos nuevos sistemas dentro del BIN común.
 - `make test` pasó 125 pruebas host, construyó 24 BIN, 23 CDT y el DSK común.
-- Smoke CPC 6128 correcto para ejecución, avance de frames y render del suelo.
-  La entrada interactiva aún no queda validada de forma aislada en este smoke;
-  se mantiene como pendiente de la continuación de la fase 6.
+- El smoke inicial de ejecución y suelo no era fiable y ocultaba tres defectos
+  (corregidos en el cierre de la fase 6):
+  1. El bucle borra y redibuja la pantalla en cada iteración, de modo que una
+     única lectura de vídeo casi siempre veía el fotograma borrado. El smoke
+     sondea ahora hasta ver el suelo.
+  2. El jugador nacía sin `AIRBORNE`, y `physics_platform` solo aplica
+     gravedad a cuerpos aéreos: flotaba en y=80. Ahora nace aéreo.
+  3. `ecs_motion.s` integraba también a las entidades `PLATFORM` (doble
+     velocidad, atravesaba el suelo de 8 px) y detectaba desbordamiento por
+     signo, poniendo a 0 cualquier coordenada mayor que 127. Ahora omite las
+     entidades `PLATFORM` y satura por acarreo.
+- Smoke CPC 6128 de cierre: el jugador cae desde y=80 y aterriza en y=184 con
+  `vy=0` y `TILE_GROUNDED`, se mantiene estable, camina a derecha e izquierda
+  y se detiene al soltar, salta y vuelve a aterrizar en y=184. Mutaciones
+  comprobadas: con el nacimiento no aéreo o con el `ecs_motion.s` anterior el
+  smoke falla en "landing on the floor".
+- `ecsmanager` ejecuta ahora ocho casos límite de `fwk_ecs_system_motion_u8`
+  (posiciones mayores que 127, saturación en ambos extremos, subdesbordamiento
+  por eje y posiciones fuera de rango que retroceden). Con el `ecs_motion.s`
+  anterior el smoke falla. El builder rechaza además `platform` con
+  `core/ecs_motion.s` si falta `core/ecs_platform.s`.
+- Observación de rendimiento (no corregida, fuera del alcance de la fase 6):
+  el puente de render redibuja todo el tilemap en cada iteración y el bucle
+  corre a unas 1,3 iteraciones por segundo en AmSpiriT-Lite. Los timeouts del
+  smoke están dimensionados para ese ritmo.

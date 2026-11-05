@@ -71,6 +71,44 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ECS_E_BEHAVIOR_PROGRAM", behavior)
         self.assertIn("ECS_E_MOTION_VELOCITY_X", motion)
 
+    def test_motion_system_uses_carry_and_leaves_platform_entities_alone(self):
+        motion = (ROOT / "src/core/ecs_motion.s").read_text()
+        # Regression: `jp m` on the u8 sum zeroed every coordinate above 127.
+        self.assertNotIn("jp m", motion)
+        self.assertIn("_fwk_ecs_motion_axis", motion)
+        # Regression: PLATFORM entities were integrated twice and tunnelled.
+        self.assertIn(".ifdef ECS_C_PLATFORM", motion)
+        self.assertIn("and #ECS_C_PLATFORM", motion)
+
+    def test_platformer_ecs_player_spawns_airborne(self):
+        # physics_platform applies gravity only to airborne bodies: a grounded
+        # spawn hovers at its spawn height forever.
+        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
+        template = main.split("platformer_ecs_player_template:", 1)[1].split(
+            "platformer_ecs_enemy_h_template:", 1
+        )[0]
+        self.assertIn(".db 0, 0, FWK_PLATFORM_AIRBORNE", template)
+
+    def test_platformer_ecs_smoke_covers_landing_walk_and_jump(self):
+        smoke = (ROOT / "tests/emulator_smoke.py").read_text()
+        section = smoke.split('if name == "platformer_ecs":', 1)[1].split(
+            'if name == "audio":', 1
+        )[0]
+        for label in (
+            "ECS platformer landing on the floor",
+            "ECS platformer cursor right",
+            "ECS platformer cursor left",
+            "ECS platformer jump takeoff",
+            "ECS platformer jump landing",
+        ):
+            # The label must be the argument of a waiting call, not a stray
+            # string in dead code.
+            self.assertRegex(
+                section,
+                rf"(?s)(wait_for|hold_keys_until)\((?:(?!\n            \w).)*?[\"']{label}[\"']",
+            )
+        self.assertIn("raise RuntimeError", section)
+
     def test_ci_verifies_the_new_bin_and_cdt(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         artifact_section = workflow.split("Verify distributable artifacts", 1)[1]

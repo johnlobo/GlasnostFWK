@@ -303,7 +303,7 @@ FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
     </article>
     <article class="api" data-module="core/ecs_motion.s">
       <h4>Sistema ECS de movimiento — <code>core/ecs_motion.s</code></h4>
-      <p>Requiere el componente <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_motion_u8</code> recibe <code>IX=manager</code>, suma las velocidades con signo a X/Y, satura contra <code>ECS_X_MAX/ECS_Y_MAX</code> y activa <code>ECS_RENDER_DIRTY</code> cuando cambia la posición. No implementa gravedad, colisión ni física 8.8.</p>
+      <p>Requiere el componente <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_motion_u8</code> recibe <code>IX=manager</code>, suma las velocidades con signo a X/Y, satura contra <code>ECS_X_MAX/ECS_Y_MAX</code> y activa <code>ECS_RENDER_DIRTY</code> cuando cambia la posición. El desbordamiento se detecta con acarreo, de modo que coordenadas por encima de 127 son válidas. Las entidades con el componente <code>platform</code> se omiten: su movimiento y colisión pertenecen a <code>fwk_ecs_system_platform</code>. No implementa gravedad, colisión ni física 8.8.</p>
     </article>
     <article class="api" data-module="core/ecs_input.s">
       <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>

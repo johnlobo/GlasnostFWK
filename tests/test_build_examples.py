@@ -195,5 +195,23 @@ class DiskStagingTests(unittest.TestCase):
                 build_examples._safe_example_file(example, "payload.bin")
 
 
+class EcsSystemValidationTests(unittest.TestCase):
+    def test_motion_with_platform_component_requires_platform_system(self):
+        from tools.build_examples import _validate_ecs_systems
+
+        manifest = {
+            "ecs": {
+                "x_format": "u8",
+                "y_format": "u8",
+                "components": ["motion", "platform"],
+            }
+        }
+        with self.assertRaisesRegex(ValueError, "needs core/ecs_platform.s"):
+            _validate_ecs_systems("demo", manifest, ["core/ecs_motion.s"])
+        _validate_ecs_systems(
+            "demo", manifest, ["core/ecs_motion.s", "core/ecs_platform.s"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

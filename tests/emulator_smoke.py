@@ -287,11 +287,69 @@ def run_example(
                 "ECS platformer behavior/motion",
             )
             player_slot = int.from_bytes(ram(player, 2), "little")
-            landed = ram(player_slot + 4, 2)
-            if landed[0] != 10 or landed[1] > 192:
-                raise RuntimeError(f"ECS platformer initial physics state is invalid: {landed.hex()}")
-            if ram(standard_screen_address(0, 192), 1) == b"\x00":
-                raise RuntimeError("ECS platformer tilemap floor was not rendered")
+
+            def player_state():
+                state = ram(player_slot, 37)
+                return {"x": state[4], "y": state[5], "vx": state[25], "vy": state[26], "flags": state[27]}
+
+            # The loop clears and redraws the screen every frame, so a single
+            # video RAM read usually lands on the cleared frame: poll for it.
+            wait_for(
+                lambda: ram(standard_screen_address(0, 192), 1) != b"\x00",
+                30,
+                "ECS platformer tilemap floor render",
+            )
+            # Spawn is airborne at y=80; gravity must bring it down onto the
+            # 8px floor row at y=192 (feet at 184). One atomic 37-byte read per
+            # poll; every sample must stay inside the fall corridor and never
+            # move upwards, so wrapping, clamping to zero or bouncing fail.
+            trajectory = []
+
+            def landed() -> bool:
+                state = player_state()
+                trajectory.append(state["y"])
+                return state["y"] == 184 and state["flags"] & 0x03 == 0x02
+
+            wait_for(landed, 45, "ECS platformer landing on the floor")
+            if any(y < 80 or y > 184 for y in trajectory) or trajectory != sorted(trajectory):
+                raise RuntimeError(f"ECS platformer fall was not a clean descent: {trajectory}")
+            for _ in range(8):  # several game iterations: no sinking, no bounce
+                resting = player_state()
+                if resting["y"] != 184 or resting["vy"] != 0 or resting["flags"] & 0x03 != 0x02:
+                    raise RuntimeError(f"ECS platformer does not rest on the floor: {resting}")
+                time.sleep(0.5)
+
+            # Held right: platform physics moves the player by the input
+            # speed (one pass, no double integration) and releasing stops it.
+            start_x = player_state()["x"]
+            hold_keys_until(
+                lambda: player_state()["x"] >= start_x + 8,
+                row0=0xFD,
+                timeout=25,
+                label="ECS platformer cursor right",
+            )
+            wait_for(lambda: player_state()["vx"] == 0, 10, "ECS platformer stops on release")
+            moved = player_state()
+            if moved["y"] != 184 or moved["x"] <= start_x:
+                raise RuntimeError(f"ECS platformer walk left the floor or did not move: {moved}")
+            start_x = moved["x"]
+            hold_keys_until(
+                lambda: player_state()["x"] <= start_x - 8,
+                row1=0xFE,
+                timeout=25,
+                label="ECS platformer cursor left",
+            )
+            wait_for(lambda: player_state()["vx"] == 0, 10, "ECS platformer stops after left")
+
+            # Jump: cursor up must lift the player, then it lands back at 184.
+            set_keys(row0=0xFE)
+            wait_for(lambda: player_state()["y"] < 184, 10, "ECS platformer jump takeoff")
+            set_keys()
+            wait_for(
+                lambda: player_state()["y"] == 184 and player_state()["flags"] & 0x03 == 0x02,
+                45,
+                "ECS platformer jump landing",
+            )
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")
