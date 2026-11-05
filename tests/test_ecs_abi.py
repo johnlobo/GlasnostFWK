@@ -69,9 +69,12 @@ class EcsAbiSpecificationTests(unittest.TestCase):
             "`ECS_C_RENDER`",
             "`ECS_RENDER_HAS_BACKGROUND`",
             "`ECS_E_RENDER_PREVIOUS_SORT_Y`",
-            "`ECS_COLLISION_COLLIDER = 0x01`",
-            "`ECS_COLLISION_COLLISIONABLE = 0x02`",
-            "Tipos: `ECS_COLLISION_ENTER=1`, `STAY=2`, `EXIT=3`",
+            "`fwk_ecs_collide`",
+            "`ECS_E_COLLISION_CONTACT`",
+            "`ECS_COLLISION_ENTER=1`",
+            "`EXIT=3`",
+            "necesita su propio canal",
+            "300 bytes de código y ninguna\ntabla ni buffer",
         )
         for contract in required:
             self.assertIn(contract, self.source)

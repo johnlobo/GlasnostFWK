@@ -1244,4 +1244,27 @@ la referencia hasta cerrar las fases 6-10.
   `41816216332`/job `126527519587` correcta en 25 s, con 125 pruebas host,
   24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
 
-La continuación inmediata es la fase 7: colisiones ECS entre entidades.
+### Fase 7: completada, colisión ECS (rediseño mínimo)
+
+Decisión del 2026-11-05: el primer diseño (tabla global de pares, buffer de
+eventos, roles, hasta 255 entidades por manager) pesaba entre 980 y 5.300
+bytes y se había optimizado para casos que ningún juego de CPC tiene. Se
+sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
+
+- [x] ABI 9 revisado: `fwk_ecs_collide` (sujeto contra objetivos de un
+  manager), callback con `IX`=manager, `IY`=objetivo, `HL`=sujeto,
+  `A`=`ENTER`/`STAY`/`EXIT`, un byte de estado por entidad.
+- [x] `src/core/ecs_collision.{inc,s}`: unos 210 bytes de código y 7 de datos
+  (presupuesto 300 y 8, comprobado por una prueba). El llamante elige el canal
+  de estado (`E`); ocho canales por sujeto.
+- [x] Modelo y escenario de 26 pasos, `examples/ecscollision`, smoke en CPC
+  6128 y 464.
+- [x] Principio añadido al plan maestro: presupuesto de bytes por sistema antes
+  de construir, sin tablas ni buffers globales fijos, rendimiento medido con
+  entidades de un juego.
+- [x] El PR #2 (diseño anterior) queda sustituido por este.
+- [ ] Limitaciones: estado por sujeto y canal, no por pareja; posiciones dentro de
+  pantalla y sumas `u8` sin saturar; no reentrante.
+- [ ] Siguiente: fase 8, animación ECS, con su presupuesto de bytes definido
+  antes de escribir código.
+
