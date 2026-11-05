@@ -295,6 +295,34 @@ def run_example(
                     )
                 )
                 raise RuntimeError(f"ECS collision log differs from the model:\n{diff}")
+        if name == "ecsanimation":
+            sys.path.insert(0, str(ROOT / "tools"))
+            import ecs_animation_model as animation_model
+
+            status = symbol(noi, "ecsanimation_status")
+            wait_for(lambda: ram(status, 1) != b"\x00", 20, "ECS animation scenario")
+            if ram(status, 1) != b"\x5A":
+                raise RuntimeError(f"ECS animation harness failed with status {ram(status, 1).hex()}")
+            sprites = [
+                int.from_bytes(ram(symbol(noi, "ecsanimation_sprites") + 2 * i, 2), "little")
+                for i in range(5)
+            ]
+            length = int.from_bytes(ram(symbol(noi, "ecsanimation_log_length"), 2), "little")
+            actual = ram(symbol(noi, "ecsanimation_log"), length)
+            expected = animation_model.expected_log(sprites)
+            if actual != expected:
+                import difflib
+
+                diff = "\n".join(
+                    difflib.unified_diff(
+                        animation_model.describe_log(expected, sprites),
+                        animation_model.describe_log(actual, sprites),
+                        "expected",
+                        "actual",
+                        lineterm="",
+                    )
+                )
+                raise RuntimeError(f"ECS animation log differs from the model:\n{diff}")
         if name == "platformer_ecs":
             status = symbol(noi, "platformer_ecs_status")
             player = symbol(noi, "platformer_ecs_player")
@@ -435,6 +463,11 @@ def run_example(
             frame_value = symbol(noi, "animation_frame_value")
             status = symbol(noi, "animation_status")
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "four exact animation periods")
+            if ram(symbol(noi, "animation_wide_status"), 1) != b"\x5A":
+                raise RuntimeError(
+                    "descriptor with more than 128 frames returned the wrong frame "
+                    "(16-bit frame index regression)"
+                )
             if ram(frame_value, 1) not in {b"\xF0", b"\x0F", b"\xAA"}:
                 raise RuntimeError("animation selected a frame outside its descriptor")
             wait_for(
@@ -944,7 +977,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "platformer_ecs"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "platformer_ecs"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

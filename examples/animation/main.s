@@ -14,12 +14,28 @@ animation_frame_value:: .db 0
 animation_last_change:: .dw 0
 animation_status:: .db 0xA5
 
+;; Regression for descriptors with more than 128 frames: after 128 ticks of a
+;; duration-1 animation the cursor must be on frame 128 (an 8-bit frame * 2
+;; index wrapped back to frame 0). Frames 0..127 point at wide_low, 128..129
+;; at wide_high, so the two cases are told apart by the returned pointer.
+animation_wide_status:: .db 0xA5
+animation_wide_state: .ds FWK_ANIM_STATE_SIZE
+animation_wide_low: .db 0
+animation_wide_high: .db 0
+animation_wide_descriptor: .db 130, 1
+    .rept 128
+    .dw animation_wide_low
+    .endm
+    .dw animation_wide_high, animation_wide_high
+
 .area _CODE
 _main::
     call fwk_project_init
     call fwk_video_init
     xor a
     call fwk_video_clear_visible
+
+    call _animation_wide_check
 
     ld ix, #animation_state
     call fwk_anim_clear
@@ -78,6 +94,28 @@ _animation_bad_period:
     ld (animation_status), a
     pop hl
     jr _animation_loop
+
+_animation_wide_check:
+    ld ix, #animation_wide_state
+    call fwk_anim_clear
+    ld hl, #animation_wide_descriptor
+    call fwk_anim_set
+    ld b, #128
+_animation_wide_loop:
+    push bc
+    ld ix, #animation_wide_state
+    call fwk_anim_tick
+    pop bc
+    djnz _animation_wide_loop
+    ld de, #animation_wide_high      ; HL = frame 128 pointer after 128 ticks
+    or a
+    sbc hl, de
+    ld a, #0x5A
+    jr z, _animation_wide_done
+    ld a, #0xEE
+_animation_wide_done:
+    ld (animation_wide_status), a
+    ret
 
 _animation_draw:
     ld a, (hl)

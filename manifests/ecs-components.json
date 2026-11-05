@@ -64,6 +64,16 @@
       "fields": [
         {"name": "contact", "type": "u8"}
       ]
+    },
+    {
+      "name": "animation",
+      "required": false,
+      "dependencies": [],
+      "fields": [
+        {"name": "descriptor", "type": "pointer"},
+        {"name": "frame", "type": "u8"},
+        {"name": "timer", "type": "u8"}
+      ]
     }
   ]
 }

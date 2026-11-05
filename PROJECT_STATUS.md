@@ -1265,6 +1265,22 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [x] El PR #2 (diseño anterior) queda sustituido por este.
 - [ ] Limitaciones: estado por sujeto y canal, no por pareja; posiciones dentro de
   pantalla y sumas `u8` sin saturar; no reentrante.
-- [ ] Siguiente: fase 8, animación ECS, con su presupuesto de bytes definido
+
+### Fase 8: completada, animación ECS
+
+- [x] ABI 10 concreto: componente `animation` (descriptor, frame, temporizador),
+  mismo formato de descriptor que el animador no ECS, presupuesto de 150 bytes
+  de código y ningún dato fijado antes de escribir código.
+- [x] `src/core/ecs_animation.{inc,s}`: 109 bytes de código y 0 de datos.
+  `fwk_ecs_system_animation` avanza frames y marca `DIRTY`;
+  `fwk_ecs_anim_set` cambia de animación sin reiniciar la activa.
+- [x] Modelo y escenario de 14 pasos con cinco entidades (130 frames, plantilla
+  con descriptor), `examples/ecsanimation`, smoke en CPC 6128 y 464; seis
+  mutaciones comprobadas a mano (no automatizadas).
+- [ ] Limitaciones: `count` o `duration` cero son indefinidos y silenciosos;
+  el descriptor no lleva tamaño de sprite; llamar a `fwk_ecs_anim_set` antes
+  del sistema acorta el frame 0 en una llamada.
+- [ ] Siguiente: fase 9, render ECS multi-manager (la de mayor riesgo), con su
+  presupuesto de bytes y un criterio de rendimiento medido en un juego real
   antes de escribir código.
 

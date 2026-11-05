@@ -152,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veinticinco consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintiséis consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -338,6 +338,24 @@ al_tocar_enemigo:                  ; una vida menos solo al empezar el contacto
     jp z, quitar_vida              ; el juego: resta la vida y termina con xor a / ret
     xor a
     ret</code></pre>
+    </article>
+    <article class="api" data-module="core/ecs_animation.s">
+      <h4>Animación ECS — <code>core/ecs_animation.s</code></h4>
+      <p>Requiere el componente <code>animation</code> (tres campos por entidad: <code>ECS_E_ANIMATION_DESCRIPTOR</code>, <code>FRAME</code> y <code>TIMER</code>). El descriptor es de solo lectura, compartible y tiene el mismo formato que <code>extensions/animation.s</code>: byte <code>count</code> (1 a 255), byte <code>duration</code> (1 a 255) y <code>count</code> punteros de sprite. <code>fwk_ecs_system_animation</code> recibe <code>IX</code>=manager y recorre las entidades <code>ACTIVE</code> con el componente y un descriptor: cada llamada decrementa su <code>TIMER</code>; al llegar a cero lo recarga con la duración, avanza el frame (vuelve a 0 tras el último), pone <code>ECS_E_RENDER_SPRITE</code> al puntero de ese frame y activa <code>ECS_RENDER_DIRTY</code>. Una entidad sin descriptor no se toca.</p>
+      <p><code>fwk_ecs_anim_set</code> (<code>IY</code>=entidad, <code>HL</code>=descriptor o 0) cambia de animación entre recorridos: un descriptor distinto reinicia en el frame 0 con el temporizador igual a la duración, pone el sprite y activa <code>DIRTY</code>; <code>HL=0</code> detiene la animación y conserva el sprite actual; elegir el descriptor ya activo no cambia nada mientras el temporizador no sea cero, de modo que puede llamarse cada frame con el estado actual del jugador (andar, quieto). Con el temporizador a cero (una plantilla que ya trae el descriptor) arranca. Inicia siempre las entidades nuevas con <code>fwk_ecs_anim_set</code> tras crearlas.</p>
+      <p><strong>Límites.</strong> <code>count</code> y <code>duration</code> van de 1 a 255; con 0 el comportamiento es indefinido y silencioso. Si llamas a <code>fwk_ecs_anim_set</code> <em>antes</em> del sistema en el mismo frame, el frame 0 dura una llamada menos (con duración 1 no llega a verse): llámalo después para la duración completa. El descriptor no lleva el tamaño del sprite, así que <code>ECS_E_WIDTH</code> y <code>ECS_E_HEIGHT</code> no cambian; si cambias el sprite por tu cuenta y el descriptor ya estaba activo, no se restituye hasta el siguiente avance. Una animación de un solo frame vuelve a fijar el sprite y a activar <code>DIRTY</code> cada <code>duration</code> llamadas: para una pose fija usa duración 255 o detén la animación con <code>HL=0</code> tras elegirla. <code>fwk_ecs_anim_set</code> no comprueba el estado de la entidad. Ocupa 109 bytes de código y ningún dato (presupuesto 150 y 0, vigilado por <code>tests/test_ecs_animation.py</code>). Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, sección 10.</p>
+      <pre><code>; una vez por frame: primero el sistema, después elegir la animación del
+; estado actual (así cada frame nuevo dura la duración completa)
+    ld ix, #entidades              ; IX = manager con las entidades animadas
+    call fwk_ecs_system_animation
+    ld iy, (jugador)
+    ld hl, #anim_andar             ; descriptor: .db 4, 3 / .dw frame0..frame3
+    ld a, (jugador_quieto)
+    or a
+    jr z, elegida
+    ld hl, #anim_quieto
+elegida:
+    call fwk_ecs_anim_set          ; no reinicia si ya estaba en marcha</code></pre>
     </article>
     <article class="api" data-module="core/ecs_input.s">
       <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
@@ -676,6 +694,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisión ECS: reproduce un escenario generado por un modelo Python (ENTER, STAY, EXIT, máscara, destrucción, aborto, BUSY, callback nulo) y registra los argumentos de cada callback.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsanimation"><td><code>ecsanimation</code></td><td>Prueba técnica de animación ECS: reproduce un escenario generado por un modelo Python (cuenta atrás, avance y vuelta de frame, cambio de descriptor, descriptor ya activo, parada con 0) y registra frame, temporizador, sprite y DIRTY de cada entidad.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer_ecs"><td><code>platformer_ecs</code></td><td>Esqueleto ECS de plataformas: tres entidades, behavior y movimiento, con un puente temporal al pintado de sprites.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
