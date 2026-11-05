@@ -417,3 +417,34 @@ python3 tests/emulator_smoke.py --model 464 vertical
   a 0 en las plantillas y que cualquier llamada con error pisa el estado
   interno.
 
+### Fase 8 ECS: animación
+
+- `core/ecs_animation.s`: `fwk_ecs_system_animation` y `fwk_ecs_anim_set`, con
+  el mismo descriptor que el animador no ECS (`count`, `duration`, punteros de
+  frame). Tamaño medido en el `.rel`: 109 bytes de código y 0 de datos;
+  presupuesto vinculante 150 y 0, comprobado por `tests/test_ecs_animation.py`.
+- `examples/ecsanimation`: 14 pasos y cinco entidades generados desde
+  `tools/ecs_animation_model.py`: cuenta atrás, avance y vuelta, duración 1,
+  entidad sin descriptor, cambio de descriptor, descriptor ya activo a mitad de
+  ciclo, parada con 0, un descriptor de 130 frames que cruza el frame 128 y una
+  entidad copiada de una plantilla que ya trae el descriptor con temporizador 0,
+  una animación de un solo frame y una entidad parada que se vuelve a elegir.
+  El smoke compara frame, temporizador, sprite y `DIRTY` de cada entidad con el
+  modelo byte a byte. CPC 6128 y CPC 464 correctos.
+- Mutaciones, comprobadas a mano en el emulador y **no automatizadas**: frame
+  sin vuelta, `DIRTY` sin marcar, reinicio al elegir el descriptor activo,
+  temporizador sin recargar, índice de frame de 8 bits y descriptor con
+  temporizador 0 tratado como activo; las seis hacen fallar el smoke. La del
+  descriptor activo pasó inadvertida con el primer escenario (con duración 1
+  reiniciar y continuar coinciden) y obligó a añadir un caso a mitad de ciclo.
+- Un crítico en frío encontró dos defectos reales, ya corregidos: con `count`
+  entre 129 y 255 el índice de frame desbordaba 8 bits y mostraba sprites
+  equivocados en silencio (el animador no ECS tenía el mismo defecto y también
+  se corrigió), y `fwk_ecs_anim_set` no arrancaba una entidad copiada de una
+  plantilla con descriptor y temporizador 0. Documentados además el efecto del
+  orden de llamadas sobre la duración del frame 0, el tamaño del sprite y los
+  descriptores con `count` o `duration` cero.
+- Regresión del animador no ECS: `examples/animation` comprueba al arrancar un
+  descriptor de 130 frames (tras 128 ticks debe estar en el frame 128) y el
+  smoke lo exige; con el índice de 8 bits anterior falla.
+

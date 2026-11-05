@@ -167,8 +167,8 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 6. Input de entidades, física principal y tilemaps. **En curso: adaptadores ECS
    y vertical de tilemap implementados; falta cerrar la validación de entrada y
    la paridad jugable.**
-7. Colisiones ECS y eventos de contacto.
-8. Animación ECS.
+7. Colisiones ECS y eventos de contacto. **Completada el 2026-11-05.**
+8. Animación ECS. **Completada el 2026-11-05.**
 9. Render ECS multi-manager; fase de mayor riesgo.
 10. Paridad completa y rendimiento de `platformer`. Hito `2.0.0-beta.1`.
 11. Migrar consumidores y eliminar todo rastro activo no ECS. Hito

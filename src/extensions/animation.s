@@ -20,11 +20,11 @@ fwk_anim_clear::
 ;; Modified: AF,BC,DE,HL. Carry clear.
 _fwk_anim_current:
     ld a, FWK_ANIM_STATE_FRAME(ix)
-    add a, a
     ld e, a
-    ld d, #0
+    ld d, #0                        ; 16-bit index: counts above 128 are valid
     ld bc, #FWK_ANIM_DESC_FRAMES
     add hl, bc
+    add hl, de
     add hl, de
     ld e, (hl)
     inc hl

@@ -404,8 +404,49 @@ Requiere coordenadas `u8` (el build falla con `u16` o `fixed_8_8`).
   `IX=manager`, filtran mediante `fwk_ecs_system_run` y respetan su orden,
   lock y convención de carry. El orden recomendado por frame es behavior y
   después movimiento.
-- `ANIMATION` almacena por entidad frame y timer; su descriptor y frames son
-  inmutables y compartibles.
+- `ANIMATION` (fase 8, revisado el 2026-11-05) añade tres campos por entidad:
+  `ECS_E_ANIMATION_DESCRIPTOR` (`pointer`, cero = sin animación),
+  `ECS_E_ANIMATION_FRAME` y `ECS_E_ANIMATION_TIMER` (`u8`). El descriptor es
+  inmutable y compartible y tiene el formato de `extensions/animation.inc`:
+  byte `count` (1..255), byte `duration` (1..255) y `count` punteros de sprite.
+  - `fwk_ecs_system_animation` (`IX`=manager; resultado como
+    `fwk_ecs_system_run`) recorre las entidades `ACTIVE|ANIMATION` con
+    descriptor. Cada llamada decrementa su `timer`; al llegar a cero recarga
+    `duration`, avanza `frame` (vuelve a 0 tras el último), pone
+    `ECS_E_RENDER_SPRITE` al puntero de ese frame y activa `ECS_RENDER_DIRTY`.
+    Una entidad sin descriptor no se toca.
+  - `fwk_ecs_anim_set` (`IY`=entidad, `HL`=descriptor o 0; carry limpio y
+    `A=0`; preserva `IX`/`IY`) cambia de animación entre recorridos. Un
+    descriptor distinto reinicia en el frame 0 con el `timer` igual a la
+    duración, pone el sprite y activa `DIRTY`; `HL=0` detiene la animación,
+    deja `frame` y `timer` a 0 y conserva el sprite actual. Elegir el descriptor
+    ya activo no cambia nada mientras el `timer` sea distinto de cero; con
+    `timer` a cero («sin arrancar», como en una plantilla que ya trae el
+    descriptor) se trata como un cambio y arranca. Por eso `fwk_ecs_anim_set`
+    puede llamarse en cada frame con el descriptor del estado actual.
+  - Una entidad nueva debe iniciarse con `fwk_ecs_anim_set` tras crearla: una
+    plantilla con descriptor y `timer` a cero también arranca así.
+  - **Orden de llamadas.** El sistema cuenta atrás el `timer` en la misma
+    pasada en que se llamó a `fwk_ecs_anim_set` si esta fue antes: el frame 0
+    dura entonces una llamada menos (con duración 1 no llega a mostrarse).
+    Llamar a `fwk_ecs_anim_set` después del sistema da la duración completa.
+  - `fwk_ecs_anim_set` no comprueba el estado de la entidad ni el bit
+    `ANIMATION`: sobre una entidad `DISABLED` o `PENDING_DESTROY` también
+    escribe el sprite y activa `DIRTY`. Una animación de un solo frame
+    (`count` 1) vuelve a fijar el sprite y a activar `DIRTY` cada `duration`
+    llamadas aunque no cambie nada; para una pose fija conviene `duration` 255
+    o detener la animación con `HL=0` tras elegirla.
+  - **Límites.** `count` y `duration` van de 1 a 255; con 0 el comportamiento
+    es indefinido y **silencioso** (`duration` 0 tarda 256 llamadas en avanzar,
+    `count` 0 lee un puntero fuera del descriptor). El descriptor no lleva el
+    tamaño del sprite: `ECS_E_WIDTH`/`HEIGHT` no se modifican, de modo que
+    frames de tamaños distintos requieren que el juego ajuste la geometría
+    (respetando la regla de render con fondo capturado). Si el juego cambia
+    `ECS_E_RENDER_SPRITE` por su cuenta y después llama a
+    `fwk_ecs_anim_set` con el descriptor activo, el sprite no se restituye
+    hasta el siguiente avance.
+  - Presupuesto vinculante: **150 bytes de código y ningún dato** para
+    `core/ecs_animation.s`; el valor medido es el de `docs/validation.md`.
 - Los sistemas procesan una entidad compatible una vez por llamada explícita.
 - Ningún sistema conserva un puntero implícito a «la entidad actual» después
   de retornar.
