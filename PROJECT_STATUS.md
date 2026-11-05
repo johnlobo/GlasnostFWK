@@ -1236,9 +1236,8 @@ la referencia hasta cerrar las fases 6-10.
   tres están corregidos y el smoke demuestra caída, aterrizaje en y=184,
   desplazamiento izquierda/derecha y ciclo de salto/aterrizaje. Detalle en
   `docs/validation.md`.
-- [ ] Pendiente de seguimiento: el puente de render redibuja todo en cada
-  iteración (~1,3 it/s en AmSpiriT-Lite); se resuelve con el render por
-  suciedad de fases posteriores.
+- [x] El puente de render que redibujaba todo en cada iteración (~1,3 it/s) se
+  sustituyó en la fase 9 por el renderer selectivo (~25 it/s).
 - [x] Implementación publicada en `ecs-v2` como
   `e5bc741e29ab169e29378687ee08c3ae53bbc051`; CI manual
   `41816216332`/job `126527519587` correcta en 25 s, con 125 pruebas host,
@@ -1280,7 +1279,27 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [ ] Limitaciones: `count` o `duration` cero son indefinidos y silenciosos;
   el descriptor no lleva tamaño de sprite; llamar a `fwk_ecs_anim_set` antes
   del sistema acorta el frame 0 en una llamada.
-- [ ] Siguiente: fase 9, render ECS multi-manager (la de mayor riesgo), con su
-  presupuesto de bytes y un criterio de rendimiento medido en un juego real
-  antes de escribir código.
+
+### Fase 9: completada, renderer ECS multi-manager
+
+- [x] ABI 8 revisado: escena con varios managers, tres llamadas (`prepare`,
+  `restore`, `draw`), candidatas, afectadas por cierre transitivo de solapes,
+  orden global estable por Y. Sin la defensa contra llamantes hostiles del
+  renderer anterior.
+- [x] `src/video/ecs_render.{inc,s}`: 1.139 bytes de código (1.150 con transparencia activa) y 31 de datos
+  (renderer anterior: 2.078 y 43). Presupuesto 1.150 y 40; el de 900 fijado al
+  empezar era una estimación sin medir y se corrigió diciéndolo.
+- [x] Oráculo independiente en Python (imagen ideal por frame) y
+  `examples/ecsrender`: 36 frames, dos managers, la VRAM completa coincide
+  byte a byte con la imagen ideal en CPC 6128 y 464.
+- [x] `platformer_ecs` usa el renderer: de unos 19 fotogramas por iteración a
+  unos 2.
+- [ ] Limitaciones: coordenadas `u8` con sumas hasta 255; buffer de fondo por
+  entidad a cargo del juego, sin comprobar; el array de trabajo lo dimensiona el
+  proyecto; mutaciones comprobadas a mano, no automatizadas.
+- [ ] Pendiente: unos 2 fotogramas por iteración en `platformer_ecs` (sin
+  analizar cuánto es render y cuánto lógica) y la paridad visual con el
+  `platformer` no ECS, que es el criterio de la fase 10.
+- [ ] Siguiente: fase 10, paridad completa y rendimiento de `platformer`
+  (hito `2.0.0-beta.1`).
 

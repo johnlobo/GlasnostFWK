@@ -323,6 +323,40 @@ def run_example(
                     )
                 )
                 raise RuntimeError(f"ECS animation log differs from the model:\n{diff}")
+        if name == "ecsrender":
+            sys.path.insert(0, str(ROOT / "tools"))
+            import ecs_render_model as render_model
+
+            status = symbol(noi, "ecsrender_status")
+            done = symbol(noi, "ecsrender_done")
+            go = symbol(noi, "ecsrender_go")
+            ideal = render_model.ideal_frames()
+            for index, expected in enumerate(ideal):
+                wait_for(
+                    lambda: ram(done, 1)[0] == index + 1 or ram(status, 1) not in (b"\x00", b"\x5A"),
+                    30,
+                    f"ECS render frame {index}",
+                )
+                if ram(status, 1) not in (b"\x00", b"\x5A"):
+                    raise RuntimeError(
+                        f"ECS render harness failed with status {ram(status, 1).hex()} before frame {index}"
+                    )
+                vram = ram(0xC000, 0x4000)
+                actual = b"".join(
+                    vram[80 * (y // 8) + 2048 * (y % 8):][:80] for y in range(200)
+                )
+                if actual != expected:
+                    lines = render_model.describe_diff(expected, actual)
+                    raise RuntimeError(
+                        f"ECS render frame {index} differs from the ideal image "
+                        f"({sum(a != b for a, b in zip(expected, actual))} bytes):\n" + "\n".join(lines)
+                    )
+                write_ram(go, b"\x01")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 10, "ECS render checks")
+            if ram(symbol(noi, "ecsrender_check_overflow"), 1) != bytes((0x0A,)):
+                raise RuntimeError("a too small work array did not return FWK_ECS_ERR_OVERFLOW")
+            if ram(symbol(noi, "ecsrender_check_order"), 1) != bytes((0x0B,)):
+                raise RuntimeError("draw on an IDLE scene did not return FWK_ECS_ERR_RENDER")
         if name == "platformer_ecs":
             status = symbol(noi, "platformer_ecs_status")
             player = symbol(noi, "platformer_ecs_player")
@@ -977,7 +1011,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "platformer_ecs"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "platformer_ecs"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")

@@ -381,7 +381,9 @@ python3 tests/emulator_smoke.py --model 464 vertical
   `core/ecs_motion.s` si falta `core/ecs_platform.s`.
 - Observación de rendimiento (no corregida, fuera del alcance de la fase 6):
   el puente de render redibuja todo el tilemap en cada iteración y el bucle
-  corre a unas 1,3 iteraciones por segundo en AmSpiriT-Lite. Los timeouts del
+  corre a unas 1,3 iteraciones por segundo (otras notas hablan de unos 19 fotogramas por
+  iteración, que serían ~2,6; las dos cifras vienen de mediciones distintas y
+  no se han reconciliado) en AmSpiriT-Lite. Los timeouts del
   smoke están dimensionados para ese ritmo.
 
 ### Fase 7 ECS: colisión entre entidades
@@ -447,4 +449,41 @@ python3 tests/emulator_smoke.py --model 464 vertical
 - Regresión del animador no ECS: `examples/animation` comprueba al arrancar un
   descriptor de 130 frames (tras 128 ticks debe estar en el frame 128) y el
   smoke lo exige; con el índice de 8 bits anterior falla.
+
+### Fase 9 ECS: renderer multi-manager
+
+- `video/ecs_render.s`: `fwk_ecs_render_prepare`, `restore` y `draw` sobre una
+  escena con varios managers y un único orden global por Y. Mide 1.139 bytes de
+  código con transparencia apagada (1.150 con ella activa) y 31 de datos, frente a 2.078 y 43 del renderer no ECS
+  (`video/entity_render.s`). Presupuesto vinculante 1.150 y 40, medido con transparencia activa y comprobado por
+  `tests/test_ecs_render.py`. La cifra inicial de 900 fue una estimación previa a
+  medir; se corrigió en el ABI diciéndolo. El crítico en frío halló empates de
+  clave que dejaban fantasmas permanentes, cajas que desbordaban con sumas >255
+  y una medición con transparencia apagada; el arreglo (índice de recogida como
+  desempate y sumas saturadas) costó 40 bytes y el presupuesto pasó de 1.100 a
+  1.150. Se redujo antes de 1.184 a 1.099 con
+  cajas envolventes por entidad (el cierre de solapes pasa de cuatro
+  comparaciones de rectángulos por par a una) y descriptores de sprite
+  construidos con `ldi`.
+- Oráculo independiente (`tools/ecs_render_model.py`): la imagen ideal de cada
+  frame es el fondo con todas las entidades `ACTIVE` y `VISIBLE` dibujadas en
+  orden estable por `Y + SORT_OFFSET_Y`. `examples/ecsrender` ejecuta 36 frames
+  con 9 entidades en dos managers (movimientos, saltos, solapes con orden de Y
+  distinto al de slot, un sort offset, ocultar y mostrar, deshabilitar y
+  habilitar, destruir, recorte en los bordes derecho e inferior) y el smoke
+  compara la VRAM completa de cada frame con la imagen ideal, byte a byte.
+  Además comprueba `FWK_ECS_ERR_OVERFLOW` con un array de trabajo pequeño y
+  `FWK_ECS_ERR_RENDER` con una llamada fuera de orden. CPC 6128 y CPC 464.
+- Mutaciones, comprobadas a mano en el emulador y no automatizadas: sin cierre
+  de solapes, dibujar sin ordenar, restaurar con la clave actual, rectángulo
+  anterior sin actualizar y caja que ignora el rectángulo anterior; las cinco
+  hacen fallar el smoke. La de "dibujar sin ordenar" pasó inadvertida con el
+  primer escenario (casi nunca había solapes con orden de Y distinto al de slot)
+  y obligó a añadir un tramo determinista de solapes, protegido ahora por una
+  prueba.
+- `platformer_ecs` deja el puente provisional (borrar y redibujar todo en cada
+  iteración) y usa el renderer: el mapa se dibuja una vez y solo se tocan las
+  entidades que cambian. El jugador aterriza en unos 1,5 s frente a unos 16 s
+  (de unos 19 fotogramas por iteración a unos 2), y el smoke de caída, aterrizaje,
+  caminar y saltar pasa igual.
 

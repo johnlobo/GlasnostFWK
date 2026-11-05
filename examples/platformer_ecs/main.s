@@ -3,13 +3,12 @@
 .include "ecs_profile.inc"
 .include "core/ecs_manager.inc"
 .include "extensions/behavior.inc"
-.include "video/sprite.inc"
+.include "video/ecs_render.inc"
 .include "extensions/tilemap_render.inc"
 .include "extensions/physics_platform.inc"
 
 .globl fwk_project_init, fwk_system_wait_frame
 .globl fwk_video_init, fwk_video_clear_visible
-.globl fwk_sprite_draw
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update
 .globl fwk_input_held
 .globl fwk_tilemap_render_view
@@ -43,9 +42,13 @@ platformer_ecs_pixels_enemy:
     .db 0x55,0x55,0x55,0x55,0x55,0x55
     .db 0x00,0x55,0x55,0x55,0x55,0x00
 
-FWK_SPRITE_DESCRIPTOR platformer_ecs_player_sprite, platformer_ecs_pixels_player, 10, 80, 6, 8
-FWK_SPRITE_DESCRIPTOR platformer_ecs_enemy_h_sprite, platformer_ecs_pixels_enemy, 35, 120, 6, 8
-FWK_SPRITE_DESCRIPTOR platformer_ecs_enemy_v_sprite, platformer_ecs_pixels_enemy, 65, 40, 6, 8
+;; Background buffers: the renderer saves what each sprite covers (6 bytes x 8 lines).
+platformer_ecs_player_bg: .ds 48
+platformer_ecs_enemy_h_bg: .ds 48
+platformer_ecs_enemy_v_bg: .ds 48
+platformer_ecs_managers: .dw platformer_ecs_manager
+platformer_ecs_work: .ds 8 * PLATFORMER_ECS_CAPACITY
+FWK_ECS_RENDER_SCENE platformer_ecs_scene, platformer_ecs_managers, 1, platformer_ecs_work, PLATFORMER_ECS_CAPACITY
 
 platformer_ecs_types:
     .db FWK_TILE_PASSABLE, FWK_TILE_SOLID
@@ -93,9 +96,9 @@ platformer_ecs_behavior_vertical_back:
 platformer_ecs_player_template:
     .db 16 + 8 + 2 + 1, 0
     .db ECS_STATUS_ACTIVE, 0, 10, 80, 6, 8
-    .dw platformer_ecs_player_sprite
+    .dw platformer_ecs_pixels_player
     .db 0, 0, 0, 0
-    .dw 0, 0
+    .dw platformer_ecs_player_bg, 48
     .db ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY, 0, 0
     .dw 0, 0
     ;; Spawn airborne: physics_platform only applies gravity to airborne
@@ -108,9 +111,9 @@ platformer_ecs_player_template:
 platformer_ecs_enemy_h_template:
     .dw ECS_C_RENDER | ECS_C_MOTION | ECS_C_BEHAVIOR
     .db ECS_STATUS_ACTIVE, 1, 35, 120, 6, 8
-    .dw platformer_ecs_enemy_h_sprite
+    .dw platformer_ecs_pixels_enemy
     .db 0, 0, 0, 0
-    .dw 0, 0
+    .dw platformer_ecs_enemy_h_bg, 48
     .db ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY, 0, 0
     .dw 0, 0
     .db 0, 0, 0
@@ -121,9 +124,9 @@ platformer_ecs_enemy_h_template:
 platformer_ecs_enemy_v_template:
     .dw ECS_C_RENDER | ECS_C_MOTION | ECS_C_BEHAVIOR
     .db ECS_STATUS_ACTIVE, 2, 65, 40, 6, 8
-    .dw platformer_ecs_enemy_v_sprite
+    .dw platformer_ecs_pixels_enemy
     .db 0, 0, 0, 0
-    .dw 0, 0
+    .dw platformer_ecs_enemy_v_bg, 48
     .db ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY, 0, 0
     .dw 0, 0
     .db 0, 0, 0
@@ -150,28 +153,6 @@ _platformer_ecs_expect_ok:
     ret nc
     pop hl
     jp _platformer_ecs_fail
-
-;; Phase 5 bridge: use the ECS entity's render pointer and coordinates to call
-;; the existing sprite primitive. Full dirty/background render systems arrive
-;; in a later migration phase; this bridge deliberately renders every entity.
-_platformer_ecs_render_entity:
-    push ix
-    ld l, ECS_E_RENDER_SPRITE(iy)
-    ld h, ECS_E_RENDER_SPRITE+1(iy)
-    push hl
-    pop ix
-    ld a, ECS_E_X(iy)
-    ld 2(ix), a
-    xor a
-    ld 3(ix), a
-    ld a, ECS_E_Y(iy)
-    ld 4(ix), a
-    xor a
-    ld 5(ix), a
-    call fwk_sprite_draw
-    or a
-    pop ix
-    ret
 
 _main::
     call fwk_project_init
@@ -214,7 +195,6 @@ platformer_ecs_frame:
     call fwk_input_update
     ld a, (fwk_input_held)
     ld (platformer_ecs_input_witness), a
-    call fwk_system_wait_frame
     ld ix, #platformer_ecs_manager
     call fwk_ecs_system_behavior
     call _platformer_ecs_expect_ok
@@ -230,15 +210,15 @@ platformer_ecs_frame:
     ld ix, #platformer_ecs_manager
     call fwk_ecs_system_motion_u8
     call _platformer_ecs_expect_ok
-    xor a
-    call fwk_video_clear_visible
-    ld ix, #platformer_ecs_map_descriptor
-    ld iy, #platformer_ecs_view
-    call fwk_tilemap_render_view
+    ;; Selective render: find what changed before VSYNC, touch video RAM after it.
+    ld ix, #platformer_ecs_scene
+    call fwk_ecs_render_prepare
     call _platformer_ecs_expect_ok
-    ld bc, #ECS_C_RENDER
-    ld hl, #_platformer_ecs_render_entity
-    ld ix, #platformer_ecs_manager
-    call fwk_ecs_system_run
+    call fwk_system_wait_frame
+    ld ix, #platformer_ecs_scene
+    call fwk_ecs_render_restore
+    call _platformer_ecs_expect_ok
+    ld ix, #platformer_ecs_scene
+    call fwk_ecs_render_draw
     call _platformer_ecs_expect_ok
     jr platformer_ecs_frame
