@@ -312,15 +312,8 @@ def stage_disk_files(
     return staged
 
 
-def stage_example(name: str, cpct_path: Path) -> Path:
-    example = ROOT / "examples" / name
-    if not example.is_dir():
-        raise ValueError(f"unknown example: {name}")
-    manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
-    profile_path = ROOT / "profiles" / manifest["profile"]
-    profile = json.loads(profile_path.read_text(encoding="utf-8"))
-    capabilities = parse_capabilities(manifest, profile["mode"])
-    modules = effective_modules(name, manifest["modules"], capabilities)
+def _validate_ecs_systems(name: str, manifest: dict, modules: list[str]) -> None:
+    """Reject ECS system/component combinations that would silently misbehave."""
     if {"core/ecs_motion.s", "core/ecs_behavior.s"} & set(modules):
         ecs_config = manifest.get("ecs")
         if not isinstance(ecs_config, dict) or ecs_config.get("x_format") != "u8" or ecs_config.get("y_format") != "u8":
@@ -338,6 +331,29 @@ def stage_example(name: str, cpct_path: Path) -> Path:
             raise ValueError(f"{name}: core/ecs_motion.s requires the motion component")
         if "core/ecs_behavior.s" in modules and "behavior" not in selected_components:
             raise ValueError(f"{name}: core/ecs_behavior.s requires the behavior component")
+        if (
+            "core/ecs_motion.s" in modules
+            and "platform" in selected_components
+            and "core/ecs_platform.s" not in modules
+        ):
+            # ecs_motion skips PLATFORM entities because ecs_platform moves
+            # them; without that system they would never move at all.
+            raise ValueError(
+                f"{name}: the platform component needs core/ecs_platform.s "
+                "when core/ecs_motion.s is selected"
+            )
+
+
+def stage_example(name: str, cpct_path: Path) -> Path:
+    example = ROOT / "examples" / name
+    if not example.is_dir():
+        raise ValueError(f"unknown example: {name}")
+    manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
+    profile_path = ROOT / "profiles" / manifest["profile"]
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    capabilities = parse_capabilities(manifest, profile["mode"])
+    modules = effective_modules(name, manifest["modules"], capabilities)
+    _validate_ecs_systems(name, manifest, modules)
     target = ROOT / ".build" / name
     target.mkdir(parents=True, exist_ok=True)
     (target / "src").mkdir(parents=True, exist_ok=True)

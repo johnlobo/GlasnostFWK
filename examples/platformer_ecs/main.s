@@ -98,7 +98,9 @@ platformer_ecs_player_template:
     .dw 0, 0
     .db ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY, 0, 0
     .dw 0, 0
-    .db 0, 0, 0
+    ;; Spawn airborne: physics_platform only applies gravity to airborne
+    ;; bodies, so a grounded start would hover at the spawn height forever.
+    .db 0, 0, FWK_PLATFORM_AIRBORNE
     .dw 0
     .db 0, 0
     .db PLATFORMER_ECS_INPUT_LEFT | PLATFORMER_ECS_INPUT_RIGHT | PLATFORMER_ECS_INPUT_JUMP
