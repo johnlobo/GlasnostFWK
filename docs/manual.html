@@ -152,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veinticuatro consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veinticinco consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -304,6 +304,40 @@ FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
     <article class="api" data-module="core/ecs_motion.s">
       <h4>Sistema ECS de movimiento — <code>core/ecs_motion.s</code></h4>
       <p>Requiere el componente <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_motion_u8</code> recibe <code>IX=manager</code>, suma las velocidades con signo a X/Y, satura contra <code>ECS_X_MAX/ECS_Y_MAX</code> y activa <code>ECS_RENDER_DIRTY</code> cuando cambia la posición. El desbordamiento se detecta con acarreo, de modo que coordenadas por encima de 127 son válidas. Las entidades con el componente <code>platform</code> se omiten: su movimiento y colisión pertenecen a <code>fwk_ecs_system_platform</code>. No implementa gravedad, colisión ni física 8.8.</p>
+    </article>
+    <article class="api" data-module="core/ecs_collision.s">
+      <h4>Colisión ECS — <code>core/ecs_collision.s</code></h4>
+      <p>Requiere el componente <code>collision</code> (un byte <code>ECS_E_COLLISION_CONTACT</code> por entidad) y coordenadas <code>u8</code> (el build falla con otro formato). <code>fwk_ecs_collide</code> comprueba <strong>un sujeto contra los objetivos de un manager</strong>: <code>IX</code>=manager, <code>IY</code>=sujeto, <code>BC</code>=máscara de componentes que deben tener los objetivos, <code>HL</code>=callback, <code>E</code>=canal. Llama al callback por cada objetivo <code>ACTIVE</code> cuya caja AABB solape con la del sujeto (solape estricto, <code>u8</code>, posiciones dentro de pantalla, anchura y altura distintas de cero y sumas hasta 255). El callback recibe <code>IX</code>=manager, <code>IY</code>=objetivo, <code>HL</code>=sujeto y <code>A</code>=<code>ENTER</code>, <code>STAY</code> o <code>EXIT</code>; con ese <code>IX</code>/<code>IY</code> puede llamar directamente a <code>fwk_ecs_entity_mark_destroy</code>.</p>
+      <p>El canal es un bit de <code>ECS_E_COLLISION_CONTACT</code> que guarda si el sujeto tocaba algo en la pasada anterior <em>de ese canal</em>: <code>ENTER</code> si no tocaba, <code>STAY</code> si ya tocaba y, al dejar de tocar, una única llamada <code>EXIT</code> con <code>IY=0</code>. <strong>Cada grupo de objetivos que pruebes contra el mismo sujeto necesita su propio canal</strong> (ocho disponibles, <code>E</code> con exactamente un bit); con uno compartido, una pasada sin contactos borra el estado de la otra y provoca <code>EXIT</code> y <code>ENTER</code> falsos en cada frame. <code>E=0</code> no guarda estado y todo contacto llega como <code>ENTER</code>. El campo <code>ECS_E_COLLISION_CONTACT</code> de las plantillas debe ser 0.</p>
+      <p><strong>Efecto por objetivo o por contacto.</strong> El estado es por sujeto y canal, no por objetivo: una moneda nueva que empieza a tocarse mientras el canal ya estaba activo llega como <code>STAY</code>. Por eso recoger una moneda actúa en toda llamada salvo <code>EXIT</code>, mientras que perder una vida (una vez por contacto) actúa en <code>ENTER</code>; un segundo enemigo tocado sin haber dejado de tocar al primero no cuesta otra vida Un carry activo del callback detiene la pasada y no actualiza el estado.</p>
+      <p>No hay tabla de pares, buffer ni límite de entidades: unos 210 bytes de código y 7 de datos (presupuesto 300 y 8, vigilado por <code>tests/test_ecs_collision.py</code>). Límites: no es reentrante (ni siquiera una segunda llamada que devuelva un error: sustituye el callback, el sujeto y el canal al entrar), no comprueba el estado del sujeto (si un callback lo destruye, sigue probándose contra el resto de la pasada) y un objetivo destruido en <code>ENTER</code> produce un <code>EXIT</code> sin objetivo en la pasada siguiente, que el callback debe tolerar. Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, sección 9.</p>
+      <pre><code>; el jugador contra monedas (canal 1) y contra enemigos (canal 2)
+    ld iy, (jugador)
+    ld ix, #monedas
+    ld bc, #ECS_C_COIN
+    ld e, #0x01
+    ld hl, #al_tocar_moneda
+    call fwk_ecs_collide
+    ld ix, #enemigos
+    ld bc, #ECS_C_ENEMY
+    ld e, #0x02
+    ld hl, #al_tocar_enemigo
+    call fwk_ecs_collide
+    ; ...
+
+al_tocar_moneda:                   ; IX=manager IY=moneda HL=jugador A=tipo
+    cp #ECS_COLLISION_EXIT
+    jr nz, recoger
+    xor a                          ; EXIT (IY=0): nada que hacer
+    ret
+recoger:
+    jp fwk_ecs_entity_mark_destroy ; ENTER o STAY: la moneda desaparece, carry limpio
+
+al_tocar_enemigo:                  ; una vida menos solo al empezar el contacto
+    cp #ECS_COLLISION_ENTER
+    jp z, quitar_vida              ; el juego: resta la vida y termina con xor a / ret
+    xor a
+    ret</code></pre>
     </article>
     <article class="api" data-module="core/ecs_input.s">
       <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
@@ -641,6 +675,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisión ECS: reproduce un escenario generado por un modelo Python (ENTER, STAY, EXIT, máscara, destrucción, aborto, BUSY, callback nulo) y registra los argumentos de cada callback.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer_ecs"><td><code>platformer_ecs</code></td><td>Esqueleto ECS de plataformas: tres entidades, behavior y movimiento, con un puente temporal al pintado de sprites.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>

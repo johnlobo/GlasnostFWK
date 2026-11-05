@@ -59,11 +59,12 @@ mantendrá su historial.
   pertenecen a cada entidad.
 - Animación comparte descriptores inmutables y conserva frame/temporizador por
   entidad.
-- Existe un solo componente `COLLISION`; flags internos distinguen
-  `COLLIDER` y `COLLISIONABLE`. El sistema emite `ENTER`, `STAY` y `EXIT` a un
-  callback de juego y usa un buffer fijo configurable con overflow observable.
-- La colisión entre entidades permanece separada de la colisión con tilemaps y
-  puede operar dentro de un manager o entre dos managers.
+- Existe un solo componente `COLLISION` con un byte de estado por entidad.
+  `fwk_ecs_collide` comprueba un sujeto contra los objetivos de un manager y
+  emite `ENTER`, `STAY` y `EXIT` por sujeto a un callback de juego, sin tabla
+  de pares ni buffer. Presupuesto: 300 bytes de código. Revisado el
+  2026-11-05: el diseño original pesaba entre 3 y 16 veces más.
+- La colisión entre entidades permanece separada de la colisión con tilemaps.
 - Los flags `VISIBLE`, `DIRTY`, `MASKED`, `RECOLOR` y de fondo son estado de
   render, no componentes ECS. Los cambios relevantes marcan `DIRTY`
   explícitamente; render propaga solapamientos.
@@ -134,6 +135,14 @@ mantendrá su historial.
   Las dependencias descargadas se fijan, verifican y activan solo tras validar.
 - Los emuladores son herramientas opcionales mediante adaptadores de
   capacidades (`run`, headless, captura, memoria, stop).
+
+## Presupuesto de tamaño
+
+Los juegos objetivo caben, en su mayoría, en 64 KB con todo incluido. Cada
+sistema fija un tope de bytes antes de escribirse y gana lo más pequeño que
+cubre un juego real de unas 10 a 16 entidades. No se admiten tablas ni buffers
+globales de capacidad fija salvo que el proyecto los configure, y el
+rendimiento se mide con entidades de un juego, no con casos extremos.
 
 ## Prioridades y fases
 

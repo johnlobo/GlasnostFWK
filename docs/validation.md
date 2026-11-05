@@ -383,3 +383,37 @@ python3 tests/emulator_smoke.py --model 464 vertical
   el puente de render redibuja todo el tilemap en cada iteración y el bucle
   corre a unas 1,3 iteraciones por segundo en AmSpiriT-Lite. Los timeouts del
   smoke están dimensionados para ese ritmo.
+
+### Fase 7 ECS: colisión entre entidades
+
+- Diseño final (ABI 9 revisado el 2026-11-05): `fwk_ecs_collide` comprueba un
+  sujeto contra los objetivos de un manager, con estado de contacto de un byte
+  por entidad. Sin tabla de pares ni buffer de eventos.
+- Tamaño medido en el `.rel`: unos 210 bytes de código y 7 de datos. Presupuesto
+  vinculante 300 y 8, comprobado por `tests/test_ecs_collision.py`. Para
+  comparar: AABB no ECS anterior unos 330 bytes; primer diseño fiel al ABI
+  original unos 980; versión optimizada para 255+255 entidades unos 5.300.
+- `examples/ecscollision`: escenario de 26 pasos generado desde
+  `tools/ecs_collision_model.py`; el smoke compara el registro del emulador con
+  el modelo byte a byte (ENTER, STAY, EXIT sin objetivo, máscara de componentes,
+  contacto por borde, destrucción desde el callback, aborto del callback, EXIT
+  fallido, manager bloqueado, callback nulo, dos canales independientes). CPC 6128 y CPC 464 correctos.
+- El harness encontró un defecto real antes de publicar: con callback nulo,
+  `fwk_ecs_system_run` solo valida el callback interno y la rutina saltaba a la
+  dirección 0 (reinicio del equipo). Ahora devuelve `FWK_ECS_ERR_CALLBACK`.
+- `ecs_manager.inc` solo declara los `.globl` de behavior y movimiento si el
+  perfil incluye esos componentes; sin eso un proyecto sin ellos no enlazaba.
+- Un crítico en frío encontró un fallo de diseño que el escenario no veía: con
+  un único bit de estado por sujeto, probar monedas y enemigos en el mismo frame
+  producía `EXIT` y `ENTER` falsos en cada frame (una vida perdida por frame).
+  Ahora el llamante indica el canal (un bit de `ECS_E_COLLISION_CONTACT`) en `E`
+  y el escenario incluye dos canales intercalados. También corregidos: el
+  ejemplo del manual, la guarda de build para coordenadas no `u8` y los límites
+  documentados (no reentrante, sujeto sin comprobar, `EXIT` tras destruir).
+- Segundo crítico en frío: el código resiste (IX/IY, errores, canales); el
+  único fallo era el ejemplo del manual, que destruía la moneda solo en
+  `ENTER` y perdía una moneda nueva que llega como `STAY`. Corregido y fijado
+  con tres pasos más del escenario; documentados: un solo bit en `E`, `CONTACT`
+  a 0 en las plantillas y que cualquier llamada con error pisa el estado
+  interno.
+

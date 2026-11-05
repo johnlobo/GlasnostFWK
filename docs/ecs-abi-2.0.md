@@ -307,33 +307,88 @@ revisión de ABI.
 
 ## 9. Colisión y eventos
 
-Existe un único componente `COLLISION`. Su bloque comienza con
-`ECS_E_COLLISION_ROLES` (`u8`):
+*Revisado el 2026-11-05 (fase 7).* La versión inicial de esta sección definía
+una tabla global de pares, un buffer de eventos de cinco bytes y roles
+`COLLIDER`/`COLLISIONABLE`. La primera implementación fiel a ese diseño pesó
+unos 980 bytes y la optimizada unos 5.300, frente a unos 330 del AABB previo:
+inaceptable para juegos de CPC que caben en 64 KB. Se sustituye por un diseño
+sin estado global. Presupuesto vinculante: **300 bytes de código y ninguna
+tabla ni buffer** para `core/ecs_collision.s`.
 
-- `ECS_COLLISION_COLLIDER = 0x01`;
-- `ECS_COLLISION_COLLISIONABLE = 0x02`.
+El componente `COLLISION` añade un único campo, `ECS_E_COLLISION_CONTACT`
+(`u8`): ocho canales de estado, uno por bit. Cada pasada usa el canal que le
+indica el llamante y guarda en él si el sujeto tocaba algo en la última pasada
+de ese canal. `ECS_COLLISION_TOUCHING=0x01` es el canal por defecto.
 
-Los demás bits se reservan. La AABB usa X, Y, width y height universales. La
-colisión de tilemap es un sistema distinto.
+`fwk_ecs_collide` comprueba **un sujeto contra los objetivos de un manager**:
 
-Cada evento ocupa cinco bytes empaquetados:
+| Registro | Entrada |
+|---|---|
+| `IX` | manager de los objetivos |
+| `IY` | entidad sujeto |
+| `BC` | máscara de componentes que debe tener el objetivo (inclusiva, como `fwk_ecs_system_run`) |
+| `HL` | callback |
+| `E` | canal: un bit de `ECS_E_COLLISION_CONTACT` (0 = sin estado, todo contacto es `ENTER`) |
 
-| Campo | Tamaño |
-|---|---:|
-| entidad A | 2 |
-| entidad B | 2 |
-| tipo | 1 |
+Visita las entidades `ACTIVE` del manager que cumplan `BC`, salta el propio
+sujeto y llama al callback por cada una cuya caja AABB solape con la del
+sujeto. El solape es estricto en los cuatro lados y usa sumas `u8` sin
+saturar: las posiciones deben estar dentro de la pantalla (`X` hasta 79, `Y`
+hasta 199) y anchura y altura no pueden ser cero ni hacer que la suma pase
+de 255. Los managers y los sujetos pueden coincidir; los objetivos no
+necesitan el componente `COLLISION`, solo `X`, `Y`, anchura y altura.
 
-Tipos: `ECS_COLLISION_ENTER=1`, `STAY=2`, `EXIT=3`. Los pares se normalizan y
-se emiten en orden determinista de manager/slot. El callback recibe
-`IX=entidad A`, `IY=entidad B`, `A=tipo`, `HL=manager A`, `DE=manager B`.
-Puede marcar destrucción, pero no crear entidades ni cambiar máscaras.
+**Callback.** `IX`=manager, `IY`=objetivo, `HL`=sujeto, `A`=tipo. Con
+`IX`/`IY` así el callback puede llamar directamente a
+`fwk_ecs_entity_mark_destroy` para destruir el objetivo; no puede crear
+entidades ni cambiar máscaras. Puede modificar cualquier registro salvo `SP`.
+Devolver carry activo detiene la pasada: `fwk_ecs_collide` devuelve carry y el
+`A` del callback (como `fwk_ecs_system_run`, con `A=0` convertido en
+`FWK_ECS_ERR_CALLBACK`) y **no actualiza** `ECS_E_COLLISION_CONTACT`.
 
-El buffer tiene capacidad fija configurable. Si se llena, el sistema conserva
-los primeros eventos, activa un flag observable y devuelve
-`FWK_ECS_ERR_OVERFLOW`; nunca escribe fuera del buffer. Tras overflow no se
-garantiza una secuencia completa `ENTER/STAY/EXIT`, por lo que el juego DEBE
-tratarlo como error de capacidad, no como una situación normal.
+**Eventos por sujeto y canal.** Los tipos son `ECS_COLLISION_ENTER=1`,
+`STAY=2` y `EXIT=3`. Si el sujeto no tocaba nada en la pasada anterior *de ese
+canal*, cada contacto llega como `ENTER`; si ya tocaba, como `STAY`. Cuando una
+pasada termina sin contactos y el canal indicaba contacto, se hace una última
+llamada con `A=EXIT`, `IY=0` (no hay objetivo) y `HL`=sujeto. Al terminar sin
+error, el bit del canal queda igual a «hubo algún contacto». El estado es por
+sujeto y canal, no por pareja: si el sujeto ya tocaba un objetivo del canal,
+un segundo objetivo nuevo llega como `STAY`. **Cada grupo de objetivos que se
+prueba contra el mismo sujeto necesita su propio canal**: con un canal
+compartido, una pasada que no encuentra contactos borra el estado de la otra y
+provoca `EXIT` y `ENTER` falsos en cada frame. Ocho canales por sujeto; un
+juego que necesite distinguir parejas guarda su propio estado. No hay buffer
+ni overflow.
+
+**Errores.** Los de `fwk_ecs_system_run`: manager no válido, bloqueado
+(`FWK_ECS_ERR_BUSY`), callback nulo, máscara fuera del perfil. Salida: carry
+limpio y `A=0`, o carry activo y `A=FWK_ECS_ERR_*`; `IX` e `IY` se conservan.
+Requiere coordenadas `u8` (el build falla con `u16` o `fixed_8_8`).
+
+**Límites que conviene conocer.**
+
+- *Efectos por objetivo frente a efectos por contacto.* El estado es por
+  sujeto y canal, no por objetivo: un objetivo nuevo que empieza a tocarse
+  mientras el canal ya está activo llega como `STAY`. Un efecto que debe
+  ocurrir con cada objetivo (recoger una moneda) actúa en toda llamada salvo
+  `EXIT`; un efecto que debe ocurrir una vez por contacto (quitar una vida)
+  actúa en `ENTER`, y un segundo enemigo tocado sin haber dejado de tocar al
+  primero no lo repite. Si el juego necesita otra cosa, guarda su propio
+  estado (por ejemplo un temporizador de invulnerabilidad).
+- `E` debe tener **exactamente un bit** (o ser 0). Con varios bits los
+  estados de esos canales se funden.
+- El campo `ECS_E_COLLISION_CONTACT` de una plantilla debe ser 0: las
+  entidades se crean copiando la plantilla y un estado heredado produciría un
+  `STAY` o `EXIT` espurio.
+- No es reentrante, y no lo es de forma estricta: cualquier llamada, también
+  la que devuelve un error (`BUSY`, manager no válido, máscara fuera del
+  perfil), sustituye la dirección del callback, el sujeto y el canal en cuanto
+  se la llama. Un callback no debe volver a llamar a la rutina.
+- El estado del sujeto no se comprueba: un sujeto que un callback destruye
+  sigue probándose contra el resto de objetivos de esa pasada.
+- Un objetivo destruido en `ENTER` deja de existir, por lo que la pasada
+  siguiente puede producir un `EXIT` sin objetivo (`IY=0`); los callbacks
+  deben tolerarlo.
 
 ## 10. Behavior, animación y datos compartidos
 
