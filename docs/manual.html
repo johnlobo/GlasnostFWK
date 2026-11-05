@@ -152,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veinticuatro consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veinticinco consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -304,6 +304,10 @@ FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
     <article class="api" data-module="core/ecs_motion.s">
       <h4>Sistema ECS de movimiento — <code>core/ecs_motion.s</code></h4>
       <p>Requiere el componente <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_motion_u8</code> recibe <code>IX=manager</code>, suma las velocidades con signo a X/Y, satura contra <code>ECS_X_MAX/ECS_Y_MAX</code> y activa <code>ECS_RENDER_DIRTY</code> cuando cambia la posición. El desbordamiento se detecta con acarreo, de modo que coordenadas por encima de 127 son válidas. Las entidades con el componente <code>platform</code> se omiten: su movimiento y colisión pertenecen a <code>fwk_ecs_system_platform</code>. No implementa gravedad, colisión ni física 8.8.</p>
+    </article>
+    <article class="api" data-module="core/ecs_collision.s">
+      <h4>Sistema ECS de colisión — <code>core/ecs_collision.s</code></h4>
+      <p>Requiere el componente <code>collision</code> (campo <code>ECS_E_COLLISION_ROLES</code>: <code>COLLIDER=1</code>, <code>COLLISIONABLE=2</code>). <code>fwk_ecs_system_collision</code> recibe <code>IX</code>=descriptor creado con <code>FWK_ECS_COLLISION_STATE</code>, <code>HL</code>=manager A y <code>DE</code>=manager B (iguales para un solo manager). Compara las cajas AABB de las entidades <code>ACTIVE</code> con rol válido, recuerda los pares en contacto en una tabla de capacidad fija y emite <code>ENTER</code>, <code>STAY</code> y <code>EXIT</code> a un callback (<code>IX</code>=entidad A, <code>IY</code>=entidad B, <code>A</code>=tipo, <code>HL</code>/<code>DE</code>=managers) con ambos managers bloqueados para recorrido: el callback puede llamar a <code>fwk_ecs_entity_mark_destroy</code> pero no crear entidades ni cambiar máscaras. Si el buffer de eventos o la tabla de pares se llenan, descarta lo que no cabe, activa <code>FWK_ECS_COLLISION_OVERFLOW</code> y devuelve <code>FWK_ECS_ERR_OVERFLOW</code>. En un <code>EXIT</code> las entidades pueden estar ya <code>PENDING_DESTROY</code> o <code>FREE</code>. Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, secciones 9 y 9.1.</p>
     </article>
     <article class="api" data-module="core/ecs_input.s">
       <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
@@ -641,6 +645,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisiones ECS: reproduce un escenario generado por un modelo Python y registra eventos, callbacks y desbordamiento.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer_ecs"><td><code>platformer_ecs</code></td><td>Esqueleto ECS de plataformas: tres entidades, behavior y movimiento, con un puente temporal al pintado de sprites.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>

@@ -56,6 +56,14 @@
         {"name": "config", "type": "pointer"},
         {"name": "tilemap", "type": "pointer"}
       ]
+    },
+    {
+      "name": "collision",
+      "required": false,
+      "dependencies": [],
+      "fields": [
+        {"name": "roles", "type": "u8"}
+      ]
     }
   ]
 }

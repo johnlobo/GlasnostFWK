@@ -335,6 +335,71 @@ los primeros eventos, activa un flag observable y devuelve
 garantiza una secuencia completa `ENTER/STAY/EXIT`, por lo que el juego DEBE
 tratarlo como error de capacidad, no como una situación normal.
 
+### 9.1 Aclaración de fase 7: estado de contacto y llamada
+
+Aprobada el 2026-11-05 antes de implementar `fwk_ecs_system_collision`. No
+cambia ningún campo de entidad ni evento definido arriba.
+
+**Estado del sistema.** Cada instancia del sistema tiene un descriptor creado
+con `FWK_ECS_COLLISION_STATE nombre, callback, capacidad_eventos,
+capacidad_pares`. Recuerda los pares en contacto de la llamada anterior en una
+tabla de pares propia, de capacidad fija; la entidad no almacena contactos.
+Layout público (el resto es privado de la implementación):
+
+| Offset | Campo | Tamaño |
+|---|---|---:|
+| 0 | `FWK_ECS_COLLISION_CALLBACK` | 2 |
+| 2 | `FWK_ECS_COLLISION_EVENTS` (buffer de eventos) | 2 |
+| 4 | `FWK_ECS_COLLISION_EVENT_CAPACITY` | 1 |
+| 5 | `FWK_ECS_COLLISION_EVENT_COUNT` (eventos conservados en la última llamada) | 1 |
+| 6 | `FWK_ECS_COLLISION_FLAGS`; bit 0 `FWK_ECS_COLLISION_OVERFLOW` | 1 |
+| 7 | `FWK_ECS_COLLISION_PAIR_COUNT` (pares en contacto tras la última llamada) | 1 |
+| 8 | `FWK_ECS_COLLISION_PAIR_CAPACITY` | 1 |
+
+**Llamada.** `fwk_ecs_system_collision`: `IX`=descriptor, `HL`=manager A,
+`DE`=manager B. Si `HL==DE` se evalúa un único manager. Salida: carry limpio y
+`A=0`, o carry activo y `A=FWK_ECS_ERR_*`. Preserva `IX`/`IY`. Un manager
+bloqueado devuelve `FWK_ECS_ERR_BUSY` sin tocar el estado; un manager no
+inicializado o un puntero nulo, `FWK_ECS_ERR_MANAGER`/`ARGUMENT`.
+
+**Participantes.** Solo entidades `ACTIVE` con el bit `COLLISION`. Un par
+`{e1,e2}` es válido si `e1` es `COLLIDER` y `e2` `COLLISIONABLE`, o al revés.
+Con dos managers se evalúa cada `a` de A contra cada `b` de B. Con un solo
+manager se evalúa cada par sin orden una única vez y se normaliza con la
+dirección menor como entidad A. Una entidad con ambos roles no duplica el par.
+
+**Solape.** Estricto en los cuatro lados: `ax < bx+bw`, `bx < ax+aw`,
+`ay < by+bh`, `by < ay+ah`, con coordenadas `u8` y sumas sin desbordar
+(la suma se satura a 255). Anchura o altura cero no solapan nunca.
+
+**Eventos y orden.** Se recorren las entidades A por slot ascendente y, para
+cada una, las B por slot ascendente. Cada par en contacto emite `ENTER` si no
+estaba en la tabla anterior y `STAY` si estaba, en ese orden de recorrido. A
+continuación se emite un `EXIT` por cada par de la tabla anterior que ya no
+está en contacto (porque no solapa, o porque una entidad ya no está `ACTIVE`,
+fue destruida o liberada), en el orden de la tabla anterior. La tabla nueva
+contiene los pares en contacto en orden de recorrido.
+
+**Entrega.** Primero se calculan todos los eventos y se actualiza la tabla;
+después se entrega cada evento conservado al callback, en orden. Durante la
+entrega ambos managers tienen `FWK_ECS_LOCK_TRAVERSAL` (se libera al terminar,
+también si el callback aborta), de modo que el callback puede llamar a
+`fwk_ecs_entity_mark_destroy` (con `IX`=manager recibido en `HL`/`DE`) pero no
+crear entidades ni cambiar máscaras. El callback puede destruir registros:
+en un `EXIT` los punteros pueden apuntar a un slot ya `PENDING_DESTROY` o
+`FREE`, y el callback debe consultar `ECS_E_STATUS`. El callback puede
+modificar todos los registros menos `SP`. Si devuelve carry activo, la entrega
+se detiene y el sistema devuelve `FWK_ECS_ERR_CALLBACK` (con `A` del callback
+distinto de cero se conserva el contrato de `fwk_ecs_system_run`).
+
+**Capacidad.** El buffer de eventos y la tabla de pares tienen capacidad fija.
+Si un evento no cabe se descarta, se activa `FWK_ECS_COLLISION_OVERFLOW` y la
+llamada devuelve `FWK_ECS_ERR_OVERFLOW` después de entregar los conservados.
+Un par en contacto que no cabe en la tabla no se recuerda: su `ENTER` se
+repetirá en la llamada siguiente mientras siga en contacto. Nunca se escribe
+fuera de ningún buffer. `FWK_ECS_COLLISION_FLAGS` se pone a cero al empezar
+cada llamada.
+
 ## 10. Behavior, animación y datos compartidos
 
 - `MOTION` almacena por entidad `velocity_x`, `velocity_y` y `flags`. Las

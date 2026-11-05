@@ -267,6 +267,38 @@ def run_example(
                 raise RuntimeError("ECS stable slots do not retain mask/status")
             if not slots[32 + 18] & 0x02:
                 raise RuntimeError("ECS enable did not mark render dirty")
+        if name == "ecscollision":
+            sys.path.insert(0, str(ROOT / "tools"))
+            import ecs_collision_model as collision_model
+
+            status = symbol(noi, "ecscollision_status")
+            wait_for(lambda: ram(status, 1) != b"\x00", 20, "ECS collision scenario")
+            if ram(status, 1) != b"\x5A":
+                raise RuntimeError(f"ECS collision harness failed with status {ram(status, 1).hex()}")
+            pointers = [
+                int.from_bytes(raw, "little")
+                for raw in (ram(symbol(noi, "ecscollision_entities") + 2 * i, 2) for i in range(7))
+            ]
+            length = int.from_bytes(ram(symbol(noi, "ecscollision_log_length"), 2), "little")
+            actual = ram(symbol(noi, "ecscollision_log"), length)
+            expected = collision_model.expected_log(
+                pointers,
+                symbol(noi, "ecscollision_manager_a"),
+                symbol(noi, "ecscollision_manager_b"),
+            )
+            if actual != expected:
+                import difflib
+
+                diff = "\n".join(
+                    difflib.unified_diff(
+                        collision_model.describe_log(expected, pointers),
+                        collision_model.describe_log(actual, pointers),
+                        "expected",
+                        "actual",
+                        lineterm="",
+                    )
+                )
+                raise RuntimeError(f"ECS collision log differs from the model:\n{diff}")
         if name == "platformer_ecs":
             status = symbol(noi, "platformer_ecs_status")
             player = symbol(noi, "platformer_ecs_player")
@@ -916,7 +948,7 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "platformer_ecs"],
+        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "platformer_ecs"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")
