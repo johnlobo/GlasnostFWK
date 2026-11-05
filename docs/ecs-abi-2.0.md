@@ -290,20 +290,71 @@ sistema; los cambios relevantes para render activan `DIRTY`.
 
 ## 8. Render con varios managers
 
-Una escena recibe una tabla inmutable de punteros a managers. Los recorre en
-orden de tabla y cada manager en orden de slot. El work array global contiene
-como mínimo puntero de entidad y `sort_y` de 16 bits. La ordenación por Y es
-estable: a igualdad de clave conserva manager y slot de origen.
+*Revisado el 2026-11-05 (fase 9).* El renderer no ECS actual pesa unos 2.100
+bytes porque valida listas, duplicados y solapes de buffers contra llamantes
+hostiles. El renderer ECS mantiene su algoritmo (restaurar y redibujar solo lo
+afectado) y elimina esa defensa. Presupuesto vinculante: **1.150 bytes de
+código y 40 de datos internos** (medidos con transparencia del proyecto activa;
+1.139 con ella apagada) para `video/ecs_render.s` (la mitad del
+renderer anterior); el array de trabajo lo reserva el proyecto. La cifra
+inicial de 900 era una estimación previa a medir: el algoritmo esencial
+(candidatas, cajas, cierre de solapes, orden y las tres fases) ocupaba 1.099
+tras reducirlo con cajas envolventes por entidad y descriptores de sprite
+construidos con `ldi`.
 
-La capacidad del work array DEBE cubrir la suma máxima de entidades render que
-puedan participar. Un preflight insuficiente devuelve
-`FWK_ECS_ERR_OVERFLOW` antes de escribir VRAM. `prepare`, `restore` y `draw`
-mantienen `FWK_ECS_LOCK_RENDER` en todos los managers de la escena.
+**Escena.** `FWK_ECS_RENDER_SCENE nombre, tabla, cuenta, trabajo, capacidad`
+declara un descriptor de 8 bytes: puntero a una tabla de punteros a managers,
+número de managers, puntero al array de trabajo, su capacidad en entradas
+(ocho bytes cada una: puntero a entidad, clave de 16 bits y caja envolvente), número de
+entidades afectadas y estado. Los managers se recorren en orden de tabla y
+cada uno en orden de slot; el orden final es global.
 
-Los detalles internos del descriptor de escena y del work array se fijarán al
-implementar render en fase 9; no forman parte todavía del ABI público. No se
-podrán cambiar los campos de entidad, flags ni reglas definidos aquí sin una
-revisión de ABI.
+**Llamadas** (`IX`=escena; carry limpio y `A=0`, o carry activo y `A=FWK_ECS_ERR_*`;
+preservan `IX`/`IY`), en este orden cada frame:
+
+| Rutina | Cuándo | Qué hace |
+|---|---|---|
+| `fwk_ecs_render_prepare` | antes del VSYNC | reúne las entidades candidatas, marca las afectadas, bloquea los managers con `FWK_ECS_LOCK_RENDER` |
+| `fwk_ecs_render_restore` | tras el VSYNC | restaura los fondos de las afectadas en orden inverso al de su último dibujo |
+| `fwk_ecs_render_draw` | justo después | captura el fondo, dibuja en orden estable por Y, actualiza el estado anterior, limpia `DIRTY` y libera los bloqueos |
+
+Llamarlas fuera de ese orden, o con la escena ya preparada, devuelve
+`FWK_ECS_ERR_RENDER`; un manager ya bloqueado, `FWK_ECS_ERR_BUSY`; más
+candidatas que capacidad, `FWK_ECS_ERR_OVERFLOW`. `prepare` falla sin dejar
+bloqueos y con la escena en reposo (solo puede haber marcado `DIRTY` en
+entidades cuyo estado de dibujo ya difería del fondo, lo cual es inocuo).
+Un error en `restore` o `draw` (sprite inválido, por ejemplo anchura 0) es
+**fatal**: deja la escena a medias y los managers bloqueados, y no existe
+llamada de aborto. Un `prepare` sin su `restore`/`draw` deja también la escena
+preparada y bloqueada.
+
+**Candidatas.** Entidades con el bit `RENDER` que, estando `ACTIVE` y
+`VISIBLE`, deben estar dibujadas, o que tienen fondo capturado
+(`HAS_BACKGROUND`) y por tanto hay que restaurar aunque ya estén `DISABLED`,
+`PENDING_DESTROY` u ocultas.
+
+**Afectadas.** Una candidata se redibuja si tiene `DIRTY`, si ya no debe
+estar dibujada pero conserva fondo, si debe estar dibujada y no tiene fondo
+capturado, o si su rectángulo anterior o actual solapa con el de una afectada
+(cierre transitivo). Las demás no se tocan.
+
+**Orden.** Se restaura en orden inverso al de la clave anterior
+(`ECS_E_RENDER_PREVIOUS_SORT_Y`) y se dibuja en orden de la clave actual
+(`Y + ECS_E_RENDER_SORT_OFFSET_Y`, 16 bits con signo), con empate resuelto por
+orden de tabla de managers y slot (índice de recogida), tanto al restaurar como
+al dibujar, de modo que la restauración deshace exactamente el último dibujo. Tras restaurar, `ECS_E_RENDER_PREVIOUS_WIDTH` queda a 0.
+
+**Contrato con el juego.** Cada entidad con `RENDER` tiene un buffer de fondo
+propio de al menos anchura por altura bytes, y el renderer no lo comprueba:
+tampoco busca duplicados ni solapes entre buffers. Posiciones `u8` dentro de
+pantalla, con sumas de posición y tamaño hasta 255 (el recorte por la derecha y
+abajo lo hace el módulo de sprites); el build falla con coordenadas que no
+sean `u8`. Las sumas de las cajas envolventes saturan en 255. Cada manager
+aparece una sola vez en la tabla de la escena: repetirlo duplica sus
+entidades en el array de trabajo y corrompe la pantalla.
+
+Los sprites con `MASKED`/`RECOLOR` usan las rutinas correspondientes del
+módulo de sprites.
 
 ## 9. Colisión y eventos
 

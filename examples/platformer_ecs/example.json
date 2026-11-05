@@ -16,12 +16,19 @@
     "extensions/tilemap_render.s",
     "core/input.s",
     "video/video.s",
-    "video/sprite.s"
+    "video/sprite.s",
+    "video/ecs_render.s"
   ],
-  "game_sources": ["main.s"],
+  "game_sources": [
+    "main.s"
+  ],
   "ecs": {
     "x_format": "u8",
     "y_format": "u8",
-    "components": ["behavior", "input", "platform"]
+    "components": [
+      "behavior",
+      "input",
+      "platform"
+    ]
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "ecsrender",
+  "amsdos_name": "ECSREND",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/ecs_manager.s",
+    "video/video.s",
+    "video/sprite.s",
+    "video/ecs_render.s"
+  ],
+  "game_sources": ["main.s", "scenario.inc"],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": []
+  }
+}

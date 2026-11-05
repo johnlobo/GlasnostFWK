@@ -169,7 +169,7 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
    la paridad jugable.**
 7. Colisiones ECS y eventos de contacto. **Completada el 2026-11-05.**
 8. Animación ECS. **Completada el 2026-11-05.**
-9. Render ECS multi-manager; fase de mayor riesgo.
+9. Render ECS multi-manager; fase de mayor riesgo. **Completada el 2026-11-05.**
 10. Paridad completa y rendimiento de `platformer`. Hito `2.0.0-beta.1`.
 11. Migrar consumidores y eliminar todo rastro activo no ECS. Hito
     `2.0.0-beta.2`.

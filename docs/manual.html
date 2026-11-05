@@ -152,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintiséis consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer_ecs"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintisiete consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -356,6 +356,26 @@ al_tocar_enemigo:                  ; una vida menos solo al empezar el contacto
     ld hl, #anim_quieto
 elegida:
     call fwk_ecs_anim_set          ; no reinicia si ya estaba en marcha</code></pre>
+    </article>
+    <article class="api" data-module="video/ecs_render.s">
+      <h4>Renderer ECS — <code>video/ecs_render.s</code></h4>
+      <p>Restaura y redibuja solo lo que cambió, con entidades de uno o varios managers, en un único orden global por Y. Requiere coordenadas <code>u8</code> (el build falla con otro formato), el módulo <code>video/sprite.s</code> y, por entidad con el bit <code>RENDER</code>, un buffer de fondo propio de al menos anchura por altura bytes (campos <code>ECS_E_RENDER_BACKGROUND</code> y <code>BACKGROUND_CAP</code>); el renderer no lo comprueba ni busca duplicados.</p>
+      <p>Una <em>escena</em> (<code>FWK_ECS_RENDER_SCENE nombre, tabla, cuenta, trabajo, capacidad</code>) agrupa una tabla de punteros a managers y un array de trabajo de <code>capacidad</code> entradas de 8 bytes que reserva el proyecto (una por entidad con <code>RENDER</code> visible o con fondo capturado). Cada frame se llama, con <code>IX</code>=escena y en este orden: <code>fwk_ecs_render_prepare</code> antes del VSYNC (reúne candidatas, marca las afectadas, bloquea los managers), <code>fwk_ecs_render_restore</code> tras el VSYNC (repone los fondos en orden inverso al último dibujo) y <code>fwk_ecs_render_draw</code> justo después (captura el fondo, dibuja en orden estable por <code>Y + SORT_OFFSET_Y</code>, actualiza el estado anterior, limpia <code>DIRTY</code> y libera los bloqueos). Una entidad se redibuja si tiene <code>DIRTY</code>, si debe aparecer o desaparecer, o si su caja (rectángulos anterior y actual) solapa con la de otra afectada, de forma transitiva. Los sistemas que cambian posición, sprite o visibilidad activan <code>DIRTY</code>; <code>fwk_ecs_entity_enable</code> también.</p>
+      <p>Un frame fuera de orden devuelve <code>FWK_ECS_ERR_RENDER</code>; un manager bloqueado, <code>FWK_ECS_ERR_BUSY</code>; un array de trabajo pequeño, <code>FWK_ECS_ERR_OVERFLOW</code>. Posiciones dentro de pantalla con sumas de posición y tamaño hasta 255 (el recorte por la derecha y abajo lo hace el módulo de sprites). Los empates de clave se resuelven por orden de tabla y slot. Un error en <code>restore</code> o <code>draw</code> es fatal (la escena queda a medias y bloqueada; no hay aborto), y cada manager debe aparecer una sola vez en la tabla. Ocupa 1.139 bytes de código (1.150 con transparencia activa) y 31 de datos (presupuesto 1.150 y 40, algo más de la mitad del renderer anterior, vigilado por <code>tests/test_ecs_render.py</code>). Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, sección 8.</p>
+      <pre><code>; declaraciones (el array de trabajo y un buffer de fondo por entidad los pones tú)
+managers:  .dw entidades
+trabajo:   .ds 8*8                 ; 8 entradas de 8 bytes
+FWK_ECS_RENDER_SCENE escena, managers, 1, trabajo, 8
+; en la inicialización: dibujar el fondo una vez; después, cada frame
+    ld ix, #entidades
+    call fwk_ecs_system_motion_u8   ; los sistemas activan DIRTY al cambiar
+    ld ix, #escena
+    call fwk_ecs_render_prepare     ; antes del VSYNC
+    call fwk_system_wait_frame
+    ld ix, #escena
+    call fwk_ecs_render_restore     ; solo VRAM, tras el VSYNC
+    ld ix, #escena
+    call fwk_ecs_render_draw</code></pre>
     </article>
     <article class="api" data-module="core/ecs_input.s">
       <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
@@ -695,6 +715,7 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
         <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisión ECS: reproduce un escenario generado por un modelo Python (ENTER, STAY, EXIT, máscara, destrucción, aborto, BUSY, callback nulo) y registra los argumentos de cada callback.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="ecsanimation"><td><code>ecsanimation</code></td><td>Prueba técnica de animación ECS: reproduce un escenario generado por un modelo Python (cuenta atrás, avance y vuelta de frame, cambio de descriptor, descriptor ya activo, parada con 0) y registra frame, temporizador, sprite y DIRTY de cada entidad.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsrender"><td><code>ecsrender</code></td><td>Prueba técnica del renderer ECS: reproduce un escenario generado por un modelo Python (dos managers, solapes con orden distinto al de slot, ocultar, deshabilitar, destruir, recorte en los bordes) y el smoke compara la VRAM de cada frame con la imagen ideal.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer_ecs"><td><code>platformer_ecs</code></td><td>Esqueleto ECS de plataformas: tres entidades, behavior y movimiento, con un puente temporal al pintado de sprites.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/collision_bodies.s"></span>
