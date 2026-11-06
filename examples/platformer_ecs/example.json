@@ -2,6 +2,7 @@
   "name": "platformer_ecs",
   "amsdos_name": "PECS",
   "profile": "standard-160x200.json",
+  "transparency": {"pen": 0},
   "modules": [
     "core/system.s",
     "core/ecs_manager.s",
@@ -20,6 +21,7 @@
     "video/video.s",
     "video/sprite.s",
     "video/ecs_render.s",
+    "ui/text.s",
     "resources/zx7b.s"
   ],
   "game_sources": [

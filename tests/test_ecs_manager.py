@@ -1,4 +1,5 @@
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -130,6 +131,52 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ld ix, #platformer_ecs_manager\n    call fwk_ecs_system_behavior", frame)
         collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
         self.assertIn("ld a, (platformer_ecs_won)", collisions)
+
+    def test_platformer_ecs_hud_and_flash_match_the_original(self):
+        original = (ROOT / "examples/platformer/main.s").read_text()
+        constants = (ROOT / "examples/platformer/game.inc").read_text()
+        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
+
+        def number(text, name):
+            return int(re.search(rf"^{name}\s*=\s*(\w+)", text, re.M).group(1), 0)
+
+        # Same texts, in the same places.
+        strings = {
+            "COINS: 0/4": "platformer_score_str",
+            "ALL COINS": "platformer_all_coins_str",
+            "COLLECT ALL COINS": "platformer_hint_str",
+            "GO TO THE DOOR": "platformer_win_str",
+            "LIFE: 10": "platformer_life_str",
+        }
+        for text, original_label in strings.items():
+            self.assertIn(f'{original_label}:: .ascii "{text}"', original)
+            self.assertIn(f'.asciz "{text}"', main)
+        self.assertEqual(number(main, "PFE_HUD_Y"), number(constants, "PF_HUD_Y"))
+        # Field columns: first tile column * 4 bytes = the original text x.
+        for field, label in ((0x00, "COINS"), (0x06, "HINT"), (0x10, "LIVES")):
+            self.assertEqual(field * 4, number(constants, f"PF_HUD_{label}_X"))
+            self.assertRegex(main, rf"ld bc, #0x{field:02X}[0-9A-F]{{2}}\n\s+j[pr] _pfe_hud_field")
+        # Life flash: pen 16, red 0x1C then black 0x14, three times, 0x1000 loops.
+        self.assertEqual(number(main, "PFE_BORDER_PEN"), 16)
+        self.assertEqual(number(main, "PFE_BORDER_RED"), 0x1C)
+        self.assertEqual(number(main, "PFE_BORDER_BLACK"), 0x14)
+        self.assertEqual(number(main, "PFE_FLASH_COUNT"), 3)
+        loop = main.split("_pfe_hud_update:", 1)[1].split("_pfe_border:", 1)[0]
+        self.assertIn("ld b, #PFE_FLASH_COUNT\n_pfe_flash:", loop)
+        self.assertIn("djnz _pfe_flash", loop)
+        # No life below zero (the original returns without a flash at 0 lives).
+        enemy_cb = main.split("_pfe_enemy_cb:", 1)[1].split("_pfe_collisions:", 1)[0]
+        self.assertIn("ld a, (platformer_ecs_lives)\n    or a\n    jr z, _pfe_cb_ok", enemy_cb)
+        # Taking the last coin wins before any enemy is checked.
+        collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
+        self.assertIn("ld hl, #_pfe_all_coins\n    or (hl)\n    ret nz", collisions)
+        self.assertEqual(number(main, "PFE_FLASH_DELAY"), 0x1000)
+        flash = original.split("_pf_lose_life_flash:", 1)[1].split("ret", 1)[0]
+        self.assertIn("ld l, #16", flash)
+        self.assertIn("ld h, #0x1C", flash)
+        self.assertIn("ld h, #0x14", flash)
+        self.assertEqual(flash.count("ld de, #0x1000"), 2)
+        self.assertIn("ld b, #3", original.split("_pf_lose_life_flash:", 1)[0].rsplit("_pf_lose_life:", 1)[1])
 
     def test_ci_verifies_the_new_bin_and_cdt(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()

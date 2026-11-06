@@ -1313,7 +1313,12 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [ ] Sin hacer de la rebanada 1: prueba diferencial entre los dos juegos y
   presupuesto de tamaño y velocidad (rebanada 4).
 - [x] Corregido en `core/ecs_input.s`: el salto subía 28 píxeles en vez de 36.
-- [ ] Rebanada 2: HUD, victoria, parpadeo al perder vida.
+- [x] Rebanada 2 (2026-11-06): HUD (`COINS`, pista, `LIFE`), textos de victoria
+  y parpadeo rojo del borde al perder una vida, con `ui/text.s`. Los campos de
+  HUD tienen los mismos píxeles que `platformer` (SHA-256 de cada campo,
+  vidas 0..10), el parpadeo se observa en el emulador por cada enemigo y el
+  smoke pasa en CPC 6128 y 464. BIN: 11.798 B frente a 11.382 B del original,
+  aún sin nivel 2.
 - [ ] Rebanada 3: segundo nivel y reinicio por puerta.
 - [ ] Rebanada 4: rendimiento y presupuestos de tamaño. Detalle en
   `docs/platformer-parity.md`.
