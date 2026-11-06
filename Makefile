@@ -1,8 +1,8 @@
 PYTHON ?= python3
-EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer
+EXAMPLES := minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender
 CHECK_EXAMPLES ?= platformer
 
-.PHONY: all examples check test generate report manual platform-guide release clean
+.PHONY: all examples check test generate generate-ecs report manual platform-guide release clean
 
 all: test
 
@@ -10,6 +10,17 @@ generate:
 	$(PYTHON) tools/gen_video.py profiles/standard-160x200.json --out-dir generated
 	$(PYTHON) tools/gen_video.py profiles/experimental-160x288.json --out-dir generated
 	$(PYTHON) tools/gen_resources.py manifests/resources128.json --output generated/resources128.inc
+	$(PYTHON) tools/gen_ecs_profile.py examples/ecsmanager/example.json --output examples/ecsmanager/generated/ecs_profile.inc --check
+	$(PYTHON) tools/gen_ecs_profile.py examples/platformer/example.json --output examples/platformer/generated/ecs_profile.inc --check
+	$(PYTHON) tools/gen_ecs_profile.py examples/ecscollision/example.json --output examples/ecscollision/generated/ecs_profile.inc --check
+	$(PYTHON) tools/ecs_collision_model.py --output examples/ecscollision/scenario.inc --check
+	$(PYTHON) tools/gen_ecs_profile.py examples/ecsanimation/example.json --output examples/ecsanimation/generated/ecs_profile.inc --check
+	$(PYTHON) tools/ecs_animation_model.py --output examples/ecsanimation/scenario.inc --check
+	$(PYTHON) tools/gen_ecs_profile.py examples/ecsrender/example.json --output examples/ecsrender/generated/ecs_profile.inc --check
+	$(PYTHON) tools/ecs_render_model.py --output examples/ecsrender/scenario.inc --check
+
+generate-ecs:
+	$(PYTHON) tools/gen_ecs_profile.py examples/ecsmanager/example.json --output examples/ecsmanager/generated/ecs_profile.inc
 
 examples: generate
 	$(PYTHON) tools/build_examples.py $(EXAMPLES)

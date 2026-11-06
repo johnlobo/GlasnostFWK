@@ -1,0 +1,16 @@
+{
+  "name": "ecsanimation",
+  "amsdos_name": "ECSANIM",
+  "profile": "standard-160x200.json",
+  "modules": [
+    "core/system.s",
+    "core/ecs_manager.s",
+    "core/ecs_animation.s"
+  ],
+  "game_sources": ["main.s", "scenario.inc"],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": ["animation"]
+  }
+}

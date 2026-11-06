@@ -7,22 +7,26 @@ framework. No pretende ser un juego completo ni una API universal de entidades.
 
 - Cursores: movimiento en cuatro direcciones.
 - Objetivo: recoger los tres puntos alineados a la derecha del jugador.
-- El jugador y los puntos son registros `motion_u8` almacenados en un pool de
-  cuatro elementos.
+- Corre sobre ECS 2.0 con un solo manager de cuatro slots: el jugador (slot 0) y
+  los tres puntos. Componentes `motion` y `collision`; el sistema `motion_u8`
+  mueve al jugador y `fwk_ecs_collide` detecta cada punto (cajas de 1x1).
 - Las posiciones y bytes gráficos están en `assets.s`, separado de `main.s` y
   declarado explícitamente en `example.json` mediante `game_sources`.
-- Al recoger un punto, `fwk_pool_remove` compacta el pool. Al recoger los tres,
-  `vertical_score` vale 3 y `vertical_status` cambia de `0xA5` a `0x5A`.
+- Al tocar un punto, el callback de colisión lo marca `PENDING_DESTROY` (el
+  jugador ocupa esa celda, la redibuja y la borra al avanzar); `fwk_ecs_manager_collect` libera el slot al final del
+  fotograma. Al recoger los tres, `vertical_score` vale 3 y `vertical_status`
+  cambia de `0xA5` a `0x5A`.
 
 ## Validación observable
 
 `tests/emulator_smoke.py vertical` espera la inicialización del recurso, lee el
 estado inicial en RAM, mantiene CursorRight mediante la matriz de teclado y
-comprueba jugador, contador del pool, marcador, estado final y los bytes
-gráficos de los recursos antes y después de ganar. Esta prueba detectó una
-corrupción real en `fwk_pool_remove`: el número de registros que debía copiarse
-se perdía al llamar a `fwk_pool_get`. La rutina conserva ahora ese contador
-antes de la llamada.
+comprueba la posición del jugador, los slots activos del manager, el marcador, el
+estado final y los bytes gráficos de los recursos antes y después de ganar
+(los puntos recogidos no quedan en la pantalla). La versión anterior,
+con un pool de registros (módulo eliminado en la fase 11 parte B), detectó una
+corrupción real en `fwk_pool_remove` (el contador de registros a copiar se
+perdía al llamar a `fwk_pool_get`).
 
 La prueba pasó en AmSpiriT-Lite 1.15.3 tanto con CPC 6128 como con CPC 464.
 No demuestra todavía temporización a 50 Hz, compatibilidad con hardware real ni

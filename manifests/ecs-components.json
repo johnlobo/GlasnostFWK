@@ -1,0 +1,79 @@
+{
+  "abi": {"major": 2, "minor": 0},
+  "components": [
+    {
+      "name": "render",
+      "required": true,
+      "dependencies": [],
+      "fields": [
+        {"name": "sprite", "type": "pointer"},
+        {"name": "previous_x", "type": "x_format"},
+        {"name": "previous_y", "type": "y_format"},
+        {"name": "previous_width", "type": "u8"},
+        {"name": "previous_height", "type": "u8"},
+        {"name": "background", "type": "pointer"},
+        {"name": "background_cap", "type": "u16"},
+        {"name": "flags", "type": "u8"},
+        {"name": "source_pen", "type": "u8"},
+        {"name": "replacement_pen", "type": "u8"},
+        {"name": "sort_offset_y", "type": "i16"},
+        {"name": "previous_sort_y", "type": "i16"}
+      ]
+    },
+    {
+      "name": "motion",
+      "required": false,
+      "dependencies": [],
+      "fields": [
+        {"name": "velocity_x", "type": "velocity_x"},
+        {"name": "velocity_y", "type": "velocity_y"},
+        {"name": "flags", "type": "u8"}
+      ]
+    },
+    {
+      "name": "behavior",
+      "required": false,
+      "dependencies": ["motion"],
+      "fields": [
+        {"name": "program", "type": "pointer"},
+        {"name": "timer", "type": "u8"},
+        {"name": "state", "type": "u8"}
+      ]
+    },
+    {
+      "name": "input",
+      "required": false,
+      "dependencies": ["motion"],
+      "fields": [
+        {"name": "action_mask", "type": "u8"}
+      ]
+    },
+    {
+      "name": "platform",
+      "required": false,
+      "dependencies": ["motion"],
+      "fields": [
+        {"name": "config", "type": "pointer"},
+        {"name": "tilemap", "type": "pointer"}
+      ]
+    },
+    {
+      "name": "collision",
+      "required": false,
+      "dependencies": [],
+      "fields": [
+        {"name": "contact", "type": "u8"}
+      ]
+    },
+    {
+      "name": "animation",
+      "required": false,
+      "dependencies": [],
+      "fields": [
+        {"name": "descriptor", "type": "pointer"},
+        {"name": "frame", "type": "u8"},
+        {"name": "timer", "type": "u8"}
+      ]
+    }
+  ]
+}

@@ -6,6 +6,10 @@ Este documento es la referencia estable de alcance y decisiones. El punto
 operativo exacto para retomar una sesión se mantiene en `PROJECT_STATUS.md`,
 sección **Migración ECS 2.0: estado operativo**.
 
+La especificación normativa de la fase 1 está en `docs/ecs-abi-2.0.md`. La
+puerta G1 fue aprobada el 2026-11-03; las implementaciones posteriores deben
+registrar cualquier aclaración de ABI antes de cambiar el contrato.
+
 ## Objetivo
 
 Sustituir la arquitectura actual por un modelo Entity-Component-System ligero
@@ -55,11 +59,12 @@ mantendrá su historial.
   pertenecen a cada entidad.
 - Animación comparte descriptores inmutables y conserva frame/temporizador por
   entidad.
-- Existe un solo componente `COLLISION`; flags internos distinguen
-  `COLLIDER` y `COLLISIONABLE`. El sistema emite `ENTER`, `STAY` y `EXIT` a un
-  callback de juego y usa un buffer fijo configurable con overflow observable.
-- La colisión entre entidades permanece separada de la colisión con tilemaps y
-  puede operar dentro de un manager o entre dos managers.
+- Existe un solo componente `COLLISION` con un byte de estado por entidad.
+  `fwk_ecs_collide` comprueba un sujeto contra los objetivos de un manager y
+  emite `ENTER`, `STAY` y `EXIT` por sujeto a un callback de juego, sin tabla
+  de pares ni buffer. Presupuesto: 300 bytes de código. Revisado el
+  2026-11-05: el diseño original pesaba entre 3 y 16 veces más.
+- La colisión entre entidades permanece separada de la colisión con tilemaps.
 - Los flags `VISIBLE`, `DIRTY`, `MASKED`, `RECOLOR` y de fondo son estado de
   render, no componentes ECS. Los cambios relevantes marcan `DIRTY`
   explícitamente; render propaga solapamientos.
@@ -131,6 +136,14 @@ mantendrá su historial.
 - Los emuladores son herramientas opcionales mediante adaptadores de
   capacidades (`run`, headless, captura, memoria, stop).
 
+## Presupuesto de tamaño
+
+Los juegos objetivo caben, en su mayoría, en 64 KB con todo incluido. Cada
+sistema fija un tope de bytes antes de escribirse y gana lo más pequeño que
+cubre un juego real de unas 10 a 16 entidades. No se admiten tablas ni buffers
+globales de capacidad fija salvo que el proyecto los configure, y el
+rendimiento se mide con entidades de un juego, no con casos extremos.
+
 ## Prioridades y fases
 
 ### P0: referencia fiable
@@ -142,20 +155,27 @@ mantendrá su historial.
 ### P1: ECS jugable
 
 2. Entity manager: slots estables, ciclo de vida, plantillas y recorrido por
-   máscara.
-3. Generador de perfiles y validación del manifiesto.
-4. Sistemas ECS de behavior y movimiento. Hito `2.0.0-alpha.1`.
-5. Crear `examples/platformer_ecs` sin alterar la referencia actual.
+   máscara. **Completada el 2026-11-03.**
+3. Generador de perfiles y validación del manifiesto. **Completada el
+   2026-11-04.**
+4. Sistemas ECS de behavior y movimiento. **Completada el 2026-11-04.** Hito
+   `2.0.0-alpha.1`.
+5. Crear `examples/platformer_ecs` (hoy `examples/platformer`) sin alterar la referencia de entonces. **Completada el 2026-11-04.**
 
 ### P2: paridad y sustitución
 
-6. Input de entidades, física principal y tilemaps.
-7. Colisiones ECS y eventos de contacto.
-8. Animación ECS.
-9. Render ECS multi-manager; fase de mayor riesgo.
+6. Input de entidades, física principal y tilemaps. **Completada el
+   2026-11-05** (PR #1). La paridad jugable completa con `platformer` es el
+   criterio de la fase 10.
+7. Colisiones ECS y eventos de contacto. **Completada el 2026-11-05.**
+8. Animación ECS. **Completada el 2026-11-05.**
+9. Render ECS multi-manager; fase de mayor riesgo. **Completada el 2026-11-05.**
 10. Paridad completa y rendimiento de `platformer`. Hito `2.0.0-beta.1`.
 11. Migrar consumidores y eliminar todo rastro activo no ECS. Hito
-    `2.0.0-beta.2`.
+    `2.0.0-beta.2`. Parte A (`vertical` y `perf` en ECS) completada. **Parte B
+    completada en la rama `ecs-remove-legacy`:** no queda ningún módulo, ejemplo
+    ni API anterior al ECS y `make test` pasa en verde (detalle en
+    `docs/validation.md`).
 
 ### P3: SDK autocontenido
 
@@ -197,7 +217,7 @@ mantendrá su historial.
 
 ## Riesgos prioritarios
 
-1. Complejidad y coste de `entity_render`.
+1. Complejidad y coste del renderer (`entity_render`, ya eliminado, y su sustituto `ecs_render`).
 2. Coste de recorrer todos los slots por cada sistema.
 3. Cambios de ABI al reconfigurar perfiles.
 4. Límite de 16 componentes.

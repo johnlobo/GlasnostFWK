@@ -101,13 +101,13 @@
     <span class="tag">Amstrad CPC · Z80</span>
     <h1>Manual de uso de GlasnostFWK</h1>
     <p class="subtitle">Construcción modular de juegos y pruebas técnicas con CPCTelera Next</p>
-    <p class="edition">Edición: 27 de octubre de 2026 · Idioma: castellano</p>
+    <p class="edition">Edición: 4 de noviembre de 2026 · Idioma: castellano</p>
   </header>
 
   <section aria-labelledby="alcance">
     <h2 id="alcance" class="keep">1. Qué es y qué cubre este manual</h2>
     <p class="lead">GlasnostFWK es un framework modular en ensamblador Z80 para Amstrad CPC. Un proyecto selecciona únicamente los módulos que necesita mediante un manifiesto JSON; el constructor prepara un árbol aislado y CPCTelera Next genera los medios CPC.</p>
-    <p>Este manual describe el estado comprobado del repositorio: núcleo de sistema, entrada, pool, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento compacto, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. No presupone una estructura universal de entidad ni contiene reglas o recursos de los juegos de origen.</p>
+    <p>Este manual describe el estado ejecutable comprobado del repositorio: núcleo de sistema, entrada, entity manager ECS, vídeo Mode 0, sprites rectangulares con clipping, restauración, orden explícito y máscaras opcionales, texto, ventanas restaurables, movimiento ECS, perfiles separados de plataforma y física 8.8, consulta, colisión y render de tilemaps, animación, audio AKG, bancos de 128 KB, carga AMSDOS y ZX7B. La rama <code>ecs-v2</code> contiene la ABI ECS normativa, el manager ejecutable y la generación validada de perfiles ECS desde el manifiesto.</p>
     <div class="box warning"><strong>Límites importantes.</strong> No hay verificación en hardware real ni garantía temporal global de 50 Hz. El perfil 160×288 tiene comprobado su modelo de memoria, pero su señal CRTC continúa siendo experimental. La física 8.8 no incluye colisión entre cuerpos y el tilemap continúa siendo de solo lectura. El dibujo enmascarado 6x8 tiene coste medido, pero no se ha integrado en el lote ordenado.</div>
   </section>
 
@@ -120,6 +120,7 @@
       <li><a href="#estructura">Estructura del repositorio</a></li>
       <li><a href="#proyecto">Crear un proyecto o ejemplo</a></li>
       <li><a href="#modulos">Referencia de módulos</a></li>
+      <li><a href="#ecs-abi">ABI y entity manager ECS 2.0</a></li>
       <li><a href="#recursos">Perfiles y recursos</a></li>
       <li><a href="#ejemplos">Ejemplos incluidos</a></li>
       <li><a href="#pruebas">Pruebas y emulación</a></li>
@@ -151,7 +152,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="spritemask renderorder"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintidós consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintidós consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -176,8 +177,8 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <ol>
       <li>Ejecute <code>make examples</code>.</li>
       <li>Inserte <code>.build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
-      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"RENDEROR"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code>, <code>spritemask</code> es <code>SPRITEMA.BIN</code> y <code>renderorder</code> es <code>RENDEROR.BIN</code>.</li>
-      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>renderorder</code> no necesitan entrada: muestran automáticamente su resultado.</li>
+      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"PLATGAME"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code>, <code>spritemask</code> es <code>SPRITEMA.BIN</code>. El ejemplo <code>platformer</code> declara el nombre <code>PLATGAME</code> en su manifiesto.</li>
+      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> no necesitan entrada: muestran automáticamente su resultado.</li>
     </ol>
     <div class="box">Los smoke automáticos no se limitan a comprobar que el emulador sigue abierto: leen RAM, memoria de vídeo, teclado y, en audio, registros PSG.</div>
   </section>
@@ -187,12 +188,12 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <table>
       <thead><tr><th>Ruta</th><th>Responsabilidad</th></tr></thead>
       <tbody>
-        <tr><td><code>src/core</code></td><td>Sistema, entrada y pool genérico.</td></tr>
+        <tr><td><code>src/core</code></td><td>Sistema, entrada y sistemas ECS (manager, behavior, movimiento, entrada, plataforma, colisión y animación).</td></tr>
         <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping, máscaras opcionales y orden explícito.</td></tr>
         <tr><td><code>src/ui</code></td><td>Fuente sprite Mode 0, números pequeños y ventanas con fondo restaurable.</td></tr>
         <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
         <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
-        <tr><td><code>src/extensions</code></td><td>Movimiento, física, tilemaps, colisión, render y animación opcionales.</td></tr>
+        <tr><td><code>src/extensions</code></td><td>Behavior, física, tilemaps y render de tilemap opcionales.</td></tr>
         <tr><td><code>examples</code></td><td>Consumidores independientes y sus fuentes de juego.</td></tr>
         <tr><td><code>profiles</code>, <code>manifests</code></td><td>Geometría y recursos declarativos.</td></tr>
         <tr><td><code>generated</code></td><td>Tablas producidas por herramientas; no son la fuente canónica.</td></tr>
@@ -266,7 +267,136 @@ loop:
 
   <section aria-labelledby="modulos">
     <h2 id="modulos">6. Referencia de módulos</h2>
-    <p>Los contratos indican entradas, salidas y registros alterados. El llamador debe respetarlos; el framework no inserta comprobaciones de límites en tiempo de ejecución salvo donde se indique.</p>
+    <h3 id="ecs-abi">6.0 ABI y entity manager ECS 2.0</h3>
+    <p>La rama <code>ecs-v2</code> documenta el contrato binario aprobado en <a href="ecs-abi-2.0.md"><code>docs/ecs-abi-2.0.md</code></a>. Define entidades AoS de slots estables, máscara de componentes de 16 bits, estados separados de lifecycle, offsets generados, managers múltiples y llamadas Z80 con carry y código en A. La fase 2 implementa el manager en <code>core/ecs_manager.s</code>.</p>
+    <p>La entidad empieza por máscara, estado, tipo, X, Y, anchura y altura; después incorpora los bloques de componentes y campos propios del juego. X y anchura se expresan en bytes de pantalla, Y y altura en scanlines. El tamaño máximo es 128 bytes para que todos los campos sean accesibles mediante desplazamientos indexados Z80. Render ocupa siempre el bit 0 del perfil, aunque una entidad concreta puede no activarlo.</p>
+    <p>La fase 3 genera el perfil desde el objeto <code>ecs</code> del manifiesto. <code>x_format</code> e <code>y_format</code> admiten <code>u8</code>, <code>u16</code> o <code>fixed_8_8</code>. Los componentes propios declaran dependencias y campos; los tipos disponibles son <code>u8</code>, <code>i8</code>, <code>u16</code>, <code>i16</code>, <code>fixed_8_8</code>, <code>pointer</code> y <code>bytes[n]</code>. <code>velocity_x</code> y <code>velocity_y</code> resuelven automáticamente una velocidad compatible con la coordenada.</p>
+    <pre><code>"ecs": {
+  "x_format": "u8",
+  "y_format": "u8",
+  "components": ["behavior", "actor"],
+  "custom_components": [
+    {
+      "name": "actor",
+      "dependencies": ["behavior"],
+      "fields": []
+    }
+  ],
+  "fields": [{"name": "health", "type": "u8"}]
+}</code></pre>
+    <p><code>RENDER</code> se inserta siempre como bit 0. El resto conserva el orden solicitado, insertando antes sus dependencias. Se rechazan nombres o tipos inválidos, duplicados, ciclos, componentes desconocidos, más de 16 componentes, coordenadas incapaces de representar el perfil de vídeo y entidades mayores de 128 bytes.</p>
+    <div class="box warning"><strong>Portfolio actual.</strong> <code>RENDER</code>, <code>MOTION</code>, <code>BEHAVIOR</code>, <code>INPUT</code> y <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code> tienen layout normativo, y el renderer ECS dirty/multi-manager está en <code>video/ecs_render.s</code>.</div>
+    <p>El include versionado está en <code>generated/ecs_profile.inc</code>. Antes de cambiarlo puede obtener una vista JSON de componentes resueltos, dependencias insertadas, campos, offsets, tamaños y diferencias sin escribir:</p>
+    <pre><code>python3 tools/gen_ecs_profile.py examples/ecsmanager/example.json \
+  --output examples/ecsmanager/generated/ecs_profile.inc --preview
+make generate-ecs   # escribe el include después de revisar la vista previa
+make check CHECK_EXAMPLES=ecsmanager  # falla si el include vuelve a quedar obsoleto</code></pre>
+    <p>El generador publica <code>ECS_ABI_MAJOR/MINOR</code>, formatos y tamaños X/Y, <code>ECS_C_*</code>, <code>ECS_COMPONENT_VALID_MASK</code>, todos los offsets <code>ECS_E_*</code> y <code>ECS_ENTITY_SIZE</code>. Incluya <code>core/ecs_manager.s</code> en el manifiesto y <code>core/ecs_manager.inc</code> en el ensamblador. Un descriptor reserva ocho bytes y referencia almacenamiento propiedad del juego:</p>
+    <pre><code>.include "ecs_profile.inc"
+.include "core/ecs_manager.inc"
+
+entities: .ds ECS_ENTITY_SIZE * 16
+FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
+    <article class="api" data-module="core/ecs_behavior.s">
+      <h4>Sistema ECS de behavior — <code>core/ecs_behavior.s</code></h4>
+      <p>Requiere los componentes <code>behavior</code> y <code>motion</code>, coordenadas <code>u8</code> y el módulo <code>extensions/behavior.s</code>. <code>fwk_ecs_system_behavior</code> recibe <code>IX=manager</code>, ejecuta una vez cada entidad activa con <code>BEHAVIOR</code> y copia de vuelta las velocidades, el puntero de programa y el temporizador. El programa puede ser compartido; el adaptador usa un registro temporal privado y no es reentrante.</p>
+    </article>
+    <article class="api" data-module="core/ecs_motion.s">
+      <h4>Sistema ECS de movimiento — <code>core/ecs_motion.s</code></h4>
+      <p>Requiere el componente <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_motion_u8</code> recibe <code>IX=manager</code>, suma las velocidades con signo a X/Y, satura contra <code>ECS_X_MAX/ECS_Y_MAX</code> y activa <code>ECS_RENDER_DIRTY</code> cuando cambia la posición. El desbordamiento se detecta con acarreo, de modo que coordenadas por encima de 127 son válidas. Las entidades con el componente <code>platform</code> se omiten: su movimiento y colisión pertenecen a <code>fwk_ecs_system_platform</code>. No implementa gravedad, colisión ni física 8.8.</p>
+    </article>
+    <article class="api" data-module="core/ecs_collision.s">
+      <h4>Colisión ECS — <code>core/ecs_collision.s</code></h4>
+      <p>Requiere el componente <code>collision</code> (un byte <code>ECS_E_COLLISION_CONTACT</code> por entidad) y coordenadas <code>u8</code> (el build falla con otro formato). <code>fwk_ecs_collide</code> comprueba <strong>un sujeto contra los objetivos de un manager</strong>: <code>IX</code>=manager, <code>IY</code>=sujeto, <code>BC</code>=máscara de componentes que deben tener los objetivos, <code>HL</code>=callback, <code>E</code>=canal. Llama al callback por cada objetivo <code>ACTIVE</code> cuya caja AABB solape con la del sujeto (solape estricto, <code>u8</code>, posiciones dentro de pantalla, anchura y altura distintas de cero y sumas hasta 255). El callback recibe <code>IX</code>=manager, <code>IY</code>=objetivo, <code>HL</code>=sujeto y <code>A</code>=<code>ENTER</code>, <code>STAY</code> o <code>EXIT</code>; con ese <code>IX</code>/<code>IY</code> puede llamar directamente a <code>fwk_ecs_entity_mark_destroy</code>.</p>
+      <p>El canal es un bit de <code>ECS_E_COLLISION_CONTACT</code> que guarda si el sujeto tocaba algo en la pasada anterior <em>de ese canal</em>: <code>ENTER</code> si no tocaba, <code>STAY</code> si ya tocaba y, al dejar de tocar, una única llamada <code>EXIT</code> con <code>IY=0</code>. <strong>Cada grupo de objetivos que pruebes contra el mismo sujeto necesita su propio canal</strong> (ocho disponibles, <code>E</code> con exactamente un bit); con uno compartido, una pasada sin contactos borra el estado de la otra y provoca <code>EXIT</code> y <code>ENTER</code> falsos en cada frame. <code>E=0</code> no guarda estado y todo contacto llega como <code>ENTER</code>. El campo <code>ECS_E_COLLISION_CONTACT</code> de las plantillas debe ser 0.</p>
+      <p><strong>Efecto por objetivo o por contacto.</strong> El estado es por sujeto y canal, no por objetivo: una moneda nueva que empieza a tocarse mientras el canal ya estaba activo llega como <code>STAY</code>. Por eso recoger una moneda actúa en toda llamada salvo <code>EXIT</code>, mientras que perder una vida (una vez por contacto) actúa en <code>ENTER</code>; un segundo enemigo tocado sin haber dejado de tocar al primero no cuesta otra vida Un carry activo del callback detiene la pasada y no actualiza el estado.</p>
+      <p>No hay tabla de pares, buffer ni límite de entidades: unos 210 bytes de código y 7 de datos (presupuesto 300 y 8, vigilado por <code>tests/test_ecs_collision.py</code>). Límites: no es reentrante (ni siquiera una segunda llamada que devuelva un error: sustituye el callback, el sujeto y el canal al entrar), no comprueba el estado del sujeto (si un callback lo destruye, sigue probándose contra el resto de la pasada) y un objetivo destruido en <code>ENTER</code> produce un <code>EXIT</code> sin objetivo en la pasada siguiente, que el callback debe tolerar. Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, sección 9.</p>
+      <pre><code>; el jugador contra monedas (canal 1) y contra enemigos (canal 2)
+    ld iy, (jugador)
+    ld ix, #monedas
+    ld bc, #ECS_C_COIN
+    ld e, #0x01
+    ld hl, #al_tocar_moneda
+    call fwk_ecs_collide
+    ld ix, #enemigos
+    ld bc, #ECS_C_ENEMY
+    ld e, #0x02
+    ld hl, #al_tocar_enemigo
+    call fwk_ecs_collide
+    ; ...
+
+al_tocar_moneda:                   ; IX=manager IY=moneda HL=jugador A=tipo
+    cp #ECS_COLLISION_EXIT
+    jr nz, recoger
+    xor a                          ; EXIT (IY=0): nada que hacer
+    ret
+recoger:
+    jp fwk_ecs_entity_mark_destroy ; ENTER o STAY: la moneda desaparece, carry limpio
+
+al_tocar_enemigo:                  ; una vida menos solo al empezar el contacto
+    cp #ECS_COLLISION_ENTER
+    jp z, quitar_vida              ; el juego: resta la vida y termina con xor a / ret
+    xor a
+    ret</code></pre>
+    </article>
+    <article class="api" data-module="core/ecs_animation.s">
+      <h4>Animación ECS — <code>core/ecs_animation.s</code></h4>
+      <p>Requiere el componente <code>animation</code> (tres campos por entidad: <code>ECS_E_ANIMATION_DESCRIPTOR</code>, <code>FRAME</code> y <code>TIMER</code>). El descriptor es de solo lectura, compartible y tiene este formato (<code>core/ecs_animation.inc</code>): byte <code>count</code> (1 a 255), byte <code>duration</code> (1 a 255) y <code>count</code> punteros de sprite. <code>fwk_ecs_system_animation</code> recibe <code>IX</code>=manager y recorre las entidades <code>ACTIVE</code> con el componente y un descriptor: cada llamada decrementa su <code>TIMER</code>; al llegar a cero lo recarga con la duración, avanza el frame (vuelve a 0 tras el último), pone <code>ECS_E_RENDER_SPRITE</code> al puntero de ese frame y activa <code>ECS_RENDER_DIRTY</code>. Una entidad sin descriptor no se toca.</p>
+      <p><code>fwk_ecs_anim_set</code> (<code>IY</code>=entidad, <code>HL</code>=descriptor o 0) cambia de animación entre recorridos: un descriptor distinto reinicia en el frame 0 con el temporizador igual a la duración, pone el sprite y activa <code>DIRTY</code>; <code>HL=0</code> detiene la animación y conserva el sprite actual; elegir el descriptor ya activo no cambia nada mientras el temporizador no sea cero, de modo que puede llamarse cada frame con el estado actual del jugador (andar, quieto). Con el temporizador a cero (una plantilla que ya trae el descriptor) arranca. Inicia siempre las entidades nuevas con <code>fwk_ecs_anim_set</code> tras crearlas.</p>
+      <p><strong>Límites.</strong> <code>count</code> y <code>duration</code> van de 1 a 255; con 0 el comportamiento es indefinido y silencioso. Si llamas a <code>fwk_ecs_anim_set</code> <em>antes</em> del sistema en el mismo frame, el frame 0 dura una llamada menos (con duración 1 no llega a verse): llámalo después para la duración completa. El descriptor no lleva el tamaño del sprite, así que <code>ECS_E_WIDTH</code> y <code>ECS_E_HEIGHT</code> no cambian; si cambias el sprite por tu cuenta y el descriptor ya estaba activo, no se restituye hasta el siguiente avance. Una animación de un solo frame vuelve a fijar el sprite y a activar <code>DIRTY</code> cada <code>duration</code> llamadas: para una pose fija usa duración 255 o detén la animación con <code>HL=0</code> tras elegirla. <code>fwk_ecs_anim_set</code> no comprueba el estado de la entidad. Ocupa 109 bytes de código y ningún dato (presupuesto 150 y 0, vigilado por <code>tests/test_ecs_animation.py</code>). Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, sección 10.</p>
+      <pre><code>; una vez por frame: primero el sistema, después elegir la animación del
+; estado actual (así cada frame nuevo dura la duración completa)
+    ld ix, #entidades              ; IX = manager con las entidades animadas
+    call fwk_ecs_system_animation
+    ld iy, (jugador)
+    ld hl, #anim_andar             ; descriptor: .db 4, 3 / .dw frame0..frame3
+    ld a, (jugador_quieto)
+    or a
+    jr z, elegida
+    ld hl, #anim_quieto
+elegida:
+    call fwk_ecs_anim_set          ; no reinicia si ya estaba en marcha</code></pre>
+    </article>
+    <article class="api" data-module="video/ecs_render.s">
+      <h4>Renderer ECS — <code>video/ecs_render.s</code></h4>
+      <p>Restaura y redibuja solo lo que cambió, con entidades de uno o varios managers, en un único orden global por Y. Requiere coordenadas <code>u8</code> (el build falla con otro formato), el módulo <code>video/sprite.s</code> y, por entidad con el bit <code>RENDER</code>, un buffer de fondo propio de al menos anchura por altura bytes (campos <code>ECS_E_RENDER_BACKGROUND</code> y <code>BACKGROUND_CAP</code>); el renderer no lo comprueba ni busca duplicados.</p>
+      <p>Una <em>escena</em> (<code>FWK_ECS_RENDER_SCENE nombre, tabla, cuenta, trabajo, capacidad</code>) agrupa una tabla de punteros a managers y un array de trabajo de <code>capacidad</code> entradas de 8 bytes que reserva el proyecto (una por entidad con <code>RENDER</code> visible o con fondo capturado). Cada frame se llama, con <code>IX</code>=escena y en este orden: <code>fwk_ecs_render_prepare</code> antes del VSYNC (reúne candidatas, marca las afectadas, bloquea los managers), <code>fwk_ecs_render_restore</code> tras el VSYNC (repone los fondos en orden inverso al último dibujo) y <code>fwk_ecs_render_draw</code> justo después (captura el fondo, dibuja en orden estable por <code>Y + SORT_OFFSET_Y</code>, actualiza el estado anterior, limpia <code>DIRTY</code> y libera los bloqueos). Una entidad se redibuja si tiene <code>DIRTY</code>, si debe aparecer o desaparecer, o si su caja (rectángulos anterior y actual) solapa con la de otra afectada, de forma transitiva. Los sistemas que cambian posición, sprite o visibilidad activan <code>DIRTY</code>; <code>fwk_ecs_entity_enable</code> también.</p>
+      <p>Un frame fuera de orden devuelve <code>FWK_ECS_ERR_RENDER</code>; un manager bloqueado, <code>FWK_ECS_ERR_BUSY</code>; un array de trabajo pequeño, <code>FWK_ECS_ERR_OVERFLOW</code>. Posiciones dentro de pantalla con sumas de posición y tamaño hasta 255 (el recorte por la derecha y abajo lo hace el módulo de sprites). Los empates de clave se resuelven por orden de tabla y slot. Un error en <code>restore</code> o <code>draw</code> es fatal (la escena queda a medias y bloqueada; no hay aborto), y cada manager debe aparecer una sola vez en la tabla. Ocupa 1.139 bytes de código (1.150 con transparencia activa) y 31 de datos (presupuesto 1.150 y 40, algo más de la mitad del renderer anterior, vigilado por <code>tests/test_ecs_render.py</code>). Detalle normativo en <code>docs/ecs-abi-2.0.md</code>, sección 8.</p>
+      <pre><code>; declaraciones (el array de trabajo y un buffer de fondo por entidad los pones tú)
+managers:  .dw entidades
+trabajo:   .ds 8*8                 ; 8 entradas de 8 bytes
+FWK_ECS_RENDER_SCENE escena, managers, 1, trabajo, 8
+; en la inicialización: dibujar el fondo una vez; después, cada frame
+    ld ix, #entidades
+    call fwk_ecs_system_motion_u8   ; los sistemas activan DIRTY al cambiar
+    ld ix, #escena
+    call fwk_ecs_render_prepare     ; antes del VSYNC
+    call fwk_system_wait_frame
+    ld ix, #escena
+    call fwk_ecs_render_restore     ; solo VRAM, tras el VSYNC
+    ld ix, #escena
+    call fwk_ecs_render_draw</code></pre>
+    </article>
+    <article class="api" data-module="core/ecs_input.s">
+      <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
+      <p><code>fwk_ecs_system_input</code> recibe <code>IX=manager</code>, recorre entidades con <code>INPUT</code> y traduce el estado global de <code>fwk_input_update</code> a velocidad horizontal y salto. El campo <code>action_mask</code> usa izquierda <code>0x01</code>, derecha <code>0x02</code> y salto <code>0x04</code>. El sistema conserva el contrato de callback del manager y marca render dirty al iniciar un salto.</p>
+    </article>
+    <article class="api" data-module="core/ecs_platform.s">
+      <h4>Sistema ECS de plataforma — <code>core/ecs_platform.s</code></h4>
+      <p><code>fwk_ecs_system_platform</code> adapta cada entidad <code>PLATFORM</code> al estado legacy de siete bytes, llama a <code>fwk_physics_platform_step</code> y a <code>fwk_platform_tilemap_resolve</code>, y copia X/Y, velocidades y flags de vuelta. La entidad aporta punteros a la configuración física y al descriptor de tilemap. No resuelve colisión entre cuerpos.</p>
+    </article>
+    <article class="api" data-module="core/ecs_manager.s">
+      <h4>Operaciones del manager</h4>
+      <ul>
+        <li><code>fwk_ecs_manager_init</code>: <code>IX=manager</code>; valida storage, capacidad y stride, marca todos los slots <code>FREE</code> e inicializa contadores y locks.</li>
+        <li><code>fwk_ecs_entity_create</code>: <code>IX=manager</code>, <code>HL=plantilla ACTIVE</code>; copia el registro completo al primer slot libre y devuelve <code>IY=slot</code>.</li>
+        <li><code>fwk_ecs_entity_disable</code>, <code>fwk_ecs_entity_enable</code> y <code>fwk_ecs_entity_mark_destroy</code>: aplican únicamente las transiciones válidas y mantienen <code>ACTIVE_COUNT</code>.</li>
+        <li><code>fwk_ecs_entity_set_mask</code>: <code>BC=máscara</code>; rechaza bits ajenos al perfil y no permite retirar render mientras exista un fondo capturado.</li>
+        <li><code>fwk_ecs_system_run</code>: <code>BC=máscara requerida</code>, <code>HL=callback</code>; recorre slots activos en orden. El callback recibe <code>IX=manager</code> e <code>IY=entidad</code>, debe preservarlos y puede marcar destrucción.</li>
+        <li><code>fwk_ecs_manager_collect</code>: convierte <code>PENDING_DESTROY</code> en <code>FREE</code> y devuelve en <code>B</code> cuántos slots liberó.</li>
+      </ul>
+    </article>
+    <p>Éxito significa carry limpio y <code>A=0</code>; error significa carry activo y un código <code>FWK_ECS_ERR_*</code> en A. Las operaciones estructurales se rechazan durante locks. El recorrido usa un <code>CALL</code> automodificable, por lo que no es reentrante, no puede anidarse ni ejecutarse desde IRQ. La API valida descriptores, máscaras y pertenencia de punteros también en esta primera implementación; no existe coste de <code>generation</code> en cada acceso.</p>
 
     <article class="api" data-module="core/system.s">
       <h3>6.1 Sistema — <code>core/system.s</code></h3>
@@ -296,23 +426,8 @@ loop:
       </ul>
     </article>
 
-    <article class="api" data-module="core/pool.s">
-      <h3>6.3 Pool compacto — <code>core/pool.s</code></h3>
-      <p>Incluya <code>core/pool.inc</code> y cree un descriptor de cinco bytes:</p>
-      <pre><code>entities: .ds 8 * 5
-FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
-      <ul>
-        <li><code>fwk_pool_init</code>: <code>IX=descriptor</code>; count pasa a cero.</li>
-        <li><code>fwk_pool_get</code>: <code>A=índice</code>; devuelve <code>HL=registro</code> o carry si no existe.</li>
-        <li><code>fwk_pool_alloc</code>: devuelve un slot sin inicializar o carry si está lleno.</li>
-        <li><code>fwk_pool_remove</code>: elimina <code>A=índice</code> y compacta con <code>LDIR</code>.</li>
-        <li><code>fwk_pool_foreach</code>: <code>DE=callback</code>; el callback recibe <code>IY=registro</code>.</li>
-      </ul>
-      <p><code>foreach</code> usa un <code>CALL</code> automodificable: no es reentrante ni debe reentrarse desde IRQ. El pool no interpreta los bytes de cada registro.</p>
-    </article>
-
     <article class="api" data-module="video/video.s">
-      <h3>6.4 Vídeo Mode 0 — <code>video/video.s</code></h3>
+      <h3>6.3 Vídeo Mode 0 — <code>video/video.s</code></h3>
       <ul>
         <li><code>fwk_video_init</code>: selecciona Mode 0.</li>
         <li><code>fwk_video_configure_crtc</code>: aplica la tabla CRTC del perfil. Usarlo no convierte un perfil experimental en verificado.</li>
@@ -324,7 +439,7 @@ FWK_POOL_DESCRIPTOR entity_pool, entities, 8, 5</code></pre>
     </article>
 
     <article class="api" data-module="video/sprite.s">
-      <h3>6.5 Sprites Mode 0 — <code>video/sprite.s</code></h3>
+      <h3>6.4 Sprites Mode 0 — <code>video/sprite.s</code></h3>
       <pre><code>FWK_SPRITE_DESCRIPTOR player_sprite, player_pixels, 20, 40, 6, 8
 player_background: .ds 6 * 8</code></pre>
       <p>El descriptor de ocho bytes contiene puntero a datos, X/Y con signo de 16 bits, ancho en bytes Mode 0 y alto en scanlines. Las coordenadas negativas permiten entrar o salir por arriba e izquierda; los datos son <code>width*height</code> bytes por filas y sin padding.</p>
@@ -339,25 +454,8 @@ player_background: .ds 6 * 8</code></pre>
       <p>Carry indica pens o dimensiones inválidos y span de datos con wrap; una imagen totalmente exterior es válida y no escribe. Reserve <code>width*height</code> bytes para los datos. Los dibujos preservan <code>IX</code> e <code>IY</code> y alteran <code>AF,BC,DE,HL</code>; captura y restauración preservan <code>IX</code> y alteran además <code>IY</code>. Ninguna es reentrante. <code>fwk_sprite_draw_recolor</code> ofrece la misma sustitución sin máscara. El recoloreado sustituye un solo pen, no remapea toda la paleta; al ejecutarse antes de la composición, sustituir por el color clave vuelve transparentes esos píxeles. Véase <code>docs/sprites.md</code>.</p>
     </article>
 
-    <article class="api" data-module="video/entity_render.s">
-      <h3>6.6 Render selectivo — <code>video/entity_render.s</code></h3>
-      <pre><code>entity_ptrs: .dw player, enemy, 0, effect
-render_work: .ds 4 * FWK_ENTITY_RENDER_WORK_SIZE
-FWK_ENTITY_RENDER_DESCRIPTOR render_list, entity_ptrs, 4, render_work, 4</code></pre>
-      <p>Cada entidad comienza con <code>FWK_ENTITY_RENDER_PREFIX</code>, un bloque de 25 bytes cuyos primeros ocho son compatibles con las rutinas individuales de sprite. Los flags públicos son <code>VISIBLE</code>, <code>DIRTY</code>, <code>MASKED</code> y <code>RECOLOR</code>; <code>HAS_BACKGROUND</code> lo gestiona el framework.</p>
-      <ul>
-        <li><code>fwk_entity_render_init</code>: inicializa la lista y marca las entidades visibles para el primer dibujo.</li>
-        <li><code>fwk_entity_render_revalidate</code>: revalida punteros y rangos de buffers modificados mientras la lista está en <code>IDLE</code>.</li>
-        <li><code>fwk_entity_render_mark_rect_dirty</code>: marca entidades afectadas por cambios del fondo.</li>
-        <li><code>fwk_entity_render_prepare_dirty</code>: valida el frame, propaga solapamientos y prepara el orden anterior sin escribir VRAM.</li>
-        <li><code>fwk_entity_render_restore_dirty</code>: restaura en orden inverso la lista preparada; desde <code>IDLE</code> prepara internamente por compatibilidad.</li>
-        <li><code>fwk_entity_render_draw_dirty</code>: ordena establemente por <code>sort_y</code>, captura/dibuja y limpia <code>DIRTY</code>.</li>
-      </ul>
-      <p>Ruta sincronizada por frame: actualice y marque, llame a <code>prepare_dirty</code>, espere VSYNC y ejecute seguidos restauración y dibujo. La máquina de estados es <code>IDLE → PREPARED → RESTORED → IDLE</code>. Desde la preparación no cambie entidades ni arrays. Las identidades de puntero y rangos se comprueban en <code>init/revalidate</code>, no dentro de la sección posterior al VSYNC. Los punteros nulos son huecos; los duplicados son error. Para retirar una entidad quite <code>VISIBLE</code>, active <code>DIRTY</code>, complete el ciclo, cambie el slot y revalide. Véase <code>docs/render-order.md</code>.</p>
-    </article>
-
     <article class="api" data-module="ui/text.s">
-      <h3>6.7 Texto — <code>ui/text.s</code></h3>
+      <h3>6.5 Texto — <code>ui/text.s</code></h3>
       <p>El módulo usa la fuente gráfica de los juegos originales: cada carácter es un sprite Mode 0 enmascarado de 2 bytes por 9 líneas. Incluye además los dígitos pequeños de 2 bytes por 5 líneas. No depende del dibujado de caracteres de CPCTelera.</p>
       <pre><code>call fwk_project_init       ; instala tabla pen 0 en &amp;0100
 call fwk_video_init
@@ -389,7 +487,7 @@ call fwk_text_draw_small_u8</code></pre>
     </article>
 
     <article class="api" data-module="ui/window.s">
-      <h3>6.8 Ventanas restaurables — <code>ui/window.s</code></h3>
+      <h3>6.6 Ventanas restaurables — <code>ui/window.s</code></h3>
       <pre><code>message_window:
     .db 10       ; x en bytes Mode 0
     .dw 40       ; y de 16 bits
@@ -406,44 +504,34 @@ window_buffer: .ds 20 * 16</code></pre>
       <p>Carry indica geometría inválida. El módulo usa las dimensiones y tabla de líneas del perfil; no contiene texto, entrada, espera ni un buffer global. El llamador debe reservar suficiente memoria y conservar la geometría entre captura y restauración. El contrato detallado está en <code>docs/windows.md</code>.</p>
     </article>
 
-    <article class="api" data-module="extensions/motion_u8.s">
-      <h3>6.9 Movimiento compacto — <code>extensions/motion_u8.s</code></h3>
-      <p><code>fwk_motion_u8_step</code> recibe en <code>IY</code> un registro de cinco bytes <code>x,y,vx,vy,flags</code>. Aplica velocidades con signo de 8 bits y satura en <code>x=0..79</code>, <code>y=0..199</code>. Altera <code>AF</code>.</p>
-      <p>Este perfil no es una entidad universal y no representa física 8.8. Es reentrante si el registro no se comparte.</p>
-    </article>
-
     <article class="api" data-module="extensions/behavior.s">
-      <h3>6.9b Comportamiento — <code>extensions/behavior.s</code></h3>
-      <p>Intérprete de programas enlazados para comportamientos. <code>fwk_behavior_run</code> recibe en <code>IX</code> un registro de 8 bytes: <code>x,y,vx,vy,flags</code>, puntero de programa de 16 bits y temporizador. Las cinco primeras posiciones son directamente compatibles con <code>motion_u8</code>; el intérprete cambia estado y velocidades, pero el consumidor debe llamar después a <code>fwk_motion_u8_step</code> y sincronizar su entidad de render.</p>
-      <pre><code>enemy_state:
-    .db 8, 56, 0, 0, 0
-    .dw enemy_program
-    .db 0
-
-enemy_program:
+      <h3>6.7 Comportamiento — <code>extensions/behavior.s</code></h3>
+      <p>Intérprete de programas enlazados para comportamientos. <code>fwk_behavior_run</code> recibe en <code>IX</code> un registro de 8 bytes: <code>x,y,vx,vy,flags</code>, puntero de programa de 16 bits y temporizador. El intérprete cambia estado y velocidades, no la posición. En un juego ECS no se llama directamente: <code>fwk_ecs_system_behavior</code> (<code>core/ecs_behavior.s</code>) copia los campos de cada entidad con <code>BEHAVIOR</code> a un registro privado, ejecuta el intérprete y los devuelve; después <code>fwk_ecs_system_motion_u8</code> aplica las velocidades y activa <code>DIRTY</code>.</p>
+      <pre><code>enemy_program:
     FWK_BEHAVIOR_SET_VY 2
     FWK_BEHAVIOR_WAIT 49, enemy_turn
 enemy_turn:
     FWK_BEHAVIOR_SET_VY -2
     FWK_BEHAVIOR_WAIT 49, enemy_program
 
-    ld ix, #enemy_state
-    call fwk_behavior_run
-    ld iy, #enemy_state
-    call fwk_motion_u8_step</code></pre>
+    ; cada turno, con IX=manager que contiene al enemigo
+    push ix
+    call fwk_ecs_system_behavior
+    pop ix
+    call fwk_ecs_system_motion_u8</code></pre>
       <p><code>FWK_BEHAVIOR_WAIT</code> fija el temporizador, ejecuta una espera no bloqueante y termina internamente su tabla de condiciones. Los ticks válidos son 1–255; cero desborda a 255 en el primer decremento. Las acciones instantáneas pueden encadenarse en el mismo frame, con un máximo de 16 despachos. Las tablas escritas a mano deben acabar con <code>FWK_BEHAVIOR_CONDITIONS_END</code>.</p>
       <p>Acciones: <code>idle</code>, <code>wait</code>, <code>set_timer</code>, <code>set_vx</code>, <code>set_vy</code> y <code>drive_vx</code>. Condiciones incorporadas: <code>true</code> y <code>timeout</code>. Una condición personalizada recibe <code>IX=registro</code>, debe preservar <code>IX/DE</code> y devuelve verdadero con Z activo. Puntero de programa cero desactiva el comportamiento. El contador de despachos es global: no llame al intérprete de forma anidada ni desde una interrupción.</p>
-      <p>Los tres enemigos de <code>platformer</code> son el ejemplo ejecutable y comparten un único adaptador <code>behavior → motion_u8 → entity_render</code>. El horizontal usa tramos temporizados para recorrer X=32..54; los dos verticales reutilizan el mismo programa inmutable de 49 ticks para Y=56..152, pero cada registro conserva su propio cursor y temporizador. El planificador llama al horizontal y al vertical derecho en frames alternos para mantener su velocidad anterior, mientras el vertical izquierdo se actualiza en cada frame. La sincronización copia X/Y y <code>sort_y</code> al prefijo y marca <code>DIRTY</code> solo cuando cambia la posición.</p>
+      <p>Los tres enemigos de <code>platformer</code> son el ejemplo ejecutable: cada entidad enemiga lleva los componentes <code>MOTION</code>, <code>BEHAVIOR</code>, <code>COLLISION</code> y <code>ANIMATION</code>. El horizontal usa tramos temporizados para recorrer X=32..54; los dos verticales reutilizan el mismo programa inmutable de 49 ticks, pero cada entidad conserva su propio cursor y temporizador. El horizontal y el vertical derecho viven en managers propios que el bucle de juego procesa en frames alternos, mientras el vertical izquierdo comparte manager con el jugador y se actualiza en cada frame.</p>
     </article>
 
     <article class="api" data-module="extensions/physics_platform.s">
-      <h3>6.10 Física de plataforma — <code>extensions/physics_platform.s</code></h3>
+      <h3>6.8 Física de plataforma — <code>extensions/physics_platform.s</code></h3>
       <p><code>fwk_physics_platform_step</code> recibe <code>IY=estado</code> e <code>IX=configuración</code>. El estado de siete bytes contiene <code>x,y,vx,vy,width,height,flags</code>; la configuración define ancho del mundo, coordenada inclusiva del suelo, gravedad y caída máxima.</p>
-      <p>Aplica velocidad byte con signo, límites horizontales, gravedad, techo, suelo y los bits <code>FWK_PLATFORM_AIRBORNE</code> y <code>FWK_PLATFORM_TILE_GROUNDED</code>. No conoce mapas, tiles, pools ni sprites. Altera <code>AF,BC</code>, preserva <code>IX/IY</code> y es reentrante si el estado no se comparte. El consumidor debe usar dimensiones no nulas, <code>width &lt;= world_width</code> y parámetros que no desborden la velocidad con signo.</p>
+      <p>Aplica velocidad byte con signo, límites horizontales, gravedad, techo, suelo y los bits <code>FWK_PLATFORM_AIRBORNE</code> y <code>FWK_PLATFORM_TILE_GROUNDED</code>. No conoce mapas, tiles ni sprites. Altera <code>AF,BC</code>, preserva <code>IX/IY</code> y es reentrante si el estado no se comparte. El consumidor debe usar dimensiones no nulas, <code>width &lt;= world_width</code> y parámetros que no desborden la velocidad con signo.</p>
     </article>
 
     <article class="api" data-module="extensions/tilemap.s">
-      <h3>6.11 Consulta de tilemap — <code>extensions/tilemap.s</code></h3>
+      <h3>6.9 Consulta de tilemap — <code>extensions/tilemap.s</code></h3>
       <pre><code>tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID, FWK_TILE_ONE_WAY
 tile_data:  .db 0, 1, 0, 2
 FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</code></pre>
@@ -452,13 +540,13 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
     </article>
 
     <article class="api" data-module="extensions/platform_tilemap.s">
-      <h3>6.12 Colisión de plataforma con tilemap — <code>extensions/platform_tilemap.s</code></h3>
+      <h3>6.10 Colisión de plataforma con tilemap — <code>extensions/platform_tilemap.s</code></h3>
       <p>Llame a <code>fwk_platform_tilemap_resolve</code> inmediatamente después de <code>fwk_physics_platform_step</code>, con <code>IY=estado</code> e <code>IX=tilemap</code>. Corrige posición, velocidad y flags. Devuelve en <code>A</code> una máscara de izquierda, derecha, techo, suelo y pérdida de apoyo.</p>
       <p>Los sólidos bloquean todos los ejes. <code>FWK_TILE_ONE_WAY</code> deja pasar al subir y solo bloquea un cruce descendente o sostiene un cuerpo ya apoyado. Las consultas inválidas pasan. No hay barrido continuo: la velocidad no debe atravesar un tile completo. Solo consulta las esquinas del rectángulo y no resuelve pendientes ni colisión entre cuerpos. Véase <code>docs/tilemap-collision.md</code>.</p>
     </article>
 
     <article class="api" data-module="extensions/tilemap_render.s">
-      <h3>6.13 Render de tilemap — <code>extensions/tilemap_render.s</code></h3>
+      <h3>6.11 Render de tilemap — <code>extensions/tilemap_render.s</code></h3>
       <pre><code>FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 10, 24, 12, 10, 16
 ; tileset, cámara X/Y, pantalla X/Y, viewport ancho/alto, gráficos</code></pre>
       <ul>
@@ -470,29 +558,13 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
     </article>
 
     <article class="api" data-module="extensions/physics_8_8.s">
-      <h3>6.14 Física 8.8 — <code>extensions/physics_8_8.s</code></h3>
+      <h3>6.12 Física 8.8 — <code>extensions/physics_8_8.s</code></h3>
       <p><code>fwk_physics_8_8_step</code> recibe <code>IY=estado</code> e <code>IX=descriptor</code>. Posición y velocidad son palabras 8.8 little-endian; el noveno byte conserva el resto sub-LSB de fricción. El descriptor aporta límites inclusivos y fricción de <code>0..255</code>.</p>
       <p>La fricción sigue el vector para no curvar diagonales al detener antes el eje menor. Después integra y rebota por eje. Altera <code>AF,BC,DE,HL</code>, preserva <code>IX/IY</code> y no es reentrante porque usa cuatro palabras internas. No resuelve colisiones entre cuerpos ni evita por sí sola atravesar geometría con velocidades excesivas. Véase <code>docs/physics-profiles.md</code>.</p>
     </article>
 
-    <article class="api" data-module="extensions/animation.s">
-      <h3>6.15 Animación — <code>extensions/animation.s</code></h3>
-      <pre><code>walk_animation:
-    .db 3              ; número de frames
-    .db 4              ; ticks por frame
-    .dw frame0, frame1, frame2
-
-animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
-      <ul>
-        <li><code>fwk_anim_clear</code>: <code>IX=estado</code>; desactiva y devuelve <code>HL=0</code>.</li>
-        <li><code>fwk_anim_set</code>: <code>IX=estado</code>, <code>HL=descriptor|0</code>. Carry indica que cambió. Repetir el descriptor conserva índice y temporizador.</li>
-        <li><code>fwk_anim_tick</code>: consume un tick decidido por el juego y devuelve el puntero de frame. Carry indica avance.</li>
-      </ul>
-      <p>El descriptor y los frames deben seguir visibles. Count y duración deben ser mayores que cero. El juego decide cuándo avanzar, qué descriptor elegir y cómo dibujarlo.</p>
-    </article>
-
     <article class="api" data-module="audio/akg.s">
-      <h3>6.16 Audio AKG — <code>audio/akg.s</code></h3>
+      <h3>6.13 Audio AKG — <code>audio/akg.s</code></h3>
       <p>El manifiesto también debe incluir <code>audio/arkosTracker_PlayerAkg.s</code> en <code>cpct_modules</code>, y el juego debe aportar su canción y tabla de efectos exportadas por Arkos Tracker.</p>
       <ol>
         <li><code>fwk_audio_init_music</code>: <code>HL=canción</code>, <code>A=subsong</code>.</li>
@@ -505,7 +577,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/bank.s">
-      <h3>6.17 Bancos de 128 KB — <code>resources/bank.s</code></h3>
+      <h3>6.14 Bancos de 128 KB — <code>resources/bank.s</code></h3>
       <p>Active <code>"extended_memory": true</code>. El constructor añade este módulo, reserva <code>0x0200..0x0215</code>, sitúa el código desde <code>0x0216</code> y <code>fwk_project_init</code> ejecuta la detección una sola vez.</p>
       <ul>
         <li><code>fwk_bank_init</code>: detecta RAM adicional. Devuelve <code>A=1/NZ</code> o <code>A=0/Z</code> y actualiza <code>fwk_bank_has_128k</code>.</li>
@@ -516,7 +588,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/disk.s">
-      <h3>6.18 Carga AMSDOS — <code>resources/disk.s</code></h3>
+      <h3>6.15 Carga AMSDOS — <code>resources/disk.s</code></h3>
       <ul>
         <li><code>fwk_disk_init</code>: reconecta AMSDOS. Debe llamarse antes de <code>fwk_project_init</code>.</li>
         <li><code>fwk_disk_load</code>: <code>HL=nombre</code>, <code>B=longitud</code>, <code>DE=destino</code>. Carry y <code>BC=longitud lógica</code> indican apertura correcta.</li>
@@ -525,7 +597,7 @@ animation_state: .ds FWK_ANIM_STATE_SIZE</code></pre>
     </article>
 
     <article class="api" data-module="resources/zx7b.s">
-      <h3>6.19 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
+      <h3>6.16 Descompresión ZX7B — <code>resources/zx7b.s</code></h3>
       <p><code>fwk_zx7b_unpack</code> recibe <code>HL=último byte comprimido</code> y <code>DE=último byte del destino</code>. Escribe hacia atrás mediante <code>cpct_zx7b_decrunch_s_asm</code> y altera <code>AF,BC,DE,HL</code>.</p>
       <p>No comprueba límites ni corrupción. Para archivos declarados en <code>disk_files</code>, el constructor genera constantes <code>FWK_DISK_*_SIZE</code> y <code>FWK_DISK_*_UNPACKED_SIZE</code>.</p>
     </article>
@@ -562,36 +634,35 @@ python3 tools/gen_resources.py manifests/resources128.json --output generated/re
       <tbody>
         <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="board"><td><code>board</code></td><td>Entrada, texto y composición sencilla de tablero.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="platform"><td><code>platform</code></td><td>Pool y perfil de movimiento compacto.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="gravity"><td><code>gravity</code></td><td>Traza amarilla sobre negro: gravedad, salto, límites y aterrizaje con velocidad byte.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilecoll"><td><code>tilecoll</code></td><td>Escenario cian y traza amarilla: consulta row-major, techo, pared y suelo sólido.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilerender"><td><code>tilerender</code></td><td>Viewport Mode 0: cambio de cámara, render completo y actualización de una celda.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="spriteclip"><td><code>spriteclip</code></td><td>Sprites opacos: clipping en cuatro bordes y captura/restauración del fondo visible.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="spritemask"><td><code>spritemask</code></td><td>Color clave configurable: pen 3, tabla generada, composición, recoloreado 5→15, clipping y rechazo de pens/span.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="renderorder"><td><code>renderorder</code></td><td>Dos sprites solapados: orden estable, restauración inversa y redibujado tras cambiar el fondo.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="physics88"><td><code>physics88</code></td><td>Traza cian sobre negro: integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK común</td></tr>
         <tr data-example="audio"><td><code>audio</code></td><td>Música AKG, stop/restart y SFX.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="animation"><td><code>animation</code></td><td>Tres frames, periodo exacto, pausa y reanudación.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="window"><td><code>window</code></td><td>Validación, captura, caja, texto, restauración y reapertura.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable: entrada, movimiento, pool, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable en ECS: entrada, movimiento, colisión, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="perf"><td><code>perf</code></td><td>Arnés de rendimiento: vacío, limpieza, sprites opacos/enmascarados, captura/restauración, lote de 8, tilemap completo y celda.</td><td>BIN, DSK común</td></tr>
-        <tr data-example="collision"><td><code>collision</code></td><td>Prueba AABB entre dos entidades con offsets de campo configurables.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="platformer"><td><code>platformer</code></td><td>Aplicación didáctica de plataformas: dos niveles, jugador, monedas, tres enemigos, vidas, HUD y puerta de salida.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="platformer"><td><code>platformer</code></td><td>Plataformas en ECS: jugador, cuatro monedas, tres enemigos, puerta, vidas, HUD y parpadeo al perder una vida, cuatro managers, el renderer selectivo y dos niveles.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisión ECS: reproduce un escenario generado por un modelo Python (ENTER, STAY, EXIT, máscara, destrucción, aborto, BUSY, callback nulo) y registra los argumentos de cada callback.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsanimation"><td><code>ecsanimation</code></td><td>Prueba técnica de animación ECS: reproduce un escenario generado por un modelo Python (cuenta atrás, avance y vuelta de frame, cambio de descriptor, descriptor ya activo, parada con 0) y registra frame, temporizador, sprite y DIRTY de cada entidad.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="ecsrender"><td><code>ecsrender</code></td><td>Prueba técnica del renderer ECS: reproduce un escenario generado por un modelo Python (dos managers, solapes con orden distinto al de slot, ocultar, deshabilitar, destruir, recorte en los bordes) y el smoke compara la VRAM de cada frame con la imagen ideal.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
-        <span data-module="extensions/collision_bodies.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>
         <span data-module="video/transparency.s"></span>
       </tbody>
     </table>
-    <p><code>vertical</code> y <code>platformer</code> son las dos escenas jugables. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code>, <code>renderorder</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
-    <p><code>platformer</code> integra <code>entity_render</code> con un array de punteros a jugador, monedas, tres enemigos y la puerta. La física conserva su subregistro compacto de siete bytes detrás del prefijo de 25 bytes; al mover el jugador o retirar una moneda activa <code>DIRTY</code>, restaura en orden inverso y redibuja por <code>sort_y</code>. Cada enemigo descuenta una vida solo al comenzar un contacto, no durante todos los frames del solapamiento. La puerta permanece oculta hasta reunir las cuatro monedas y permite pasar al segundo nivel.</p>
+    <p><code>vertical</code> y <code>platformer</code> son las dos escenas jugables completas, ambas en ECS. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p><code>platformer</code> usa cuatro managers ECS (monedas y puerta, jugador con el enemigo vertical izquierdo, enemigo horizontal y enemigo vertical derecho) y el renderer selectivo <code>video/ecs_render.s</code> sobre los cuatro. Al mover el jugador o retirar una moneda se activa <code>DIRTY</code>; el renderer restaura en orden inverso y redibuja por Y. Cada enemigo descuenta una vida solo al comenzar un contacto, no durante todos los frames del solapamiento. La puerta permanece oculta hasta reunir las cuatro monedas y permite pasar al segundo nivel.</p>
     <p>El HUD ocupa una línea negra interior. Antes de redibujar texto restaura las celdas de tile que realmente cubre cada tramo: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para sustituir el contador completo y columnas 6–14 para retirar todo el mensaje de ayuda. Así no quedan restos de glifos anteriores ni se altera el borde.</p>
-    <p>El ejemplo ejecuta lógica y <code>prepare_dirty</code> antes del VSYNC; después mantiene consecutivos <code>restore_dirty</code> y <code>draw_dirty</code>, y actualiza el HUD cuando las entidades ya vuelven a estar visibles. El recorrido automatizado conduce los tramos horizontales hasta posiciones observables del jugador: el coste de render puede hacer que una iteración de juego abarque más de un frame de vídeo, por lo que no equipara un número fijo de frames del emulador con actualizaciones de lógica. El recorrido completo, el smoke focalizado de comportamiento/contactos/puerta/HUD y la prueba de texto pasan en CPC 6128. La versión focalizada inmediatamente anterior pasó también en CPC 464; la fase 0 no repite ese modelo porque no cambia contratos de memoria o modelo. No existe validación en hardware real.</p>
+    <p>El ejemplo ejecuta lógica y <code>fwk_ecs_render_prepare</code> antes del VSYNC; después mantiene consecutivos <code>fwk_ecs_render_restore</code> y <code>fwk_ecs_render_draw</code>, y actualiza el HUD cuando las entidades ya vuelven a estar visibles. El recorrido automatizado conduce los tramos horizontales hasta posiciones observables del jugador: el coste de render puede hacer que una iteración de juego abarque más de un frame de vídeo, por lo que no equipara un número fijo de frames del emulador con actualizaciones de lógica. El recorrido completo, el smoke focalizado de comportamiento/contactos/puerta/HUD y la prueba de texto pasan en CPC 6128. La versión focalizada inmediatamente anterior pasó también en CPC 464; la fase 0 no repite ese modelo porque no cambia contratos de memoria o modelo. No existe validación en hardware real.</p>
     <p>La guía específica <a href="platform-game-guide.html">Crear un juego de plataformas con GlasnostFWK</a> reconstruye el proyecto paso a paso, documenta la separación entre manifiesto, constantes, assets y ciclo de juego, e incluye capturas reproducibles de construcción, inicio y victoria.</p>
   </section>
 
@@ -608,8 +679,7 @@ make report</code></pre>
     <pre><code>python3 tests/emulator_smoke.py --model 464 resources128
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py --model 464 audio
-python3 tests/emulator_smoke.py --model 464 animation
-python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender spriteclip spritemask renderorder physics88
+python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender spriteclip spritemask physics88
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <p>Un build correcto, una prueba host correcta, una ejecución emulada y una prueba en hardware son evidencias distintas. Consulte <code>docs/validation.md</code> para ver cuáles se han realizado realmente.</p>
@@ -634,7 +704,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
         <tr><td>El archivo DSK no carga.</td><td>Llame a <code>fwk_disk_init</code> antes de desactivar firmware; compruebe nombre 8.3, longitud y destino.</td></tr>
         <tr><td>ZX7B corrompe memoria.</td><td>Verifique últimos bytes de origen/destino y tamaños generados. No hay comprobación interna de límites.</td></tr>
         <tr><td>Audio no avanza.</td><td>Inicialice música, mantenga player/datos visibles y llame a <code>fwk_audio_start</code> después del sistema.</td></tr>
-        <tr><td>La animación se reinicia.</td><td>No borre el estado. <code>fwk_anim_set</code> es idempotente solo al recibir el mismo descriptor y bloque de estado.</td></tr>
+        <tr><td>La animación se reinicia.</td><td>No borre el estado. <code>fwk_ecs_anim_set</code> no reinicia si recibe el descriptor que la entidad ya tiene activo.</td></tr>
         <tr><td>La ventana no restaura bien.</td><td>Reserve exactamente <code>width*height</code> bytes o más y no cambie descriptor, buffer ni perfil entre captura y restauración.</td></tr>
         <tr><td>El cuerpo atraviesa un tile.</td><td>Compruebe tamaños/shifts, llame al resolver justo después del paso físico y mantenga el desplazamiento por eje por debajo del tamaño de tile.</td></tr>
         <tr><td>El viewport devuelve carry.</td><td>Compruebe cámara, destino, dimensiones no nulas, <code>tile_count</code>, ids seleccionados y que el tileset completo no haga wrap de 16 bits.</td></tr>

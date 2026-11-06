@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-31 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-11-06 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -10,6 +10,14 @@ El manual de usuario canónico está en `docs/manual.html` y su versión para
 impresión en `docs/manual.pdf`. Toda funcionalidad nueva debe ampliar el HTML,
 regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum.
 
+> Nota de historia (fase 11 parte B): este registro conserva las secciones de su
+> época. Allí `platformer` es el ejemplo original anterior al ECS, eliminado en
+> la fase 11 parte B; `platformer_ecs` es el actual `examples/platformer` (AMSDOS
+> `PECS`, hoy `PLATGAME`); y `core/pool`, `video/entity_render`,
+> `extensions/animation`, `extensions/collision_bodies` y
+> `extensions/motion_u8` son módulos ya eliminados. Los hechos y mediciones no se
+> reescriben.
+
 ## Estado confirmado
 
 - Las nueve fases del encargo inicial están implementadas como primera versión
@@ -18,7 +26,7 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
   `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
   y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 106 pruebas; el manual cubre todos los ejemplos y
+- La suite host contiene 115 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
@@ -984,7 +992,7 @@ Plan aprobado el 2026-11-03 y persistido en
 arquitectura, SDK, toolchain, proyectos, paquetes, ciclo de vida, prioridades,
 fases y puertas de avance.
 
-### Fase activa: 0, punto de restauración
+### Fase 0: completada, punto de restauración
 
 - [x] Plan maestro consolidado y aprobado.
 - [x] `main` identificado en `8eacbb816d61499952e94b049dacd6dade4697bd`
@@ -1008,8 +1016,347 @@ fases y puertas de avance.
 - [x] Referencia funcional no ECS publicada en `main` como
   `5e9743630a3729fd137de557736df100e085e448`; `origin/main` se verificó en ese
   SHA y la CI remota `41623906057` terminó correctamente.
-- [ ] Crear y publicar `ecs-v2` desde ese commit.
+- [x] `ecs-v2` creada desde el cierre documentado de `main`
+  (`e757fd00d8cdb5ec2f72d17e06085ffb073cc90d`) y verificada en
+  `origin/ecs-v2` en ese mismo SHA. No contiene todavía implementación ECS.
 
-Condición de salida G0: `main` limpio, sincronizado y reproducible, SHA y CI
-registrados, sin un fallo de recorrido ambiguo. La siguiente fase será redactar
-y revisar el ABI ECS; no se implementará el manager antes de esa revisión.
+Condición G0 alcanzada: la referencia no ECS está limpia, sincronizada y
+reproducible, con SHA y CI registrados y sin un fallo de recorrido ambiguo.
+
+### Fase 1: objetivo
+
+Redactar y revisar layouts, offsets, máscaras, registros de llamada, errores,
+estados y restricciones del ECS. No se implementará el entity manager hasta
+aprobar esa especificación (puerta G1).
+
+### Fase 1: completada, G1 aprobada
+
+- [x] Se contrastaron las decisiones con `model01` y `PocketFever`: ambos
+  confirman AoS, máscara al principio, plantillas copiadas y punteros directos,
+  pero sus managers antiguos mezclan slots reutilizables con compactación y no
+  ofrecen una convención uniforme de errores. Esas limitaciones no se copian.
+- [x] `docs/ecs-abi-2.0.md` fija la propuesta de cabecera, bloques generados,
+  máscara de 16 bits, lifecycle, render, descriptor de manager, llamadas Z80,
+  errores, frame, colisión y compatibilidad.
+- [x] Se propone un límite de 128 bytes por entidad: los desplazamientos
+  indexados `IX+d`/`IY+d` solo alcanzan offsets 0..127. Es una restricción real
+  del ABI directo, no una preferencia estética.
+- [x] La especificación conserva slots estables y no añade `generation`; las
+  validaciones de procedencia pueden existir en debug, pero no se pagan en cada
+  acceso release.
+- [x] No se ha creado código de manager ni símbolos ECS enlazables.
+- [x] Se añadieron cinco pruebas de contrato para cabecera, lifecycle, API,
+  errores, render, colisión y referencias cruzadas. `make check
+  CHECK_EXAMPLES=platformer` pasó 111 pruebas host en 0,968 s y compiló el
+  ejemplo.
+- [x] Manual HTML/PDF y checksum regenerados; README, plan maestro y estado
+  enlazan la propuesta y advierten que aún no es una API ejecutable.
+- [x] Propuesta publicada en `ecs-v2` como
+  `601b6e84be5c562d63a236a6e20f736730208ea7` y verificada en el remoto.
+- [x] CI manual de la rama `41625865832` correcta: 111 pruebas host, los 22
+  ejemplos, DSK común y artefactos distributables verificados.
+- [x] El 2026-11-03 el usuario aprobó expresamente los ocho contratos de G1;
+  `docs/ecs-abi-2.0.md` pasa de candidata a normativa.
+- [x] Cierre G1 revalidado: manual HTML/PDF y checksum regenerados; `make check
+  CHECK_EXAMPLES=platformer` pasó 111 pruebas host en 0,979 s y confirmó el
+  ejemplo actualizado.
+- [x] Aprobación registrada y publicada en
+  `3a0eabc830ed29b4542a8500cdffb4c81b1b38ad`; `origin/ecs-v2` se verificó en
+  ese SHA. La CI manual `41628752201` terminó correctamente con 111 pruebas,
+  22 ejemplos, DSK común y artefacto `glasnostfwk-3a0eabc...`.
+
+G1 queda alcanzada. No se ejecutó smoke porque no cambió código Z80. La CI
+ejecutó la regresión global sobre el contenido técnico de la especificación;
+el cierre documental se revalida después de retirar las marcas de candidata.
+
+### Fase 2: completada, entity manager ejecutable
+
+- [x] `src/core/ecs_manager.s` implementa los ocho símbolos aprobados en G1:
+  inicialización, creación desde plantilla, destrucción diferida,
+  habilitación/deshabilitación, cambio de máscara, recorrido y recolección.
+- [x] Los slots son estables y se reutiliza siempre el primer `FREE`; no hay
+  compactación ni contador `generation`. `ACTIVE_COUNT` y `LIVE_COUNT` se
+  mantienen al aplicar cada transición.
+- [x] El manager valida descriptor, storage, capacidad, stride exacto del
+  perfil, máscaras y pertenencia de punteros. Las operaciones estructurales se
+  rechazan bajo lock; marcar destrucción sí está permitido durante recorrido.
+- [x] `fwk_ecs_system_run` filtra `ACTIVE` por inclusión de máscara, recorre en
+  orden de slot, propaga abortos y libera siempre el lock. `IX` e `IY` se
+  preservan conforme a la ABI.
+- [x] Retirar `RENDER` con `HAS_BACKGROUND` activo devuelve
+  `FWK_ECS_ERR_RENDER`; la aclaración se incorporó a la ABI normativa para no
+  perder una captura que el render deba restaurar.
+- [x] El staging acepta temporalmente `ecs_profile` y lo instala como
+  `ecs_profile.inc`. `examples/ecsmanager` aporta un fixture manual; la fase 3
+  debe reemplazarlo por generación desde manifiesto.
+- [x] El ejemplo ejecutable comprueba inicialización, tres creaciones, lleno,
+  disable/enable, máscara inválida, lock durante callback, destrucción,
+  recolección, reutilización estable, error de render y aborto de callback.
+- [x] Validación focalizada en AmSpiriT-Lite 1.15.3/CPC 6128: estado final
+  `0x5A`, tres slots `ACTIVE` con máscara `0x0003`, contadores `3/3`, lock cero
+  y render marcado `DIRTY` después de reactivar.
+- [x] Regresión local de cierre: 114 pruebas host, 23 BIN, 22 CDT y DSK común
+  de 25 entradas. `ECSMANAG.BIN` carga en `0x0200`, ejecuta en `0x022F` y ocupa
+  1.483 bytes de BIN enlazado (1.366 de código y 117 de datos).
+- [x] Manual HTML/PDF y checksum regenerados; informe de tamaños actualizado.
+- [x] La CI comprueba explícitamente el BIN y CDT de `ecsmanager`, además de
+  incluirlo en `make test` y en el DSK común.
+- [x] Implementación publicada en `ecs-v2` mediante
+  `3a9b1a573f628a8bed5e8b9bfe6c3d92a1b67594`; verificación explícita de
+  artefactos corregida y publicada en
+  `7d209340fadbd32ddefd3f051b953db46b164775`.
+- [x] CI manual `41630455820` correcta para `7d209340...`: 115 pruebas host,
+  23 ejemplos, BIN/CDT de `ecsmanager`, DSK común y artefacto temporal
+  `glasnostfwk-7d209340...` (ID `13227278502`) verificados.
+
+No se repitió CPC 464 porque el manager no depende del modelo, memoria
+extendida, CRTC ni render físico. No existe validación en hardware real. El
+manager usa `CALL` automodificable para el callback y, como fija la ABI, no es
+reentrante, no puede anidarse ni llamarse desde IRQ.
+
+### Fase 3: completada, generador de perfiles ECS
+
+- [x] `tools/gen_ecs_profile.py` genera de forma determinista
+  `ecs_profile.inc` desde el bloque `ecs` del manifiesto y el catálogo
+  versionado `manifests/ecs-components.json`.
+- [x] El generador resuelve primero las dependencias, conserva `render` en el
+  bit 0 y admite hasta 16 componentes entre catálogo y definiciones propias
+  del proyecto.
+- [x] Los formatos de coordenadas configurables son `u8`, `u16` y `fixed_8_8`;
+  los campos admiten tipos escalares, punteros y bloques `bytes[n]`. Los tipos
+  derivados `x_format`, `y_format`, `velocity_x` y `velocity_y` siguen la
+  configuración del proyecto.
+- [x] Se validan esquema, nombres, tipos, duplicados, dependencias desconocidas
+  o cíclicas, rango del perfil de vídeo, máximo de 16 bits, nombres reservados
+  y límite ABI de 128 bytes por entidad.
+- [x] `--preview` muestra el layout y sus cambios sin escribir; `--check` y el
+  objetivo `make generate` impiden construir con un include versionado
+  obsoleto. `make generate-ecs` es la operación explícita de regeneración.
+- [x] `tools/build_examples.py` exige el bloque `ecs` cuando se selecciona el
+  manager, comprueba el include versionado y prepara ese contenido para el
+  ensamblado. La entrada temporal `ecs_profile` de la fase 2 fue eliminada.
+- [x] `ecsmanager` genera el mismo layout de 25 bytes y la misma máscara
+  `0x0003` que el fixture anterior. El manager consume ahora el nombre
+  normativo `ECS_COMPONENT_VALID_MASK`.
+- [x] Ocho pruebas nuevas cubren reproducibilidad, dependencias, formatos,
+  rechazos, detección de include obsoleto, diferencias de layout y preview sin
+  escritura. La regresión local pasó 123 pruebas host, construyó 23 BIN y 22
+  CDT y generó el DSK común con 25 entradas.
+- [x] Smoke focalizado posterior al build global correcto en
+  AmSpiriT-Lite 1.15.3/CPC 6128: `ecsmanager` ejecuta y avanza frames.
+- [x] Manual HTML/PDF, checksum, ABI, README e informe de tamaños actualizados.
+- [x] Implementación publicada en `ecs-v2` como
+  `6127a2ba4e553be8a22b13779596d242fc434bb8`; `origin/ecs-v2` se verificó en
+  ese mismo SHA.
+- [x] CI manual `41802820638` correcta para `6127a2ba...`: 123 pruebas host,
+  23 BIN, 22 CDT, DSK común y artefacto temporal
+  `glasnostfwk-6127a2ba...` (ID `13308661285`) verificados.
+
+El cierre de la fase 3 dejó únicamente `render` en el catálogo. La fase 4 añade
+ahora `motion` y `behavior` con contratos explícitos; física, colisión y
+animación siguen fuera del portfolio normativo. No se ejecutó CPC 464 porque
+esta fase solo usa coordenadas `u8` ya validadas en CPC 6128. No existe
+validación en hardware real.
+
+### Fase 4: completada, sistemas ECS de behavior y movimiento
+
+- [x] El catálogo añade `MOTION` (`velocity_x`, `velocity_y`, `flags`) y
+  `BEHAVIOR` (`program`, `timer`, `state`), con dependencia `BEHAVIOR -> MOTION`.
+- [x] `src/core/ecs_behavior.s` adapta el intérprete de behavior existente a
+  los campos de entidad mediante un registro temporal privado y copia de vuelta
+  velocidades, programa y temporizador.
+- [x] `src/core/ecs_motion.s` implementa movimiento `u8` con saturación contra
+  `ECS_X_MAX/ECS_Y_MAX` y activa `ECS_RENDER_DIRTY` al cambiar X/Y.
+- [x] `ecsmanager` selecciona ambos componentes, ejecuta cuatro ciclos
+  behavior -> movimiento y verifica posición y velocidad resultantes.
+- [x] El staging invalida los objetos CPCTelera cuando cambia el include
+  generado; así no se enlaza un layout ECS anterior por reutilización de `.rel`.
+- [x] Validación focalizada: 21 pruebas host del área ECS/manual, build de
+  `ecsmanager` y smoke correcto en AmSpiriT-Lite 1.15.3/CPC 6128.
+- [x] Regresión global: 125 pruebas host, 23 BIN, 22 CDT y DSK común de 25
+  entradas. `ecsmanager` enlaza 1.973 bytes (1.791 código, 182 datos).
+- [x] Manual HTML/PDF, checksum, ABI, README, informe de tamaños y validación
+  actualizados.
+- [x] Implementación publicada en `ecs-v2` como
+  `6bf71a011a9b4f065437f20ca6d74be02c80b50a`; `origin/ecs-v2` se verificó en
+  ese mismo SHA.
+- [x] CI manual `41807544677` correcta para `6bf71a0...`: 125 pruebas host,
+  23 BIN, 22 CDT, DSK común y artefacto temporal
+  `glasnostfwk-6bf71a0...` (ID `13309469104`) verificados.
+
+No se ejecutó CPC 464 porque el sistema está restringido a coordenadas `u8`
+ya validadas en CPC 6128 y no cambia el modelo de bancos, CRTC ni loader. No
+existe validación en hardware real.
+
+### Siguiente fase: 5, ejemplo `platformer_ecs`
+
+Crear `examples/platformer_ecs` con entidades y sistemas ECS, sin alterar el
+`platformer` de referencia. La migración debe reutilizar los contratos de
+behavior y movimiento ya cerrados y dejar preparada la paridad posterior.
+
+### Fase 5: completada, integración vertical `platformer_ecs`
+
+- [x] Se añadió `examples/platformer_ecs` como consumidor aislado del ABI ECS
+  2.0, sin modificar `examples/platformer`.
+- [x] El manifiesto selecciona manager, behavior, motion, vídeo y sprites;
+  `ecs_profile.inc` contiene `render`, `motion` y `behavior` en una entidad de
+  32 bytes.
+- [x] La escena crea un player ECS y dos enemigos ECS. Los enemigos usan los
+  programas behavior compartidos y `fwk_ecs_system_motion_u8`; el player usa
+  render/motion sin behavior.
+- [x] Se añadió un puente temporal de render que adapta el puntero de sprite y
+  las coordenadas ECS a `fwk_sprite_draw`. Recorre todos los slots
+  renderizables; no pretende ser todavía el renderer ECS dirty/multi-manager de
+  la fase 9.
+- [x] El nuevo BIN usa el nombre AMSDOS `PECS.BIN` para evitar la colisión de
+  ocho caracteres con `PLATFORM.BIN`, y se incluye en el DSK común y la CI.
+- [x] Smoke focalizado correcto en AmSpiriT-Lite 1.15.3/CPC 6128:
+  `platformer_ecs` crea los tres slots, mantiene al player inmóvil y observa
+  movimiento de los enemigos.
+- [x] Manual HTML/PDF y checksum regenerados; el plan y la validación reflejan
+  la integración y sus límites.
+- [x] Commit publicado en `ecs-v2` como `c1c14c47dd1b0401c363cf2cc2b2249ba4ba9c3f`;
+  `origin/ecs-v2` se verificó en ese SHA.
+- [x] CI manual `41811578372` correcta: job `126511876002` completado en 19 s,
+  host tests, 24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
+
+La siguiente fase es la 6: añadir input de entidades, física principal y
+tilemaps ECS. No se debe presentar `platformer_ecs` como paridad completa con
+la referencia hasta cerrar las fases 6-10.
+
+### Fase 6: completada, adaptadores de input, plataforma y tilemap
+
+- [x] El portfolio ECS añade `input` y `platform`; `platform` depende de
+  `motion` y el perfil generado de `platformer_ecs` queda en 37 bytes por
+  entidad.
+- [x] `src/core/ecs_input.s` adapta `fwk_input_held/pressed` a velocidad
+  horizontal y salto según `action_mask`.
+- [x] `src/core/ecs_platform.s` adapta cada entidad al estado de siete bytes de
+  `physics_platform`, ejecuta `platform_tilemap_resolve` y copia de vuelta
+  posición, velocidad y flags, marcando render dirty cuando cambia la posición.
+- [x] `platformer_ecs` contiene un tilemap estático 20x25 y lo dibuja con
+  `fwk_tilemap_render_view`, manteniendo el render ECS como puente temporal.
+- [x] Regresión local: 125 pruebas host, 24 BIN, 23 CDT y DSK común; smoke CPC
+  6128 correcto para ejecución, frames y suelo visible.
+- [x] Cierre de la fase 6: el smoke inicial ocultaba tres defectos (carrera
+  de lectura de vídeo, nacimiento no aéreo del jugador, y `ecs_motion.s` con
+  doble integración de entidades `PLATFORM` y desbordamiento por signo). Los
+  tres están corregidos y el smoke demuestra caída, aterrizaje en y=184,
+  desplazamiento izquierda/derecha y ciclo de salto/aterrizaje. Detalle en
+  `docs/validation.md`.
+- [x] El puente de render que redibujaba todo en cada iteración (~1,3 it/s) se
+  sustituyó en la fase 9 por el renderer selectivo (~25 it/s).
+- [x] Implementación publicada en `ecs-v2` como
+  `e5bc741e29ab169e29378687ee08c3ae53bbc051`; CI manual
+  `41816216332`/job `126527519587` correcta en 25 s, con 125 pruebas host,
+  24 BIN, 23 CDT, DSK común y artefacto temporal verificados.
+
+### Fase 7: completada, colisión ECS (rediseño mínimo)
+
+Decisión del 2026-11-05: el primer diseño (tabla global de pares, buffer de
+eventos, roles, hasta 255 entidades por manager) pesaba entre 980 y 5.300
+bytes y se había optimizado para casos que ningún juego de CPC tiene. Se
+sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
+
+- [x] ABI 9 revisado: `fwk_ecs_collide` (sujeto contra objetivos de un
+  manager), callback con `IX`=manager, `IY`=objetivo, `HL`=sujeto,
+  `A`=`ENTER`/`STAY`/`EXIT`, un byte de estado por entidad.
+- [x] `src/core/ecs_collision.{inc,s}`: unos 210 bytes de código y 7 de datos
+  (presupuesto 300 y 8, comprobado por una prueba). El llamante elige el canal
+  de estado (`E`); ocho canales por sujeto.
+- [x] Modelo y escenario de 26 pasos, `examples/ecscollision`, smoke en CPC
+  6128 y 464.
+- [x] Principio añadido al plan maestro: presupuesto de bytes por sistema antes
+  de construir, sin tablas ni buffers globales fijos, rendimiento medido con
+  entidades de un juego.
+- [x] El PR #2 (diseño anterior) queda sustituido por este.
+- [ ] Limitaciones: estado por sujeto y canal, no por pareja; posiciones dentro de
+  pantalla y sumas `u8` sin saturar; no reentrante.
+
+### Fase 8: completada, animación ECS
+
+- [x] ABI 10 concreto: componente `animation` (descriptor, frame, temporizador),
+  mismo formato de descriptor que el animador no ECS, presupuesto de 150 bytes
+  de código y ningún dato fijado antes de escribir código.
+- [x] `src/core/ecs_animation.{inc,s}`: 109 bytes de código y 0 de datos.
+  `fwk_ecs_system_animation` avanza frames y marca `DIRTY`;
+  `fwk_ecs_anim_set` cambia de animación sin reiniciar la activa.
+- [x] Modelo y escenario de 14 pasos con cinco entidades (130 frames, plantilla
+  con descriptor), `examples/ecsanimation`, smoke en CPC 6128 y 464; seis
+  mutaciones comprobadas a mano (no automatizadas).
+- [ ] Limitaciones: `count` o `duration` cero son indefinidos y silenciosos;
+  el descriptor no lleva tamaño de sprite; llamar a `fwk_ecs_anim_set` antes
+  del sistema acorta el frame 0 en una llamada.
+
+### Fase 9: completada, renderer ECS multi-manager
+
+- [x] ABI 8 revisado: escena con varios managers, tres llamadas (`prepare`,
+  `restore`, `draw`), candidatas, afectadas por cierre transitivo de solapes,
+  orden global estable por Y. Sin la defensa contra llamantes hostiles del
+  renderer anterior.
+- [x] `src/video/ecs_render.{inc,s}`: 1.139 bytes de código (1.150 con transparencia activa) y 31 de datos
+  (renderer anterior: 2.078 y 43). Presupuesto 1.150 y 40; el de 900 fijado al
+  empezar era una estimación sin medir y se corrigió diciéndolo.
+- [x] Oráculo independiente en Python (imagen ideal por frame) y
+  `examples/ecsrender`: 36 frames, dos managers, la VRAM completa coincide
+  byte a byte con la imagen ideal en CPC 6128 y 464.
+- [x] `platformer_ecs` usa el renderer: de unos 19 fotogramas por iteración a
+  unos 2.
+- [ ] Limitaciones: coordenadas `u8` con sumas hasta 255; buffer de fondo por
+  entidad a cargo del juego, sin comprobar; el array de trabajo lo dimensiona el
+  proyecto; mutaciones comprobadas a mano, no automatizadas.
+- [ ] Pendiente: unos 2 fotogramas por iteración en `platformer_ecs` (sin
+  analizar cuánto es render y cuánto lógica) y la paridad visual con el
+  `platformer` no ECS, que es el criterio de la fase 10.
+- [ ] Siguiente: fase 10, paridad completa y rendimiento de `platformer`
+  (hito `2.0.0-beta.1`).
+
+## Fase 10: paridad y rendimiento de `platformer_ecs`
+
+- [x] Rebanada 1 (2026-11-06): `platformer_ecs` con los assets y el pipeline
+  reales de `platformer`, cuatro managers, cuatro monedas, tres enemigos con la
+  cadencia del original, puerta y vidas. El recorrido del smoke original pasa en
+  CPC 6128 y 464 (con teletransportes donde el original camina; ver la tabla de
+  divergencias). La puerta aún no carga el nivel 2 (rebanada 3).
+- [x] Corregido en `core/ecs_input.s`: el salto subía 28 píxeles en vez de 36.
+- [x] Rebanada 2 (2026-11-06): HUD (`COINS`, pista, `LIFE`), textos de victoria
+  y parpadeo rojo del borde al perder una vida, con `ui/text.s`. Los campos de
+  HUD tienen los mismos píxeles que `platformer` (SHA-256 de cada campo,
+  vidas 0..10), el parpadeo se observa en el emulador por cada enemigo y el
+  smoke pasa en CPC 6128 y 464. BIN: 11.798 B frente a 11.382 B del original,
+  aún sin nivel 2.
+- [x] Parte 3 (2026-11-06): segundo nivel y reinicio por puerta. El arranque es
+  `_pfe_start_level` y la puerta lo repite con el mapa 2, así que ambos niveles
+  empiezan igual. Píxeles de los dos niveles comparados con el original, mapa 2
+  contra el TMX, física del mapa 2 y victoria del nivel 2 en el smoke (CPC 6128 y
+  464). BIN: 11.861 B frente a 11.382 B del original (presupuesto 11.878).
+- [x] Parte 4 (2026-11-06): prueba diferencial hecha una vez (idénticos en 300
+  iteraciones, 2 semillas), medición con `tools/measure_game.py` y presupuesto
+  fijado. `platformer_ecs` hace 2 fotogramas por iteración siempre y trabaja un
+  18 a 22 % menos que `platformer`, que sube a 3 fotogramas en el 11 a 12 % de las
+  iteraciones al moverse. BIN +4,2 % (presupuesto 5 %). Se descarta optimizar
+  `prepare`. Defecto del original hallado y corregido en `fwk_motion_u8_step`
+  (posiciones `y >= 128` enviadas a 0). Detalle en `docs/platformer-parity.md`.
+- [x] Criterios de la fase 10 cumplidos: paridad jugable completa (reglas, HUD,
+  parpadeo, dos niveles), velocidad y tamaño dentro del presupuesto. El hito
+  `2.0.0-beta.1` queda a falta de que se etiquete.
+
+## Fase 11 parte B: eliminación de lo anterior al ECS
+
+- [x] Hecha en la rama `ecs-remove-legacy`: ya no queda ningún módulo, ejemplo ni
+  API anterior al ECS, y `make test` pasa en verde.
+- [x] Ejemplos eliminados: `platformer` original, `platform`, `collision`,
+  `renderorder` y `animation`. `platformer_ecs` se renombró a `platformer`
+  (símbolos `platformer_*`, AMSDOS `PLATGAME`; etiquetas internas `_pfe_*`
+  intactas).
+- [x] Módulos eliminados: `core/pool`, `video/entity_render`,
+  `extensions/animation`, `extensions/collision_bodies` y
+  `extensions/motion_u8`. Los sustituyen `core/ecs_manager.s`,
+  `video/ecs_render.s`, `core/ecs_animation.s`, `core/ecs_collision.s` y
+  `core/ecs_motion.s`.
+- [x] Herramientas: `tools/mutate_platformer_ecs.py` es ahora
+  `tools/mutate_platformer.py`; `tools/measure_game.py` solo admite `platformer`.
+- [x] Documentación: manual, guía de plataformas, README y documentos de
+  arquitectura describen solo el ECS; `docs/render-order.md` y `docs/animation.md`
+  se eliminaron (contenido vigente en `docs/ecs-abi-2.0.md`, secciones 8 y 10).
+  Detalle en `docs/validation.md`.

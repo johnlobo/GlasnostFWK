@@ -13,6 +13,7 @@ from pathlib import Path
 
 try:
     from tools import import_assets
+    from tools.gen_ecs_profile import DEFAULT_PORTFOLIO, generate as generate_ecs_profile
     from tools.project_config import (
         BANK_PROBE,
         ProjectCapabilities,
@@ -22,6 +23,7 @@ try:
     )
 except ModuleNotFoundError:  # Direct execution: python3 tools/build_examples.py
     import import_assets
+    from gen_ecs_profile import DEFAULT_PORTFOLIO, generate as generate_ecs_profile
     from project_config import (
         BANK_PROBE,
         ProjectCapabilities,
@@ -115,6 +117,17 @@ def _copy_if_changed(source: Path, destination: Path) -> bool:
     temporary.write_bytes(data)
     os.replace(temporary, destination)
     return True
+
+
+def _invalidate_objects_if_profile_changed(target: Path, changed: bool) -> None:
+    """Invalidate CPCTelera objects when the generated ABI include changes.
+
+    CPCTelera's generated make rules do not track ``src/ecs_profile.inc`` as an
+    explicit dependency of every framework object that includes it. Leaving
+    those objects in place can therefore link a previous entity layout.
+    """
+    if changed:
+        shutil.rmtree(target / "obj", ignore_errors=True)
 
 
 def select_project_config(example: Path, default: Path) -> Path:
@@ -299,6 +312,38 @@ def stage_disk_files(
     return staged
 
 
+def _validate_ecs_systems(name: str, manifest: dict, modules: list[str]) -> None:
+    """Reject ECS system/component combinations that would silently misbehave."""
+    if {"core/ecs_motion.s", "core/ecs_behavior.s"} & set(modules):
+        ecs_config = manifest.get("ecs")
+        if not isinstance(ecs_config, dict) or ecs_config.get("x_format") != "u8" or ecs_config.get("y_format") != "u8":
+            raise ValueError(
+                f"{name}: ECS behavior/motion systems currently require x_format=u8 and y_format=u8"
+            )
+        selected_components = ecs_config.get("components", [])
+        if not isinstance(selected_components, list):
+            raise ValueError(f"{name}: ecs components must be a list")
+        if (
+            "core/ecs_motion.s" in modules
+            and "motion" not in selected_components
+            and "behavior" not in selected_components
+        ):
+            raise ValueError(f"{name}: core/ecs_motion.s requires the motion component")
+        if "core/ecs_behavior.s" in modules and "behavior" not in selected_components:
+            raise ValueError(f"{name}: core/ecs_behavior.s requires the behavior component")
+        if (
+            "core/ecs_motion.s" in modules
+            and "platform" in selected_components
+            and "core/ecs_platform.s" not in modules
+        ):
+            # ecs_motion skips PLATFORM entities because ecs_platform moves
+            # them; without that system they would never move at all.
+            raise ValueError(
+                f"{name}: the platform component needs core/ecs_platform.s "
+                "when core/ecs_motion.s is selected"
+            )
+
+
 def stage_example(name: str, cpct_path: Path) -> Path:
     example = ROOT / "examples" / name
     if not example.is_dir():
@@ -308,6 +353,7 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
     modules = effective_modules(name, manifest["modules"], capabilities)
+    _validate_ecs_systems(name, manifest, modules)
     target = ROOT / ".build" / name
     target.mkdir(parents=True, exist_ok=True)
     (target / "src").mkdir(parents=True, exist_ok=True)
@@ -335,6 +381,30 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
         staged_managed.add(Path("src") / "game" / relative_path)
+    uses_ecs_manager = "core/ecs_manager.s" in modules
+    ecs_config = manifest.get("ecs")
+    if uses_ecs_manager and not isinstance(ecs_config, dict):
+        raise ValueError(f"{name}: core/ecs_manager.s requires ecs configuration")
+    if ecs_config is not None:
+        if not uses_ecs_manager:
+            raise ValueError(f"{name}: ecs configuration requires core/ecs_manager.s")
+        portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
+        generated_profile = generate_ecs_profile(manifest, portfolio, profile)
+        profile_source = example / "generated" / "ecs_profile.inc"
+        if (
+            not profile_source.is_file()
+            or profile_source.read_text(encoding="ascii") != generated_profile.include
+        ):
+            raise ValueError(
+                f"{name}: stale ECS profile; run python3 tools/gen_ecs_profile.py "
+                f"examples/{name}/example.json --output "
+                f"examples/{name}/generated/ecs_profile.inc"
+            )
+        profile_changed = _write_if_changed(
+            target / "src" / "ecs_profile.inc", generated_profile.include, encoding="ascii"
+        )
+        _invalidate_objects_if_profile_changed(target, profile_changed)
+        staged_managed.add(Path("src") / "ecs_profile.inc")
     import_assets.ensure(example, cpct_path)
     assets = stage_assets(example, target)
     for item in assets:
@@ -420,6 +490,9 @@ def stage_example(name: str, cpct_path: Path) -> Path:
             {
                 "example": name,
                 "game_sources": game_sources,
+                "generated_ecs_profile": (
+                    "generated/ecs_profile.inc" if ecs_config is not None else None
+                ),
                 "modules": modules,
                 "cpct_modules": cpct_modules,
                 "assets": assets,

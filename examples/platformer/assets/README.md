@@ -2,8 +2,8 @@
 
 Esta carpeta es el punto de entrada de gráficos, mapas y audio del ejemplo,
 igual que `assets/` en un proyecto CPCtelera. El código del juego sigue en
-`main.s`, `assets.s` y `game.inc`; aquí van los **originales editables** y los
-datos generados que no forman parte de la lógica.
+`main.s`; aquí van los **originales editables** y los datos generados que no
+forman parte de la lógica.
 
 ```
 assets/
