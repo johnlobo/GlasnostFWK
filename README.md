@@ -128,13 +128,13 @@ capturas reproducibles en `docs/platform-game-guide.html` y PDF equivalente.
 
 ## Vertical jugable
 
-`examples/vertical` integra entrada, pool, movimiento, vídeo y recursos de
-juego. Mueve al jugador con los cursores y recoge los tres puntos situados a su
+`examples/vertical` integra entrada, ECS (movimiento y colisión), vídeo y
+recursos de juego. Mueve al jugador con los cursores y recoge los tres puntos situados a su
 derecha. `assets.s` mantiene posiciones y bytes gráficos fuera de la lógica;
 el manifiesto los selecciona mediante `game_sources`.
 
 El smoke de AmSpiriT mantiene CursorRight en la matriz real del CPC y verifica
-en RAM que el pool pasa de cuatro entidades a una, el marcador llega a tres y
+en RAM que el manager pasa de cuatro entidades a una, el marcador llega a tres y
 el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
 
 ## Física especializada

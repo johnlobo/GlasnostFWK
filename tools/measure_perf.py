@@ -27,7 +27,7 @@ SCENES = [
     "sprite_draw_masked (6x8)",
     "sprite_capture (6x8)",
     "sprite_restore (6x8)",
-    "entity_render (8 x 4x4, restore+draw)",
+    "ecs_render (8 x 4x4, prepare+restore+draw)",
     "tilemap_render_view (5x4 tiles)",
     "tilemap_render_cell (one tile)",
 ]
@@ -95,8 +95,12 @@ def main():
         deadline = time.time() + 180
         while time.time() < deadline:
             try:
-                if ram(status_addr, 1) == b"\x5A":
+                status = ram(status_addr, 1)
+                if status == b"\x5A":
                     break
+                if status != b"\x00":
+                    # The scene that failed stops the program with the ABI code here.
+                    raise SystemExit(f"perf benchmark stopped with error status 0x{status.hex()}")
             except OSError:
                 pass
             time.sleep(1)

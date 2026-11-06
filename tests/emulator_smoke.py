@@ -1038,23 +1038,31 @@ def run_example(
                 raise RuntimeError("window did not redraw after restoration")
         if name == "vertical":
             player = symbol(noi, "vertical_player")
-            pool = symbol(noi, "vertical_entity_pool")
+            storage = symbol(noi, "vertical_storage")
             score = symbol(noi, "vertical_score")
             status = symbol(noi, "vertical_status")
+            profile = (ROOT / "examples/vertical/generated/ecs_profile.inc").read_text()
+            stride = int(re.search(r"^ECS_ENTITY_SIZE = (\d+)", profile, re.M).group(1))
+
+            def active_slots():
+                # Byte 2 of an entity is its status: 0 = FREE. A pickup that is only
+                # PENDING_DESTROY still counts, so a missing collect is noticed.
+                return sum(ram(storage + stride * slot + 2, 1) != b"\x00" for slot in range(4))
+
             wait_for(
                 lambda: ram(status, 1) in {b"\xA5", b"\x5A"},
                 10,
                 "vertical resource initialization",
             )
-            initial_player = ram(player, 5)
-            initial_count = ram(pool + 4, 1)
+            initial_player = ram(player + 4, 2)
+            initial_count = active_slots()
             initial_score = ram(score, 1)
-            if initial_player[:2] != bytes((10, 100)):
-                raise RuntimeError(f"vertical player initial state is {initial_player.hex()}, expected 0a64000001")
-            if initial_count != b"\x04" or initial_score != b"\x00":
+            if initial_player != bytes((10, 100)):
+                raise RuntimeError(f"vertical player initial position is {initial_player.hex()}, expected 0a64")
+            if initial_count != 4 or initial_score != b"\x00":
                 raise RuntimeError(
                     "vertical entity resource did not create player plus three pickups: "
-                    f"count={initial_count.hex()} score={initial_score.hex()}"
+                    f"active={initial_count} score={initial_score.hex()}"
                 )
             wait_for(
                 lambda: ram(standard_screen_address(10, 100), 1) == b"\xFF"
@@ -1065,16 +1073,51 @@ def run_example(
                 5,
                 "vertical resource rendering",
             )
+            # Every direction moves the player the right way (cursor matrix: up and
+            # right on row 0, down on row 0 bit 2, left on row 1).
+            def place(x, y):
+                write_ram(player + 4, bytes((x, y)))
+                time.sleep(0.2)
+
+            place(10, 100)
+            hold_keys(row1=0xFE, frames=8)
+            if not ram(player + 4, 1)[0] < 10:
+                raise RuntimeError(f"vertical Left did not move the player left: {ram(player + 4, 2).hex()}")
+            place(10, 100)
+            hold_keys(row0=0xFE, frames=8)
+            if not ram(player + 5, 1)[0] < 100:
+                raise RuntimeError(f"vertical Up did not move the player up: {ram(player + 4, 2).hex()}")
+            place(10, 100)
+            hold_keys(row0=0xFB, frames=8)
+            if not ram(player + 5, 1)[0] > 100:
+                raise RuntimeError(f"vertical Down did not move the player down: {ram(player + 4, 2).hex()}")
+            place(10, 100)
+            hold_keys(row0=0xF9, frames=8)
+            diagonal = ram(player + 4, 2)
+            if not (diagonal[0] > 10 and diagonal[1] > 100):
+                raise RuntimeError(f"vertical Right+Down did not move diagonally: {diagonal.hex()}")
+            # A pickup is only collected on its exact byte cell: crossing the row
+            # just below it leaves score, slots and glyphs untouched.
+            place(10, 101)
+            hold_cursor_right(150)
+            if ram(score, 1) != b"\x00" or active_slots() != 4:
+                raise RuntimeError(
+                    f"vertical collected a pickup off its cell: score={ram(score, 1).hex()} "
+                    f"active={active_slots()} player={ram(player + 4, 2).hex()}"
+                )
+            if not all(ram(standard_screen_address(x, 100), 1) == b"\x3C" for x in (20, 30, 40)):
+                raise RuntimeError("vertical pickups were disturbed by a pass next to them")
+            place(10, 100)
             hold_cursor_right(180)
             final_score = ram(score, 1)
-            final_count = ram(pool + 4, 1)
-            final_player = ram(player, 5)
-            if final_score != b"\x03" or final_count != b"\x01":
+            final_count = active_slots()
+            final_player = ram(player + 4, 2)
+            if final_score != b"\x03" or final_count != 1:
                 raise RuntimeError(
                     "vertical input did not collect all three pickups: "
-                    f"player={final_player.hex()} count={final_count.hex()} score={final_score.hex()}"
+                    f"player={final_player.hex()} active={final_count} score={final_score.hex()}"
                 )
-            if ram(status, 1) != b"\x5A" or ram(player, 1)[0] <= 40:
+            if ram(status, 1) != b"\x5A" or final_player[0] <= 40:
                 raise RuntimeError("vertical slice did not reach its won state")
             wait_for(
                 lambda: ram(standard_screen_address(final_player[0], final_player[1]), 1)
@@ -1082,6 +1125,10 @@ def run_example(
                 5,
                 "vertical won sprite rendering",
             )
+            # Collected pickups are erased from the screen, not left behind.
+            for x in (20, 30, 40):
+                if ram(standard_screen_address(x, 100), 1) != b"\x00":
+                    raise RuntimeError(f"vertical left a collected pickup on screen at x={x}")
         if name == "platformer":
             player = symbol(noi, "platformer_player")
             score = symbol(noi, "platformer_score")
