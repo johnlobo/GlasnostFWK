@@ -99,7 +99,7 @@ class ECSManagerTests(unittest.TestCase):
             "ECS platformer platform approach",
             "ECS platformer upper-right coin",
             "ECS platformer win state",
-            "ECS platformer enemy contact",
+            "ECS platformer door touch",
         ):
             # The label must be the argument of a waiting call, not a stray
             # string in dead code.
@@ -108,6 +108,28 @@ class ECSManagerTests(unittest.TestCase):
                 rf"(?s)(wait_for|hold_keys_until)\((?:(?!\n            \w).)*?[\"']{label}[\"']",
             )
         self.assertIn("raise RuntimeError", section)
+
+    def test_input_jump_leaves_airborne_to_the_platform_step(self):
+        # Regression: setting AIRBORNE on jump made gravity act before the first
+        # move, so the jump rose 28 px instead of the original 36.
+        code = "\n".join(
+            line for line in (ROOT / "src/core/ecs_input.s").read_text().splitlines()
+            if not line.lstrip().startswith(";;")
+        )
+        self.assertNotIn("FWK_PLATFORM_AIRBORNE_BIT", code)
+
+    def test_platformer_ecs_enemy_turns_match_the_original(self):
+        # Original: H and V alternate frames, V2 runs every frame, and enemies
+        # stop hurting once the game is won.
+        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
+        frame = main.split("platformer_ecs_frame:", 1)[1]
+        self.assertIn("ld (_pfe_phase), a", frame)
+        self.assertEqual(frame.count("call _pfe_enemy_turn"), 1)
+        self.assertIn("ld ix, #platformer_ecs_v", frame.split("call _pfe_enemy_turn")[0])
+        self.assertIn("ld ix, #platformer_ecs_h", frame.split("call _pfe_enemy_turn")[0])
+        self.assertIn("ld ix, #platformer_ecs_manager\n    call fwk_ecs_system_behavior", frame)
+        collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
+        self.assertIn("ld a, (platformer_ecs_won)", collisions)
 
     def test_ci_verifies_the_new_bin_and_cdt(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()

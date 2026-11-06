@@ -1,8 +1,9 @@
 .module example_platformer_ecs
 ;; Platformer on ECS 2.0, phase 10 slice 1: same level, sprites, enemies, coins
 ;; and door as examples/platformer, built from the same converted assets. Three
-;; managers: ITEMS (coins, door), FAST (player, two vertical enemies) and SLOW
-;; (the horizontal enemy, updated every other frame as in the original).
+;; managers: ITEMS (coins, door), FAST (player and the left vertical enemy, every
+;; frame), H and V (the horizontal and the right vertical enemy, which alternate
+;; frames as in the original).
 .include "cpctelera.h.s"
 .include "ecs_profile.inc"
 .include "core/ecs_manager.inc"
@@ -40,15 +41,16 @@ PFE_T_ENEMY  = 3
 PFE_T_DOOR   = 4
 
 PFE_CH_FAST = 0x01
-PFE_CH_SLOW = 0x02
+PFE_CH_H    = 0x02
+PFE_CH_V    = 0x04
 
 PFE_ENEMY_H_INITIAL_TICKS = 19
 PFE_ENEMY_H_LEG_TICKS     = 23
 PFE_ENEMY_V_LEG_TICKS     = 49
 
 PFE_ITEMS_CAP = 5
-PFE_FAST_CAP  = 3
-PFE_SLOW_CAP  = 1
+PFE_FAST_CAP  = 2
+PFE_ONE_CAP   = 1
 PFE_ALL_CAP   = 9
 
 .area _DATA
@@ -72,10 +74,12 @@ _pfe_tpl:        .ds ECS_ENTITY_SIZE
 
 platformer_ecs_items_storage:: .ds ECS_ENTITY_SIZE * PFE_ITEMS_CAP
 platformer_ecs_storage::      .ds ECS_ENTITY_SIZE * PFE_FAST_CAP
-platformer_ecs_slow_storage:  .ds ECS_ENTITY_SIZE * PFE_SLOW_CAP
+platformer_ecs_h_storage:     .ds ECS_ENTITY_SIZE * PFE_ONE_CAP
+platformer_ecs_v_storage::    .ds ECS_ENTITY_SIZE * PFE_ONE_CAP
 FWK_ECS_MANAGER_DESCRIPTOR platformer_ecs_items, platformer_ecs_items_storage, PFE_ITEMS_CAP
 FWK_ECS_MANAGER_DESCRIPTOR platformer_ecs_manager, platformer_ecs_storage, PFE_FAST_CAP
-FWK_ECS_MANAGER_DESCRIPTOR platformer_ecs_slow, platformer_ecs_slow_storage, PFE_SLOW_CAP
+FWK_ECS_MANAGER_DESCRIPTOR platformer_ecs_h, platformer_ecs_h_storage, PFE_ONE_CAP
+FWK_ECS_MANAGER_DESCRIPTOR platformer_ecs_v, platformer_ecs_v_storage, PFE_ONE_CAP
 
 ;; One background buffer per entity: the renderer saves what each sprite covers.
 _pfe_bg_player: .ds 8 * 8
@@ -88,9 +92,9 @@ _pfe_bg_coin2:  .ds 4 * 8
 _pfe_bg_coin3:  .ds 4 * 8
 _pfe_bg_door:   .ds 4 * 8
 
-_pfe_managers: .dw platformer_ecs_items, platformer_ecs_manager, platformer_ecs_slow
+_pfe_managers: .dw platformer_ecs_items, platformer_ecs_manager, platformer_ecs_h, platformer_ecs_v
 _pfe_work: .ds 8 * PFE_ALL_CAP
-FWK_ECS_RENDER_SCENE platformer_ecs_scene, _pfe_managers, 3, _pfe_work, PFE_ALL_CAP
+FWK_ECS_RENDER_SCENE platformer_ecs_scene, _pfe_managers, 4, _pfe_work, PFE_ALL_CAP
 
 _pfe_types:
     .db 0, 1, 2, 0
@@ -289,8 +293,10 @@ _pfe_enemy_cb:
     xor a
     ret
 
-;; Player against the three groups. Each group has its own contact channel, so
-;; a life is lost when the player starts touching a group, not every frame.
+;; Player against the items and each enemy group. Every enemy has its own
+;; contact channel, so a life is lost when the player starts touching an enemy,
+;; not every frame. Once all coins are taken enemies stop hurting, as in the
+;; original.
 _pfe_collisions:
     ld iy, (platformer_ecs_player)
     ld ix, #platformer_ecs_items
@@ -299,6 +305,9 @@ _pfe_collisions:
     ld e, #0
     call fwk_ecs_collide
     call _pfe_expect_ok
+    ld a, (platformer_ecs_won)
+    or a
+    ret nz
     ld iy, (platformer_ecs_player)
     ld ix, #platformer_ecs_manager
     ld bc, #ECS_C_COLLISION
@@ -307,10 +316,17 @@ _pfe_collisions:
     call fwk_ecs_collide
     call _pfe_expect_ok
     ld iy, (platformer_ecs_player)
-    ld ix, #platformer_ecs_slow
+    ld ix, #platformer_ecs_h
     ld bc, #ECS_C_COLLISION
     ld hl, #_pfe_enemy_cb
-    ld e, #PFE_CH_SLOW
+    ld e, #PFE_CH_H
+    call fwk_ecs_collide
+    call _pfe_expect_ok
+    ld iy, (platformer_ecs_player)
+    ld ix, #platformer_ecs_v
+    ld bc, #ECS_C_COLLISION
+    ld hl, #_pfe_enemy_cb
+    ld e, #PFE_CH_V
     call fwk_ecs_collide
     call _pfe_expect_ok
     ret
@@ -341,6 +357,15 @@ _pfe_no_win:
     call fwk_ecs_entity_disable
     jp _pfe_expect_ok
 
+;; In: IX=the manager whose turn it is. Behavior, then motion.
+_pfe_enemy_turn:
+    push ix
+    call fwk_ecs_system_behavior
+    call _pfe_expect_ok
+    pop ix
+    call fwk_ecs_system_motion_u8
+    jp _pfe_expect_ok
+
 _main::
     call fwk_project_init
     ld hl, #platformer_map_packed + PLATFORMER_MAP_PACKED_SIZE - 1
@@ -366,7 +391,10 @@ _main::
     ld ix, #platformer_ecs_manager
     call fwk_ecs_manager_init
     call _pfe_expect_ok
-    ld ix, #platformer_ecs_slow
+    ld ix, #platformer_ecs_h
+    call fwk_ecs_manager_init
+    call _pfe_expect_ok
+    ld ix, #platformer_ecs_v
     call fwk_ecs_manager_init
     call _pfe_expect_ok
 
@@ -401,15 +429,16 @@ _main::
     ld ECS_E_PLATFORM_TILEMAP(iy), #<platformer_ecs_map_descriptor
     ld ECS_E_PLATFORM_TILEMAP+1(iy), #>platformer_ecs_map_descriptor
     ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE
-    ld hl, #_pfe_row_v
-    ld de, #platformer_ecs_enemy_v
-    call _pfe_spawn_to
     ld hl, #_pfe_row_v2
     call _pfe_spawn
     call _pfe_expect_ok
-    ld ix, #platformer_ecs_slow
+    ld ix, #platformer_ecs_h
     ld hl, #_pfe_row_h
     ld de, #platformer_ecs_enemy_h
+    call _pfe_spawn_to
+    ld ix, #platformer_ecs_v
+    ld hl, #_pfe_row_v
+    ld de, #platformer_ecs_enemy_v
     call _pfe_spawn_to
 
     ld a, #0x5A
@@ -434,22 +463,22 @@ platformer_ecs_frame:
     ld ix, #platformer_ecs_manager
     call fwk_ecs_system_motion_u8
     call _pfe_expect_ok
-    ;; The horizontal enemy moves every other frame.
+    ;; The horizontal and the right vertical enemy take turns, one per frame.
     ld a, (_pfe_phase)
     xor #1
     ld (_pfe_phase), a
-    jr z, _pfe_slow_skipped
-    ld ix, #platformer_ecs_slow
-    call fwk_ecs_system_behavior
-    call _pfe_expect_ok
-    ld ix, #platformer_ecs_slow
-    call fwk_ecs_system_motion_u8
-    call _pfe_expect_ok
-_pfe_slow_skipped:
+    ld ix, #platformer_ecs_v
+    jr z, _pfe_turn
+    ld ix, #platformer_ecs_h
+_pfe_turn:
+    call _pfe_enemy_turn
     ld ix, #platformer_ecs_manager
     call fwk_ecs_system_animation
     call _pfe_expect_ok
-    ld ix, #platformer_ecs_slow
+    ld ix, #platformer_ecs_h
+    call fwk_ecs_system_animation
+    call _pfe_expect_ok
+    ld ix, #platformer_ecs_v
     call fwk_ecs_system_animation
     call _pfe_expect_ok
     call _pfe_collisions

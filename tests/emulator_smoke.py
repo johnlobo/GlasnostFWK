@@ -381,6 +381,28 @@ def run_example(
                 "ECS platformer behavior/motion of both enemy groups",
             )
             player_slot = int.from_bytes(ram(player, 2), "little")
+            enemy_v2_slot = storage + 42
+            door_slot = int.from_bytes(ram(door, 2), "little")
+            items = symbol(noi, "platformer_ecs_items_storage")
+            if ram(lives, 1) != b"\x0A" or ram(score, 1) != b"\x00" or ram(won, 1) != b"\x00":
+                raise RuntimeError("ECS platformer initial lives/score/won are invalid")
+            if ram(door_slot + 2, 1) != b"\x03":
+                raise RuntimeError("ECS platformer door is not hidden (DISABLED) before the win")
+            # Enemies patrol inside the original limits and animate.
+            h_x, v_y, v2_y, h_sprites = [], [], [], set()
+            deadline = time.time() + 3.0
+            while time.time() < deadline:
+                h_x.append(ram(enemy_h_slot + 4, 1)[0])
+                v_y.append(ram(enemy_v_slot + 5, 1)[0])
+                v2_y.append(ram(enemy_v2_slot + 5, 1)[0])
+                h_sprites.add(ram(enemy_h_slot + 8, 2))
+            if not (32 <= min(h_x) and max(h_x) <= 54 and max(h_x) - min(h_x) >= 8):
+                raise RuntimeError(f"ECS platformer horizontal patrol out of limits: {min(h_x)}..{max(h_x)}")
+            for label, ys in (("right vertical", v_y), ("left vertical", v2_y)):
+                if not (56 <= min(ys) and max(ys) <= 152 and max(ys) - min(ys) >= 16):
+                    raise RuntimeError(f"ECS platformer {label} patrol out of limits: {min(ys)}..{max(ys)}")
+            if len(h_sprites) < 2:
+                raise RuntimeError("ECS platformer enemy animation never changed the sprite")
 
             def player_state():
                 state = ram(player_slot, 42)
@@ -456,6 +478,8 @@ def run_example(
             # falls off the edge), so place the player next to each one.
             write_ram(player_slot + 4, bytes((18, 24)))
             wait_for(lambda: ram(score, 1) == b"\x03", 5, "ECS platformer upper-left coin")
+            if ram(won, 1) != b"\x00" or ram(door_slot + 2, 1) != b"\x03":
+                raise RuntimeError("ECS platformer won or showed the door with only three coins")
             write_ram(player_slot + 4, bytes((50, 24)))
             try:
                 wait_for(lambda: ram(score, 1) == b"\x04", 5, "ECS platformer upper-right coin")
@@ -467,21 +491,48 @@ def run_example(
                     f"items(status,type,x,y)={coins}"
                 ) from None
             wait_for(lambda: ram(won, 1) == b"\x01", 5, "ECS platformer win state")
-            door_slot = int.from_bytes(ram(door, 2), "little")
             wait_for(lambda: ram(door_slot + 2, 1) == b"\x01", 5, "ECS platformer door appears")
+            for slot in range(4):
+                if ram(items + 42 * slot + 2, 1) != b"\x00":
+                    raise RuntimeError(f"ECS platformer coin slot {slot} was not freed after collection")
             for coin_x in (16, 56):
                 cell = b"".join(ram(standard_screen_address(coin_x, y), 4) for y in range(168, 176))
                 if cell != bytes(32):
                     raise RuntimeError(f"ECS platformer left pixels in a collected coin cell x={coin_x}: {cell.hex()}")
-            # Overlap with the left vertical enemy removes exactly one life.
-            enemy_v2_slot = storage + 2 * 42
+            # After the win enemies stop hurting (as in the original).
             lives_before = ram(lives, 1)[0]
             ex, ey = ram(enemy_v2_slot + 4, 2)
             write_ram(player_slot + 4, bytes((ex, ey)))
-            wait_for(lambda: ram(lives, 1)[0] == lives_before - 1, 5, "ECS platformer enemy contact")
-            time.sleep(0.4)
-            if ram(lives, 1)[0] != lives_before - 1:
-                raise RuntimeError(f"ECS platformer lost more than one life in one contact: {ram(lives, 1).hex()}")
+            time.sleep(0.6)
+            if ram(lives, 1)[0] != lives_before:
+                raise RuntimeError("ECS platformer enemy cost a life after the win")
+            # Touching the door ends the win state and hides the door again.
+            def touch_door():
+                # The player falls while standing at the door: place it again
+                # until a game frame sees the overlap.
+                write_ram(player_slot + 4, bytes((72, 160)))
+                return ram(won, 1) == b"\x00" and ram(door_slot + 2, 1) == b"\x03"
+
+            wait_for(touch_door, 5, "ECS platformer door touch")
+            # Each enemy costs exactly one life per contact.
+            for label, slot in (("left vertical", enemy_v2_slot), ("horizontal", enemy_h_slot), ("right vertical", enemy_v_slot)):
+                lives_before = ram(lives, 1)[0]
+                # The enemy keeps moving between reading it and the next game
+                # frame, so a single placement can miss: retry from a clear spot.
+                # Each attempt is a fresh contact (the player leaves first).
+                for _attempt in range(6):
+                    write_ram(player_slot + 4, bytes((16, 100)))
+                    time.sleep(0.3)
+                    write_ram(player_slot + 4, ram(slot + 4, 2))
+                    time.sleep(0.5)
+                    if ram(lives, 1)[0] != lives_before:
+                        break
+                time.sleep(0.4)
+                if ram(lives, 1)[0] != lives_before - 1:
+                    raise RuntimeError(
+                        f"ECS platformer {label} contact did not cost exactly one life: "
+                        f"{lives_before} -> {ram(lives, 1)[0]}"
+                    )
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")

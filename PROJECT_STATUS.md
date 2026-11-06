@@ -1306,8 +1306,12 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 ## Fase 10: paridad y rendimiento de `platformer_ecs`
 
 - [x] Rebanada 1 (2026-11-06): `platformer_ecs` con los assets y el pipeline
-  reales de `platformer`, tres managers, cuatro monedas, tres enemigos, puerta
-  y vidas. El recorrido completo del smoke original pasa en CPC 6128 y 464.
+  reales de `platformer`, cuatro managers, cuatro monedas, tres enemigos con la
+  cadencia del original, puerta y vidas. El recorrido del smoke original pasa en
+  CPC 6128 y 464 (con teletransportes donde el original camina; ver la tabla de
+  divergencias). La puerta aún no carga el nivel 2 (rebanada 3).
+- [ ] Sin hacer de la rebanada 1: prueba diferencial entre los dos juegos y
+  presupuesto de tamaño y velocidad (rebanada 4).
 - [x] Corregido en `core/ecs_input.s`: el salto subía 28 píxeles en vez de 36.
 - [ ] Rebanada 2: HUD, victoria, parpadeo al perder vida.
 - [ ] Rebanada 3: segundo nivel y reinicio por puerta.
