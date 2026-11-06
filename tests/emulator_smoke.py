@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -63,6 +64,42 @@ def ram(address: int, length: int) -> bytes:
 
 def standard_screen_address(x: int, y: int) -> int:
     return 0xC000 + (y & 7) * 0x800 + (y >> 3) * 80 + x
+
+
+# SHA-256 prefixes (16 hex) of the HUD fields as drawn by examples/platformer
+# for each state, captured from the original game in the emulator. The ECS
+# port must draw the same pixels. Fields: score x=0..19, hint x=24..59,
+# lives x=64..79, scanlines 8..23.
+PLATFORMER_HUD_GOLDEN = {
+    "score": {
+        0: "607d3e8dc479cc70",
+        1: "98a7f1b81e2a4f85",
+        2: "ccb4bf7a44abd5a7",
+        3: "10bcff8b921e5f70",
+        4: "46476f15b93c33b4",  # original drawn from a clean state (0 -> 4)
+    },
+    "hint": {"collect": "7ece9d60ac964357", "go": "caa420c76c5a55ef"},
+    "lives": {
+        10: "94c72e01fe622897",
+        9: "98bfe8aeef324501",
+        8: "895a2b856aa2ffce",
+        7: "b6bf0249fbb687d9",
+        6: "4ae06a4c6acb2312",
+        5: "1441684c88eeeaf0",
+        4: "b603fb28053bc410",
+        3: "c9e713042a7188f5",
+        2: "8fae2ed039ebbdba",
+        1: "5b3cc668b27326e9",
+        0: "c77da37b7a8aa21b",
+    },
+}
+PLATFORMER_HUD_FIELDS = {"score": (0, 20), "hint": (24, 36), "lives": (64, 16)}
+
+
+def hud_field_hash(field: str) -> str:
+    x0, width = PLATFORMER_HUD_FIELDS[field]
+    data = b"".join(ram(standard_screen_address(x0, y), width) for y in range(8, 24))
+    return hashlib.sha256(data).hexdigest()[:16]
 
 
 def symbol(noi: Path, name: str) -> int:
@@ -386,6 +423,22 @@ def run_example(
             items = symbol(noi, "platformer_ecs_items_storage")
             if ram(lives, 1) != b"\x0A" or ram(score, 1) != b"\x00" or ram(won, 1) != b"\x00":
                 raise RuntimeError("ECS platformer initial lives/score/won are invalid")
+            hud_dirty = symbol(noi, "platformer_ecs_hud_dirty")
+
+            def check_hud(score_key, hint_key, lives_key, label):
+                wait_for(lambda: ram(hud_dirty, 1) == b"\x00", 5, f"ECS platformer HUD drawn ({label})")
+                time.sleep(0.2)
+                for field, key in (("score", score_key), ("hint", hint_key), ("lives", lives_key)):
+                    if key is None:
+                        continue
+                    got, want = hud_field_hash(field), PLATFORMER_HUD_GOLDEN[field][key]
+                    if got != want:
+                        raise RuntimeError(
+                            f"ECS platformer HUD {field} differs from the original at {label}: "
+                            f"{got} != {want} (state {key})"
+                        )
+
+            check_hud(0, "collect", 10, "start")
             if ram(door_slot + 2, 1) != b"\x03":
                 raise RuntimeError("ECS platformer door is not hidden (DISABLED) before the win")
             # Enemies patrol inside the original limits and animate.
@@ -452,6 +505,7 @@ def run_example(
                 raise RuntimeError(f"{error}: player={player_state()}") from None
             if ram(score, 1) != b"\x02":
                 raise RuntimeError(f"ECS platformer did not collect the lower-right coin: {player_state()}")
+            check_hud(2, "collect", ram(lives, 1)[0], "two coins")
             hold_keys_until(
                 lambda: player_state()["x"] <= 44,
                 row1=0xFE,
@@ -480,6 +534,10 @@ def run_example(
             wait_for(lambda: ram(score, 1) == b"\x03", 5, "ECS platformer upper-left coin")
             if ram(won, 1) != b"\x00" or ram(door_slot + 2, 1) != b"\x03":
                 raise RuntimeError("ECS platformer won or showed the door with only three coins")
+            # The last coin and an enemy meet on the same frame: the original
+            # wins first and checks no enemy, so no life is lost.
+            lives_at_win = ram(lives, 1)[0]
+            write_ram(enemy_h_slot + 4, bytes((50, 24)))
             write_ram(player_slot + 4, bytes((50, 24)))
             try:
                 wait_for(lambda: ram(score, 1) == b"\x04", 5, "ECS platformer upper-right coin")
@@ -492,6 +550,19 @@ def run_example(
                 ) from None
             wait_for(lambda: ram(won, 1) == b"\x01", 5, "ECS platformer win state")
             wait_for(lambda: ram(door_slot + 2, 1) == b"\x01", 5, "ECS platformer door appears")
+            if ram(lives, 1)[0] != lives_at_win:
+                raise RuntimeError("ECS platformer lost a life in the frame of the last coin")
+            check_hud(4, "go", ram(lives, 1)[0], "all coins")
+            # Every lives value draws the original's pixels (forced with write_ram,
+            # safe here because enemies are harmless after the win).
+            real_lives = ram(lives, 1)[0]
+            for forced in range(10, -1, -1):
+                write_ram(lives, bytes((forced,)))
+                write_ram(hud_dirty, b"\x02")
+                check_hud(None, None, forced, f"forced lives {forced}")
+            write_ram(lives, bytes((real_lives,)))
+            write_ram(hud_dirty, b"\x02")
+            check_hud(None, None, real_lives, "lives restored")
             for slot in range(4):
                 if ram(items + 42 * slot + 2, 1) != b"\x00":
                     raise RuntimeError(f"ECS platformer coin slot {slot} was not freed after collection")
@@ -520,11 +591,16 @@ def run_example(
                 # The enemy keeps moving between reading it and the next game
                 # frame, so a single placement can miss: retry from a clear spot.
                 # Each attempt is a fresh contact (the player leaves first).
+                flashed = False
                 for _attempt in range(6):
                     write_ram(player_slot + 4, bytes((16, 100)))
                     time.sleep(0.3)
                     write_ram(player_slot + 4, ram(slot + 4, 2))
-                    time.sleep(0.5)
+                    # Losing a life flashes the border red (hardware colour 0x1C)
+                    # three times and leaves it black (0x14), as the original.
+                    poll_until = time.time() + 0.6
+                    while time.time() < poll_until:
+                        flashed = flashed or get("/api/state")["ga"]["border_idx"] == 0x1C
                     if ram(lives, 1)[0] != lives_before:
                         break
                 time.sleep(0.4)
@@ -533,6 +609,27 @@ def run_example(
                         f"ECS platformer {label} contact did not cost exactly one life: "
                         f"{lives_before} -> {ram(lives, 1)[0]}"
                     )
+                if not flashed:
+                    raise RuntimeError(f"ECS platformer {label} contact did not flash the border red")
+                if get("/api/state")["ga"]["border_idx"] != 0x14:
+                    raise RuntimeError(f"ECS platformer {label} flash left the border at {get('/api/state')['ga']['border_idx']:#x}")
+                check_hud(4, "go", lives_before - 1, f"{label} contact")
+            # Without lives a contact costs nothing and does not flash.
+            write_ram(lives, b"\x00")
+            write_ram(hud_dirty, b"\x02")
+            check_hud(None, None, 0, "no lives")
+            saw_red = False
+            for _attempt in range(4):
+                write_ram(player_slot + 4, bytes((16, 100)))
+                time.sleep(0.3)
+                write_ram(player_slot + 4, ram(enemy_v2_slot + 4, 2))
+                poll_until = time.time() + 0.6
+                while time.time() < poll_until:
+                    saw_red = saw_red or get("/api/state")["ga"]["border_idx"] == 0x1C
+            if ram(lives, 1) != b"\x00":
+                raise RuntimeError(f"ECS platformer lives wrapped below zero: {ram(lives, 1).hex()}")
+            if saw_red:
+                raise RuntimeError("ECS platformer flashed the border with no lives left")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")

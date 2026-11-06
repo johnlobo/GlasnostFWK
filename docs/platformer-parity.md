@@ -21,7 +21,7 @@ Criterio de salida (G3 del plan maestro): `platformer_ecs` juega igual que
 
 1. **Entidades y reglas**: monedas, 3 enemigos, puerta, vidas y puntuación en
    ECS (colisión de fase 7, animación de fase 8, render de fase 9). Sin HUD.
-2. **HUD y efectos**: texto, victoria, parpadeo al perder vida.
+2. **HUD y efectos**: texto, victoria, parpadeo al perder vida. Hecha (2026-11-06), ver abajo.
 3. **Segundo nivel** y reinicio por puerta.
 4. **Rendimiento**: medir fotogramas por iteración y T-states por sistema en
    `platformer` y `platformer_ecs`, y reducir el coste de `prepare` (puntero en
@@ -85,7 +85,8 @@ Resultados medidos:
 |---|---|---|---|
 | Hitbox de moneda | ventana de 8x8 | el sprite real de 4x8 | una sola anchura por entidad: la del sprite |
 | Contacto entre enemigos | un bit por enemigo | un canal por enemigo (V2, H y V en pasos separados) | igual que el original |
-| Parpadeo al perder vida | sí | pendiente | rebanada 2 |
+| Parpadeo al perder vida | borde rojo 3 veces, bloqueante, antes de `prepare` y VSYNC | mismas constantes y espera; se ejecuta al final del fotograma, tras dibujar | el HUD se actualiza en ese punto; ver también la fila de varias pérdidas |
+| Varias vidas perdidas en un fotograma | un parpadeo por vida | un solo parpadeo (el bit de parpadeo es una marca, no un contador); las vidas y el HUD sí restan todas | caso raro, no cubierto por el smoke |
 | Puerta | reinicia y carga el nivel 2 | solo se oculta y `won` vuelve a 0: el jugador no puede volver a ganar | rebanada 3 (callejón sin salida hasta entonces) |
 | Fotogramas de animación | el sprite quieto no se redibuja | el sistema de animación marca `DIRTY` en cada cambio de frame, también con el jugador y los enemigos quietos | coste conocido, a medir en la rebanada 4 |
 | Arranque del jugador | `GROUNDED` | `AIRBORNE` en (16, 184), aterriza en el primer fotograma | la física solo aplica gravedad a cuerpos en el aire; un salto en el fotograma 0 se ignora |
@@ -93,6 +94,47 @@ Resultados medidos:
 | Estado público | `platformer_status` 0x5A = ganado | `platformer_ecs_status` 0x5A = inicializado; `platformer_ecs_won` marca la victoria | el smoke ECS ya usaba 0x5A para el arranque |
 | Contador de contactos | `platformer_enemy_contacts` | sin equivalente | el canal de contacto vive en `ECS_E_COLLISION_CONTACT` |
 | Mapa 2 | solo se usa en el nivel 2 | enlazado (500 B de RAM más 50 B comprimidos) y sin usar | lo consume la rebanada 3; sesga la comparación de tamaño |
+
+## Rebanada 2: hecha (2026-11-06)
+
+`platformer_ecs` dibuja el HUD del original con el módulo `ui/text.s` (añadido
+a `example.json` junto con `"transparency": {"pen": 0}`, que el texto exige):
+`COINS: n/4` (o `ALL COINS` con cuatro), `COLLECT ALL COINS` (o `GO TO THE DOOR`
+tras ganar) y `LIFE: nn`. Perder una vida parpadea el borde en rojo tres veces
+(pen 16, 0x1C y 0x14, espera de 0x1000 vueltas), como el original.
+
+Diseño: un bit de suciedad por campo en `platformer_ecs_hud_dirty` (puntuación,
+vidas, pista, parpadeo), activado por las reglas (callbacks de colisión y
+`_pfe_apply_events`) y consumido por `_pfe_hud_update` después del dibujado. Una
+sola rutina (`_pfe_hud_field`) restaura las celdas del mapa bajo el texto y lo
+dibuja; las tres rutinas de campo solo eligen cadena y columnas.
+
+Pruebas:
+
+- **Píxeles contra el original.** `tests/emulator_smoke.py` guarda el SHA-256 de
+  los campos de HUD (puntuación, pista, vidas 0..10) tal y como los dibuja
+  `platformer` en el emulador, y `platformer_ecs` debe producir los mismos
+  píxeles al inicio, con dos monedas, con cuatro, con cada valor de vidas de 10
+  a 0 (forzado con `write_ram`) y tras cada contacto con un enemigo. El HUD inicial es idéntico byte a byte (1.280 bytes de VRAM).
+- **Parpadeo observado** en el emulador (`border_idx` 0x1C durante el contacto,
+  0x14 al terminar) en cada uno de los tres enemigos.
+- **Prueba host** (`test_platformer_ecs_hud_and_flash_match_the_original`):
+  textos, posiciones, columnas de campo y constantes del parpadeo iguales a las
+  del original, leídas de su fuente.
+
+Divergencias de esta rebanada:
+
+| Área | Original | ECS | Motivo |
+|---|---|---|---|
+| Cambio de puntuación | restaura 2 celdas y redibuja un dígito | restaura y redibuja el campo entero (5 celdas, 10 glifos) | menos código; mismos píxeles finales, algo más de tiempo en el fotograma del evento |
+| Vidas tras ganar | `_pf_update_hud` salta el campo de vidas con el estado `WON` | se actualiza siempre | en el original los enemigos no restan tras ganar; aquí vuelven a restar tras tocar la puerta hasta la rebanada 3 |
+| Pasar de 3 a 4 monedas | observado: tras forzar los estados con `write_ram` el original dejó restos de `COINS:` ("ALL S:INS") | texto limpio | no investigado; el dorado del estado de cuatro monedas es el del original desde un estado limpio (0 a 4) |
+
+Tamaño actual: 11.798 B de BIN (código 9.453 + datos 2.345) frente a 11.382 B
+(9.390 + 1.992) del original, con HUD y texto pero sin nivel 2. El port ECS ya es
+416 B mayor y aún le falta el nivel 2: el presupuesto de bytes y su reducción
+(los dos juegos usan el mismo módulo de texto; de dónde sale el resto, por
+ejemplo managers, renderer ECS o tablas de filas, está por medir) se fijan y atacan en la rebanada 4.
 
 ### Defecto de paridad corregido en el núcleo
 

@@ -19,9 +19,10 @@
 .globl fwk_video_init, fwk_video_clear_visible
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update
 .globl fwk_input_held
-.globl fwk_tilemap_render_view, fwk_zx7b_unpack
+.globl fwk_tilemap_render_view, fwk_tilemap_render_cell, fwk_zx7b_unpack
+.globl fwk_text_init, fwk_text_draw, fwk_video_get_ptr
 .globl fwk_ecs_system_input, fwk_ecs_system_platform
-.globl cpct_setPalette_asm
+.globl cpct_setPalette_asm, cpct_setPALColour_asm
 .globl platformer_map, platformer_map_packed, platformer_palette, platformer_tileset
 .globl platformer_player_pixels, platformer_player_pixels2
 .globl platformer_enemy_pixels, platformer_enemy_pixels2
@@ -43,6 +44,18 @@ PFE_T_DOOR   = 4
 PFE_CH_FAST = 0x01
 PFE_CH_H    = 0x02
 PFE_CH_V    = 0x04
+
+;; HUD: text row at scanline 10 (tile rows 1 and 2), fields as in the original.
+PFE_HUD_Y          = 10
+PFE_HUD_SCORE      = 0x01
+PFE_HUD_LIVES      = 0x02
+PFE_HUD_HINT       = 0x04
+PFE_HUD_FLASH      = 0x08
+PFE_BORDER_PEN     = 16
+PFE_BORDER_RED     = 0x1C
+PFE_BORDER_BLACK   = 0x14
+PFE_FLASH_COUNT    = 3
+PFE_FLASH_DELAY    = 0x1000
 
 PFE_ENEMY_H_INITIAL_TICKS = 19
 PFE_ENEMY_H_LEG_TICKS     = 23
@@ -69,6 +82,17 @@ platformer_ecs_input_witness:: .db 0, 0
 _pfe_phase:      .db 0
 _pfe_all_coins:  .db 0
 _pfe_door_hit:   .db 0
+platformer_ecs_hud_dirty:: .db 0
+_pfe_hud_pending: .db 0
+_pfe_hud_col:    .db 0
+_pfe_hud_end:    .db 0
+_pfe_hud_x:      .db 0
+
+_pfe_str_score:  .asciz "COINS: 0/4"
+_pfe_str_all:    .asciz "ALL COINS"
+_pfe_str_hint:   .asciz "COLLECT ALL COINS"
+_pfe_str_go:     .asciz "GO TO THE DOOR"
+_pfe_str_life:   .asciz "LIFE: 10"
 _pfe_anim:       .dw 0
 _pfe_tpl:        .ds ECS_ENTITY_SIZE
 
@@ -270,6 +294,8 @@ _pfe_items_cb:
     ld a, (platformer_ecs_score)
     inc a
     ld (platformer_ecs_score), a
+    ld hl, #platformer_ecs_hud_dirty
+    set 0, (hl)
     cp #PFE_WIN_SCORE
     jr nz, _pfe_cb_ok
     ld (_pfe_all_coins), a
@@ -290,6 +316,9 @@ _pfe_enemy_cb:
     jr z, _pfe_cb_ok
     dec a
     ld (platformer_ecs_lives), a
+    ld hl, #platformer_ecs_hud_dirty
+    set 1, (hl)
+    set 3, (hl)
     xor a
     ret
 
@@ -305,8 +334,11 @@ _pfe_collisions:
     ld e, #0
     call fwk_ecs_collide
     call _pfe_expect_ok
+    ;; The last coin wins before enemies are checked, as in the original: no life
+    ;; is lost in the frame that takes it (_pfe_all_coins is not yet in `won`).
     ld a, (platformer_ecs_won)
-    or a
+    ld hl, #_pfe_all_coins
+    or (hl)
     ret nz
     ld iy, (platformer_ecs_player)
     ld ix, #platformer_ecs_manager
@@ -341,6 +373,9 @@ _pfe_apply_events:
     ld (_pfe_all_coins), a
     inc a
     ld (platformer_ecs_won), a
+    ld hl, #platformer_ecs_hud_dirty
+    set 0, (hl)
+    set 2, (hl)
     ld ix, #platformer_ecs_items
     ld iy, (platformer_ecs_door)
     call fwk_ecs_entity_enable
@@ -366,12 +401,135 @@ _pfe_enemy_turn:
     call fwk_ecs_system_motion_u8
     jp _pfe_expect_ok
 
+;; ---- HUD -------------------------------------------------------------------
+;; In: B=first tile column, C=column after the last, IY=string. Restores the map
+;; under the two tile rows of the text, then draws the string at byte x=4*B.
+_pfe_hud_field:
+    ld a, b
+    ld (_pfe_hud_col), a
+    add a, a
+    add a, a
+    ld (_pfe_hud_x), a
+    ld a, c
+    ld (_pfe_hud_end), a
+    push iy
+_pfe_hud_cell:
+    ld b, #1
+    call _pfe_hud_restore
+    ld b, #2
+    call _pfe_hud_restore
+    ld hl, #_pfe_hud_col
+    inc (hl)
+    ld a, (_pfe_hud_end)
+    cp (hl)
+    jr nz, _pfe_hud_cell
+    ld hl, #PFE_HUD_Y
+    ld a, (_pfe_hud_x)
+    ld c, a
+    call fwk_video_get_ptr
+    pop iy
+    jp fwk_text_draw
+
+;; In: B=tile row; the column is _pfe_hud_col.
+_pfe_hud_restore:
+    ld ix, #platformer_ecs_map_descriptor
+    ld iy, #platformer_ecs_view
+    ld a, (_pfe_hud_col)
+    ld c, a
+    call fwk_tilemap_render_cell
+    ret nc
+    ld a, #0xEF
+    jp _pfe_fail
+
+_pfe_hud_score:
+    ld iy, #_pfe_str_all
+    ld a, (platformer_ecs_score)
+    cp #PFE_WIN_SCORE
+    jr z, _pfe_hud_score_draw
+    add a, #'0'
+    ld (_pfe_str_score + 7), a
+    ld iy, #_pfe_str_score
+_pfe_hud_score_draw:
+    ld bc, #0x0005
+    jr _pfe_hud_field
+
+_pfe_hud_hint:
+    ld iy, #_pfe_str_hint
+    ld a, (platformer_ecs_won)
+    or a
+    jr z, _pfe_hud_hint_draw
+    ld iy, #_pfe_str_go
+_pfe_hud_hint_draw:
+    ld bc, #0x060F
+    jr _pfe_hud_field
+
+_pfe_hud_lives:
+    ld a, (platformer_ecs_lives)
+    ld b, #'0'
+    cp #10
+    jr c, _pfe_hud_lives_units
+    ld b, #'1'
+    sub #10
+_pfe_hud_lives_units:
+    add a, #'0'
+    ld (_pfe_str_life + 7), a
+    ld a, b
+    ld (_pfe_str_life + 6), a
+    ld iy, #_pfe_str_life
+    ld bc, #0x1014
+    jp _pfe_hud_field
+
+;; Redraws the fields flagged in platformer_ecs_hud_dirty. Losing a life also flashes the
+;; border red three times, as in the original (blocking, about 0.2 s).
+_pfe_hud_update:
+    ld a, (platformer_ecs_hud_dirty)
+    ld (_pfe_hud_pending), a
+    or a
+    ret z
+    xor a
+    ld (platformer_ecs_hud_dirty), a
+    ld a, (_pfe_hud_pending)
+    bit 0, a
+    call nz, _pfe_hud_score
+    ld a, (_pfe_hud_pending)
+    bit 2, a
+    call nz, _pfe_hud_hint
+    ld a, (_pfe_hud_pending)
+    bit 1, a
+    call nz, _pfe_hud_lives
+    ld a, (_pfe_hud_pending)
+    bit 3, a
+    ret z
+    ld b, #PFE_FLASH_COUNT
+_pfe_flash:
+    push bc
+    ld h, #PFE_BORDER_RED
+    call _pfe_border
+    ld h, #PFE_BORDER_BLACK
+    call _pfe_border
+    pop bc
+    djnz _pfe_flash
+    ret
+
+;; In: H=hardware colour. Sets the border, then waits.
+_pfe_border:
+    ld l, #PFE_BORDER_PEN
+    call cpct_setPALColour_asm
+    ld de, #PFE_FLASH_DELAY
+_pfe_border_wait:
+    dec de
+    ld a, d
+    or e
+    jr nz, _pfe_border_wait
+    ret
+
 _main::
     call fwk_project_init
     ld hl, #platformer_map_packed + PLATFORMER_MAP_PACKED_SIZE - 1
     ld de, #platformer_map + PLATFORMER_MAP_SIZE - 1
     call fwk_zx7b_unpack
     call fwk_video_init
+    call fwk_text_init
     ld hl, #platformer_palette
     ld de, #PLATFORMER_PALETTE_SIZE
     call cpct_setPalette_asm
@@ -384,6 +542,9 @@ _main::
     ld iy, #platformer_ecs_view
     call fwk_tilemap_render_view
     call _pfe_expect_ok
+    ld a, #PFE_HUD_SCORE | PFE_HUD_LIVES | PFE_HUD_HINT
+    ld (platformer_ecs_hud_dirty), a
+    call _pfe_hud_update
 
     ld ix, #platformer_ecs_items
     call fwk_ecs_manager_init
@@ -498,4 +659,5 @@ _pfe_turn:
     ld ix, #platformer_ecs_items
     call fwk_ecs_manager_collect
     call _pfe_expect_ok
+    call _pfe_hud_update
     jp platformer_ecs_frame

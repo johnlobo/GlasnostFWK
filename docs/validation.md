@@ -506,5 +506,34 @@ python3 tests/emulator_smoke.py --model 464 vertical
   sin detectar antes de ampliar el smoke.
 - Defecto del núcleo hallado por esta paridad: el salto de `core/ecs_input.s`
   subía 28 px en vez de 36. Cubierto por una prueba host y por el smoke.
-- Pendiente: HUD y parpadeo (rebanada 2), nivel 2 (3), prueba diferencial entre
-  los dos juegos, presupuesto de tamaño y velocidad y coste de `prepare` (4).
+- Pendiente: nivel 2 (rebanada 3), prueba diferencial entre los dos juegos,
+  presupuesto de tamaño y velocidad y coste de `prepare` (4).
+
+## Fase 10: paridad y rendimiento de `platformer_ecs` (rebanada 2)
+
+- HUD y parpadeo del borde en `examples/platformer_ecs` con `ui/text.s`. Detalle
+  y divergencias en `docs/platformer-parity.md`.
+- Referencia de píxeles: el SHA-256 de cada campo de HUD (puntuación, pista,
+  vidas 0..10) capturado de `platformer` en el emulador. El HUD inicial de ambos
+  juegos es idéntico byte a byte. El smoke compara al inicio, con dos monedas,
+  con cuatro y tras cada contacto con enemigo, y observa `border_idx` 0x1C
+  durante el parpadeo y 0x14 al terminar. Pasa en CPC 6128 y 464.
+- Prueba host nueva: textos, posiciones, columnas y constantes del parpadeo
+  iguales a las del original, leídas de su fuente.
+- El crítico en frío (primera ronda: FAIL) halló cuatro defectos de mayor
+  gravedad: un solo destello pasaba las dos suites (la prueba host solo miraba la
+  constante), sin la guarda de vidas a 0 las vidas daban la vuelta a 255, el
+  documento afirmaba vidas 0..10 comparando solo 10 a 7, y en el fotograma de la
+  última moneda un enemigo aún restaba una vida (el original gana primero).
+  Corregidos con smoke y prueba host nuevos.
+- Mutaciones a mano sobre `main.s` (siete detectadas por el smoke antes de la
+  ronda del crítico: sin parpadeo, pista sin actualizar al ganar, dígitos de vida
+  cambiados, dígito de puntuación sin parchear, borde que se queda rojo, vidas sin
+  marcar, fila 2 sin restaurar) y las tres del crítico, repetidas tras los
+  arreglos: un destello con `ld b, #1` (lo detecta solo la prueba host; el smoke
+  no cuenta destellos porque el sondeo de la API no garantiza ver cada uno),
+  guarda de vidas a 0 quitada (host y smoke) y guarda del fotograma de la
+  última moneda quitada (host y smoke).
+- Límite honesto: el dorado del estado de cuatro monedas viene del original
+  desde un estado limpio; al forzar 3 a 4 con `write_ram` el original dejó
+  restos de `COINS:`. No se investigó la causa.
