@@ -102,6 +102,29 @@ def hud_field_hash(field: str) -> str:
     return hashlib.sha256(data).hexdigest()[:16]
 
 
+# Screen bands (y0, y1, x0, x1) that no entity ever crosses, hashed (SHA-256, 16 hex)
+# as examples/platformer draws them on each level. Captured from the original in
+# the emulator (level 2 reached through the door).
+PLATFORMER_BANDS = {"A": (40, 56, 0, 80), "B": (64, 80, 12, 64), "C": (96, 112, 12, 64), "D": (136, 152, 12, 64)}
+PLATFORMER_BAND_GOLDEN = {
+    0: {"A": "aacf1deffa3d11f9", "B": "a259b7483b1637e6", "C": "3852c28a157a0406", "D": "b19bb908d872e650"},
+    1: {"A": "9b1f189d3b4fa8f0", "B": "f9ae611cee4c42f1", "C": "c880bebb5720285a", "D": "e0084b66cb4a03e2"},
+}
+
+
+def band_hash(key: str) -> str:
+    y0, y1, x0, x1 = PLATFORMER_BANDS[key]
+    data = b"".join(ram(standard_screen_address(x0, y), x1 - x0) for y in range(y0, y1))
+    return hashlib.sha256(data).hexdigest()[:16]
+
+
+def tmx_layer(layer: str) -> bytes:
+    """Tile ids minus one for a layer of examples/platformer_ecs/assets/src/level.tmx."""
+    text = (ROOT / "examples/platformer_ecs/assets/src/level.tmx").read_text()
+    match = re.search(rf'<layer[^>]*name="{layer}"[^>]*>\s*<data encoding="csv">(.*?)</data>', text, re.S)
+    return bytes(int(v) - 1 for v in match.group(1).replace("\n", "").split(",") if v.strip())
+
+
 def symbol(noi: Path, name: str) -> int:
     table = dict(re.findall(r"^DEF (\S+) 0x([0-9A-Fa-f]+)", noi.read_text(), re.MULTILINE))
     return int(table[name], 16)
@@ -439,6 +462,17 @@ def run_example(
                         )
 
             check_hud(0, "collect", 10, "start")
+            level = symbol(noi, "platformer_ecs_level")
+
+            def check_level_screen(level_index, label):
+                for key, want in PLATFORMER_BAND_GOLDEN[level_index].items():
+                    if band_hash(key) != want:
+                        raise RuntimeError(
+                            f"ECS platformer screen band {key} differs from the original at {label} "
+                            f"(level {level_index + 1}): {band_hash(key)} != {want}"
+                        )
+
+            check_level_screen(0, "start")
             if ram(door_slot + 2, 1) != b"\x03":
                 raise RuntimeError("ECS platformer door is not hidden (DISABLED) before the win")
             # Enemies patrol inside the original limits and animate.
@@ -577,14 +611,63 @@ def run_example(
             time.sleep(0.6)
             if ram(lives, 1)[0] != lives_before:
                 raise RuntimeError("ECS platformer enemy cost a life after the win")
+            # Fixed lives before the door, so "lives kept" does not depend on whether
+            # an enemy happened to hit the player earlier. (The original redraws a
+            # static "LIFE: 10" after the door; ECS shows the real count.)
+            write_ram(lives, b"\x07")
+            write_ram(hud_dirty, b"\x02")
+            check_hud(None, None, 7, "lives before the door")
+            lives_before = 7
+
             # Touching the door ends the win state and hides the door again.
             def touch_door():
                 # The player falls while standing at the door: place it again
                 # until a game frame sees the overlap.
-                write_ram(player_slot + 4, bytes((72, 160)))
+                # Only while the door is visible: once the game reacted (new level
+                # or hidden door) writing again would move the restarted player.
+                if ram(won, 1) == b"\x01":
+                    write_ram(player_slot + 4, bytes((72, 160)))
                 return ram(won, 1) == b"\x00" and ram(door_slot + 2, 1) == b"\x03"
 
             wait_for(touch_door, 5, "ECS platformer door touch")
+            # The door leads to the second level: same reset as at boot, new map,
+            # lives kept.
+            wait_for(lambda: ram(level, 1) == b"\x01", 5, "ECS platformer second level")
+            # Everything starts from the row table: enemies at (or just past) their
+            # start, not left where the first level ended.
+            if not 36 <= ram(enemy_h_slot + 4, 1)[0] <= 55:
+                raise RuntimeError(f"ECS platformer level 2 horizontal enemy not at its start: x={ram(enemy_h_slot + 4, 1)[0]}")
+            for label, slot in (("left vertical", enemy_v2_slot), ("right vertical", enemy_v_slot)):
+                if not 56 <= ram(slot + 5, 1)[0] <= 130:
+                    raise RuntimeError(f"ECS platformer level 2 {label} enemy not at its start: y={ram(slot + 5, 1)[0]}")
+            lives_kept = ram(lives, 1)[0]
+            time.sleep(0.5)
+            if lives_kept != lives_before:
+                raise RuntimeError(f"ECS platformer door changed lives: {lives_before} -> {lives_kept}")
+            if ram(score, 1) != b"\x00" or ram(won, 1) != b"\x00" or ram(door_slot + 2, 1) != b"\x03":
+                raise RuntimeError("ECS platformer level 2 did not reset score, won and the hidden door")
+            for slot in range(4):
+                if ram(items + 42 * slot + 2, 1) != b"\x01":
+                    raise RuntimeError(f"ECS platformer coin slot {slot} was not respawned on level 2")
+            if (
+                int.from_bytes(ram(player, 2), "little") != player_slot
+                or int.from_bytes(ram(enemy_h, 2), "little") != enemy_h_slot
+                or int.from_bytes(ram(enemy_v, 2), "little") != enemy_v_slot
+            ):
+                raise RuntimeError("ECS platformer level 2 moved the player or enemy slots")
+            if ram(symbol(noi, "platformer_map2"), 500) != tmx_layer("level2"):
+                raise RuntimeError("ECS platformer level 2 map in RAM differs from the level2 layer of the TMX")
+            check_hud(0, "collect", lives_kept, "level 2 start")
+            check_level_screen(1, "level 2 start")
+            if (player_state()["x"], player_state()["y"]) != (16, 184):
+                raise RuntimeError(f"ECS platformer player not at the start of level 2: {player_state()}")
+            # Physics use the second map: from above, x=48 lands on the platform
+            # at y=96 (stand y=88); on the first map it would stop at y=56.
+            write_ram(player_slot + 4, bytes((48, 40)))
+            try:
+                wait_for(lambda: player_state()["y"] == 88 and grounded(), 5, "ECS platformer level 2 landing")
+            except RuntimeError as error:
+                raise RuntimeError(f"{error}: player={player_state()}") from None
             # Each enemy costs exactly one life per contact.
             for label, slot in (("left vertical", enemy_v2_slot), ("horizontal", enemy_h_slot), ("right vertical", enemy_v_slot)):
                 lives_before = ram(lives, 1)[0]
@@ -593,7 +676,7 @@ def run_example(
                 # Each attempt is a fresh contact (the player leaves first).
                 flashed = False
                 for _attempt in range(6):
-                    write_ram(player_slot + 4, bytes((16, 100)))
+                    write_ram(player_slot + 4, bytes((24, 100)))
                     time.sleep(0.3)
                     write_ram(player_slot + 4, ram(slot + 4, 2))
                     # Losing a life flashes the border red (hardware colour 0x1C)
@@ -613,14 +696,14 @@ def run_example(
                     raise RuntimeError(f"ECS platformer {label} contact did not flash the border red")
                 if get("/api/state")["ga"]["border_idx"] != 0x14:
                     raise RuntimeError(f"ECS platformer {label} flash left the border at {get('/api/state')['ga']['border_idx']:#x}")
-                check_hud(4, "go", lives_before - 1, f"{label} contact")
+                check_hud(ram(score, 1)[0], "collect", lives_before - 1, f"{label} contact")
             # Without lives a contact costs nothing and does not flash.
             write_ram(lives, b"\x00")
             write_ram(hud_dirty, b"\x02")
             check_hud(None, None, 0, "no lives")
             saw_red = False
             for _attempt in range(4):
-                write_ram(player_slot + 4, bytes((16, 100)))
+                write_ram(player_slot + 4, bytes((24, 100)))
                 time.sleep(0.3)
                 write_ram(player_slot + 4, ram(enemy_v2_slot + 4, 2))
                 poll_until = time.time() + 0.6
@@ -630,6 +713,33 @@ def run_example(
                 raise RuntimeError(f"ECS platformer lives wrapped below zero: {ram(lives, 1).hex()}")
             if saw_red:
                 raise RuntimeError("ECS platformer flashed the border with no lives left")
+            # Win the second level: take the four coins, then the door ends the game
+            # (it hides again and the level does not change).
+            def take_coins():
+                # Coins an enemy contact already made the player fall through are
+                # gone; visit every spot until the game says all four are taken.
+                for px, py in ((18, 24), (50, 24), (16, 168), (56, 168)):
+                    write_ram(player_slot + 4, bytes((px, py)))
+                    time.sleep(0.25)
+                return ram(won, 1) == b"\x01"
+
+            try:
+                wait_for(take_coins, 15, "ECS platformer level 2 coins")
+            except RuntimeError as error:
+                raise RuntimeError(
+                    f"{error}: status={ram(status, 1).hex()} score={ram(score, 1).hex()} "
+                    f"player={player_state()} items(status,type,x,y)="
+                    f"{[ram(items + 42 * i + 2, 4).hex() for i in range(5)]}"
+                ) from None
+            wait_for(lambda: ram(won, 1) == b"\x01", 5, "ECS platformer level 2 win state")
+            wait_for(lambda: ram(door_slot + 2, 1) == b"\x01", 5, "ECS platformer level 2 door appears")
+            check_hud(4, "go", 0, "level 2 all coins")
+            wait_for(touch_door, 5, "ECS platformer level 2 door touch")
+            time.sleep(0.5)
+            if ram(level, 1) != b"\x01" or ram(won, 1) != b"\x00" or ram(door_slot + 2, 1) != b"\x03":
+                raise RuntimeError("ECS platformer final door did not just hide the door on level 2")
+            if ram(score, 1) != b"\x04" or any(ram(items + 42 * i + 2, 1) != b"\x00" for i in range(4)):
+                raise RuntimeError("ECS platformer final door restarted level 2 instead of just hiding the door")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")
@@ -1038,7 +1148,7 @@ def run_example(
                 # Use an open part of the map so tile resolution cannot move
                 # the injected player away before the contact check.
                 write_ram(enemy_v2 + 2, bytes((16, 0, 100, 0)))
-                write_ram(enemy_v2_behavior, bytes((16, 100)))
+                write_ram(enemy_v2_behavior, bytes((24, 100)))
                 write_ram(
                     player,
                     bytes((16, 100, 0, 0, 8, 8, 0)),

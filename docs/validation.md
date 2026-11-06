@@ -506,7 +506,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   sin detectar antes de ampliar el smoke.
 - Defecto del núcleo hallado por esta paridad: el salto de `core/ecs_input.s`
   subía 28 px en vez de 36. Cubierto por una prueba host y por el smoke.
-- Pendiente: nivel 2 (rebanada 3), prueba diferencial entre los dos juegos,
+- Pendiente: prueba diferencial entre los dos juegos,
   presupuesto de tamaño y velocidad y coste de `prepare` (4).
 
 ## Fase 10: paridad y rendimiento de `platformer_ecs` (rebanada 2)
@@ -537,3 +537,28 @@ python3 tests/emulator_smoke.py --model 464 vertical
 - Límite honesto: el dorado del estado de cuatro monedas viene del original
   desde un estado limpio; al forzar 3 a 4 con `write_ram` el original dejó
   restos de `COINS:`. No se investigó la causa.
+
+## Fase 10: paridad y rendimiento de `platformer_ecs` (parte 3)
+
+- Segundo nivel y reinicio por puerta en `examples/platformer_ecs`. Detalle en
+  `docs/platformer-parity.md`.
+- Smoke: píxeles de cuatro bandas de pantalla de ambos niveles contra el original
+  (SHA-256 capturados en el emulador), mapa 2 en RAM contra el TMX, reinicio,
+  física del mapa 2 y victoria del nivel 2. Tres corridas seguidas en CPC 6128 y
+  una en 464. Dos fallos intermitentes del propio test se hallaron y arreglaron:
+  el punto de espera sobre una moneda y una carrera al reescribir la posición del
+  jugador tras la puerta.
+- Mutaciones: `tools/mutate_platformer_ecs.py` reúne las 27 que se han ido
+  probando a mano en las partes 1 a 3 (reglas, HUD, parpadeo, nivel 2) y las
+  ejecuta contra la prueba host y el smoke (`--host-only` para la pasada rápida).
+  Resultado: 27 detectadas (11 por la prueba host, 16 solo por el smoke). Una
+  prueba (`tests/test_mutation_table.py`) comprueba que cada patrón sigue
+  existiendo una vez en `main.s`.
+- Crítico en frío de la parte 3 (primera ronda: FAIL). Halló: el original redibuja
+  `LIFE: 10` fijo tras la puerta (divergencia deliberada, ahora fijada con 7 vidas
+  en el smoke); "vidas conservadas" dependía de si un enemigo había golpeado antes
+  (el smoke fuerza ahora 7 vidas); el reinicio de enemigos y de fase no se
+  comprobaba (cotas de posición y prueba host de ceros puros); y las cifras de
+  mutaciones no tenían artefacto (el script).
+- Pendiente: prueba diferencial entre los dos juegos, presupuesto de tamaño y
+  velocidad y coste de `prepare` (parte 4).
