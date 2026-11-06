@@ -10,6 +10,10 @@ from tools.build_examples import _invalidate_objects_if_profile_changed
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def number_in(text, name):
+    return int(re.search(rf"^{name}\s*=\s*(\w+)", text, re.M).group(1), 0)
+
+
 class ECSManagerTests(unittest.TestCase):
     def test_public_api_and_descriptor_match_approved_abi(self):
         include = (ROOT / "src/core/ecs_manager.inc").read_text()
@@ -119,36 +123,52 @@ class ECSManagerTests(unittest.TestCase):
         )
         self.assertNotIn("FWK_PLATFORM_AIRBORNE_BIT", code)
 
-    def test_platformer_enemy_turns(self):
-        # H and V alternate frames, V2 runs every frame, and enemies stop
-        # hurting once the game is won.
+    def test_platformer_enemy_turns_come_from_the_cadence_bytes(self):
+        # The horizontal and the right vertical enemy alternate iterations through
+        # their cadence byte, the left vertical one runs every iteration, and
+        # enemies stop hurting once the game is won.
         main = (ROOT / "examples/platformer/main.s").read_text()
+        common = (ROOT / "examples/platformer/common.inc").read_text()
+        self.assertIn("PFE_CAD_ODD  = 0x11", common)
+        self.assertIn("PFE_CAD_EVEN = 0x01", common)
+        self.assertIn("_pfe_bg_h, 32, _pfe_program_h, _pfe_anim_enemy_slow, PFE_CAD_ODD", main)
+        self.assertIn("_pfe_bg_v, 32, _pfe_program_v, _pfe_anim_enemy_slow, PFE_CAD_EVEN", main)
+        self.assertIn("_pfe_bg_v2, 32, _pfe_program_v, _pfe_anim_enemy, 0", main)
+        # Enemies that move every 2nd iteration animate every 2nd iteration, with
+        # half the ticks, so the animation keeps its real-time pace.
+        self.assertEqual(number_in(common, "PFE_ANIM_TICKS_SLOW") * 2, number_in(common, "PFE_ANIM_TICKS"))
+        # One tick per loop iteration, one manager, no hand-made turn taking.
         frame = main.split("platformer_frame:", 1)[1]
-        self.assertIn("ld (_pfe_phase), a", frame)
-        self.assertEqual(frame.count("call _pfe_enemy_turn"), 1)
-        self.assertIn("ld ix, #platformer_v", frame.split("call _pfe_enemy_turn")[0])
-        self.assertIn("ld ix, #platformer_h", frame.split("call _pfe_enemy_turn")[0])
+        self.assertIn("ld hl, #fwk_ecs_tick", frame.split("call fwk_input_update")[0])
+        self.assertIn("inc (hl)", frame.split("call fwk_input_update")[0])
+        self.assertNotIn("_pfe_phase", main)
+        self.assertNotIn("_pfe_enemy_turn", main)
+        self.assertNotIn("ld ix, #platformer_h", main)
         self.assertIn("ld ix, #platformer_manager\n    call fwk_ecs_system_behavior", frame)
         collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
         self.assertIn("ld a, (platformer_won)", collisions)
+        # The enemies are the BEHAVIOR entities: the pass over them must not see
+        # the coins, or touching a coin would hide a new enemy contact.
+        self.assertIn("ld bc, #ECS_C_COLLISION | ECS_C_BEHAVIOR", collisions)
 
     def test_platformer_hud_and_flash(self):
         main = (ROOT / "examples/platformer/main.s").read_text()
+        common = (ROOT / "examples/platformer/common.inc").read_text()
 
         def number(text, name):
             return int(re.search(rf"^{name}\s*=\s*(\w+)", text, re.M).group(1), 0)
 
         for text in ("COINS: 0/4", "ALL COINS", "COLLECT ALL COINS", "GO TO THE DOOR", "LIFE: 10"):
             self.assertIn(f'.asciz "{text}"', main)
-        self.assertEqual(number(main, "PFE_HUD_Y"), 10)
+        self.assertEqual(number(common, "PFE_HUD_Y"), 10)
         # Field first tile columns: coins, hint, lives.
         for field in (0x00, 0x06, 0x10):
             self.assertRegex(main, rf"ld bc, #0x{field:02X}[0-9A-F]{{2}}\n\s+j[pr] _pfe_hud_field")
         # Life flash: pen 16, red 0x1C then black 0x14, three times, 0x1000 loops.
-        self.assertEqual(number(main, "PFE_BORDER_PEN"), 16)
-        self.assertEqual(number(main, "PFE_BORDER_RED"), 0x1C)
-        self.assertEqual(number(main, "PFE_BORDER_BLACK"), 0x14)
-        self.assertEqual(number(main, "PFE_FLASH_COUNT"), 3)
+        self.assertEqual(number(common, "PFE_BORDER_PEN"), 16)
+        self.assertEqual(number(common, "PFE_BORDER_RED"), 0x1C)
+        self.assertEqual(number(common, "PFE_BORDER_BLACK"), 0x14)
+        self.assertEqual(number(common, "PFE_FLASH_COUNT"), 3)
         loop = main.split("_pfe_hud_update:", 1)[1].split("_pfe_border:", 1)[0]
         self.assertIn("ld b, #PFE_FLASH_COUNT\n_pfe_flash:", loop)
         self.assertIn("djnz _pfe_flash", loop)
@@ -158,7 +178,7 @@ class ECSManagerTests(unittest.TestCase):
         # Taking the last coin wins before any enemy is checked.
         collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
         self.assertIn("ld hl, #_pfe_all_coins\n    or (hl)\n    ret nz", collisions)
-        self.assertEqual(number(main, "PFE_FLASH_DELAY"), 0x1000)
+        self.assertEqual(number(common, "PFE_FLASH_DELAY"), 0x1000)
 
     def test_platformer_second_level_restarts_like_the_boot(self):
         main = (ROOT / "examples/platformer/main.s").read_text()
@@ -173,7 +193,7 @@ class ECSManagerTests(unittest.TestCase):
         # Boot and the door run the same start routine.
         boot = main.split("_main::", 1)[1].split("platformer_frame:", 1)[0]
         self.assertIn("call _pfe_start_level", boot)
-        events = main.split("_pfe_apply_events:", 1)[1].split("_pfe_enemy_turn:", 1)[0]
+        events = main.split("_pfe_apply_events:", 1)[1].split("; ---- HUD", 1)[0]
         self.assertIn("jp _pfe_start_level", events)
         self.assertIn("call fwk_zx7b_unpack", events)
         self.assertIn("ld (_pfe_map_desc), hl", events)
@@ -182,12 +202,12 @@ class ECSManagerTests(unittest.TestCase):
         self.assertNotIn("platformer_lives", events)
         # The start routine clears the level state but never the lives.
         start = main.split("_pfe_start_level:", 1)[1].split("_main::", 1)[0]
-        for reset in ("platformer_score", "platformer_won", "_pfe_all_coins", "_pfe_door_hit", "_pfe_phase"):
+        for reset in ("platformer_score", "platformer_won", "_pfe_all_coins", "_pfe_door_hit", "fwk_ecs_tick"):
             self.assertIn(f"ld ({reset}), a", start)
         self.assertNotIn("platformer_lives", start)
         # The state clears are plain zero stores: no load of another value between
-        # `xor a` and the last clear (a stray `inc a` would start the phase at 1).
-        clears = start.split("    xor a\n    ld (platformer_score), a", 1)[1].split("ld (_pfe_phase), a", 1)[0]
+        # `xor a` and the last clear (a stray `inc a` would start the tick at 1).
+        clears = start.split("    xor a\n    ld (platformer_score), a", 1)[1].split("ld (fwk_ecs_tick), a", 1)[0]
         for line in clears.strip().splitlines():
             self.assertRegex(line.strip(), r"^ld \(\w+\), a$")
         # The player's physics and the HUD follow the active map.

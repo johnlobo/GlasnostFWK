@@ -40,7 +40,7 @@ class ECSProfileTests(unittest.TestCase):
             [item["name"] for item in generated.preview["components"]],
             ["render", "motion", "behavior", "test"],
         )
-        self.assertEqual(generated.preview["entity_size"], 32)
+        self.assertEqual(generated.preview["entity_size"], 33)
         self.assertIn("ECS_COMPONENT_VALID_MASK = 0x000F", generated.include)
 
     def test_dependencies_are_inserted_before_the_requester(self):
@@ -58,8 +58,8 @@ class ECSProfileTests(unittest.TestCase):
         self.assertEqual(generated.preview["inserted_dependencies"], ["motion"])
         self.assertIn("ECS_C_MOTION_BIT = 1", generated.include)
         self.assertIn("ECS_C_ACTOR_BIT = 2", generated.include)
-        self.assertIn("ECS_E_MOTION_VELOCITY_X = 25", generated.include)
-        self.assertIn("ECS_E_MOTION_VELOCITY_Y = 26", generated.include)
+        self.assertIn("ECS_E_MOTION_VELOCITY_X = 26", generated.include)
+        self.assertIn("ECS_E_MOTION_VELOCITY_Y = 27", generated.include)
 
         explicitly_requested = copy.deepcopy(data)
         explicitly_requested["ecs"]["components"] = ["actor", "motion"]
@@ -83,6 +83,14 @@ class ECSProfileTests(unittest.TestCase):
         self.assertEqual(fields["ECS_E_MOTION_VELOCITY_X"]["type"], "i16")
         self.assertEqual(fields["ECS_E_MOTION_VELOCITY_Y"]["type"], "fixed_8_8")
         self.assertEqual(fields["ECS_E_HEALTH"]["offset"] + 1, generated.preview["entity_size"])
+
+    def test_cadence_is_a_universal_header_field_after_height(self):
+        generated = generate(manifest(components=["motion"]), PORTFOLIO, STANDARD)
+        self.assertIn("ECS_E_HEIGHT = 7\nECS_E_CADENCE = 8\nECS_E_RENDER_SPRITE = 9\n", generated.include)
+        with self.assertRaisesRegex(ValueError, "reserved"):
+            data = manifest(components=["motion"])
+            data["ecs"]["fields"] = [{"name": "cadence", "type": "u8"}]
+            generate(data, PORTFOLIO, STANDARD)
 
     def test_rejects_unknown_duplicate_cyclic_and_excess_components(self):
         with self.assertRaisesRegex(ValueError, "unknown ECS component"):

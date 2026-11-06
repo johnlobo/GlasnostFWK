@@ -23,7 +23,7 @@ _ecscoll_hits:    .ds 1          ; contacts found in this pass (0 or not)
 .area _CODE
 
 ;; fwk_ecs_collide -- see core/ecs_collision.inc.
-;; The traversal, validation and lock come from fwk_ecs_system_run, so the
+;; The traversal, validation and lock come from fwk_ecs_system_run_any, so the
 ;; callback may mark targets for destruction. Self-modifying: the callback
 ;; address is patched into the call below (RAM only), like fwk_ecs_system_run.
 fwk_ecs_collide::
@@ -44,7 +44,7 @@ _ecscoll_callback_ok:
     xor a
     ld (_ecscoll_hits), a
     ld hl, #_ecscoll_probe
-    call fwk_ecs_system_run
+    call fwk_ecs_system_run_any     ; cadence never hides a target
     ret c                           ; an error leaves CONTACT untouched
     ld a, (_ecscoll_hits)
     or a

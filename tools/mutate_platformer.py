@@ -1,28 +1,38 @@
 #!/usr/bin/env python3
-"""Hand-mutation runner for examples/platformer/main.s.
+"""Hand-mutation runner for examples/platformer (main.s and common.inc).
 
 Each mutation breaks one rule of the game. A mutation is DETECTED when the host
 tests (tests/test_ecs_manager.py) or the emulator smoke (tests/emulator_smoke.py,
 platformer section) fail on it, and SURVIVES when both pass. The runner
-always restores main.s byte for byte, whatever happens.
+always restores both files byte for byte, whatever happens.
 
     python3 tools/mutate_platformer.py --host-only          # seconds, no emulator
     python3 tools/mutate_platformer.py                      # full run, ~1.5 min each
     python3 tools/mutate_platformer.py --only flash         # name filter
 
 `tests/test_ecs_manager.py` checks that every pattern below still matches exactly
-once, so the table cannot rot silently when main.s changes.
+once across main.s and common.inc, so the table cannot rot silently.
 """
 from __future__ import annotations
 
 import argparse
 import fcntl
+import signal
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "examples/platformer/main.s"
+COMMON = ROOT / "examples/platformer/common.inc"
+SOURCES = (MAIN, COMMON)
+
+
+def locate(texts: dict, old: str):
+    """The one source file that holds `old` exactly once, or None."""
+    hits = [path for path, text in texts.items() if text.count(old) == 1]
+    total = sum(text.count(old) for text in texts.values())
+    return hits[0] if len(hits) == 1 and total == 1 else None
 EMULATOR = Path("/config/workspace/tools/amspirit-lite/run.sh")
 LOCK = "/tmp/amspirit.lock"
 
@@ -31,12 +41,18 @@ MUTATIONS: list[tuple[str, str, str]] = [
     # Entities and rules
     ("door hit ignored", "    ld a, #1\n    ld (_pfe_door_hit), a", "    ld a, #0\n    ld (_pfe_door_hit), a"),
     ("win at 3 coins", "PFE_WIN_SCORE     = 4", "PFE_WIN_SCORE     = 3"),
-    ("H enemy harmless", "    ld e, #PFE_CH_H\n    call fwk_ecs_collide", "    ld e, #PFE_CH_H\n    xor a"),
+    ("enemies harmless", "    ld e, #PFE_CH_ENEMY\n    call fwk_ecs_collide", "    ld e, #PFE_CH_ENEMY\n    xor a"),
+    ("enemy pass sees coins", "    ld bc, #ECS_C_COLLISION | ECS_C_BEHAVIOR", "    ld bc, #ECS_C_COLLISION"),
+    ("H enemy runs every iteration", "PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 36, 122, 4, 8, platformer_enemy_pixels, _pfe_bg_h, 32, _pfe_program_h, _pfe_anim_enemy_slow, PFE_CAD_ODD",
+     "PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 36, 122, 4, 8, platformer_enemy_pixels, _pfe_bg_h, 32, _pfe_program_h, _pfe_anim_enemy_slow, 0"),
+    ("H and V share the iteration", "PFE_CAD_ODD  = 0x11", "PFE_CAD_ODD  = 0x01"),
+    ("tick never advances", "    ld hl, #fwk_ecs_tick               ; one tick per loop iteration, for the cadence bytes\n    inc (hl)\n", ""),
     ("collect removed", "    call fwk_ecs_manager_collect", "    xor a"),
     ("initial lives 3", "PFE_LIVES_INITIAL = 10", "PFE_LIVES_INITIAL = 3"),
-    ("enemy animation removed",
-     "    ld ix, #platformer_h\n    call fwk_ecs_system_animation",
-     "    ld ix, #platformer_h\n    xor a"),
+    ("animation removed",
+     "    ld ix, #platformer_manager\n    call fwk_ecs_system_animation",
+     "    ld ix, #platformer_manager\n    xor a"),
+    ("slow enemies animate at full speed", "PFE_ANIM_TICKS_SLOW = 4", "PFE_ANIM_TICKS_SLOW = 8"),
     # HUD and flash
     ("no flash", "    bit 3, a\n    ret z\n    ld b, #PFE_FLASH_COUNT", "    ret\n    ld b, #PFE_FLASH_COUNT"),
     ("hint not updated on win", "    set 0, (hl)\n    set 2, (hl)", "    set 0, (hl)"),
@@ -74,7 +90,7 @@ MUTATIONS: list[tuple[str, str, str]] = [
      "    ld a, (platformer_level)\n    or a\n    jr nz, _pfe_door_end",
      "    ld a, (platformer_level)\n    xor a\n    or a\n    jr nz, _pfe_door_end"),
     ("door never leaves level 1", "    inc a\n    ld (platformer_level), a", "    inc a"),
-    ("enemy phase not reset", "    ld (_pfe_door_hit), a\n    ld (_pfe_phase), a", "    ld (_pfe_door_hit), a"),
+    ("tick not reset on level start", "    ld (_pfe_door_hit), a\n    ld (fwk_ecs_tick), a", "    ld (_pfe_door_hit), a"),
     ("H enemy starts elsewhere", "PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 36, 122,", "PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 34, 122,"),
 ]
 
@@ -108,18 +124,25 @@ def main() -> int:
     parser.add_argument("--emulator", type=Path, default=EMULATOR)
     args = parser.parse_args()
 
-    original = MAIN.read_bytes()
-    text = original.decode()
+    # The sources are restored in `finally`: make sure a closed pipe (`| head`) or a
+    # SIGTERM unwinds the stack instead of killing the process mid-mutation.
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    originals = {path: path.read_bytes() for path in SOURCES}
+    texts = {path: data.decode() for path, data in originals.items()}
     survivors = []
     try:
         for name, old, new in MUTATIONS:
             if args.only and args.only not in name:
                 continue
-            if text.count(old) != 1:
+            target = locate(texts, old)
+            if target is None:
                 print(f"{name}: PATTERN NOT FOUND exactly once, update tools/mutate_platformer.py")
                 survivors.append(name)
                 continue
-            MAIN.write_text(text.replace(old, new, 1))
+            for path, data in originals.items():
+                path.write_bytes(data)
+            target.write_text(texts[target].replace(old, new, 1))
             if not host_tests_pass():
                 verdict = "detected by the host tests"
             elif args.host_only:
@@ -132,9 +155,10 @@ def main() -> int:
                 survivors.append(name)
             print(f"{name}: {verdict}", flush=True)
     finally:
-        MAIN.write_bytes(original)
-    if MAIN.read_bytes() != original:
-        print("main.s was NOT restored", file=sys.stderr)
+        for path, data in originals.items():
+            path.write_bytes(data)
+    if any(path.read_bytes() != data for path, data in originals.items()):
+        print("sources were NOT restored", file=sys.stderr)
         return 2
     if not args.host_only:
         run(["rm", "-rf", ".build/platformer/obj"])

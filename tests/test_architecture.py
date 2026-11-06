@@ -90,6 +90,24 @@ class ArchitectureTests(unittest.TestCase):
             if consumers & set(manifest["modules"]):
                 self.assertIn("transparency", manifest, str(path))
 
+    def test_platformer_follows_the_common_inc_convention(self):
+        # Project convention: every .globl, constant and macro of a game lives in
+        # common.inc, which every .s file of the project imports.
+        project = ROOT / "examples/platformer"
+        common = (project / "common.inc").read_text()
+        self.assertIn(".globl", common)
+        manifest = json.loads((project / "example.json").read_text())
+        self.assertIn("common.inc", manifest["game_sources"])
+        for name in manifest["game_sources"]:
+            if not name.endswith(".s"):
+                continue
+            lines = [l for l in (project / name).read_text().splitlines() if not l.lstrip().startswith(";;")]
+            code = "\n".join(lines)
+            self.assertIn('.include "common.inc"', code, name)
+            self.assertNotRegex(code, r"(?m)^\.globl", name)
+            self.assertNotRegex(code, r"(?m)^[A-Za-z_][A-Za-z0-9_]*\s*=", name)
+            self.assertNotRegex(code, r"(?m)^\.macro", name)
+
     def test_no_pre_ecs_module_survives(self):
         # Gate G4: the old entity model is gone from sources, manifests and tools.
         removed = (

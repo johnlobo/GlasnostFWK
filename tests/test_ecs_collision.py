@@ -107,6 +107,16 @@ class CollisionModelTests(unittest.TestCase):
 
 
 @unittest.skipUnless(ASSEMBLER.is_file(), "CPCtelera Next assembler is not installed")
+class CollisionTraversalTests(unittest.TestCase):
+    def test_collide_walks_targets_with_run_any(self):
+        # A target must never vanish because of its cadence: a contact would close
+        # and reopen every other iteration and emit ENTER again each time.
+        source = (ROOT / "src/core/ecs_collision.s").read_text()
+        code = "\n".join(line.split(";", 1)[0] for line in source.splitlines())
+        self.assertIn("call fwk_ecs_system_run_any", code)
+        self.assertNotRegex(code, r"(?m)\b(?:call|jp)\s+fwk_ecs_system_run\b(?!_)")
+
+
 class CollisionBudgetTests(unittest.TestCase):
     """The size budget is part of the contract: a regression fails the build."""
 

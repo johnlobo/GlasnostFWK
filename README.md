@@ -199,8 +199,8 @@ opaco, enmascarado y recoloreado. La ruta sincronizada separa
 VSYNC. `ecsrender` comprueba el ciclo completo contra un modelo Python; el
 contrato está en la sección 8 de `docs/ecs-abi-2.0.md`.
 
-La aplicación `platformer` es el juego completo sobre ECS 2.0: cuatro
-managers, jugador, cuatro monedas, tres enemigos con behavior, puerta, dos
+La aplicación `platformer` es el juego completo sobre ECS 2.0: un manager
+con cadencia por entidad, jugador, cuatro monedas, tres enemigos con behavior, puerta, dos
 niveles y renderer selectivo. El HUD usa un panel interior y solo restaura el
 dígito o tramo de estado que cambia. La construcción paso a paso está en
 `docs/platform-game-guide.html`.

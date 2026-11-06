@@ -212,18 +212,15 @@ player_background: .ds 8 * 8     ; width * height bytes</code></pre>
   <p>El componente <code>RENDER</code> de cada entidad guarda el puntero al sprite (<code>ECS_E_RENDER_SPRITE</code>), el puntero a su buffer de fondo (<code>ECS_E_RENDER_BACKGROUND</code>), la capacidad de ese buffer, los flags (<code>VISIBLE</code>, <code>DIRTY</code>, <code>MASKED</code>, <code>RECOLOR</code>) y un desplazamiento de orden en Y (<code>ECS_E_RENDER_SORT_OFFSET_Y</code>). Reserve como mínimo <code>width * height</code> bytes de fondo para cada entidad que pueda estar visible: el renderer captura lo que cubre cada sprite antes de dibujarlo y lo repone al moverlo.</p>
 
   <h2 id="estado"><span class="step">5</span> Definir jugador, física y controles</h2>
-  <p>Cada actor es una entidad de un manager. El jugador combina <code>RENDER</code>, <code>MOTION</code>, <code>INPUT</code>, <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code>; las monedas y la puerta solo <code>RENDER</code> y <code>COLLISION</code>. Los managers se declaran con almacenamiento propio y una escena de render los agrupa:</p>
-  <pre><code>ITEMS_CAP = 5
-PLAYER_CAP = 2
+  <p>Cada actor es una entidad de un manager. El jugador combina <code>RENDER</code>, <code>MOTION</code>, <code>INPUT</code>, <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code>; las monedas y la puerta solo <code>RENDER</code> y <code>COLLISION</code>. Todas viven en un único manager, con almacenamiento propio, y una escena de render lo recorre:</p>
+  <pre><code>ENTITY_CAP = 9                           ; 4 monedas, puerta, jugador y 3 enemigos
 
-items_storage:  .ds ECS_ENTITY_SIZE * ITEMS_CAP
-player_storage: .ds ECS_ENTITY_SIZE * PLAYER_CAP
-FWK_ECS_MANAGER_DESCRIPTOR items,   items_storage,  ITEMS_CAP
-FWK_ECS_MANAGER_DESCRIPTOR actors,  player_storage, PLAYER_CAP
+entity_storage: .ds ECS_ENTITY_SIZE * ENTITY_CAP
+FWK_ECS_MANAGER_DESCRIPTOR entities, entity_storage, ENTITY_CAP
 
-managers: .dw items, actors
-work:     .ds 8 * 7                     ; 8 bytes por entidad con RENDER
-FWK_ECS_RENDER_SCENE scene, managers, 2, work, 7
+managers: .dw entities
+work:     .ds 8 * ENTITY_CAP            ; 8 bytes por entidad con RENDER
+FWK_ECS_RENDER_SCENE scene, managers, 1, work, ENTITY_CAP
 
 FWK_PLATFORM_CONFIG physics_config, 80, 255, 1, 8
 
@@ -288,10 +285,7 @@ bindings:
     call fwk_tilemap_render_view
     jp c, fatal_data_error
 
-    ld ix, #items
-    call fwk_ecs_manager_init
-    jp c, fatal_data_error
-    ld ix, #actors
+    ld ix, #entities
     call fwk_ecs_manager_init
     jp c, fatal_data_error
     ; ... crear monedas, puerta, jugador y enemigos con fwk_ecs_entity_create</code></pre>
@@ -309,17 +303,19 @@ bindings:
     <li>Recolectar los slots de las entidades destruidas y actualizar el HUD.</li>
   </ol>
   <pre><code>game_loop:
+    ld hl, #fwk_ecs_tick            ; un tick por iteración, para la cadencia
+    inc (hl)
     call fwk_input_update
 
-    ld ix, #actors
+    ld ix, #entities
     call fwk_ecs_system_behavior
-    ld ix, #actors
+    ld ix, #entities
     call fwk_ecs_system_input
-    ld ix, #actors
+    ld ix, #entities
     call fwk_ecs_system_platform    ; física y resolución contra el tilemap
-    ld ix, #actors
+    ld ix, #entities
     call fwk_ecs_system_motion_u8   ; el resto de entidades con MOTION
-    ld ix, #actors
+    ld ix, #entities
     call fwk_ecs_system_animation
 
     call collisions                 ; fwk_ecs_collide y callbacks
@@ -337,7 +333,7 @@ bindings:
     call fwk_ecs_render_draw
     jp c, fatal_render_error
 
-    ld ix, #items
+    ld ix, #entities
     call fwk_ecs_manager_collect    ; libera los slots destruidos
     jp game_loop</code></pre>
   <p>Cada sistema recibe <code>IX=manager</code> y devuelve carry con el código en <code>A</code>. Los sistemas de movimiento y plataforma activan <code>DIRTY</code> cuando la posición cambia, de modo que no hace falta sincronizar nada con el renderer. Entre <code>fwk_ecs_render_prepare</code> y <code>fwk_ecs_render_draw</code> los managers quedan bloqueados: no cree ni destruya entidades en ese tramo, porque las operaciones estructurales devuelven <code>FWK_ECS_ERR_BUSY</code>.</p>
@@ -367,8 +363,8 @@ bindings:
     <li>marca el HUD como sucio.</li>
   </ol>
   <p>En el ciclo siguiente, <code>fwk_ecs_render_restore</code> repone el fondo capturado de la moneda y <code>fwk_ecs_render_draw</code> deja de dibujarla; después <code>fwk_ecs_manager_collect</code> libera el slot. Un callback no puede crear ni destruir entidades del manager que se está recorriendo salvo con <code>mark_destroy</code>: las reglas que cambian estados (por ejemplo mostrar la puerta) se anotan en variables y se aplican en <code>apply_events</code>, después de las colisiones.</p>
-  <p>Cada enemigo es una entidad con <code>MOTION</code>, <code>BEHAVIOR</code>, <code>COLLISION</code> y <code>ANIMATION</code>. Los tres usan el mismo par de sistemas: <code>fwk_ecs_system_behavior</code> ejecuta el programa de <code>behavior</code> (puntero en <code>ECS_E_BEHAVIOR_PROGRAM</code>) y <code>fwk_ecs_system_motion_u8</code> aplica las velocidades; la animación alterna dos sprites con un descriptor compartido. El horizontal usa una primera espera de 19 ticks y tramos posteriores de 23 para recorrer X=32..54. Los verticales comparten un programa inmutable de 49 ticks, pero no estado: cada entidad guarda su propio cursor y temporizador. Para conservar la cadencia, el horizontal y el vertical derecho viven en managers propios que el bucle procesa en frames alternos, y el vertical izquierdo comparte manager con el jugador y se actualiza en cada frame.</p>
-  <p>Cada enemigo tiene su propio canal de contacto (el registro <code>E</code> de <code>fwk_ecs_collide</code>): el sujeto guarda en cada canal si tocaba algo en la última pasada de ese canal, y el sistema emite <code>ENTER</code> solo al pasar de no tocar a tocar. El callback del enemigo descuenta una vida únicamente en <code>ENTER</code>, así que un contacto sostenido cuesta una sola vida y cada enemigo se comprueba de forma independiente.</p>
+  <p>Cada enemigo es una entidad con <code>MOTION</code>, <code>BEHAVIOR</code>, <code>COLLISION</code> y <code>ANIMATION</code>. Los tres usan el mismo par de sistemas: <code>fwk_ecs_system_behavior</code> ejecuta el programa de <code>behavior</code> (puntero en <code>ECS_E_BEHAVIOR_PROGRAM</code>) y <code>fwk_ecs_system_motion_u8</code> aplica las velocidades; la animación alterna dos sprites con un descriptor compartido. El horizontal usa una primera espera de 19 ticks y tramos posteriores de 23 para recorrer X=32..54. Los verticales comparten un programa inmutable de 49 ticks, pero no estado: cada entidad guarda su propio cursor y temporizador. Para que el horizontal y el vertical derecho se turnen, una iteración cada uno, cada entidad lleva un byte de cadencia (<code>ECS_E_CADENCE</code> = <code>(fase &lt;&lt; 4) | (cada - 1)</code>): el horizontal usa <code>0x11</code> (iteraciones impares), el vertical derecho <code>0x01</code> (pares) y el resto <code>0x00</code> (todas). El bucle incrementa <code>fwk_ecs_tick</code> una vez por iteración y los sistemas saltan solos a las entidades que no tocan. Como su animación también avanza una vez por ejecución, esos dos enemigos usan un descriptor con la mitad de ticks.</p>
+  <p>Las colisiones se hacen sobre ese único manager, en dos pasadas del jugador: una con <code>E=0</code> para monedas y puerta (el callback distingue por <code>ECS_E_TYPE</code>) y otra solo contra las entidades con <code>BEHAVIOR</code>, con un canal de contacto (el registro <code>E</code> de <code>fwk_ecs_collide</code>). El sujeto guarda en cada canal si tocaba algo en la última pasada de ese canal, y el sistema emite <code>ENTER</code> solo al pasar de no tocar a tocar. El callback del enemigo descuenta una vida únicamente en <code>ENTER</code>, así que un contacto sostenido cuesta una sola vida. El canal es por sujeto y no por enemigo: si el jugador ya toca a un enemigo y empieza a tocar a otro sin soltar el primero, el segundo llega como <code>STAY</code> y no cuesta otra vida. La máscara con <code>BEHAVIOR</code> evita que una moneda bajo el jugador cuente como contacto de enemigo.</p>
   <p>La puerta también es una entidad, deshabilitada al reiniciar el nivel con <code>fwk_ecs_entity_disable</code>. Al recoger la cuarta moneda se habilita con <code>fwk_ecs_entity_enable</code>; tocarla cambia al segundo mapa y repite el mismo arranque de nivel. Un reinicio genérico no debe habilitarla antes de tiempo.</p>
   <p>Reserve las filas 1 y 2 del mapa como interior negro del HUD y mantenga los bordes laterales fuera del texto. El ejemplo coloca monedas en <code>x=0</code>, ayuda/estado en <code>x=24</code> y vidas en <code>x=64</code>, todos en <code>y=10</code>. Como el texto con máscara no borra el glifo anterior, restaure las celdas de tile cubiertas por el texto que va a cambiar: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para el contador completo y columnas 6–14 para todo el mensaje de ayuda. El HUD se actualiza después de <code>fwk_ecs_render_draw</code>, cuando el jugador ya vuelve a estar visible.</p>
   <figure>

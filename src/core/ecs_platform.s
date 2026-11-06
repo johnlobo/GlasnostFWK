@@ -18,7 +18,7 @@ _fwk_ecs_platform_scratch:: .ds FWK_PLATFORM_STATE_SIZE
 ;; and an 11-byte tilemap descriptor. The adapter copies the AoS entity fields
 ;; into the legacy state, resolves physics/collision, then copies them back.
 fwk_ecs_system_platform::
-    ld bc, #0x0010
+    ld bc, #ECS_C_PLATFORM
     ld hl, #_fwk_ecs_platform_callback
     jp fwk_ecs_system_run
 
@@ -40,8 +40,8 @@ _fwk_ecs_platform_callback:
     ld a, ECS_E_MOTION_FLAGS(iy)
     ld (_fwk_ecs_platform_scratch + FWK_PLATFORM_FLAGS), a
 
-    ld l, 33(iy)
-    ld h, 34(iy)
+    ld l, ECS_E_PLATFORM_CONFIG(iy)
+    ld h, ECS_E_PLATFORM_CONFIG+1(iy)
     push hl
     pop ix
     ld iy, #_fwk_ecs_platform_scratch
@@ -49,8 +49,8 @@ _fwk_ecs_platform_callback:
 
     pop iy
     push iy
-    ld l, 35(iy)
-    ld h, 36(iy)
+    ld l, ECS_E_PLATFORM_TILEMAP(iy)
+    ld h, ECS_E_PLATFORM_TILEMAP+1(iy)
     push hl
     pop ix
     ld iy, #_fwk_ecs_platform_scratch

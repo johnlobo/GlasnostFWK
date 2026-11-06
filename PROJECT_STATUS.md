@@ -1360,3 +1360,14 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   arquitectura describen solo el ECS; `docs/render-order.md` y `docs/animation.md`
   se eliminaron (contenido vigente en `docs/ecs-abi-2.0.md`, secciones 8 y 10).
   Detalle en `docs/validation.md`.
+
+## Cadencia por entidad y un solo manager en `platformer` (2026-11-06)
+
+- [x] `ECS_E_CADENCE` universal y `fwk_ecs_tick`; `fwk_ecs_system_run` salta las
+  entidades que no tocan y `fwk_ecs_system_run_any` las incluye (colisión).
+- [x] `platformer` con un manager de 9 slots; trabajo en reposo 109.040 T, 2
+  frames por iteración (presupuesto: 115.000 T).
+- [x] Corregidos tres acoplamientos al layout (platform, input, render) y
+  vigilados por pruebas. Detalle en `docs/validation.md`.
+- [ ] Pendiente (parte 2): buffers de fondo del renderer por pools de tamaño en vez
+  de un buffer por entidad (`ECS_E_RENDER_BACKGROUND` y `_CAP`).

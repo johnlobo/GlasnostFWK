@@ -1,5 +1,5 @@
 {
-  "abi": {"major": 2, "minor": 0},
+  "abi": {"major": 2, "minor": 1},
   "components": [
     {
       "name": "render",

@@ -25,7 +25,8 @@
     "resources/zx7b.s"
   ],
   "game_sources": [
-    "main.s"
+    "main.s",
+    "common.inc"
   ],
   "ecs": {
     "x_format": "u8",

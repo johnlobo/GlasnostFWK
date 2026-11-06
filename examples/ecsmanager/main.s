@@ -6,10 +6,41 @@
 .globl fwk_project_init, fwk_system_wait_frame
 
 ECSMANAGER_CAPACITY = 3
+ECSMANAGER_CAD_CAPACITY = 5
 
 .area _DATA
 ecsmanager_storage:: .ds ECS_ENTITY_SIZE * ECSMANAGER_CAPACITY
 FWK_ECS_MANAGER_DESCRIPTOR ecsmanager_manager, ecsmanager_storage, ECSMANAGER_CAPACITY
+
+;; Cadence scenario: one manager with five TEST entities, run for sixteen iterations.
+ecsmanager_cad_storage:: .ds ECS_ENTITY_SIZE * ECSMANAGER_CAD_CAPACITY
+FWK_ECS_MANAGER_DESCRIPTOR ecsmanager_cad_manager, ecsmanager_cad_storage, ECSMANAGER_CAD_CAPACITY
+ecsmanager_cad_template: .ds ECS_ENTITY_SIZE
+;; Cadence bytes, (phase << 4) | (every - 1): every iteration, every 2nd from
+;; phase 0, every 2nd from phase 1, every 4th from phase 3, every 16th from phase
+;; 9. Over iterations 0..15 they run in {0..15}, the even ones, the odd ones,
+;; {3,7,11,15} and {9}: tick sums 120, 56, 64, 36 and 9.
+ecsmanager_cad_table:
+    .db 0x00, 0x01, 0x11, 0x33, 0x9F
+;; Cadence bytes tried on a full manager, with the error each must give: every - 1
+;; that is not 2^k - 1, or a phase above every - 1, is a bad template; any valid
+;; byte only finds the manager full.
+ecsmanager_cad_probes:
+    .db 0x02, FWK_ECS_ERR_TEMPLATE
+    .db 0x04, FWK_ECS_ERR_TEMPLATE
+    .db 0x05, FWK_ECS_ERR_TEMPLATE
+    .db 0x06, FWK_ECS_ERR_TEMPLATE
+    .db 0x0A, FWK_ECS_ERR_TEMPLATE
+    .db 0x0E, FWK_ECS_ERR_TEMPLATE
+    .db 0x91, FWK_ECS_ERR_TEMPLATE
+    .db 0x21, FWK_ECS_ERR_TEMPLATE
+    .db 0x10, FWK_ECS_ERR_TEMPLATE
+    .db 0x00, FWK_ECS_ERR_FULL
+    .db 0x11, FWK_ECS_ERR_FULL
+    .db 0x33, FWK_ECS_ERR_FULL
+    .db 0x0F, FWK_ECS_ERR_FULL
+    .db 0xFF, FWK_ECS_ERR_FULL
+ECSMANAGER_CAD_PROBES = 14
 
 ecsmanager_behavior_right:
     FWK_BEHAVIOR_SET_VX 1
@@ -20,7 +51,7 @@ ecsmanager_behavior_left:
 
 ecsmanager_template:
     .dw ECS_C_RENDER | ECS_C_MOTION | ECS_C_BEHAVIOR | ECS_C_TEST
-    .db ECS_STATUS_ACTIVE, 7, 10, 20, 2, 8
+    .db ECS_STATUS_ACTIVE, 7, 10, 20, 2, 8, 0   ; ..., width, height, cadence
     .dw 0
     .db 0, 0, 0, 0
     .dw 0, 0
@@ -76,6 +107,15 @@ _ecsmanager_callback:
 _ecsmanager_callback_lock_fail:
     ld a, #0xEA
     scf
+    ret
+
+;; Adds the current tick to the TYPE byte of the entity it is given, so the byte
+;; ends up as the sum of the iterations in which the entity ran.
+_ecsmanager_cadence_callback:
+    ld a, (fwk_ecs_tick)
+    add a, ECS_E_TYPE(iy)
+    ld ECS_E_TYPE(iy), a
+    xor a
     ret
 
 _ecsmanager_abort_callback:
@@ -280,6 +320,133 @@ _ecsmanager_motion_probe_loop:
     sbc hl, de
     ld a, #0xEC
     jp nz, _ecsmanager_fail
+
+    ;; Cadence: create four entities with different periods and phases.
+    ld ix, #ecsmanager_cad_manager
+    call fwk_ecs_manager_init
+    call _ecsmanager_expect_ok
+    ld hl, #ecsmanager_cad_table
+    ld b, #ECSMANAGER_CAD_CAPACITY
+_ecsmanager_cad_create:
+    push bc
+    push hl
+    ld hl, #ecsmanager_template
+    ld de, #ecsmanager_cad_template
+    ld bc, #ECS_ENTITY_SIZE
+    ldir
+    pop hl
+    ld a, (hl)
+    inc hl
+    push hl
+    ld iy, #ecsmanager_cad_template
+    ld ECS_E_CADENCE(iy), a
+    ld ECS_E_TYPE(iy), #0
+    ld hl, #ecsmanager_cad_template
+    call fwk_ecs_entity_create
+    call _ecsmanager_expect_ok
+    pop hl
+    pop bc
+    djnz _ecsmanager_cad_create
+
+    ;; Sixteen iterations with the tick the game would increment once per loop.
+    xor a
+    ld (fwk_ecs_tick), a
+_ecsmanager_cad_tick:
+    ld ix, #ecsmanager_cad_manager
+    ld bc, #ECS_C_TEST
+    ld hl, #_ecsmanager_cadence_callback
+    call fwk_ecs_system_run
+    call _ecsmanager_expect_ok
+    ld hl, #fwk_ecs_tick
+    inc (hl)
+    ld a, (hl)
+    cp #16
+    jr nz, _ecsmanager_cad_tick
+    ld a, (ecsmanager_cad_storage + ECS_E_TYPE)
+    cp #120
+    ld a, #0xD1
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #56
+    ld a, #0xD2
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + 2 * ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #64
+    ld a, #0xD3
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + 3 * ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #36
+    ld a, #0xD4
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + 4 * ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #9
+    ld a, #0xD5
+    jp nz, _ecsmanager_fail
+
+    ;; fwk_ecs_system_run_any ignores the cadence: at tick 1 it must add 1 to the
+    ;; sum of all five entities, although only two of them are due then.
+    ld a, #1
+    ld (fwk_ecs_tick), a
+    ld ix, #ecsmanager_cad_manager
+    ld bc, #ECS_C_TEST
+    ld hl, #_ecsmanager_cadence_callback
+    call fwk_ecs_system_run_any
+    call _ecsmanager_expect_ok
+    ld a, (ecsmanager_cad_storage + ECS_E_TYPE)
+    cp #121
+    ld a, #0xD6
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #57
+    ld a, #0xD7
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + 2 * ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #65
+    ld a, #0xD8
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + 3 * ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #37
+    ld a, #0xD9
+    jp nz, _ecsmanager_fail
+    ld a, (ecsmanager_cad_storage + 4 * ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #10
+    ld a, #0xDA
+    jp nz, _ecsmanager_fail
+    ;; The next plain run honours the cadence again (the mode is set per call).
+    ld ix, #ecsmanager_cad_manager
+    ld bc, #ECS_C_TEST
+    ld hl, #_ecsmanager_cadence_callback
+    call fwk_ecs_system_run
+    call _ecsmanager_expect_ok
+    ld a, (ecsmanager_cad_storage + ECS_ENTITY_SIZE + ECS_E_TYPE)
+    cp #57                                  ; every 2nd from phase 0: not due at tick 1
+    ld a, #0xDB
+    jp nz, _ecsmanager_fail
+
+    ;; Creation validates the cadence byte. The manager is full, so a valid byte
+    ;; reports FULL and an invalid one reports TEMPLATE: the two are told apart.
+    ld hl, #ecsmanager_cad_probes
+    ld b, #ECSMANAGER_CAD_PROBES
+_ecsmanager_cad_probe:
+    push bc
+    push hl
+    ld iy, #ecsmanager_cad_template
+    ld a, (hl)
+    ld ECS_E_CADENCE(iy), a
+    ld hl, #ecsmanager_cad_template
+    call fwk_ecs_entity_create
+    pop hl
+    pop bc
+    jr c, _ecsmanager_cad_probe_error
+    ld a, #0xDD                             ; creating must fail either way
+    jp _ecsmanager_fail
+_ecsmanager_cad_probe_error:
+    inc hl
+    cp (hl)
+    ld a, #0xDC
+    jp nz, _ecsmanager_fail
+    inc hl
+    djnz _ecsmanager_cad_probe
 
     ld a, #0x5A
     ld (ecsmanager_status), a

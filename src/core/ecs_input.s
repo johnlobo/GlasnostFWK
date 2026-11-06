@@ -18,19 +18,14 @@ FWK_ECS_INPUT_JUMP_SPEED = 0xF8
 ;; In: IX=manager. Input entities use action_mask to opt into the standard
 ;; left/right/jump actions. The callback preserves IX/IY for system traversal.
 fwk_ecs_system_input::
-    ;; SDASZ80's short symbol mode can alias long component names; the
-    ;; generated profile remains normative, while the mask is encoded here
-    ;; explicitly for this adapter.
-    ld bc, #0x0008
+    ld bc, #ECS_C_INPUT
     ld hl, #_fwk_ecs_input_callback
     jp fwk_ecs_system_run
 
 _fwk_ecs_input_callback:
     push ix
     push iy
-    ;; Offsets mirror the generated profile. Keeping these two long symbols
-    ;; numeric avoids SDASZ80's legacy short-symbol aliasing.
-    ld a, 32(iy)
+    ld a, ECS_E_INPUT_ACTION_MASK(iy)
     ld c, a
 
     ld a, (fwk_input_held)
