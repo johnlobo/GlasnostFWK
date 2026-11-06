@@ -55,8 +55,8 @@ _fwk_ecs_input_jump:
     bit FWK_PLATFORM_TILE_GROUNDED_BIT, ECS_E_MOTION_FLAGS(iy)
     jr z, _fwk_ecs_input_done
     ld ECS_E_MOTION_VELOCITY_Y(iy), #FWK_ECS_INPUT_JUMP_SPEED
-    set FWK_PLATFORM_AIRBORNE_BIT, ECS_E_MOTION_FLAGS(iy)
-    res FWK_PLATFORM_TILE_GROUNDED_BIT, ECS_E_MOTION_FLAGS(iy)
+    ;; Only the velocity: the platform step (grounded branch) raises AIRBORNE and
+    ;; applies the first -8 move before gravity, like the original platformer.
     set 1, ECS_E_RENDER_FLAGS(iy)
 _fwk_ecs_input_done:
     pop iy

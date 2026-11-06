@@ -164,9 +164,9 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 
 ### P2: paridad y sustitución
 
-6. Input de entidades, física principal y tilemaps. **En curso: adaptadores ECS
-   y vertical de tilemap implementados; falta cerrar la validación de entrada y
-   la paridad jugable.**
+6. Input de entidades, física principal y tilemaps. **Completada el
+   2026-11-05** (PR #1). La paridad jugable completa con `platformer` es el
+   criterio de la fase 10.
 7. Colisiones ECS y eventos de contacto. **Completada el 2026-11-05.**
 8. Animación ECS. **Completada el 2026-11-05.**
 9. Render ECS multi-manager; fase de mayor riesgo. **Completada el 2026-11-05.**

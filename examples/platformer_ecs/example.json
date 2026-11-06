@@ -9,6 +9,8 @@
     "core/ecs_motion.s",
     "core/ecs_input.s",
     "core/ecs_platform.s",
+    "core/ecs_collision.s",
+    "core/ecs_animation.s",
     "extensions/behavior.s",
     "extensions/physics_platform.s",
     "extensions/tilemap.s",
@@ -17,7 +19,8 @@
     "core/input.s",
     "video/video.s",
     "video/sprite.s",
-    "video/ecs_render.s"
+    "video/ecs_render.s",
+    "resources/zx7b.s"
   ],
   "game_sources": [
     "main.s"
@@ -28,7 +31,9 @@
     "components": [
       "behavior",
       "input",
-      "platform"
+      "platform",
+      "collision",
+      "animation"
     ]
   }
 }

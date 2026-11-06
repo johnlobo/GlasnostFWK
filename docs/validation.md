@@ -487,3 +487,24 @@ python3 tests/emulator_smoke.py --model 464 vertical
   (de unos 19 fotogramas por iteración a unos 2), y el smoke de caída, aterrizaje,
   caminar y saltar pasa igual.
 
+
+## Fase 10: paridad y rendimiento de `platformer_ecs` (rebanada 1)
+
+- `examples/platformer_ecs` usa una copia de los assets y del pipeline de
+  `platformer` y reproduce su nivel con cuatro managers, cuatro monedas, tres
+  enemigos con la misma cadencia (V2 cada fotograma; H y V alternados), puerta y
+  vidas. Detalle, divergencias y lo que falta en `docs/platformer-parity.md`.
+- Smoke (`tests/emulator_smoke.py`, sección `platformer_ecs`): recorrido de las
+  cuatro monedas y cinco plataformas, victoria solo con cuatro monedas, huecos de
+  moneda liberados, límites de patrulla y animación, enemigos inofensivos tras
+  ganar, puerta y una vida por contacto y por enemigo. Pasa en CPC 6128 y 464.
+  Usa `write_ram` para colocar al jugador en tres puntos del recorrido y en los
+  contactos, por la latencia del emulador.
+- Mutaciones a mano sobre `main.s` (seis, todas detectadas): puerta ignorada,
+  victoria con 3 monedas, enemigo H inofensivo, sin `collect`, vidas iniciales y
+  animación quitada. El crítico en frío había encontrado 13 de 19 mutaciones
+  sin detectar antes de ampliar el smoke.
+- Defecto del núcleo hallado por esta paridad: el salto de `core/ecs_input.s`
+  subía 28 px en vez de 36. Cubierto por una prueba host y por el smoke.
+- Pendiente: HUD y parpadeo (rebanada 2), nivel 2 (3), prueba diferencial entre
+  los dos juegos, presupuesto de tamaño y velocidad y coste de `prepare` (4).
