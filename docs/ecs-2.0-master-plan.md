@@ -160,7 +160,7 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
    2026-11-04.**
 4. Sistemas ECS de behavior y movimiento. **Completada el 2026-11-04.** Hito
    `2.0.0-alpha.1`.
-5. Crear `examples/platformer_ecs` sin alterar la referencia actual. **Completada el 2026-11-04.**
+5. Crear `examples/platformer_ecs` (hoy `examples/platformer`) sin alterar la referencia de entonces. **Completada el 2026-11-04.**
 
 ### P2: paridad y sustitución
 
@@ -172,7 +172,10 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 9. Render ECS multi-manager; fase de mayor riesgo. **Completada el 2026-11-05.**
 10. Paridad completa y rendimiento de `platformer`. Hito `2.0.0-beta.1`.
 11. Migrar consumidores y eliminar todo rastro activo no ECS. Hito
-    `2.0.0-beta.2`.
+    `2.0.0-beta.2`. Parte A (`vertical` y `perf` en ECS) completada. **Parte B
+    completada en la rama `ecs-remove-legacy`:** no queda ningún módulo, ejemplo
+    ni API anterior al ECS y `make test` pasa en verde (detalle en
+    `docs/validation.md`).
 
 ### P3: SDK autocontenido
 
@@ -214,7 +217,7 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 
 ## Riesgos prioritarios
 
-1. Complejidad y coste de `entity_render`.
+1. Complejidad y coste del renderer (`entity_render`, ya eliminado, y su sustituto `ecs_render`).
 2. Coste de recorrer todos los slots por cada sistema.
 3. Cambios de ABI al reconfigurar perfiles.
 4. Límite de 16 componentes.

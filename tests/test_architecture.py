@@ -54,7 +54,6 @@ class ArchitectureTests(unittest.TestCase):
             for path in (ROOT / "examples").glob("*/example.json")
         }
         self.assertNotIn("resources/bank.s", selections["minimal"])
-        self.assertNotIn("extensions/motion_u8.s", selections["board"])
         resources_manifest = json.loads(
             (ROOT / "examples/resources128/example.json").read_text()
         )
@@ -65,12 +64,9 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("resources/zx7b.s", selections["diskload"])
         self.assertIn("audio/akg.s", selections["audio"])
         self.assertNotIn("audio/akg.s", selections["minimal"])
-        self.assertIn("extensions/animation.s", selections["animation"])
-        self.assertNotIn("extensions/animation.s", selections["platform"])
         self.assertIn("ui/window.s", selections["window"])
         self.assertNotIn("ui/window.s", selections["board"])
         self.assertIn("core/ecs_motion.s", selections["vertical"])
-        self.assertNotIn("core/pool.s", selections["vertical"])
         self.assertIn("extensions/physics_platform.s", selections["gravity"])
         self.assertNotIn("extensions/physics_8_8.s", selections["gravity"])
         self.assertIn("extensions/physics_8_8.s", selections["physics88"])
@@ -84,12 +80,8 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("video/sprite.s", selections["spriteclip"])
         self.assertNotIn("video/sprite.s", selections["minimal"])
         self.assertNotIn("ui/window.s", selections["spriteclip"])
-        self.assertIn("video/sprite.s", selections["renderorder"])
-        self.assertIn("video/entity_render.s", selections["renderorder"])
-        self.assertIn("video/entity_render.s", selections["platformer"])
-        self.assertNotIn("video/entity_render.s", selections["minimal"])
         self.assertIn("video/sprite.s", selections["spritemask"])
-        self.assertNotIn("video/entity_render.s", selections["spritemask"])
+        self.assertIn("video/ecs_render.s", selections["platformer"])
 
     def test_transparency_consumers_declare_the_project_capability(self):
         consumers = {"ui/text.s", "extensions/tilemap_render_masked.s"}
@@ -97,6 +89,34 @@ class ArchitectureTests(unittest.TestCase):
             manifest = json.loads(path.read_text())
             if consumers & set(manifest["modules"]):
                 self.assertIn("transparency", manifest, str(path))
+
+    def test_no_pre_ecs_module_survives(self):
+        # Gate G4: the old entity model is gone from sources, manifests and tools.
+        removed = (
+            "src/core/pool.s", "src/core/pool.inc",
+            "src/video/entity_render.s", "src/video/entity_render.inc",
+            "src/extensions/animation.s", "src/extensions/animation.inc",
+            "src/extensions/collision_bodies.s", "src/extensions/collision_bodies.inc",
+            "src/extensions/motion_u8.s", "src/extensions/motion_u8.inc",
+        )
+        for name in removed:
+            self.assertFalse((ROOT / name).exists(), name)
+        for example in ("platform", "collision", "renderorder", "animation", "platformer_ecs"):
+            self.assertFalse((ROOT / "examples" / example).exists(), example)
+        legacy = re.compile(
+            r"core/pool\.|video/entity_render\.|extensions/animation\.|"
+            r"extensions/collision_bodies\.|extensions/motion_u8\.|"
+            r"\bfwk_pool_|\bfwk_entity_render_|\bfwk_motion_u8_step\b|\bfwk_collision_body"
+        )
+        offenders = []
+        for base in ("src", "examples", "tools", "Makefile", ".github"):
+            root = ROOT / base
+            files = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file())
+            for path in files:
+                if path.suffix in {".s", ".inc", ".json", ".py", ".yml", ""} and "generated" not in path.parts:
+                    if legacy.search(path.read_text(errors="replace")):
+                        offenders.append(str(path.relative_to(ROOT)))
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

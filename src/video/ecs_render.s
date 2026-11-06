@@ -1,8 +1,7 @@
 ;; ECS 2.0 selective renderer: restore and redraw only what changed, across
 ;; several managers, in one global Y order. Contract and budget:
-;; docs/ecs-abi-2.0.md, 8. Unlike the older video/entity_render.s it does not
-;; defend against hostile callers: no search for duplicates, no buffer overlap
-;; checks.
+;; docs/ecs-abi-2.0.md, 8. It does not defend against hostile callers: no
+;; search for duplicates, no buffer overlap checks.
 .module fwk_ecs_render
 
 .include "project_config.inc"

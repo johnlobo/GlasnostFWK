@@ -29,8 +29,8 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 ```sh
 make generate   # vídeo y manifiesto de recursos, deterministas
 make check      # pruebas host + platformer; bucle rápido durante desarrollo
-make check CHECK_EXAMPLES="spritemask renderorder"  # solo ejemplos afectados
-make examples   # veintitrés ejemplos, incluidas dos escenas jugables
+make check CHECK_EXAMPLES="spritemask ecsrender"  # solo ejemplos afectados
+make examples   # veintidós ejemplos, incluidas dos escenas jugables
 make test       # pruebas host + construcción y DSK completos; cierre/commit
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -38,7 +38,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintitrés BIN de prueba se
+Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintidós BIN de prueba se
 reúnen en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
@@ -112,15 +112,15 @@ posteriores.
 
 ## Mapa del repositorio
 
-- `src/core`: interrupción/sincronización, entrada y pool genérico.
-- `src/video`: direccionamiento, CRTC, limpieza y sprites con clipping, máscaras opcionales y orden.
+- `src/core`: interrupción/sincronización, entrada y sistemas ECS (manager, behavior, movimiento, entrada, plataforma, colisión y animación).
+- `src/video`: direccionamiento, CRTC, limpieza, sprites con clipping y máscaras opcionales, y el renderer ECS selectivo.
 - `src/ui`: fuente sprite Mode 0 recoloreable, números pequeños y ventanas con fondo restaurable.
 - `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
 - `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
-- `src/extensions`: movimiento, física, animación y tilemaps optativos, sin entidad universal.
+- `src/extensions`: behavior, física y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: veintitrés consumidores pequeños, sin copias internas del framework.
+- `examples`: veintidós consumidores pequeños, sin copias internas del framework.
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 La aplicación didáctica de plataformas dispone de una guía paso a paso con
@@ -190,22 +190,19 @@ temporalmente `0x4000`, restaura
 los bytes de RAM normal y banco 0 y no reserva ninguna dirección en
 `0x4000..0x7FFF`.
 
-`video/entity_render` añade render selectivo de entidades: orden estable por Y,
-restauración inversa y captura/dibujo directo para que varios sprites
-solapados mantengan un orden explícito. Los buffers continúan en manos del
-consumidor; solo se normaliza un prefijo de render de 25 bytes. Admite dibujo
-opaco, enmascarado y recoloreado. `renderorder` comprueba el ciclo completo; véase
-`docs/render-order.md`.
+`video/ecs_render` es el render selectivo: restaura y redibuja solo lo que
+cambió, con entidades de uno o varios managers ECS, en un único orden estable
+por Y. Los buffers de fondo continúan en manos del consumidor. Admite dibujo
+opaco, enmascarado y recoloreado. La ruta sincronizada separa
+`fwk_ecs_render_prepare` (antes del VSYNC, sin tocar VRAM) de
+`fwk_ecs_render_restore`/`fwk_ecs_render_draw`, que se ejecutan seguidos tras
+VSYNC. `ecsrender` comprueba el ciclo completo contra un modelo Python; el
+contrato está en la sección 8 de `docs/ecs-abi-2.0.md`.
 
-La ruta sincronizada separa `fwk_entity_render_prepare_dirty` —validación,
-cierre y orden sin tocar VRAM— de `restore_dirty`/`draw_dirty`, que pueden
-ejecutarse consecutivamente tras VSYNC. Las identidades y rangos de buffer se
-validan en `init` o `revalidate`, fuera de la sección crítica.
-
-La aplicación `platformer` usa este renderer para el jugador y las cuatro
-monedas: mantiene el estado compacto de física detrás del prefijo y oculta
-coleccionables mediante `VISIBLE|DIRTY`. El HUD usa un panel interior y solo
-restaura el dígito o tramo de estado que cambia. La construcción paso a paso está en
+La aplicación `platformer` es el juego completo sobre ECS 2.0: cuatro
+managers, jugador, cuatro monedas, tres enemigos con behavior, puerta, dos
+niveles y renderer selectivo. El HUD usa un panel interior y solo restaura el
+dígito o tramo de estado que cambia. La construcción paso a paso está en
 `docs/platform-game-guide.html`.
 
 ## Carga desde DSK y ZX7B
@@ -223,13 +220,13 @@ Reproduce música a 50 Hz mediante el callback de IRQ, admite SFX y expone
 comandos de parada/reanudación para la prueba. El smoke comprueba ticks y
 registros PSG reales en CPC 6128 y CPC 464; véase `docs/audio-akg.md`.
 
-## Animación reutilizable
+## Animación ECS
 
-`examples/animation` recorre tres frames sintéticos cada cuatro ticks. El
-módulo solo mantiene descriptor, índice y temporizador: el juego decide cuándo
-llamarlo y cómo dibujar. El smoke comprueba el periodo exacto, los punteros de
-frame, el byte renderizado y que una pausa impuesta por el consumidor congela
-el estado en CPC 6128 y CPC 464. Detalles en `docs/animation.md`.
+`core/ecs_animation` es el sistema de animación: cada entidad con el componente
+`ANIMATION` lleva descriptor, frame y temporizador; el juego decide cuándo
+llamar al sistema y cambia de animación con `fwk_ecs_anim_set`. El contrato
+está en la sección 10 de `docs/ecs-abi-2.0.md` y `ecsanimation` lo comprueba
+contra un modelo Python.
 
 ## Ventanas restaurables
 

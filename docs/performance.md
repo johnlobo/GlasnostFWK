@@ -43,23 +43,23 @@ Un frame a 50 Hz son `79872` T-estados. Referencias útiles:
 - Un tilemap completo 5x4 cuesta ~0,55 frames; una celda ~0,05 frames.
 - El lote de 8 sprites 4x4 con `ecs_render` (prepare + restauración + dibujo) cuesta ~2,16 frames
   con los ocho apilados en el mismo punto, el peor caso del cierre de solapes. La
-  cifra anterior (94.089 T, ~1,18 frames) era del módulo `entity_render`, que ya
-  no existe, y no es comparable: medía otra implementación y otro caso.
+  cifra anterior (94.089 T, ~1,18 frames) se midió con el módulo anterior
+  (`entity_render`, ya eliminado) y no es comparable: medía otra implementación
+  y otro caso.
 
-## Decisión sobre `entity_render`
+## Decisiones vigentes sobre sprites
 
 - `fwk_sprite_draw_masked` sigue siendo una API separada del camino opaco y usa
   el color clave configurado para el proyecto.
 - `fwk_sprite_draw_masked_recolor` es también una ruta separada. Su coste aún
   no se ha medido y no debe inferirse de la cifra histórica del enmascarado.
-- `entity_render` selecciona por flags las rutas opaca, enmascarada, recoloreada
-  y enmascarada-recoloreada. La cifra histórica del lote ya no mide este módulo
-  y debe repetirse antes de usarla para presupuestar un frame.
-- La ruta preparada valida identidades y rangos estructurales en `init` o
-  `revalidate`; por frame calcula cierre/preflight/orden antes del VSYNC y deja
-  consecutivas restauración y captura/dibujo. En `platformer`, con tres monedas
-  visibles, pasó de 10 a 20 actualizaciones durante una entrada programada de
-  19 frames (el frame de activación añade una actualización). Es una observación
-  de cadencia, no una medición de T-estados.
+- `ecs_render` selecciona por flags de entidad las rutas opaca, enmascarada,
+  recoloreada y enmascarada-recoloreada; su coste medido es el del lote de ocho
+  de la tabla.
+- Histórico, medido con el módulo anterior (`entity_render`), ya eliminado: la
+  ruta preparada validaba identidades en `init` y pasó, en `platformer` con tres
+  monedas visibles, de 10 a 20 actualizaciones durante una entrada programada de
+  19 frames. Era una observación de cadencia, no una medición de T-estados, y no
+  describe al renderer actual.
 - No se promete 50 Hz para escenas arbitrarias; la decisión se toma con estas
   cifras, no con estimaciones.

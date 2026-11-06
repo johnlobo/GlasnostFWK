@@ -43,9 +43,9 @@ class SummarizeTests(unittest.TestCase):
 
 class LabelTests(unittest.TestCase):
     def test_local_labels_are_found_in_listings(self):
-        labels = label_table("platformer_ecs")
+        labels = label_table("platformer")
         if not labels:
-            self.skipTest("platformer_ecs is not built")
+            self.skipTest("platformer is not built")
         self.assertIn("_pfe_collisions", labels)
         self.assertIn("_main", labels)
 

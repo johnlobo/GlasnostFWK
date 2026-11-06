@@ -12,13 +12,15 @@
   ids a una tabla de tipos y llamar al resolver inmediatamente después del paso
   físico. Mantener render, habitaciones, portales, componentes y scripts en el
   juego.
-  El cursor temporal de `extensions/animation.s` ya es reutilizable, pero la
-  selección por movimiento y el render siguen siendo política del juego.
+  La animación se resuelve con el componente `ANIMATION` de
+  `core/ecs_animation.s`; la selección por movimiento y el render siguen siendo
+  política del juego.
 - Sustituir constantes de pantalla por un perfil JSON y consumir
   `fwk_video_get_ptr`.
 - Si los sprites se solapan, sustituir la cola ligada a entidades por
-  `video/entity_render.s`: usar el prefijo estándar, marcar `DIRTY`, restaurar antes
-  de actualizar el fondo y dibujarlo después. La elección de clave sigue en el
+  `video/ecs_render.s`: crear las entidades con el componente `RENDER`, dejar que
+  los sistemas marquen `DIRTY`, restaurar antes de actualizar el fondo y
+  dibujarlo después. La elección de clave sigue en el
   juego.
 
 ## Desde boop
@@ -48,7 +50,7 @@
   `ball_blit`, colisión entre bolas y tablas de tiro como especializaciones.
   Para sprites rectangulares generales puede usarse `video/sprite.s`, pero no
   sustituye el coste ni los patrones generados del blitter 6x8 de bola.
-  Para varias entidades con sprites rectangulares, `video/entity_render.s` reemplaza la
+  Para varias entidades con sprites rectangulares, `video/ecs_render.s` reemplaza la
   secuencia especializada de borrado/dibujo, pero cada bola debe aportar su
   descriptor y buffer y no conserva las optimizaciones del blitter 6x8.
 - Llevar el método de generadores deterministas a manifiestos del juego.

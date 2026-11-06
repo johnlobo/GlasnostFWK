@@ -458,7 +458,7 @@ Requiere coordenadas `u8` (el build falla con `u16` o `fixed_8_8`).
 - `ANIMATION` (fase 8, revisado el 2026-11-05) añade tres campos por entidad:
   `ECS_E_ANIMATION_DESCRIPTOR` (`pointer`, cero = sin animación),
   `ECS_E_ANIMATION_FRAME` y `ECS_E_ANIMATION_TIMER` (`u8`). El descriptor es
-  inmutable y compartible y tiene el formato de `extensions/animation.inc`:
+  inmutable y compartible y tiene el formato de `core/ecs_animation.inc`:
   byte `count` (1..255), byte `duration` (1..255) y `count` punteros de sprite.
   - `fwk_ecs_system_animation` (`IX`=manager; resultado como
     `fwk_ecs_system_run`) recorre las entidades `ACTIVE|ANIMATION` con

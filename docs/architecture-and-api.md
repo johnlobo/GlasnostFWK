@@ -67,23 +67,15 @@ especiales, pero no instala capacidades del proyecto.
 - `fwk_input_init`: altera `AF` y borra estado. Soporta hasta ocho acciones por
   máscaras de bits; no contiene semántica del juego.
 
-### Pool
+### Entity manager ECS
 
-Descriptor de 5 bytes: puntero base, capacidad, tamaño de registro y count.
-`FWK_POOL_DESCRIPTOR` lo materializa durante ensamblado.
-
-- `fwk_pool_init`: `IX=descriptor`; altera `A`.
-- `fwk_pool_get`: `IX`, `A=index`; devuelve `HL` y carry limpio, o carry activo;
-  altera `AF,B,DE,HL`.
-- `fwk_pool_alloc`: devuelve slot sin inicializar en `HL`; carry indica lleno.
-- `fwk_pool_remove`: `A=index`; compacta con `LDIR`; altera `AF,BC,DE,HL`.
-- `fwk_pool_foreach`: `DE=callback`, callback recibe `IY=registro`; altera
-  registros principales e `IY`. Usa `CALL` automodificable: no es reentrante y
-  no debe reentrarse desde IRQ.
-
-El pool no interpreta el contenido de los registros ni impone componentes.
-La vertical jugable comprueba en Z80 real emulado una secuencia de tres
-eliminaciones con compactación, además de las pruebas host de arquitectura.
+Las entidades viven en managers ECS (`core/ecs_manager.s`): slots estables,
+máscara de componentes de 16 bits, plantillas, ciclo de vida diferido y
+recorrido por máscara. El layout lo genera `tools/gen_ecs_profile.py` desde el
+manifiesto. El contrato completo está en `ecs-abi-2.0.md`; los sistemas
+(`core/ecs_behavior.s`, `ecs_motion.s`, `ecs_input.s`, `ecs_platform.s`,
+`ecs_collision.s`, `ecs_animation.s`) y el renderer (`video/ecs_render.s`) lo
+comparten. No existe ningún contenedor de registros anterior al ECS.
 
 ### Física de plataforma opcional
 
@@ -97,7 +89,7 @@ bytes: ancho del mundo, coordenada inclusiva del suelo, gravedad y caída máxim
   y velocidades deben cumplir los límites documentados en
   `physics-profiles.md`; no hay validación dinámica.
 
-No itera pools ni consulta mapas. La consulta y resolución opcionales se
+No itera entidades ni consulta mapas. La consulta y resolución opcionales se
 seleccionan por separado; la selección del cuerpo y el render permanecen fuera.
 
 ### Tilemap y colisión de plataforma opcionales
@@ -158,26 +150,14 @@ fricción lineal por paso.
 No conoce bolas, radios, pares de colisión ni reglas de restitución. La
 magnitud máxima que evita atravesar geometría pertenece al consumidor.
 
-### Animación opcional
+### Animación ECS
 
-Descriptor inmutable: número de frames, duración común en ticks y tabla de
-punteros a frames. Estado mutable de 4 bytes: descriptor activo, índice y ticks
-restantes. El módulo no conoce entidades, salas, movimiento, VSYNC ni formato
-gráfico.
-
-- `fwk_anim_clear`: `IX=estado`; lo desactiva y devuelve `HL=0`, carry limpio.
-- `fwk_anim_set`: `IX=estado`, `HL=descriptor|0`; activa o desactiva. Carry
-  activo indica cambio de descriptor; seleccionar otra vez el mismo conserva
-  índice y temporizador. Devuelve en `HL` el frame actual o cero.
-- `fwk_anim_tick`: `IX=estado`; consume exactamente un tick definido por el
-  llamador. Carry activo solo cuando avanza de frame; devuelve el frame actual
-  en `HL`, o cero si está inactivo.
-
-El descriptor debe persistir y declarar `count>0` y `duration>0`. Los tres
-procedimientos alteran `AF,HL` y conservan `IX`; `set/tick` también pueden
-alterar `BC,DE`. La política para elegir animación, llamar al tick y dibujar el
-frame pertenece al juego. El contrato y la disposición byte a byte se detallan
-en `animation.md`.
+`core/ecs_animation.s` anima las entidades con el componente `ANIMATION`:
+descriptor inmutable compartible (número de frames, duración en llamadas y
+tabla de punteros a sprite), más frame y temporizador por entidad.
+`fwk_ecs_system_animation` avanza una vez por llamada y `fwk_ecs_anim_set`
+cambia de animación sin reiniciar si el descriptor ya está activo. El contrato
+byte a byte está en la sección 10 de `ecs-abi-2.0.md`.
 
 ### Vídeo
 
@@ -221,33 +201,27 @@ completamente exterior es válida y no escribe.
 Los tres dibujos preservan `IX` e `IY` y alteran `AF,BC,DE,HL`;
 captura/restauración preservan `IX` y alteran también `IY`. El módulo usa scratch
 interno y no es reentrante. El buffer, el orden de borrado/dibujo y la
-sincronización pertenecen al consumidor. `entity_render` añade dirty rectangles
+sincronización pertenecen al consumidor. `ecs_render` añade dirty rectangles
 de entidad y propagación por solapamiento; no hay mezcla alfa ni remap completa
 de paleta. El coste del nuevo recoloreado todavía no se ha medido; los casos
 históricos están en `performance.md`.
 Detalles funcionales en `sprites.md`.
 
-### Render selectivo de entidades
+### Render selectivo ECS
 
-`video/entity_render.s` recibe un descriptor de ocho bytes con array contado de
-punteros, array auxiliar de cuatro bytes por slot, capacidades, contador
-afectado y estado. Los punteros nulos son huecos; los duplicados son error.
+`video/ecs_render.s` restaura y redibuja solo lo que cambió, con entidades de
+uno o varios managers en un único orden estable por Y. Una escena agrupa una
+tabla de managers y un array de trabajo del proyecto.
 
-- `fwk_entity_render_init`: inicializa el estado y marca las entidades visibles.
-- `fwk_entity_render_revalidate`: revalida punteros y rangos estructurales en `IDLE`.
-- `fwk_entity_render_mark_rect_dirty`: marca entidades tocadas por fondo externo.
-- `fwk_entity_render_prepare_dirty`: prevalida, propaga y ordena sin tocar VRAM.
-- `fwk_entity_render_restore_dirty`: restaura el orden ya preparado en orden inverso.
-- `fwk_entity_render_draw_dirty`: ordena por `sort_y`, captura y dibuja en orden directo.
+- `fwk_ecs_render_prepare`: antes del VSYNC; reúne candidatas, propaga
+  solapamientos y bloquea los managers, sin tocar VRAM.
+- `fwk_ecs_render_restore`: tras el VSYNC; restaura fondos en orden inverso.
+- `fwk_ecs_render_draw`: captura, dibuja por Y, limpia `DIRTY` y libera los
+  bloqueos.
 
-El prefijo estándar de entidad ocupa 25 bytes y comienza con el descriptor de
-sprite de ocho bytes. La API admite opaco, máscara, recoloreado y su combinación.
-La ruta sincronizable exige `IDLE -> PREPARED -> RESTORED -> IDLE`. La llamada
-directa histórica a `restore_dirty` prepara internamente para conservar
-compatibilidad. Punteros y rangos se validan al inicializar o revalidar; no
-pueden cambiar durante la ruta preparada. El módulo usa scratch interno, no es
-reentrante y no desactiva interrupciones. Detalles en
-`render-order.md`.
+Admite opaco, máscara, recoloreado y su combinación mediante flags de la
+entidad. El módulo usa scratch interno, no es reentrante y no desactiva
+interrupciones. Contrato completo en la sección 8 de `ecs-abi-2.0.md`.
 
 ### Texto
 

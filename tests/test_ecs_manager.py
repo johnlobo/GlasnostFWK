@@ -81,15 +81,15 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn(".ifdef ECS_C_PLATFORM", motion)
         self.assertIn("and #ECS_C_PLATFORM", motion)
 
-    def test_platformer_ecs_player_spawns_airborne(self):
+    def test_platformer_player_spawns_airborne(self):
         # physics_platform applies gravity only to airborne bodies: a grounded
         # spawn hovers at its spawn height forever.
-        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
+        main = (ROOT / "examples/platformer/main.s").read_text()
         self.assertIn("ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE", main)
 
-    def test_platformer_ecs_smoke_covers_landing_walk_and_jump(self):
+    def test_platformer_smoke_covers_landing_walk_and_jump(self):
         smoke = (ROOT / "tests/emulator_smoke.py").read_text()
-        section = smoke.split('if name == "platformer_ecs":', 1)[1].split(
+        section = smoke.split('if name == "platformer":', 1)[1].split(
             'if name == "audio":', 1
         )[0]
         for label in (
@@ -119,42 +119,30 @@ class ECSManagerTests(unittest.TestCase):
         )
         self.assertNotIn("FWK_PLATFORM_AIRBORNE_BIT", code)
 
-    def test_platformer_ecs_enemy_turns_match_the_original(self):
-        # Original: H and V alternate frames, V2 runs every frame, and enemies
-        # stop hurting once the game is won.
-        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
-        frame = main.split("platformer_ecs_frame:", 1)[1]
+    def test_platformer_enemy_turns(self):
+        # H and V alternate frames, V2 runs every frame, and enemies stop
+        # hurting once the game is won.
+        main = (ROOT / "examples/platformer/main.s").read_text()
+        frame = main.split("platformer_frame:", 1)[1]
         self.assertIn("ld (_pfe_phase), a", frame)
         self.assertEqual(frame.count("call _pfe_enemy_turn"), 1)
-        self.assertIn("ld ix, #platformer_ecs_v", frame.split("call _pfe_enemy_turn")[0])
-        self.assertIn("ld ix, #platformer_ecs_h", frame.split("call _pfe_enemy_turn")[0])
-        self.assertIn("ld ix, #platformer_ecs_manager\n    call fwk_ecs_system_behavior", frame)
+        self.assertIn("ld ix, #platformer_v", frame.split("call _pfe_enemy_turn")[0])
+        self.assertIn("ld ix, #platformer_h", frame.split("call _pfe_enemy_turn")[0])
+        self.assertIn("ld ix, #platformer_manager\n    call fwk_ecs_system_behavior", frame)
         collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
-        self.assertIn("ld a, (platformer_ecs_won)", collisions)
+        self.assertIn("ld a, (platformer_won)", collisions)
 
-    def test_platformer_ecs_hud_and_flash_match_the_original(self):
-        original = (ROOT / "examples/platformer/main.s").read_text()
-        constants = (ROOT / "examples/platformer/game.inc").read_text()
-        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
+    def test_platformer_hud_and_flash(self):
+        main = (ROOT / "examples/platformer/main.s").read_text()
 
         def number(text, name):
             return int(re.search(rf"^{name}\s*=\s*(\w+)", text, re.M).group(1), 0)
 
-        # Same texts, in the same places.
-        strings = {
-            "COINS: 0/4": "platformer_score_str",
-            "ALL COINS": "platformer_all_coins_str",
-            "COLLECT ALL COINS": "platformer_hint_str",
-            "GO TO THE DOOR": "platformer_win_str",
-            "LIFE: 10": "platformer_life_str",
-        }
-        for text, original_label in strings.items():
-            self.assertIn(f'{original_label}:: .ascii "{text}"', original)
+        for text in ("COINS: 0/4", "ALL COINS", "COLLECT ALL COINS", "GO TO THE DOOR", "LIFE: 10"):
             self.assertIn(f'.asciz "{text}"', main)
-        self.assertEqual(number(main, "PFE_HUD_Y"), number(constants, "PF_HUD_Y"))
-        # Field columns: first tile column * 4 bytes = the original text x.
-        for field, label in ((0x00, "COINS"), (0x06, "HINT"), (0x10, "LIVES")):
-            self.assertEqual(field * 4, number(constants, f"PF_HUD_{label}_X"))
+        self.assertEqual(number(main, "PFE_HUD_Y"), 10)
+        # Field first tile columns: coins, hint, lives.
+        for field in (0x00, 0x06, 0x10):
             self.assertRegex(main, rf"ld bc, #0x{field:02X}[0-9A-F]{{2}}\n\s+j[pr] _pfe_hud_field")
         # Life flash: pen 16, red 0x1C then black 0x14, three times, 0x1000 loops.
         self.assertEqual(number(main, "PFE_BORDER_PEN"), 16)
@@ -166,21 +154,15 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("djnz _pfe_flash", loop)
         # No life below zero (the original returns without a flash at 0 lives).
         enemy_cb = main.split("_pfe_enemy_cb:", 1)[1].split("_pfe_collisions:", 1)[0]
-        self.assertIn("ld a, (platformer_ecs_lives)\n    or a\n    jr z, _pfe_cb_ok", enemy_cb)
+        self.assertIn("ld a, (platformer_lives)\n    or a\n    jr z, _pfe_cb_ok", enemy_cb)
         # Taking the last coin wins before any enemy is checked.
         collisions = main.split("_pfe_collisions:", 1)[1].split("_pfe_apply_events:", 1)[0]
         self.assertIn("ld hl, #_pfe_all_coins\n    or (hl)\n    ret nz", collisions)
         self.assertEqual(number(main, "PFE_FLASH_DELAY"), 0x1000)
-        flash = original.split("_pf_lose_life_flash:", 1)[1].split("ret", 1)[0]
-        self.assertIn("ld l, #16", flash)
-        self.assertIn("ld h, #0x1C", flash)
-        self.assertIn("ld h, #0x14", flash)
-        self.assertEqual(flash.count("ld de, #0x1000"), 2)
-        self.assertIn("ld b, #3", original.split("_pf_lose_life_flash:", 1)[0].rsplit("_pf_lose_life:", 1)[1])
 
-    def test_platformer_ecs_second_level_restarts_like_the_boot(self):
-        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
-        assets = (ROOT / "examples/platformer_ecs/assets/generated/assets.inc").read_text()
+    def test_platformer_second_level_restarts_like_the_boot(self):
+        main = (ROOT / "examples/platformer/main.s").read_text()
+        assets = (ROOT / "examples/platformer/assets/generated/assets.inc").read_text()
 
         def number(text, name):
             return int(re.search(rf"^{name}\s*=\s*(\w+)", text, re.M).group(1), 0)
@@ -189,7 +171,7 @@ class ECSManagerTests(unittest.TestCase):
         self.assertEqual(number(assets, "PLATFORMER_MAP2_WIDTH"), number(assets, "PLATFORMER_MAP_WIDTH"))
         self.assertEqual(number(assets, "PLATFORMER_MAP2_HEIGHT"), number(assets, "PLATFORMER_MAP_HEIGHT"))
         # Boot and the door run the same start routine.
-        boot = main.split("_main::", 1)[1].split("platformer_ecs_frame:", 1)[0]
+        boot = main.split("_main::", 1)[1].split("platformer_frame:", 1)[0]
         self.assertIn("call _pfe_start_level", boot)
         events = main.split("_pfe_apply_events:", 1)[1].split("_pfe_enemy_turn:", 1)[0]
         self.assertIn("jp _pfe_start_level", events)
@@ -197,15 +179,15 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ld (_pfe_map_desc), hl", events)
         # Lives are never written on the door path (a reset there would survive
         # the smoke whenever no enemy had hit the player earlier).
-        self.assertNotIn("platformer_ecs_lives", events)
+        self.assertNotIn("platformer_lives", events)
         # The start routine clears the level state but never the lives.
         start = main.split("_pfe_start_level:", 1)[1].split("_main::", 1)[0]
-        for reset in ("platformer_ecs_score", "platformer_ecs_won", "_pfe_all_coins", "_pfe_door_hit", "_pfe_phase"):
+        for reset in ("platformer_score", "platformer_won", "_pfe_all_coins", "_pfe_door_hit", "_pfe_phase"):
             self.assertIn(f"ld ({reset}), a", start)
-        self.assertNotIn("platformer_ecs_lives", start)
+        self.assertNotIn("platformer_lives", start)
         # The state clears are plain zero stores: no load of another value between
         # `xor a` and the last clear (a stray `inc a` would start the phase at 1).
-        clears = start.split("    xor a\n    ld (platformer_ecs_score), a", 1)[1].split("ld (_pfe_phase), a", 1)[0]
+        clears = start.split("    xor a\n    ld (platformer_score), a", 1)[1].split("ld (_pfe_phase), a", 1)[0]
         for line in clears.strip().splitlines():
             self.assertRegex(line.strip(), r"^ld \(\w+\), a$")
         # The player's physics and the HUD follow the active map.

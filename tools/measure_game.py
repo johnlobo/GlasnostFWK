@@ -11,16 +11,16 @@ Method (no change to the game):
   312 lines of 256 T-states. Timestamp error is about 4 T-states.
 * iteration = entry(k+1) - entry(k); idle = exit(k) - entry(k);
   work = entry(k+1) - exit(k). Work includes the 300 Hz interrupt handler and
-  the keyboard scan, which both games share.
+  the keyboard scan.
 * With `--routines`, a breakpoint on each routine entry plus one on its return
   address (read from the stack) times every call, nested ones included. A routine
   entered with `jp` is timed until it returns to whoever called the jumper.
 
-    python3 tools/measure_game.py platformer_ecs --scenarios idle,right,jump
+    python3 tools/measure_game.py platformer --scenarios idle,right,jump
     python3 tools/measure_game.py platformer --routines profile --json /tmp/o.json
 
 Scenarios hold cursor keys through the keyboard matrix while the iterations are
-measured. Run `python3 tools/build_test_disk.py platformer platformer_ecs` first.
+measured. Run `python3 tools/build_test_disk.py platformer` first.
 """
 from __future__ import annotations
 
@@ -47,8 +47,7 @@ API = "http://127.0.0.1:6128"
 EMULATOR = Path("/config/workspace/tools/amspirit-lite/run.sh")
 
 GAMES = {
-    "platformer": {"run": "PLATGAME", "status": "platformer_status", "ready": 0xA5},
-    "platformer_ecs": {"run": "PECS", "status": "platformer_ecs_status", "ready": 0x5A},
+    "platformer": {"run": "PLATGAME", "status": "platformer_status", "ready": 0x5A},
 }
 # Cursor keys are active low: row 0 bit 0 = up, bit 1 = right; row 1 bit 0 = left.
 SCENARIOS = {
@@ -60,12 +59,6 @@ SCENARIOS = {
 }
 PROFILES = {
     "platformer": [
-        "fwk_input_update", "_pf_update_animation", "_pf_read_controls", "_pf_update_player",
-        "_pf_update_enemies", "_pf_update_enemy_v2", "_pf_sync_player_render", "_pf_collect_coins",
-        "_pf_check_door", "_pf_check_enemy_contacts", "_pf_prepare_dirty", "_pf_restore_dirty",
-        "_pf_draw_dirty",
-    ],
-    "platformer_ecs": [
         "fwk_input_update", "fwk_ecs_system_behavior", "fwk_ecs_system_input", "fwk_ecs_system_platform",
         "fwk_ecs_system_motion_u8", "fwk_ecs_system_animation", "_pfe_collisions", "_pfe_apply_events",
         "fwk_ecs_render_prepare", "fwk_ecs_render_restore", "fwk_ecs_render_draw",
