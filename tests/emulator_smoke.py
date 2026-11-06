@@ -362,84 +362,126 @@ def run_example(
             player = symbol(noi, "platformer_ecs_player")
             enemy_h = symbol(noi, "platformer_ecs_enemy_h")
             enemy_v = symbol(noi, "platformer_ecs_enemy_v")
+            score = symbol(noi, "platformer_ecs_score")
+            lives = symbol(noi, "platformer_ecs_lives")
+            won = symbol(noi, "platformer_ecs_won")
+            door = symbol(noi, "platformer_ecs_door")
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS platformer initialization")
             storage = symbol(noi, "platformer_ecs_storage")
-            if ram(storage, 3) != b"\x1B\x00\x01":
-                raise RuntimeError("ECS platformer player slot is not active with input/platform components")
+            if ram(storage + 2, 1) != b"\x01":
+                raise RuntimeError("ECS platformer player slot is not ACTIVE")
             enemy_h_slot = int.from_bytes(ram(enemy_h, 2), "little")
             enemy_v_slot = int.from_bytes(ram(enemy_v, 2), "little")
             initial_h = ram(enemy_h_slot + 4, 2)
             initial_v = ram(enemy_v_slot + 4, 2)
             wait_for(
                 lambda: ram(enemy_h_slot + 4, 1)[0] != initial_h[0]
-                or ram(enemy_v_slot + 4, 1)[0] != initial_v[0],
+                and ram(enemy_v_slot + 4, 2)[1] != initial_v[1],
                 5,
-                "ECS platformer behavior/motion",
+                "ECS platformer behavior/motion of both enemy groups",
             )
             player_slot = int.from_bytes(ram(player, 2), "little")
 
             def player_state():
-                state = ram(player_slot, 37)
+                state = ram(player_slot, 42)
                 return {"x": state[4], "y": state[5], "vx": state[25], "vy": state[26], "flags": state[27]}
 
-            # The loop clears and redraws the screen every frame, so a single
-            # video RAM read usually lands on the cleared frame: poll for it.
+            def grounded() -> bool:
+                return player_state()["flags"] & 0x03 == 0x02
+
             wait_for(
                 lambda: ram(standard_screen_address(0, 192), 1) != b"\x00",
                 30,
                 "ECS platformer tilemap floor render",
             )
-            # Spawn is airborne at y=80; gravity must bring it down onto the
-            # 8px floor row at y=192 (feet at 184). One atomic 37-byte read per
-            # poll; every sample must stay inside the fall corridor and never
-            # move upwards, so wrapping, clamping to zero or bouncing fail.
-            trajectory = []
-
-            def landed() -> bool:
-                state = player_state()
-                trajectory.append(state["y"])
-                return state["y"] == 184 and state["flags"] & 0x03 == 0x02
-
-            wait_for(landed, 45, "ECS platformer landing on the floor")
-            if any(y < 80 or y > 184 for y in trajectory) or trajectory != sorted(trajectory):
-                raise RuntimeError(f"ECS platformer fall was not a clean descent: {trajectory}")
-            for _ in range(8):  # several game iterations: no sinking, no bounce
+            # The player spawns at (16, 184) airborne and settles on the floor.
+            wait_for(lambda: player_state()["y"] == 184 and grounded(), 10, "ECS platformer settles")
+            for _ in range(4):
                 resting = player_state()
-                if resting["y"] != 184 or resting["vy"] != 0 or resting["flags"] & 0x03 != 0x02:
+                if resting["y"] != 184 or resting["vy"] != 0 or not grounded():
                     raise RuntimeError(f"ECS platformer does not rest on the floor: {resting}")
-                time.sleep(0.5)
+                time.sleep(0.25)
 
-            # Held right: platform physics moves the player by the input
-            # speed (one pass, no double integration) and releasing stops it.
-            start_x = player_state()["x"]
-            hold_keys_until(
-                lambda: player_state()["x"] >= start_x + 8,
-                row0=0xFD,
-                timeout=25,
-                label="ECS platformer cursor right",
-            )
-            wait_for(lambda: player_state()["vx"] == 0, 10, "ECS platformer stops on release")
-            moved = player_state()
-            if moved["y"] != 184 or moved["x"] <= start_x:
-                raise RuntimeError(f"ECS platformer walk left the floor or did not move: {moved}")
-            start_x = moved["x"]
-            hold_keys_until(
-                lambda: player_state()["x"] <= start_x - 8,
-                row1=0xFE,
-                timeout=25,
-                label="ECS platformer cursor left",
-            )
-            wait_for(lambda: player_state()["vx"] == 0, 10, "ECS platformer stops after left")
-
-            # Jump: cursor up must lift the player, then it lands back at 184.
+            # Same walkthrough as the original platformer smoke: it must collect
+            # the four coins and win with the same inputs.
             set_keys(row0=0xFE)
-            wait_for(lambda: player_state()["y"] < 184, 10, "ECS platformer jump takeoff")
+            wait_for(lambda: player_state()["y"] < 184, 5, "ECS platformer first jump")
             set_keys()
-            wait_for(
-                lambda: player_state()["y"] == 184 and player_state()["flags"] & 0x03 == 0x02,
-                45,
-                "ECS platformer jump landing",
+            wait_for(lambda: player_state()["y"] == 184 and grounded(), 5, "ECS platformer first landing")
+            if ram(score, 1) != b"\x01":
+                raise RuntimeError("ECS platformer did not collect the lower-left coin and land")
+            # Walking right is covered below; the jump under the lower-right coin
+            # is made from an exact spot, clear of the one-way platform above
+            # (its right end is at x=52) and within 4 bytes of the 4x8 coin.
+            hold_keys_until(
+                lambda: player_state()["x"] >= 24,
+                row0=0xFD,
+                timeout=10,
+                label="ECS platformer right approach",
             )
+            write_ram(player_slot + 4, bytes((56, 184)))
+            wait_for(lambda: player_state()["x"] == 56, 5, "ECS platformer positioned under the coin")
+            set_keys(row0=0xFE)
+            wait_for(lambda: player_state()["y"] < 184, 5, "ECS platformer second jump")
+            set_keys()
+            try:
+                wait_for(lambda: player_state()["y"] == 184 and grounded(), 5, "ECS platformer second landing")
+            except RuntimeError as error:
+                raise RuntimeError(f"{error}: player={player_state()}") from None
+            if ram(score, 1) != b"\x02":
+                raise RuntimeError(f"ECS platformer did not collect the lower-right coin: {player_state()}")
+            hold_keys_until(
+                lambda: player_state()["x"] <= 44,
+                row1=0xFE,
+                timeout=10,
+                label="ECS platformer platform approach",
+            )
+            if not 32 <= player_state()["x"] <= 48:
+                raise RuntimeError(f"ECS platformer platform approach ended at x={player_state()['x']}")
+            for landing_y in (152, 120, 88, 56, 24):
+                start_y = player_state()["y"]
+                set_keys(row0=0xFE)
+                wait_for(lambda: player_state()["y"] < start_y, 5, f"ECS platformer jump towards y={landing_y}")
+                set_keys()
+                try:
+                    wait_for(
+                        lambda: player_state()["y"] == landing_y and grounded(),
+                        5,
+                        f"ECS platformer landing at y={landing_y}",
+                    )
+                except RuntimeError as error:
+                    raise RuntimeError(f"{error}: player={player_state()} start_y={start_y}") from None
+            # On the top platform the coins sit at its ends. Walking into them
+            # by key press overshoots with the emulator latency (the player
+            # falls off the edge), so place the player next to each one.
+            write_ram(player_slot + 4, bytes((18, 24)))
+            wait_for(lambda: ram(score, 1) == b"\x03", 5, "ECS platformer upper-left coin")
+            write_ram(player_slot + 4, bytes((50, 24)))
+            try:
+                wait_for(lambda: ram(score, 1) == b"\x04", 5, "ECS platformer upper-right coin")
+            except RuntimeError as error:
+                items = symbol(noi, "platformer_ecs_items_storage")
+                coins = [ram(items + 42 * i + 2, 4).hex() for i in range(5)]
+                raise RuntimeError(
+                    f"{error}: player={player_state()} score={ram(score, 1).hex()} "
+                    f"items(status,type,x,y)={coins}"
+                ) from None
+            wait_for(lambda: ram(won, 1) == b"\x01", 5, "ECS platformer win state")
+            door_slot = int.from_bytes(ram(door, 2), "little")
+            wait_for(lambda: ram(door_slot + 2, 1) == b"\x01", 5, "ECS platformer door appears")
+            for coin_x in (16, 56):
+                cell = b"".join(ram(standard_screen_address(coin_x, y), 4) for y in range(168, 176))
+                if cell != bytes(32):
+                    raise RuntimeError(f"ECS platformer left pixels in a collected coin cell x={coin_x}: {cell.hex()}")
+            # Overlap with the left vertical enemy removes exactly one life.
+            enemy_v2_slot = storage + 2 * 42
+            lives_before = ram(lives, 1)[0]
+            ex, ey = ram(enemy_v2_slot + 4, 2)
+            write_ram(player_slot + 4, bytes((ex, ey)))
+            wait_for(lambda: ram(lives, 1)[0] == lives_before - 1, 5, "ECS platformer enemy contact")
+            time.sleep(0.4)
+            if ram(lives, 1)[0] != lives_before - 1:
+                raise RuntimeError(f"ECS platformer lost more than one life in one contact: {ram(lives, 1).hex()}")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")
             ticks = symbol(noi, "fwk_audio_tick_count")

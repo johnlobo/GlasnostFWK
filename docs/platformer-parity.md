@@ -45,3 +45,42 @@ Se fija antes de construir cada rebanada y se mide con 8 a 16 entidades:
 
 Referencia de tamaño: `platformer` ocupa 9.390 B de código y 1.992 de datos
 (`docs/build-sizes.md`).
+
+## Rebanada 1: hecha (2026-11-06)
+
+`platformer_ecs` usa los **mismos assets** que `platformer`. La carpeta
+`examples/platformer_ecs/assets/` es una copia con el manifiesto, la paleta, los
+PNG y el TMX originales y la salida generada. El pipeline es el mismo
+(`tools/import_assets.py`, conversión incremental por SHA-256, mapas ZX7B), y
+`make` en el ejemplo convierte solo si cambió un asset. La copia es deliberada:
+la fase 11 elimina `platformer`, y el ejemplo ECS debe quedarse con sus assets.
+
+Tres managers: ítems (4 monedas y la puerta), rápido (jugador y dos enemigos
+verticales) y lento (el enemigo horizontal, que se actualiza un fotograma de
+cada dos como en el original). Las entidades se crean desde una tabla de filas
+(`PFE_ROW`), no con plantillas de 42 bytes escritas a mano.
+
+Resultados medidos:
+
+- El recorrido completo del smoke original (cuatro monedas, subida por las cinco
+  plataformas, puerta) pasa tal cual con las mismas teclas, en CPC 6128 y 464.
+  Las excepciones están en la lista de divergencias.
+- Contacto con un enemigo quita exactamente una vida por contacto.
+- Tamaño provisional: 9.343 B de BIN frente a 11.382 B del original, sin HUD ni
+  segundo nivel todavía, así que la comparación no es aún válida.
+
+### Divergencias frente al original (decididas y documentadas)
+
+| Área | Original | ECS | Motivo |
+|---|---|---|---|
+| Hitbox de moneda | ventana de 8x8 | el sprite real de 4x8 | una sola anchura por entidad: la del sprite |
+| Contacto entre enemigos | un bit por enemigo | un canal por grupo (rápido, lento) | el ENTER/STAY/EXIT de la colisión es por paso |
+| Parpadeo al perder vida | sí | pendiente | rebanada 2 |
+
+### Defecto de paridad corregido en el núcleo
+
+`core/ecs_input.s` activaba `AIRBORNE` al saltar, así que la gravedad actuaba
+antes del primer movimiento y el salto subía 28 píxeles en lugar de 36. Con esa
+altura el jugador no alcanzaba la plataforma de y=152. Ahora el sistema de
+entrada solo pone la velocidad y deja que la física haga el resto, igual que el
+original.

@@ -84,10 +84,7 @@ class ECSManagerTests(unittest.TestCase):
         # physics_platform applies gravity only to airborne bodies: a grounded
         # spawn hovers at its spawn height forever.
         main = (ROOT / "examples/platformer_ecs/main.s").read_text()
-        template = main.split("platformer_ecs_player_template:", 1)[1].split(
-            "platformer_ecs_enemy_h_template:", 1
-        )[0]
-        self.assertIn(".db 0, 0, FWK_PLATFORM_AIRBORNE", template)
+        self.assertIn("ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE", main)
 
     def test_platformer_ecs_smoke_covers_landing_walk_and_jump(self):
         smoke = (ROOT / "tests/emulator_smoke.py").read_text()
@@ -95,11 +92,14 @@ class ECSManagerTests(unittest.TestCase):
             'if name == "audio":', 1
         )[0]
         for label in (
-            "ECS platformer landing on the floor",
-            "ECS platformer cursor right",
-            "ECS platformer cursor left",
-            "ECS platformer jump takeoff",
-            "ECS platformer jump landing",
+            "ECS platformer settles",
+            "ECS platformer first jump",
+            "ECS platformer first landing",
+            "ECS platformer right approach",
+            "ECS platformer platform approach",
+            "ECS platformer upper-right coin",
+            "ECS platformer win state",
+            "ECS platformer enemy contact",
         ):
             # The label must be the argument of a waiting call, not a stray
             # string in dead code.
