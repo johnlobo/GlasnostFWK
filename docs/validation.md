@@ -560,5 +560,19 @@ python3 tests/emulator_smoke.py --model 464 vertical
   (el smoke fuerza ahora 7 vidas); el reinicio de enemigos y de fase no se
   comprobaba (cotas de posición y prueba host de ceros puros); y las cifras de
   mutaciones no tenían artefacto (el script).
-- Pendiente: prueba diferencial entre los dos juegos, presupuesto de tamaño y
-  velocidad y coste de `prepare` (parte 4).
+- Pendiente: ninguno de la fase 10; la parte 4 cierra con la medición y el presupuesto.
+
+## Fase 10: paridad y rendimiento de `platformer_ecs` (parte 4)
+
+- `tools/measure_game.py`: fotogramas por iteración y T-states por rutina con
+  puntos de ruptura del emulador (sin tocar los juegos); `tests/test_measure_game.py`
+  cubre el cálculo (resumen, fotogramas enteros, totales por rutina, lectura de
+  etiquetas locales de los listados). Cifras en `docs/platformer-parity.md`.
+- Defecto del original hallado y corregido: `fwk_motion_u8_step` trataba las
+  posiciones `y >= 128` como negativas. La prueba del smoke de `platformer` falla
+  con el código anterior (y 0..126) y pasa ahora. Afecta también a `vertical` y
+  `platform`, cuyos smokes siguen pasando.
+- Prueba diferencial, una sola vez y sin dejarla en el repositorio (necesita el
+  emulador y `platformer` desaparece en la fase 11): idénticos en 300 iteraciones en
+  dos semillas. Una tercera mostró un desfase del arnés, corregido y no repetido.
+- No se probó `prepare` más allá de la medición: no se optimiza.

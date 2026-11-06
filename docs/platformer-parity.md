@@ -23,33 +23,70 @@ Criterio de salida (G3 del plan maestro): `platformer_ecs` juega igual que
    ECS (colisión de fase 7, animación de fase 8, render de fase 9). Sin HUD.
 2. **HUD y efectos**: texto, victoria, parpadeo al perder vida. Hecha (2026-11-06), ver abajo.
 3. **Segundo nivel** y reinicio por puerta. Hecha (2026-11-06), ver abajo.
-4. **Rendimiento**: medir fotogramas por iteración y T-states por sistema en
-   `platformer` y `platformer_ecs`, y reducir el coste de `prepare` (puntero en
-   vez de `call _ecsr_entry`).
+4. **Rendimiento y cierre**: medir fotogramas por iteración y T-states por rutina
+   en los dos juegos, fijar el presupuesto con esas cifras y cerrar la fase. Hecha
+   (2026-11-06), ver abajo.
 
-## Prueba diferencial
+## Prueba diferencial, presupuesto y rendimiento (parte 4, cerrada 2026-11-06)
 
-**Estado: no existe todavía.** La rebanada 1 se entrega sin ella. Lo que sí hay
-es el recorrido del smoke original repetido sobre `platformer_ecs`, con
-aserciones de reglas (vidas iniciales, puerta oculta, victoria solo con 4
-monedas, huecos de moneda liberados, límites de patrulla, animación, una vida por
-contacto y por enemigo, enemigos inofensivos tras ganar, puerta). La prueba
-diferencial real (el mismo guion de entradas en los dos juegos, comparando
-jugador, puntuación, vidas, estado y enemigos fotograma a fotograma) se construye
-en la rebanada 4, junto con el presupuesto. La comparación de VRAM completa
-solo es exigible tras la rebanada 2.
+**Prueba diferencial.** Se hizo una vez con un arnés de usar y tirar (no está en el
+repositorio: necesita el emulador y `platformer` desaparece en la fase 11). El mismo
+guion de teclas aleatorio (con semilla) se aplicó a los dos juegos, inyectando el
+estado de entrada justo tras `fwk_input_update` con el emulador pausado, y se
+comparó en cada iteración el jugador (x, y, velocidades), los tres enemigos,
+puntuación, vidas, victoria y nivel. Resultado: **idénticos en 300 iteraciones en
+dos de las tres semillas**; la tercera mostró un desfase del propio arnés (leía dos
+veces la misma parada del emulador), corregido sin repetir esa corrida. No apareció
+ninguna divergencia de reglas entre los dos juegos.
 
-## Presupuesto de tamaño y velocidad
+Lo que sí destapó: un defecto del original, en `fwk_motion_u8_step`
+(`src/extensions/motion_u8.s`). Tras sumar, miraba el signo del resultado, así que
+toda posición `y >= 128` se tomaba por negativa y se ponía a 0. Los enemigos
+verticales, que patrullan y=56..154, saltaban a y=0 al llegar a 128, y el de la
+izquierda (x=8) se colaba en la zona del HUD. Eso explica los restos de `COINS:`
+("ALL S:INS") vistos al forzar estados en la parte 2. `platformer_ecs` no lo tenía
+(su movimiento satura con los límites del perfil). Corregido en la extensión, con
+una comprobación en el smoke de `platformer` (los enemigos verticales recorren
+y=56..140 o más) que falla con el código anterior (y 0..126).
 
-Se fija antes de construir cada rebanada y se mide con 8 a 16 entidades:
+**Medición** (`tools/measure_game.py`). Un punto de ruptura en la entrada de
+`cpct_waitVSYNC_asm` y otro en su `ret` fijan, con el emulador pausado, el
+fotograma y la posición del haz: T = fotogramas x 79.872 + (línea - 25) x 256 +
+columna / 4 (error de unos 4 T). La salida de la espera cae en el VSYNC, así que
+los fotogramas por iteración son enteros exactos. El trabajo incluye la
+interrupción de 300 Hz, común a los dos juegos. 150 iteraciones por escenario, CPC
+6128, teclas mantenidas:
 
-- Código ECS añadido por la rebanada 1: por fijar tras medir el original (ver
-  `docs/build-sizes.md`, fila `platformer`).
-- Velocidad: `platformer_ecs` no baja de los fotogramas por iteración del
-  original medidos con el mismo guion.
+| Escenario | Juego | Fotogramas/iteración | Trabajo medio (T) | Mediana | p95 | Máximo |
+|---|---|---|---:|---:|---:|---:|
+| reposo | `platformer` | 2 (149 de 149) | 139.821 | 140.084 | 141.088 | 143.588 |
+| reposo | `platformer_ecs` | 2 (149 de 149) | 111.208 | 104.352 | 153.248 | 154.356 |
+| derecha | `platformer` | 2,12 (131 de 2, 18 de 3) | 147.997 | 142.798 | 190.114 | 193.892 |
+| derecha | `platformer_ecs` | 2 (149 de 149) | 114.756 | 105.912 | 154.588 | 161.652 |
+| derecha + salto | `platformer` | 2,11 (132 de 2, 17 de 3) | 139.316 | 134.696 | 178.872 | 182.160 |
+| derecha + salto | `platformer_ecs` | 2 (149 de 149) | 114.828 | 105.960 | 154.720 | 163.276 |
 
-Referencia de tamaño: `platformer` ocupa 9.390 B de código y 1.992 de datos
-(`docs/build-sizes.md`).
+El port ECS trabaja un 18 a 22 % menos de media y nunca pasa de 2 fotogramas por
+iteración; el original sube a 3 fotogramas en el 11 a 12 % de las iteraciones al
+moverse. Reparto por rutina en reposo (T por iteración, `--routines profile`):
+ECS: `prepare` 28.130, `restore` 17.350, `draw` 31.737, colisiones 11.518,
+plataforma 4.415, animación 4.416 (3 llamadas), movimiento 3.880, comportamiento
+4.735, entrada 1.592 + 996. Original: `prepare_dirty` 74.543 (el sistema más caro),
+`restore` 9.631, `draw` 24.706, el resto de la lógica (con la entrada) unos 8.100.
+
+**Presupuesto fijado** (con las cifras de arriba; se revisa si cambia el juego):
+
+- Velocidad: `platformer_ecs` hace 2 fotogramas por iteración en los tres
+  escenarios (ninguna iteración de 3) y su trabajo medio no supera el del
+  original. Hoy: 111k a 115k T contra 139k a 148k T.
+- Tamaño: BIN <= 5 % por encima de `platformer`. Hoy 11.861 B frente a 11.382 B
+  (+4,2 %; código 9.502 contra 9.390, datos 2.359 contra 1.992).
+
+**Decisión: no se optimiza `prepare`.** Con la medición, el renderer ECS ya es más
+rápido que el original en conjunto y el presupuesto se cumple; el máximo de 154k a
+163k T roza los 159.744 T de dos fotogramas pero el VSYNC absorbe esa variación
+(ninguna iteración pasó de 2). Se reabre si un juego con más entidades pierde los
+2 fotogramas.
 
 ## Rebanada 1: hecha (2026-11-06)
 
@@ -88,7 +125,7 @@ Resultados medidos:
 | Parpadeo al perder vida | borde rojo 3 veces, bloqueante, antes de `prepare` y VSYNC | mismas constantes y espera; se ejecuta al final del fotograma, tras dibujar | el HUD se actualiza en ese punto; ver también la fila de varias pérdidas |
 | Varias vidas perdidas en un fotograma | un parpadeo por vida | un solo parpadeo (el bit de parpadeo es una marca, no un contador); las vidas y el HUD sí restan todas | caso raro, no cubierto por el smoke |
 | Puerta en el nivel 2 | se oculta y termina | igual: se oculta y `won` vuelve a 0, sin reiniciar | paridad |
-| Fotogramas de animación | el sprite quieto no se redibuja | el sistema de animación marca `DIRTY` en cada cambio de frame, también con el jugador y los enemigos quietos | coste conocido, a medir en la rebanada 4 |
+| Fotogramas de animación | el sprite quieto no se redibuja | el sistema de animación marca `DIRTY` en cada cambio de frame, también con el jugador y los enemigos quietos | coste medido en la parte 4: dentro del presupuesto |
 | Arranque del jugador | `GROUNDED` | `AIRBORNE` en (16, 184), aterriza en el primer fotograma | la física solo aplica gravedad a cuerpos en el aire; un salto en el fotograma 0 se ignora |
 | Orden de dibujado en empate | puerta y monedas sobre el jugador | el jugador sobre ellas; H después de V | desempate por orden de managers y slot |
 | Estado público | `platformer_status` 0x5A = ganado | `platformer_ecs_status` 0x5A = inicializado; `platformer_ecs_won` marca la victoria | el smoke ECS ya usaba 0x5A para el arranque |
@@ -128,13 +165,13 @@ Divergencias de esta rebanada:
 |---|---|---|---|
 | Cambio de puntuación | restaura 2 celdas y redibuja un dígito | restaura y redibuja el campo entero (5 celdas, 10 glifos) | menos código; mismos píxeles finales, algo más de tiempo en el fotograma del evento |
 | Vidas tras ganar | `_pf_update_hud` salta el campo de vidas con el estado `WON` | se actualiza siempre | en el original los enemigos no restan tras ganar; aquí, en el nivel 2 tras ganar y tocar la puerta final, los enemigos vuelven a restar (el original también deja de bloquearlos: pone el estado en `READY`) |
-| Pasar de 3 a 4 monedas | observado: tras forzar los estados con `write_ram` el original dejó restos de `COINS:` ("ALL S:INS") | texto limpio | no investigado; el dorado del estado de cuatro monedas es el del original desde un estado limpio (0 a 4) |
+| Pasar de 3 a 4 monedas | el original dejaba restos de `COINS:` ("ALL S:INS") | texto limpio | causa hallada en la parte 4: el enemigo vertical izquierdo, enviado a y=0 por un defecto de `fwk_motion_u8_step`, pisaba el HUD. Corregido en el original; el dorado del estado de cuatro monedas es el del original desde un estado limpio |
 
 Tamaño actual: 11.798 B de BIN (código 9.453 + datos 2.345) frente a 11.382 B
 (9.390 + 1.992) del original, con HUD y texto pero sin nivel 2. El port ECS ya es
 416 B mayor y aún le falta el nivel 2: el presupuesto de bytes y su reducción
 (los dos juegos usan el mismo módulo de texto; de dónde sale el resto, por
-ejemplo managers, renderer ECS o tablas de filas, está por medir) se fijan y atacan en la rebanada 4.
+ejemplo managers, renderer ECS o tablas de filas) queda dentro del presupuesto de la parte 4.
 
 ## Parte 3: hecha (2026-11-06)
 

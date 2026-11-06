@@ -1310,8 +1310,6 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   cadencia del original, puerta y vidas. El recorrido del smoke original pasa en
   CPC 6128 y 464 (con teletransportes donde el original camina; ver la tabla de
   divergencias). La puerta aún no carga el nivel 2 (rebanada 3).
-- [ ] Sin hacer de la rebanada 1: prueba diferencial entre los dos juegos y
-  presupuesto de tamaño y velocidad (rebanada 4).
 - [x] Corregido en `core/ecs_input.s`: el salto subía 28 píxeles en vez de 36.
 - [x] Rebanada 2 (2026-11-06): HUD (`COINS`, pista, `LIFE`), textos de victoria
   y parpadeo rojo del borde al perder una vida, con `ui/text.s`. Los campos de
@@ -1324,5 +1322,13 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   empiezan igual. Píxeles de los dos niveles comparados con el original, mapa 2
   contra el TMX, física del mapa 2 y victoria del nivel 2 en el smoke (CPC 6128 y
   464). BIN: 11.861 B frente a 11.382 B del original (presupuesto 11.878).
-- [ ] Rebanada 4: rendimiento y presupuestos de tamaño. Detalle en
-  `docs/platformer-parity.md`.
+- [x] Parte 4 (2026-11-06): prueba diferencial hecha una vez (idénticos en 300
+  iteraciones, 2 semillas), medición con `tools/measure_game.py` y presupuesto
+  fijado. `platformer_ecs` hace 2 fotogramas por iteración siempre y trabaja un
+  18 a 22 % menos que `platformer`, que sube a 3 fotogramas en el 11 a 12 % de las
+  iteraciones al moverse. BIN +4,2 % (presupuesto 5 %). Se descarta optimizar
+  `prepare`. Defecto del original hallado y corregido en `fwk_motion_u8_step`
+  (posiciones `y >= 128` enviadas a 0). Detalle en `docs/platformer-parity.md`.
+- [x] Criterios de la fase 10 cumplidos: paridad jugable completa (reglas, HUD,
+  parpadeo, dos niveles), velocidad y tamaño dentro del presupuesto. El hito
+  `2.0.0-beta.1` queda a falta de que se etiquete.
