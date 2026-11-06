@@ -79,6 +79,7 @@ separado.
 | `ECS_E_Y` | siguiente | `ECS_Y_SIZE` | posición vertical |
 | `ECS_E_WIDTH` | siguiente | 1 | anchura en bytes |
 | `ECS_E_HEIGHT` | siguiente | 1 | altura en scanlines |
+| `ECS_E_CADENCE` | siguiente | 1 | cadencia de ejecución, ver 6.2.1 |
 
 Los formatos `ECS_X_FORMAT` y `ECS_Y_FORMAT` se seleccionan de forma
 independiente entre `u8`, `u16` y `fixed_8_8`. Los componentes de movimiento
@@ -232,6 +233,7 @@ contadores a cero.
 | `fwk_ecs_entity_enable` | `IX=manager`, `IY=entidad` | ninguna |
 | `fwk_ecs_entity_set_mask` | `IX=manager`, `IY=entidad`, `BC=máscara` | ninguna |
 | `fwk_ecs_system_run` | `IX=manager`, `BC=máscara requerida`, `HL=callback` | ninguna |
+| `fwk_ecs_system_run_any` | igual, ignorando `ECS_E_CADENCE` | ninguna |
 | `fwk_ecs_manager_collect` | `IX=manager` | `B=slots liberados` |
 
 La plantilla tiene exactamente `ECS_ENTITY_SIZE` bytes, declara
@@ -247,6 +249,47 @@ activo aborta el recorrido y propaga su código de `A`.
 Los sistemas especializados PUEDEN implementar su propio bucle para ahorrar
 el coste del callback, pero DEBEN respetar exactamente el filtrado, orden,
 locks y reglas de mutación de `fwk_ecs_system_run`.
+
+#### 6.2.1 Cadencia
+
+`ECS_E_CADENCE` decide en qué iteraciones del bucle del juego ejecutan una
+entidad los sistemas que pasan por `fwk_ecs_system_run` (behavior, input,
+platform, movimiento, animación). Es un byte `(fase << 4) | (cada - 1)`, con
+`cada` igual a 1, 2, 4, 8 o 16 (potencia de dos) y `fase` en 0..`cada - 1`:
+
+| Byte | Significado |
+|---|---|
+| `0x00` | todas las iteraciones (valor por defecto de una plantilla a cero) |
+| `0x01` | una de cada 2, iteraciones pares |
+| `0x11` | una de cada 2, iteraciones impares |
+| `0x33` | una de cada 4, cuando `tick AND 3 = 3` |
+
+La entidad se ejecuta cuando `((fwk_ecs_tick XOR fase) AND (cada - 1)) = 0`.
+La fase DEBE ser menor que `cada` (`fase <= cada - 1`). El test es sin estado:
+no hay contador por entidad y todos los sistemas ven el mismo resultado en la
+misma iteración. Coste por entidad que pasa el filtro de máscara, contado por
+instrucciones y sin medir en el emulador: unos 35 T con cadencia `0x00` y unos
+110 T con cualquier otra.
+
+- `fwk_ecs_tick` es un byte global que el JUEGO incrementa una vez por
+  iteración de su bucle (`ld hl,#fwk_ecs_tick` / `inc (hl)`). NO es el contador
+  de interrupciones de 50 Hz: un juego que itera cada dos interrupciones vería
+  siempre la misma paridad.
+- Crear una entidad cuyo byte de cadencia no tenga la forma
+  `(fase << 4) | (2^k - 1)` con `fase <= 2^k - 1` devuelve
+  `FWK_ECS_ERR_TEMPLATE`.
+- `fwk_ecs_system_run` y `fwk_ecs_system_run_any` comparten el estado de la
+  pasada (callback, máscara y modo de cadencia), así que tampoco son
+  reentrantes: un callback no puede iniciar otra pasada, tampoco de otro manager.
+- La cadencia solo afecta a los sistemas que filtran mediante
+  `fwk_ecs_system_run`. No afecta a render ni a `fwk_ecs_manager_*`, y tampoco
+  a los objetivos de `fwk_ecs_collide`, que recorre con `fwk_ecs_system_run_any`
+  (mismo contrato, ignora el byte de cadencia): un objetivo que desapareciera
+  en sus iteraciones de descanso cerraría y reabriría el contacto cada dos
+  iteraciones y emitiría `ENTER` de nuevo cada vez.
+- El contador de animación y los temporizadores de behavior avanzan una vez por
+  ejecución, no por iteración: una entidad con cadencia 2 necesita la mitad de
+  ticks para conservar el mismo tiempo real.
 
 ### 6.3 Errores
 
@@ -512,7 +555,7 @@ El include generado debe publicar como mínimo:
 
 ```text
 ECS_ABI_MAJOR = 2
-ECS_ABI_MINOR = 0
+ECS_ABI_MINOR = 1
 ECS_ENTITY_SIZE
 ECS_X_FORMAT / ECS_X_SIZE
 ECS_Y_FORMAT / ECS_Y_SIZE
@@ -526,7 +569,9 @@ La reconfiguración debe mostrar cambios de offsets, tamaños y máscaras antes 
 escribir. Debug y release comparten layout, símbolos y convención de llamada.
 
 Cambiar tamaño, orden, offset, valor de flag, estado, registro de entrada o
-semántica de carry requiere incrementar la versión ABI. Añadir una rutina sin
+semántica de carry requiere incrementar la versión ABI. La 2.1 añade
+`ECS_E_CADENCE` (desplaza los offsets posteriores a `ECS_E_HEIGHT`),
+`fwk_ecs_tick` y `fwk_ecs_system_run_any`. Añadir una rutina sin
 alterar contratos existentes puede incrementar solo `ECS_ABI_MINOR`.
 
 ## 12. Puerta G1 aprobada

@@ -313,16 +313,19 @@ def run_example(
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS manager lifecycle")
             manager = symbol(noi, "ecsmanager_manager")
             storage = symbol(noi, "ecsmanager_storage")
+            profile = (ROOT / "examples/ecsmanager/generated/ecs_profile.inc").read_text()
+            stride = int(re.search(r"^ECS_ENTITY_SIZE = (\d+)", profile, re.M).group(1))
+            flags_offset = int(re.search(r"^ECS_E_RENDER_FLAGS = (\d+)", profile, re.M).group(1))
             descriptor = ram(manager, 8)
-            if descriptor[2:] != bytes((3, 32, 3, 3, 0, 1)):
+            if descriptor[2:] != bytes((3, stride, 3, 3, 0, 1)):
                 raise RuntimeError(
                     "ECS manager capacity/stride/counts/lock/flags differ: "
                     f"{descriptor.hex()}"
                 )
-            slots = ram(storage, 96)
-            if any(slots[offset : offset + 3] != b"\x0F\x00\x01" for offset in (0, 32, 64)):
+            slots = ram(storage, 3 * stride)
+            if any(slots[offset : offset + 3] != b"\x0F\x00\x01" for offset in (0, stride, 2 * stride)):
                 raise RuntimeError("ECS stable slots do not retain mask/status")
-            if not slots[32 + 18] & 0x02:
+            if not slots[stride + flags_offset] & 0x02:
                 raise RuntimeError("ECS enable did not mark render dirty")
         if name == "ecscollision":
             sys.path.insert(0, str(ROOT / "tools"))
@@ -425,7 +428,19 @@ def run_example(
             door = symbol(noi, "platformer_door")
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS platformer initialization")
             storage = symbol(noi, "platformer_storage")
-            if ram(storage + 2, 1) != b"\x01":
+            profile = (ROOT / "examples/platformer/generated/ecs_profile.inc").read_text()
+
+            def layout(name):
+                return int(re.search(rf"^{name} = (\d+)", profile, re.M).group(1))
+
+            stride = layout("ECS_ENTITY_SIZE")
+            sprite_offset = layout("ECS_E_RENDER_SPRITE")
+            velocity_x, velocity_y, motion_flags = (
+                layout("ECS_E_MOTION_VELOCITY_X"), layout("ECS_E_MOTION_VELOCITY_Y"), layout("ECS_E_MOTION_FLAGS")
+            )
+            # One manager, filled in spawn order: 0..3 coins, 4 door, 5 player,
+            # 6 left vertical enemy, 7 horizontal enemy, 8 right vertical enemy.
+            if ram(storage + 5 * stride + 2, 1) != b"\x01":
                 raise RuntimeError("ECS platformer player slot is not ACTIVE")
             enemy_h_slot = int.from_bytes(ram(enemy_h, 2), "little")
             enemy_v_slot = int.from_bytes(ram(enemy_v, 2), "little")
@@ -438,9 +453,9 @@ def run_example(
                 "ECS platformer behavior/motion of both enemy groups",
             )
             player_slot = int.from_bytes(ram(player, 2), "little")
-            enemy_v2_slot = storage + 42
+            enemy_v2_slot = storage + 6 * stride
             door_slot = int.from_bytes(ram(door, 2), "little")
-            items = symbol(noi, "platformer_items_storage")
+            items = storage
             if ram(lives, 1) != b"\x0A" or ram(score, 1) != b"\x00" or ram(won, 1) != b"\x00":
                 raise RuntimeError("ECS platformer initial lives/score/won are invalid")
             hud_dirty = symbol(noi, "platformer_hud_dirty")
@@ -479,7 +494,34 @@ def run_example(
                 h_x.append(ram(enemy_h_slot + 4, 1)[0])
                 v_y.append(ram(enemy_v_slot + 5, 1)[0])
                 v2_y.append(ram(enemy_v2_slot + 5, 1)[0])
-                h_sprites.add(ram(enemy_h_slot + 8, 2))
+                h_sprites.add(ram(enemy_h_slot + sprite_offset, 2))
+            # Cadence: the left vertical enemy runs every loop iteration, the horizontal
+            # and the right vertical one every second iteration. Sampling can miss
+            # changes, but it misses them equally, so the ratio of position changes
+            # stays near 1/2; an enemy that ignored its cadence byte would give 1.
+            def changes(samples):
+                return sum(1 for before, after in zip(samples, samples[1:]) if before != after)
+
+            fast = changes(v2_y)
+            if fast < 20:
+                raise RuntimeError(f"ECS platformer sampling saw too few left vertical moves: {fast}")
+            for label, samples in (("horizontal", h_x), ("right vertical", v_y)):
+                ratio = changes(samples) / fast
+                if not 0.3 <= ratio <= 0.7:
+                    raise RuntimeError(
+                        f"ECS platformer {label} enemy cadence is {ratio:.2f} of the left vertical one, expected about 0.5"
+                    )
+            # Phase: the two enemies take turns, so a sampling step (faster than an
+            # iteration) almost never sees both move. Measured: 0.0 with opposite
+            # phases, 0.8 when both run on the same iterations.
+            both = sum(
+                1 for i in range(1, len(h_x)) if h_x[i] != h_x[i - 1] and v_y[i] != v_y[i - 1]
+            )
+            if both > 0.3 * max(1, changes(h_x)):
+                raise RuntimeError(
+                    f"ECS platformer horizontal and right vertical enemies move on the same iterations: "
+                    f"{both} of {changes(h_x)} steps"
+                )
             if not (32 <= min(h_x) and max(h_x) <= 54 and max(h_x) - min(h_x) >= 8):
                 raise RuntimeError(f"ECS platformer horizontal patrol out of limits: {min(h_x)}..{max(h_x)}")
             for label, ys in (("right vertical", v_y), ("left vertical", v2_y)):
@@ -489,8 +531,8 @@ def run_example(
                 raise RuntimeError("ECS platformer enemy animation never changed the sprite")
 
             def player_state():
-                state = ram(player_slot, 42)
-                return {"x": state[4], "y": state[5], "vx": state[25], "vy": state[26], "flags": state[27]}
+                state = ram(player_slot, stride)
+                return {"x": state[4], "y": state[5], "vx": state[velocity_x], "vy": state[velocity_y], "flags": state[motion_flags]}
 
             def grounded() -> bool:
                 return player_state()["flags"] & 0x03 == 0x02
@@ -573,8 +615,8 @@ def run_example(
             try:
                 wait_for(lambda: ram(score, 1) == b"\x04", 5, "ECS platformer upper-right coin")
             except RuntimeError as error:
-                items = symbol(noi, "platformer_items_storage")
-                coins = [ram(items + 42 * i + 2, 4).hex() for i in range(5)]
+                items = storage
+                coins = [ram(items + stride * i + 2, 4).hex() for i in range(5)]
                 raise RuntimeError(
                     f"{error}: player={player_state()} score={ram(score, 1).hex()} "
                     f"items(status,type,x,y)={coins}"
@@ -595,7 +637,7 @@ def run_example(
             write_ram(hud_dirty, b"\x02")
             check_hud(None, None, real_lives, "lives restored")
             for slot in range(4):
-                if ram(items + 42 * slot + 2, 1) != b"\x00":
+                if ram(items + stride * slot + 2, 1) != b"\x00":
                     raise RuntimeError(f"ECS platformer coin slot {slot} was not freed after collection")
             for coin_x in (16, 56):
                 cell = b"".join(ram(standard_screen_address(coin_x, y), 4) for y in range(168, 176))
@@ -644,7 +686,7 @@ def run_example(
             if ram(score, 1) != b"\x00" or ram(won, 1) != b"\x00" or ram(door_slot + 2, 1) != b"\x03":
                 raise RuntimeError("ECS platformer level 2 did not reset score, won and the hidden door")
             for slot in range(4):
-                if ram(items + 42 * slot + 2, 1) != b"\x01":
+                if ram(items + stride * slot + 2, 1) != b"\x01":
                     raise RuntimeError(f"ECS platformer coin slot {slot} was not respawned on level 2")
             if (
                 int.from_bytes(ram(player, 2), "little") != player_slot
@@ -672,6 +714,7 @@ def run_example(
                 # frame, so a single placement can miss: retry from a clear spot.
                 # Each attempt is a fresh contact (the player leaves first).
                 flashed = False
+                trace = []
                 for _attempt in range(6):
                     write_ram(player_slot + 4, bytes((24, 100)))
                     time.sleep(0.3)
@@ -681,13 +724,18 @@ def run_example(
                     poll_until = time.time() + 0.6
                     while time.time() < poll_until:
                         flashed = flashed or get("/api/state")["ga"]["border_idx"] == 0x1C
+                        row = (ram(lives, 1)[0], tuple(ram(player_slot + 4, 2)), tuple(ram(enemy_v2_slot + 4, 2)),
+                               tuple(ram(enemy_h_slot + 4, 2)), tuple(ram(enemy_v_slot + 4, 2)))
+                        if not trace or trace[-1][1:] != row:
+                            trace.append((_attempt,) + row)
                     if ram(lives, 1)[0] != lives_before:
                         break
                 time.sleep(0.4)
                 if ram(lives, 1)[0] != lives_before - 1:
                     raise RuntimeError(
                         f"ECS platformer {label} contact did not cost exactly one life: "
-                        f"{lives_before} -> {ram(lives, 1)[0]}"
+                        f"{lives_before} -> {ram(lives, 1)[0]}; "
+                        f"(attempt, lives, player, left vertical, horizontal, right vertical): {trace[-12:]}"
                     )
                 if not flashed:
                     raise RuntimeError(f"ECS platformer {label} contact did not flash the border red")
@@ -726,7 +774,7 @@ def run_example(
                 raise RuntimeError(
                     f"{error}: status={ram(status, 1).hex()} score={ram(score, 1).hex()} "
                     f"player={player_state()} items(status,type,x,y)="
-                    f"{[ram(items + 42 * i + 2, 4).hex() for i in range(5)]}"
+                    f"{[ram(items + stride * i + 2, 4).hex() for i in range(5)]}"
                 ) from None
             wait_for(lambda: ram(won, 1) == b"\x01", 5, "ECS platformer level 2 win state")
             wait_for(lambda: ram(door_slot + 2, 1) == b"\x01", 5, "ECS platformer level 2 door appears")
@@ -735,7 +783,7 @@ def run_example(
             time.sleep(0.5)
             if ram(level, 1) != b"\x01" or ram(won, 1) != b"\x00" or ram(door_slot + 2, 1) != b"\x03":
                 raise RuntimeError("ECS platformer final door did not just hide the door on level 2")
-            if ram(score, 1) != b"\x04" or any(ram(items + 42 * i + 2, 1) != b"\x00" for i in range(4)):
+            if ram(score, 1) != b"\x04" or any(ram(items + stride * i + 2, 1) != b"\x00" for i in range(4)):
                 raise RuntimeError("ECS platformer final door restarted level 2 instead of just hiding the door")
         if name == "audio":
             active = symbol(noi, "fwk_audio_active")

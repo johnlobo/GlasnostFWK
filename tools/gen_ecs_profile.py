@@ -23,7 +23,7 @@ FIXED_SIZES = {
     "fixed_8_8": 2,
     "pointer": 2,
 }
-RESERVED_FIELDS = {"components", "status", "type", "x", "y", "width", "height"}
+RESERVED_FIELDS = {"components", "status", "type", "x", "y", "width", "height", "cadence"}
 
 
 @dataclass(frozen=True)
@@ -266,8 +266,12 @@ def generate(manifest: dict, portfolio: dict, video_profile: dict | None = None)
         size = FIXED_SIZES[format_name]
         offsets.append((symbol, offset, size, format_name))
         offset += size
-    offsets.extend((("WIDTH", offset, 1, "u8"), ("HEIGHT", offset + 1, 1, "u8")))
-    offset += 2
+    offsets.extend((
+        ("WIDTH", offset, 1, "u8"),
+        ("HEIGHT", offset + 1, 1, "u8"),
+        ("CADENCE", offset + 2, 1, "u8"),
+    ))
+    offset += 3
     emitted_symbols = {symbol for symbol, _, _, _ in offsets}
     component_preview: list[dict] = []
     for bit, name in enumerate(resolved):

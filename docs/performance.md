@@ -63,3 +63,36 @@ Un frame a 50 Hz son `79872` T-estados. Referencias útiles:
   describe al renderer actual.
 - No se promete 50 Hz para escenas arbitrarias; la decisión se toma con estas
   cifras, no con estimaciones.
+
+## Spike: fondo por repintado de tiles frente a captura y restauración
+
+Pregunta: ¿puede `ecs_render` dejar de guardar un buffer de fondo por entidad y
+repintar en su lugar los tiles que tocó cada sprite que se movió (cola de tiles
+sucios con deduplicación, `fwk_tilemap_render_cell` por tile)? Medido el
+2026-11-06 con `tools/measure_perf.py` (CPC 6128, 500 llamadas por escena), con
+los cuatro sprites móviles de `platformer` (uno de 8x8 y tres de 4x8) sobre un
+mapa de tiles de 4 bytes x 8 líneas. El parche del spike no está en el
+repositorio; se conserva fuera de él como `spike-tile-repaint.patch`.
+
+| Escena (4 sprites) | Tiles repintados | T-estados/llamada |
+|---|---:|---:|
+| Captura + restauración (hoy) | no aplica | 44089 |
+| Repintado de tiles, sprites fuera de la rejilla | 17 | 97124 |
+| Repintado de tiles, sprites sobre la rejilla | 5 | 29393 |
+
+- El repintado cuesta 5700 a 5900 T por tile en cola, frente a 3818 T de una
+  celda aislada: unos 1900 T van a la cola, la deduplicación y el borrado de
+  marcas. Una versión afinada podría ahorrar parte, sin medir.
+- En `platformer` los sprites casi nunca están alineados: un 4x8 se mueve 1 byte
+  por frame en X (alineado 1 de cada 4) y el jugador cae en cualquier línea.
+  Estimación de tiles por frame: unos 15 (jugador 5,2 y enemigos 3,2 cada uno),
+  es decir unos 84000 T, **40000 T más que hoy** (sin medir en el juego).
+  El trabajo de `platformer` pasaría de unos 111000 T a unos 151000 T, al borde
+  del presupuesto de 2 frames (159744 T) antes de contar el cierre de solapes,
+  que crece con el área repintada.
+- Umbral fijado antes de medir: como mucho +15000 T para `platformer`. No se
+  cumple. Decisión: el repintado por tile completo **no se adopta**.
+- Lo que sí enseña la medida: captura y restauración de los cuatro sprites son
+  ya 44000 T (más de un tercio del trabajo de `platformer`). Una alternativa sin
+  medir es repintar solo el rectángulo del sprite desde el tilemap (bloques
+  parciales de tile, sin captura), con un coste estimado de unos 30000 T.

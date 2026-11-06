@@ -45,10 +45,16 @@ name::
     .db 0, 0, 0, 0
 .endm
 
+;; Cadence. ECS_E_CADENCE = (phase << 4) | (every - 1), with every = 1, 2, 4, 8 or
+;; 16 (a power of two). 0 means every iteration. Systems run an entity when
+;; ((fwk_ecs_tick XOR phase) AND (every - 1)) == 0. The game increments
+;; fwk_ecs_tick once per game-loop iteration (not per 50 Hz interrupt).
+.globl fwk_ecs_tick
+
 .globl fwk_ecs_manager_init, fwk_ecs_entity_create
 .globl fwk_ecs_entity_mark_destroy, fwk_ecs_entity_disable
 .globl fwk_ecs_entity_enable, fwk_ecs_entity_set_mask
-.globl fwk_ecs_system_run, fwk_ecs_manager_collect
+.globl fwk_ecs_system_run, fwk_ecs_system_run_any, fwk_ecs_manager_collect
 ;; System entry points exist only when the profile selects their component, so
 ;; a project without MOTION/BEHAVIOR does not import symbols it never links.
 .ifdef ECS_C_BEHAVIOR

@@ -215,7 +215,7 @@ fwk_ecs_entity_create::
     push hl
     call _fwk_ecs_validate_manager
     pop hl
-    jr c, _fwk_ecs_create_fail
+    jp c, _fwk_ecs_create_fail
     ld a, FWK_ECS_MANAGER_LOCK(ix)
     or a
     jr nz, _fwk_ecs_create_busy
@@ -237,6 +237,29 @@ fwk_ecs_entity_create::
     call _fwk_ecs_validate_mask
     pop hl
     jr c, _fwk_ecs_create_fail
+    ;; The cadence byte is (phase << 4) | (every - 1): every - 1 must be 2^k - 1
+    ;; (every = 1..16) and phase must not exceed it.
+    push hl
+    ld de, #ECS_E_CADENCE
+    add hl, de
+    ld a, (hl)
+    ld c, a
+    and #0x0F
+    ld e, a                         ;; E = every - 1
+    inc a
+    and e
+    jr nz, _fwk_ecs_create_bad_cadence
+    ld a, c
+    rrca
+    rrca
+    rrca
+    rrca
+    and #0x0F                       ;; A = phase
+    cp e
+    jr z, _fwk_ecs_create_cadence_ok
+    jr nc, _fwk_ecs_create_bad_cadence
+_fwk_ecs_create_cadence_ok:
+    pop hl
     push hl                        ;; template
     ld e, FWK_ECS_MANAGER_STORAGE(ix)
     ld d, FWK_ECS_MANAGER_STORAGE+1(ix)
@@ -269,6 +292,8 @@ _fwk_ecs_create_found:
 _fwk_ecs_create_busy:
     call _fwk_ecs_zero_iy
     jp _fwk_ecs_error_busy
+_fwk_ecs_create_bad_cadence:
+    pop hl
 _fwk_ecs_create_template:
     call _fwk_ecs_zero_iy
     jp _fwk_ecs_error_template
@@ -377,7 +402,20 @@ _fwk_ecs_set_mask_done:
 ;; fwk_ecs_system_run
 ;; In: IX=manager, BC=required mask, HL=callback.
 ;; Callback gets IX/IY, must preserve both, and returns carry clear to continue.
+;; Entities whose cadence byte says "not this iteration" are skipped.
 fwk_ecs_system_run::
+    ld a, #0xB7                     ; opcode of `or a`: honour the cadence byte
+    jr _fwk_ecs_system_run_mode
+
+;; fwk_ecs_system_run_any
+;; Same contract, but visits every entity that matches the mask whatever its
+;; cadence byte. For traversals that must see all of them, like the targets of
+;; fwk_ecs_collide: a target that vanished on its off iterations would end and
+;; restart a contact every other iteration.
+fwk_ecs_system_run_any::
+    ld a, #0xAF                     ; opcode of `xor a`: every entity is due
+_fwk_ecs_system_run_mode:
+    ld (_fwk_ecs_cadence_test), a   ; self-modifying: no per-entity cost
     ld a, h
     or l
     jp z, _fwk_ecs_error_callback
@@ -419,6 +457,25 @@ _fwk_ecs_system_mask_hi:
     ld a, (_fwk_ecs_system_mask_hi+1)
     cp c
     jr nz, _fwk_ecs_system_next
+    ld a, ECS_E_CADENCE(iy)
+_fwk_ecs_cadence_test:
+    or a                            ; patched to `xor a` by fwk_ecs_system_run_any
+    jr z, _fwk_ecs_system_due       ; 0: every iteration
+    ld c, a                         ; C = phase << 4 | (every - 1)
+    rrca
+    rrca
+    rrca
+    rrca
+    and #0x0F                       ; A = phase
+    ld e, a
+    ld a, (fwk_ecs_tick)
+    xor e
+    ld e, a
+    ld a, c
+    and #0x0F                       ; A = every - 1
+    and e
+    jr nz, _fwk_ecs_system_next     ; not this iteration
+_fwk_ecs_system_due:
     push bc
 _fwk_ecs_system_callback:
     call 0
@@ -470,3 +527,7 @@ _fwk_ecs_collect_next:
     jr nz, _fwk_ecs_collect_loop
     pop iy
     jp _fwk_ecs_ok
+
+.area _DATA
+;; Game-loop iteration counter used by the cadence test of fwk_ecs_system_run.
+fwk_ecs_tick:: .db 0

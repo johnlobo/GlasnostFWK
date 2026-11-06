@@ -614,3 +614,66 @@ pasa en verde. Lo eliminado en esta rama:
 - Documentación: `docs/render-order.md` y `docs/animation.md` se eliminaron (su
   contenido vigente está en las secciones 8 y 10 de `docs/ecs-abi-2.0.md`); el
   manual y la guía de plataformas describen el juego ECS.
+
+## Cadencia por entidad y un solo manager en `platformer` (2026-11-06)
+
+Objetivo medible: `platformer` pasa de 4 managers (separados por cadencia de
+actualización) a uno, y los turnos de los enemigos salen de un byte de cadencia
+por entidad, sin perder rendimiento: trabajo en reposo ≤ 115.000 T y 2 frames por
+iteración (presupuesto fijado antes de implementar).
+
+- Framework (ABI 2.1, `manifests/ecs-components.json`): campo universal `ECS_E_CADENCE` tras `ECS_E_HEIGHT` (`(fase << 4) |
+  (cada - 1)`, `cada` potencia de dos), contador global `fwk_ecs_tick` que
+  incrementa el juego una vez por iteración, y el test sin estado en
+  `fwk_ecs_system_run`. `fwk_ecs_system_run_any` lo ignora y lo usa
+  `fwk_ecs_collide`. Crear una plantilla con un byte inválido devuelve
+  `FWK_ECS_ERR_TEMPLATE` (también si la fase supera `cada - 1`). Contrato en
+  `docs/ecs-abi-2.0.md`, 6.2.1. Coste por entidad, contado por instrucciones y sin
+  medir en el emulador: unos 35 T con cadencia 0 y unos 110 T con otra.
+- `platformer`: un manager de 9 slots (monedas 0 a 3, puerta 4, jugador 5,
+  enemigo vertical izquierdo 6, horizontal 7, vertical derecho 8). El horizontal y
+  el vertical derecho usan cadencia 2 con fases opuestas y la mitad de ticks de
+  animación. Colisión en dos pasadas sobre el manager principal; la de enemigos
+  usa la máscara `COLLISION|BEHAVIOR` para que una moneda bajo el jugador no cuente
+  como contacto de enemigo. La pasada de monedas y puerta (`E=0`) también visita a
+  los tres enemigos y llama al callback, que los ignora por tipo: trabajo
+  innecesario, sin efecto en el resultado.
+- Cambio de comportamiento conocido: los tres enemigos comparten un canal de
+  contacto. Si el jugador ya toca a uno y empieza a tocar a otro sin soltar el
+  primero, el segundo llega como `STAY` y no cuesta otra vida (con tres canales
+  costaba una por enemigo). Un contacto simultáneo que empieza en la misma pasada
+  sí cuesta una vida por enemigo.
+- Resultado (`tools/measure_game.py platformer`, CPC 6128, 200 iteraciones):
+  reposo 109.040 T (antes 111.447), derecha 109.602 T (antes 114.364), salto
+  105.212 T; 2 frames por iteración en los tres. Entre ejecuciones la cifra de
+  "derecha" varió de 105.808 a 109.602 T, así que la mejora respecto a antes es
+  del orden de 2.000 a 8.000 T y no una cifra exacta.
+
+Defectos que encontró el trabajo, todos corregidos y con prueba:
+
+1. Offsets de campo escritos a mano en `ecs_platform.s` (`33(iy)` a `36(iy)` y la
+   máscara `0x0010`) y `ecs_input.s` (`32(iy)`, `0x0008`). Insertar un campo los
+   rompía en silencio (el jugador no aterrizaba). Ahora usan los símbolos del
+   perfil; `test_systems_never_hard_code_entity_offsets` lo vigila.
+2. `ecs_render.s` suponía que el rectángulo anterior estaba 6 bytes después del
+   actual. Con el campo nuevo eran 7: las cajas salían corruptas y se redibujaban
+   las nueve entidades en cada frame (274.000 T de trabajo, 4 frames por
+   iteración) aunque el resultado en pantalla parecía correcto. Ahora usa
+   `ECS_E_RENDER_PREVIOUS_X - ECS_E_X`; `test_render_has_no_layout_dependent_immediates`
+   lo vigila.
+3. `fwk_ecs_collide` recorría los objetivos con `fwk_ecs_system_run`: un objetivo
+   con cadencia 2 desaparecía en sus iteraciones de descanso, el contacto se
+   cerraba y reabría cada dos iteraciones y costaba una vida cada vez. Lo detectó
+   el smoke de `platformer` (fallaba 2 de cada 3 veces). Corregido con
+   `fwk_ecs_system_run_any`.
+
+Pruebas añadidas: ejemplo `ecsmanager` (5 entidades con cadencias 1, 2 fase 0,
+2 fase 1, 4 y 16 durante 16 iteraciones, suma de ticks por entidad; `run_any`;
+14 bytes de cadencia válidos e inválidos sobre un manager lleno, distinguiendo
+TEMPLATE de FULL; la validación de máscara y de fase tiene 3 mutaciones, las 3
+detectadas), `test_collide_walks_targets_with_run_any`, comprobación de ritmo del smoke de `platformer` (cambios de
+posición del horizontal y el vertical derecho frente al izquierdo, entre 0,3 y
+0,7) y de fase (pasos de muestreo en que ambos se mueven a la vez: 0,0 con fases
+opuestas y 0,8 con la misma fase; umbral 0,3), 5 mutaciones nuevas y 3 renombradas en `tools/mutate_platformer.py` (32 en total, las 8 afectadas detectadas) y 6
+mutaciones manuales del test de cadencia (5 detectadas; la que sobrevive,
+saltarse el camino rápido de cadencia 0, es equivalente).

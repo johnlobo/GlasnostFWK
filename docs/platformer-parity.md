@@ -109,7 +109,8 @@ PNG y el TMX originales y la salida generada. El pipeline es el mismo
 `make` en el ejemplo convierte solo si cambió un asset. La copia es deliberada:
 la fase 11 elimina `platformer`, y el ejemplo ECS debe quedarse con sus assets.
 
-Cuatro managers: ítems (4 monedas y la puerta), rápido (jugador y el enemigo
+(Histórico: así estaba en la fase 10; hoy es un solo manager con cadencia por
+entidad, ver `docs/validation.md`.) Cuatro managers: ítems (4 monedas y la puerta), rápido (jugador y el enemigo
 vertical izquierdo, cada fotograma), y uno para el horizontal y otro para el
 vertical derecho, que se alternan un fotograma cada uno como en el original
 (la primera versión puso el vertical derecho en el rápido y iba al doble de
@@ -133,7 +134,7 @@ Resultados medidos:
 | Área | Original | ECS | Motivo |
 |---|---|---|---|
 | Hitbox de moneda | ventana de 8x8 | el sprite real de 4x8 | una sola anchura por entidad: la del sprite |
-| Contacto entre enemigos | un bit por enemigo | un canal por enemigo (V2, H y V en pasos separados) | igual que el original |
+| Contacto entre enemigos | un bit por enemigo | un canal por enemigo (V2, H y V en pasos separados); desde la cadencia por entidad, un solo canal compartido (ver `docs/validation.md`) | igual que el original; hoy difiere solo en el contacto simultáneo con un segundo enemigo |
 | Parpadeo al perder vida | borde rojo 3 veces, bloqueante, antes de `prepare` y VSYNC | mismas constantes y espera; se ejecuta al final del fotograma, tras dibujar | el HUD se actualiza en ese punto; ver también la fila de varias pérdidas |
 | Varias vidas perdidas en un fotograma | un parpadeo por vida | un solo parpadeo (el bit de parpadeo es una marca, no un contador); las vidas y el HUD sí restan todas | caso raro, no cubierto por el smoke |
 | Puerta en el nivel 2 | se oculta y termina | igual: se oculta y `won` vuelve a 0, sin reiniciar | paridad |
@@ -192,7 +193,7 @@ el original: monedas, puntuación, `won`, jugador, enemigos y HUD, con el mapa 2
 dibujado y las vidas conservadas. En el nivel 2 la puerta solo se oculta.
 
 Diseño: el arranque del juego es ahora `_pfe_start_level` (dibuja el mapa y el
-HUD, reinicia los cuatro managers y crea todas las entidades desde la tabla de
+HUD, reinicia los managers (hoy uno solo; entonces cuatro) y crea todas las entidades desde la tabla de
 filas). El arranque y la puerta la llaman: el nivel 2 empieza en el mismo estado
 que el 1 por construcción, sin una segunda lista de reinicios que mantener. La
 puerta descomprime el mapa 2, cambia `_pfe_map_desc` (que usan la física del

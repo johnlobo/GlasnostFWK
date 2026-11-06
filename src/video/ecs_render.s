@@ -275,7 +275,7 @@ _ecsr_box:
     push bc
     push iy
     pop ix                          ; IX = rectangle A base, IY = rectangle B base
-    ld bc, #6                       ; previous rectangle sits 6 bytes after the current
+    ld bc, #ECS_E_RENDER_PREVIOUS_X - ECS_E_X   ; previous rectangle mirrors the current one
     ld a, d
     or a
     jr nz, _ecsr_box_a
@@ -682,7 +682,7 @@ _ecsr_d_go:
     ex de, hl
     add hl, bc
     ex de, hl
-    ld bc, #4
+    ld bc, #ECS_E_HEIGHT + 1 - ECS_E_X          ; x, y, width, height
     ldir
     ld l, ECS_E_RENDER_SORT_OFFSET_Y(iy)
     ld h, ECS_E_RENDER_SORT_OFFSET_Y+1(iy)
