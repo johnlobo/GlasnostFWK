@@ -1112,6 +1112,15 @@ def run_example(
                 raise RuntimeError("platformer initial score/status/lives are invalid")
             if ram(door + 20, 1) != b"\x00":
                 raise RuntimeError("platformer door is visible before collecting all coins")
+            # The vertical enemies patrol y=56..154. fwk_motion_u8_step used to read
+            # a sum of 128 or more as negative and sent them to y=0.
+            v_ys = []
+            deadline = time.time() + 6.0
+            while time.time() < deadline:
+                v_ys.append(ram(enemy_v_behavior + 1, 1)[0])
+                v_ys.append(ram(enemy_v2_behavior + 1, 1)[0])
+            if min(v_ys) < 56 or max(v_ys) < 140:
+                raise RuntimeError(f"platformer vertical enemies left their patrol: y {min(v_ys)}..{max(v_ys)}")
             if platformer_regressions_only:
                 enemy_specs = (
                     ("horizontal", enemy_h, enemy_h_behavior),
