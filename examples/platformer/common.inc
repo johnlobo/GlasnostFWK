@@ -65,13 +65,12 @@ PFE_ALL_CAP = 9                  ; 4 coins, door, player, 3 enemies in one manag
 PFE_CAD_ODD  = 0x11
 PFE_CAD_EVEN = 0x01
 
-;; Spawn row: components, type, x, y, width, height, sprite, background,
-;; background size, behavior program, animation descriptor, cadence byte.
-.macro PFE_ROW comps, type, x, y, w, h, sprite, bg, cap, program, anim, cadence
+;; Spawn row: components, type, x, y, width, height, sprite, behavior program,
+;; animation descriptor, cadence byte.
+.macro PFE_ROW comps, type, x, y, w, h, sprite, program, anim, cadence
     .dw comps
     .db type, x, y, w, h
-    .dw sprite, bg
-    .db cap
+    .dw sprite
     .dw program, anim
     .db cadence
 .endm

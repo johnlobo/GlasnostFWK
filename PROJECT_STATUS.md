@@ -1371,3 +1371,12 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   vigilados por pruebas. Detalle en `docs/validation.md`.
 - [ ] Pendiente (parte 2): buffers de fondo del renderer por pools de tamaño en vez
   de un buffer por entidad (`ECS_E_RENDER_BACKGROUND` y `_CAP`).
+
+## Fondos del renderer por pools de tamaño (2026-11-06, ABI 2.2)
+
+- [x] `FWK_ECS_RENDER_POOL`, asignación en `prepare`, liberación en `restore` y
+  `fwk_ecs_render_reset`; fuera `ECS_E_RENDER_BACKGROUND_CAP` y los buffers por
+  entidad de `platformer`, `perf` y `ecsrender`.
+- [x] Presupuesto de código del renderer 1.150 a 1.400 B (235 B de los pools).
+- [ ] Presupuesto de tamaño de `platformer` (+100 B) no cumplido: +211 B.
+  Detalle en `docs/validation.md`.

@@ -677,3 +677,53 @@ posición del horizontal y el vertical derecho frente al izquierdo, entre 0,3 y
 opuestas y 0,8 con la misma fase; umbral 0,3), 5 mutaciones nuevas y 3 renombradas en `tools/mutate_platformer.py` (32 en total, las 8 afectadas detectadas) y 6
 mutaciones manuales del test de cadencia (5 detectadas; la que sobrevive,
 saltarse el camino rápido de cadencia 0, es equivalente).
+
+## Fondos del renderer por pools de tamaño (2026-11-06, ABI 2.2)
+
+Objetivo medible: que añadir una entidad a un juego no obligue a declarar a mano un
+buffer de fondo con su tamaño. Presupuesto fijado antes de implementar: trabajo en
+reposo de `platformer` ≤ 112.000 T con 2 frames por iteración, binario de
+`platformer` ≤ +100 B, arena de fondos ≤ 320 B de buffers, entidad sin crecer.
+
+- Diseño: `FWK_ECS_RENDER_POOL nombre, bytes, cuenta` declara `cuenta` huecos de
+  `[flag de uso][buffer]`. `prepare` asigna a cada entidad que debe dibujarse y no
+  tiene fondo el primer buffer libre del primer pool con al menos `anchura * altura`
+  bytes; `restore` lo devuelve cuando la entidad deja de dibujarse;
+  `fwk_ecs_render_reset` lo libera todo tras reinicializar los managers. El flag de
+  uso va justo antes del buffer, así que el puntero de la entidad basta para liberar.
+  Se quitaron `ECS_E_RENDER_BACKGROUND_CAP` y las filas de datos con puntero y tamaño
+  de buffer: `platformer` pasa de 9 buffers con nombre a dos pools (8 x 32 B y
+  1 x 64 B, 320 B de buffers, igual que antes; con los flags de uso y los descriptores
+  de pool ocupan 335 B, más 4 B de tabla de pools y 3 B más en el descriptor de escena). La entidad de `platformer` baja de 43 a 41 B (y de 26 a 24 B en `perf` y `ecsrender`).
+- Primer intento descartado: identificador de buffer en un byte (pool y hueco en
+  bits) y dirección calculada con multiplicación. Funcionaba, pero sumaba 351 B al
+  renderer (1.501 B frente a 1.150). El diseño actual suma 235 B (1.385 B).
+- Presupuestos: el del renderer sube de 1.150 a **1.400 B de código** (decisión
+  explícita, en `tests/test_ecs_render.py` y en el ABI, sección 8); el del binario de
+  `platformer` **no se cumple**: 11.991 B frente a 11.780 B en una build limpia de
+  `main` (+211 B, no +100 B; la tabla de `docs/build-sizes.md` de `main` decía 11.766,
+  anterior a la cadencia, y daría +225 B).
+- Rendimiento (`tools/measure_game.py platformer`, CPC 6128): reposo 109.839 T (109.040
+  antes de los pools; presupuesto 112.000 T), derecha 113.068 T (entre ejecuciones
+  varió de 106.500 a 113.000 T), salto 106.366 T; 2 frames por iteración en los tres.
+  La escena del lote de `perf` pasa de 172.524 a 173.801 T. El coste fijo por frame es
+  una comprobación del puntero de fondo por entidad dibujada (unos 30 T cada una, sin
+  medir por separado); la asignación ocurre solo la primera vez que se dibuja.
+- Defectos que salieron: `_ecsrender_row` y `_ecsrender_entity` multiplicaban por 9
+  (el tamaño de fila de la tabla de escenario) escrito a mano; tras quitar el
+  puntero de fondo de la fila daban entidades basura. Ahora usan `ECSRENDER_ROW`.
+  Y un fallo mío: tras `fwk_ecs_render_reset` dejé `IX` apuntando a la escena y los
+  `spawn` siguientes recibieron un manager inválido (código `0x02`, el juego se
+  detenía en la inicialización).
+- Pruebas: `ecsrender` compara 36 frames píxel a píxel con el modelo con buffers
+  asignados por el renderer (clases 16, 24 y 32 B con las nueve entidades) y añade
+  seis comprobaciones (buffers menores que el sprite, pool agotado, `reset` libera el
+  flag, `reset` de una escena que no está inactiva, y el paso al pool siguiente cuando
+  el primero está lleno, con los dos flags en uso). El smoke de `platformer`
+  pasa el nivel 2, que solo cabe si `reset` devolvió los buffers del nivel 1. El smoke
+  de `ecsrender` comprueba además que los buffers en uso coinciden con los poseídos
+  por entidades vivas.
+- Mutaciones del código de pools (siete, a mano): seis las detectó el smoke de
+  `ecsrender`; la séptima, que `restore` no devuelva los buffers, sobrevivía porque
+  ningún escenario agotaba un pool. Se añadió el invariante anterior y ahora se
+  detecta (9 buffers en uso frente a 7 poseídos).

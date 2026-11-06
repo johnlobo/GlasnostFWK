@@ -40,7 +40,7 @@ class ECSProfileTests(unittest.TestCase):
             [item["name"] for item in generated.preview["components"]],
             ["render", "motion", "behavior", "test"],
         )
-        self.assertEqual(generated.preview["entity_size"], 33)
+        self.assertEqual(generated.preview["entity_size"], 31)
         self.assertIn("ECS_COMPONENT_VALID_MASK = 0x000F", generated.include)
 
     def test_dependencies_are_inserted_before_the_requester(self):
@@ -58,8 +58,8 @@ class ECSProfileTests(unittest.TestCase):
         self.assertEqual(generated.preview["inserted_dependencies"], ["motion"])
         self.assertIn("ECS_C_MOTION_BIT = 1", generated.include)
         self.assertIn("ECS_C_ACTOR_BIT = 2", generated.include)
-        self.assertIn("ECS_E_MOTION_VELOCITY_X = 26", generated.include)
-        self.assertIn("ECS_E_MOTION_VELOCITY_Y = 27", generated.include)
+        self.assertIn("ECS_E_MOTION_VELOCITY_X = 24", generated.include)
+        self.assertIn("ECS_E_MOTION_VELOCITY_Y = 25", generated.include)
 
         explicitly_requested = copy.deepcopy(data)
         explicitly_requested["ecs"]["components"] = ["actor", "motion"]

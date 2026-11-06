@@ -18,9 +18,11 @@ import ecs_render_model as model  # noqa: E402
 CPCT = Path(os.environ.get("CPCT_NEXT_PATH", "/config/workspace/cpctelera_next/cpctelera"))
 ASSEMBLER = CPCT / "tools/sdcc-4.5.0/bin/sdasz80"
 
-# ABI 8 budget, measured with project transparency ON (the larger build): a bit
-# over half of the previous renderer, which weighed 2,078 bytes.
-CODE_BUDGET = 1150
+# ABI 8 budget, measured with project transparency ON (the larger build). The
+# renderer was 1,150 bytes (a bit over half of the previous renderer, 2,078 bytes);
+# the background pools (allocate, free, reset) added 235 and replaced the buffer
+# every project used to declare by hand for each entity.
+CODE_BUDGET = 1400
 DATA_BUDGET = 40
 
 
@@ -147,6 +149,37 @@ class RenderBudgetTests(unittest.TestCase):
         code, data = self.sizes(rel)
         self.assertLessEqual(code, CODE_BUDGET, f"code {code} B over the {CODE_BUDGET} B budget")
         self.assertLessEqual(data, DATA_BUDGET, f"data {data} B over the {DATA_BUDGET} B budget")
+
+    def test_pool_macro_accepts_1_to_255_slots_only(self):
+        # A pool of 0 slots would make reset and alloc loop 256 times over garbage.
+        for count, ok in ((0, False), (1, True), (255, True), (256, False)):
+            with tempfile.TemporaryDirectory() as directory:
+                work = Path(directory)
+                (work / "video").mkdir()
+                shutil.copy(ROOT / "src/video/ecs_render.inc", work / "video")
+                (work / "t.s").write_text(
+                    f'.module t\n.include "video/ecs_render.inc"\n.area _DATA\n'
+                    f"FWK_ECS_RENDER_POOL pool, 4, {count}\n"
+                )
+                result = subprocess.run(
+                    [str(ASSEMBLER), "-l", "-o", "t.s"], cwd=work, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode == 0, ok, f"count {count}: {result.stdout}{result.stderr}")
+
+    def test_scene_macro_accepts_1_to_255_pools_only(self):
+        for count, ok in ((0, False), (1, True), (255, True), (256, False)):
+            with tempfile.TemporaryDirectory() as directory:
+                work = Path(directory)
+                (work / "video").mkdir()
+                shutil.copy(ROOT / "src/video/ecs_render.inc", work / "video")
+                (work / "t.s").write_text(
+                    '.module t\n.include "video/ecs_render.inc"\n.area _DATA\n'
+                    f"FWK_ECS_RENDER_SCENE scene, 0, 0, 0, 0, 0, {count}\n"
+                )
+                result = subprocess.run(
+                    [str(ASSEMBLER), "-l", "-o", "t.s"], cwd=work, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode == 0, ok, f"count {count}: {result.stdout}{result.stderr}")
 
     def test_transparency_off_is_not_larger(self):
         manifest = {"ecs": {"x_format": "u8", "y_format": "u8", "components": []}}

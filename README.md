@@ -192,7 +192,7 @@ los bytes de RAM normal y banco 0 y no reserva ninguna dirección en
 
 `video/ecs_render` es el render selectivo: restaura y redibuja solo lo que
 cambió, con entidades de uno o varios managers ECS, en un único orden estable
-por Y. Los buffers de fondo continúan en manos del consumidor. Admite dibujo
+por Y. Los buffers de fondo los reparte el propio renderer desde pools que declara el proyecto. Admite dibujo
 opaco, enmascarado y recoloreado. La ruta sincronizada separa
 `fwk_ecs_render_prepare` (antes del VSYNC, sin tocar VRAM) de
 `fwk_ecs_render_restore`/`fwk_ecs_render_draw`, que se ejecutan seguidos tras

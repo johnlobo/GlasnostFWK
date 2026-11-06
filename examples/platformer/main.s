@@ -48,23 +48,18 @@ platformer_storage:: .ds ECS_ENTITY_SIZE * PFE_ALL_CAP
 ;; Manager descriptor: storage address, capacity and bookkeeping.
 FWK_ECS_MANAGER_DESCRIPTOR platformer_manager, platformer_storage, PFE_ALL_CAP
 
-;; One background buffer per entity: the renderer saves the screen bytes each
-;; sprite covers (width in bytes * height in lines): player 8x8, the rest 4x8.
-_pfe_bg_player: .ds 8 * 8
-_pfe_bg_h:      .ds 4 * 8
-_pfe_bg_v:      .ds 4 * 8
-_pfe_bg_v2:     .ds 4 * 8
-_pfe_bg_coin0:  .ds 4 * 8
-_pfe_bg_coin1:  .ds 4 * 8
-_pfe_bg_coin2:  .ds 4 * 8
-_pfe_bg_coin3:  .ds 4 * 8
-_pfe_bg_door:   .ds 4 * 8
+;; Background pools: the renderer saves the screen bytes each sprite covers (width
+;; in bytes * height in lines) in a buffer it takes from here when the entity is
+;; first drawn. Eight 4x8 sprites (4 coins, door, 3 enemies) and one 8x8 (player).
+FWK_ECS_RENDER_POOL platformer_pool32, 32, 8
+FWK_ECS_RENDER_POOL platformer_pool64, 64, 1
+_pfe_pools: .dw platformer_pool32, platformer_pool64
 
-;; Render scene: the manager, and the renderer's work area (8 bytes per
-;; renderable entity, all nine at most).
+;; Render scene: the manager, the renderer's work area (8 bytes per renderable
+;; entity, all nine at most) and the pools.
 _pfe_managers: .dw platformer_manager
 _pfe_work: .ds 8 * PFE_ALL_CAP
-FWK_ECS_RENDER_SCENE platformer_scene, _pfe_managers, 1, _pfe_work, PFE_ALL_CAP
+FWK_ECS_RENDER_SCENE platformer_scene, _pfe_managers, 1, _pfe_work, PFE_ALL_CAP, _pfe_pools, 2
 
 ;; Tile types by tile id: 0 passable, 1 solid, 2 one-way platform, 0 passable.
 _pfe_types:
@@ -118,18 +113,17 @@ _pfe_program_v_turn:
     FWK_BEHAVIOR_WAIT PFE_ENEMY_V_LEG_TICKS, _pfe_program_v
 
 ;; Spawn rows (see PFE_ROW): components, type, x, y, width and height in bytes and
-;; lines, sprite, background buffer, buffer size, behavior program, animation,
-;; cadence byte.
+;; lines, sprite, behavior program, animation, cadence byte.
 ;; The player spawns airborne at the left and falls to the floor; enemies patrol; coins and the door are static.
-_pfe_row_player: PFE_ROW PFE_PLAYER_COMPS, PFE_T_PLAYER, 16, 184, 8, 8, platformer_player_pixels, _pfe_bg_player, 64, 0, _pfe_anim_player, 0
-_pfe_row_h:      PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 36, 122, 4, 8, platformer_enemy_pixels, _pfe_bg_h, 32, _pfe_program_h, _pfe_anim_enemy_slow, PFE_CAD_ODD
-_pfe_row_v:      PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 64, 56, 4, 8, platformer_enemy_pixels, _pfe_bg_v, 32, _pfe_program_v, _pfe_anim_enemy_slow, PFE_CAD_EVEN
-_pfe_row_v2:     PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 8, 56, 4, 8, platformer_enemy_pixels, _pfe_bg_v2, 32, _pfe_program_v, _pfe_anim_enemy, 0
-_pfe_row_coin0:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 16, 24, 4, 8, platformer_coin_pixels, _pfe_bg_coin0, 32, 0, 0, 0
-_pfe_row_coin1:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 56, 24, 4, 8, platformer_coin_pixels, _pfe_bg_coin1, 32, 0, 0, 0
-_pfe_row_coin2:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 16, 168, 4, 8, platformer_coin_pixels, _pfe_bg_coin2, 32, 0, 0, 0
-_pfe_row_coin3:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 56, 168, 4, 8, platformer_coin_pixels, _pfe_bg_coin3, 32, 0, 0, 0
-_pfe_row_door:   PFE_ROW PFE_ITEM_COMPS, PFE_T_DOOR, 72, 160, 4, 8, platformer_door_pixels, _pfe_bg_door, 32, 0, 0, 0
+_pfe_row_player: PFE_ROW PFE_PLAYER_COMPS, PFE_T_PLAYER, 16, 184, 8, 8, platformer_player_pixels, 0, _pfe_anim_player, 0
+_pfe_row_h:      PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 36, 122, 4, 8, platformer_enemy_pixels, _pfe_program_h, _pfe_anim_enemy_slow, PFE_CAD_ODD
+_pfe_row_v:      PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 64, 56, 4, 8, platformer_enemy_pixels, _pfe_program_v, _pfe_anim_enemy_slow, PFE_CAD_EVEN
+_pfe_row_v2:     PFE_ROW PFE_ENEMY_COMPS, PFE_T_ENEMY, 8, 56, 4, 8, platformer_enemy_pixels, _pfe_program_v, _pfe_anim_enemy, 0
+_pfe_row_coin0:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 16, 24, 4, 8, platformer_coin_pixels, 0, 0, 0
+_pfe_row_coin1:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 56, 24, 4, 8, platformer_coin_pixels, 0, 0, 0
+_pfe_row_coin2:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 16, 168, 4, 8, platformer_coin_pixels, 0, 0, 0
+_pfe_row_coin3:  PFE_ROW PFE_ITEM_COMPS, PFE_T_COIN, 56, 168, 4, 8, platformer_coin_pixels, 0, 0, 0
+_pfe_row_door:   PFE_ROW PFE_ITEM_COMPS, PFE_T_DOOR, 72, 160, 4, 8, platformer_door_pixels, 0, 0, 0
 
 .area _CODE
 
@@ -183,15 +177,6 @@ _pfe_spawn:
     ld a, (hl)
     inc hl
     ld ECS_E_RENDER_SPRITE+1(iy), a
-    ld a, (hl)
-    inc hl
-    ld ECS_E_RENDER_BACKGROUND(iy), a
-    ld a, (hl)
-    inc hl
-    ld ECS_E_RENDER_BACKGROUND+1(iy), a
-    ld a, (hl)
-    inc hl
-    ld ECS_E_RENDER_BACKGROUND_CAP(iy), a
     ld a, (hl)
     inc hl
     ld ECS_E_BEHAVIOR_PROGRAM(iy), a
@@ -485,6 +470,10 @@ _pfe_start_level:
     ld ix, #platformer_manager
     call fwk_ecs_manager_init
     call _pfe_expect_ok
+    ld ix, #platformer_scene               ; the old entities vanished unrestored:
+    call fwk_ecs_render_reset              ; give their background buffers back
+    call _pfe_expect_ok
+    ld ix, #platformer_manager             ; the spawns below take IX=manager
 
     ld hl, #_pfe_row_coin0
     call _pfe_spawn

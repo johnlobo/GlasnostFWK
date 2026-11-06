@@ -417,6 +417,45 @@ def run_example(
                 raise RuntimeError("a too small work array did not return FWK_ECS_ERR_OVERFLOW")
             if ram(symbol(noi, "ecsrender_check_order"), 1) != bytes((0x0B,)):
                 raise RuntimeError("draw on an IDLE scene did not return FWK_ECS_ERR_RENDER")
+            # Pool invariant: a buffer is in use exactly when a live entity owns it. A
+            # restore that forgot to give a buffer back leaves a flag set with no owner.
+            profile = (ROOT / "examples/ecsrender/generated/ecs_profile.inc").read_text()
+
+            def layout(name):
+                return int(re.search(rf"^{name} = (\d+)", profile, re.M).group(1))
+
+            stride, background = layout("ECS_ENTITY_SIZE"), layout("ECS_E_RENDER_BACKGROUND")
+            owners = []
+            for storage_name, capacity in (("ecsrender_storage_a", 5), ("ecsrender_storage_b", 4)):
+                storage_bytes = ram(symbol(noi, storage_name), stride * capacity)
+                for slot in range(capacity):
+                    entity = storage_bytes[slot * stride:(slot + 1) * stride]
+                    pointer = int.from_bytes(entity[background:background + 2], "little")
+                    if entity[2] != 0 and pointer:
+                        owners.append(pointer)
+            in_use = []
+            for pool_name, slots, size in (("ecsrender_pool16", 1, 16), ("ecsrender_pool24", 4, 24), ("ecsrender_pool32", 4, 32)):
+                base = symbol(noi, pool_name)
+                pool = ram(base, 3 + slots * (size + 1))
+                for slot in range(slots):
+                    if pool[3 + slot * (size + 1)]:
+                        in_use.append(base + 3 + slot * (size + 1) + 1)   # the buffer follows its flag
+            if sorted(owners) != sorted(in_use) or len(set(owners)) != len(owners):
+                raise RuntimeError(
+                    "ECS render pools: buffers in use "
+                    f"{[hex(p) for p in sorted(in_use)]} differ from the ones owned by live entities "
+                    f"{[hex(p) for p in sorted(owners)]}"
+                )
+            for label, want, what in (
+                ("ecsrender_check_size", 0x0A, "buffers smaller than the sprite did not return FWK_ECS_ERR_OVERFLOW"),
+                ("ecsrender_check_pool", 0x0A, "a pool without a free buffer did not return FWK_ECS_ERR_OVERFLOW"),
+                ("ecsrender_check_reset", 0x00, "fwk_ecs_render_reset left a buffer marked in use"),
+                ("ecsrender_check_spill", 0x00, "a full first pool did not spill over to the second"),
+                ("ecsrender_check_spill_used", 0x02, "the spill did not use one buffer of each pool"),
+                ("ecsrender_check_args", 0x0B, "reset of a scene that is not IDLE did not return FWK_ECS_ERR_RENDER"),
+            ):
+                if ram(symbol(noi, label), 1) != bytes((want,)):
+                    raise RuntimeError(f"ECS render pools: {what}: {ram(symbol(noi, label), 1).hex()}")
         if name == "platformer":
             status = symbol(noi, "platformer_status")
             player = symbol(noi, "platformer_player")

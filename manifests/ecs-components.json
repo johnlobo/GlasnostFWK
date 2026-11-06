@@ -1,5 +1,5 @@
 {
-  "abi": {"major": 2, "minor": 1},
+  "abi": {"major": 2, "minor": 2},
   "components": [
     {
       "name": "render",
@@ -12,7 +12,6 @@
         {"name": "previous_width", "type": "u8"},
         {"name": "previous_height", "type": "u8"},
         {"name": "background", "type": "pointer"},
-        {"name": "background_cap", "type": "u16"},
         {"name": "flags", "type": "u8"},
         {"name": "source_pen", "type": "u8"},
         {"name": "replacement_pen", "type": "u8"},

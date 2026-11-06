@@ -55,7 +55,7 @@ class EcsAbiSpecificationTests(unittest.TestCase):
             line.split(";", 1)[0] for line in (ROOT / "src/video/ecs_render.s").read_text().splitlines()
         )
         numbers = {int(n, 0) for n in re.findall(r"ld (?:bc|de|hl), #(0x[0-9A-Fa-f]+|\d+)\b", code)}
-        self.assertLessEqual(numbers, {8})
+        self.assertLessEqual(numbers, {0, 8})
 
     def test_system_adapters_take_component_masks_from_the_profile(self):
         # `ld bc, #0x0010` in ecs_platform.s kept working only until a component

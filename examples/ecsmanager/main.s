@@ -54,7 +54,7 @@ ecsmanager_template:
     .db ECS_STATUS_ACTIVE, 7, 10, 20, 2, 8, 0   ; ..., width, height, cadence
     .dw 0
     .db 0, 0, 0, 0
-    .dw 0, 0
+    .dw 0                                       ; background (renderer-owned)
     .db ECS_RENDER_VISIBLE, 0, 0
     .dw 0, 0
     .db 0, 0, 0

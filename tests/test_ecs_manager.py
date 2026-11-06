@@ -131,9 +131,9 @@ class ECSManagerTests(unittest.TestCase):
         common = (ROOT / "examples/platformer/common.inc").read_text()
         self.assertIn("PFE_CAD_ODD  = 0x11", common)
         self.assertIn("PFE_CAD_EVEN = 0x01", common)
-        self.assertIn("_pfe_bg_h, 32, _pfe_program_h, _pfe_anim_enemy_slow, PFE_CAD_ODD", main)
-        self.assertIn("_pfe_bg_v, 32, _pfe_program_v, _pfe_anim_enemy_slow, PFE_CAD_EVEN", main)
-        self.assertIn("_pfe_bg_v2, 32, _pfe_program_v, _pfe_anim_enemy, 0", main)
+        self.assertIn("platformer_enemy_pixels, _pfe_program_h, _pfe_anim_enemy_slow, PFE_CAD_ODD", main)
+        self.assertIn("platformer_enemy_pixels, _pfe_program_v, _pfe_anim_enemy_slow, PFE_CAD_EVEN", main)
+        self.assertIn("platformer_enemy_pixels, _pfe_program_v, _pfe_anim_enemy, 0", main)
         # Enemies that move every 2nd iteration animate every 2nd iteration, with
         # half the ticks, so the animation keeps its real-time pace.
         self.assertEqual(number_in(common, "PFE_ANIM_TICKS_SLOW") * 2, number_in(common, "PFE_ANIM_TICKS"))

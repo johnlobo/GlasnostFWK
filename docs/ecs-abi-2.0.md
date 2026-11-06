@@ -153,8 +153,7 @@ Aunque todas las entidades reservan este bloque, solo las que tienen el bit
 | `ECS_E_RENDER_PREVIOUS_Y` | formato Y | posición de la captura vigente |
 | `ECS_E_RENDER_PREVIOUS_WIDTH` | `u8` | anchura capturada |
 | `ECS_E_RENDER_PREVIOUS_HEIGHT` | `u8` | altura capturada |
-| `ECS_E_RENDER_BACKGROUND` | `pointer` | buffer propiedad del juego |
-| `ECS_E_RENDER_BACKGROUND_CAP` | `u16` | capacidad del buffer en bytes |
+| `ECS_E_RENDER_BACKGROUND` | `pointer` | buffer de fondo; lo asigna y libera el renderer (0 = sin buffer) |
 | `ECS_E_RENDER_FLAGS` | `u8` | flags descritos abajo |
 | `ECS_E_RENDER_SOURCE_PEN` | `u8` | pen sustituido, 0..15 |
 | `ECS_E_RENDER_REPLACEMENT_PEN` | `u8` | pen nuevo, 0..15 |
@@ -336,20 +335,22 @@ sistema; los cambios relevantes para render activan `DIRTY`.
 *Revisado el 2026-11-05 (fase 9).* El renderer no ECS actual pesa unos 2.100
 bytes porque valida listas, duplicados y solapes de buffers contra llamantes
 hostiles. El renderer ECS mantiene su algoritmo (restaurar y redibujar solo lo
-afectado) y elimina esa defensa. Presupuesto vinculante: **1.150 bytes de
-código y 40 de datos internos** (medidos con transparencia del proyecto activa;
-1.139 con ella apagada) para `video/ecs_render.s` (la mitad del
-renderer anterior); el array de trabajo lo reserva el proyecto. La cifra
+afectado) y elimina esa defensa. Presupuesto vinculante para `video/ecs_render.s`:
+**1.400 bytes de código y 40 de datos internos**, medidos con transparencia del
+proyecto activa. Eran 1.150 (1.139 con la transparencia apagada, algo más de la mitad
+del renderer anterior) hasta la ABI 2.2; los pools de fondos suman 235 B (1.385
+medidos) y sustituyen al buffer que cada proyecto declaraba a mano por entidad. El
+array de trabajo lo reserva el proyecto. La cifra
 inicial de 900 era una estimación previa a medir: el algoritmo esencial
 (candidatas, cajas, cierre de solapes, orden y las tres fases) ocupaba 1.099
 tras reducirlo con cajas envolventes por entidad y descriptores de sprite
 construidos con `ldi`.
 
-**Escena.** `FWK_ECS_RENDER_SCENE nombre, tabla, cuenta, trabajo, capacidad`
-declara un descriptor de 8 bytes: puntero a una tabla de punteros a managers,
-número de managers, puntero al array de trabajo, su capacidad en entradas
+**Escena.** `FWK_ECS_RENDER_SCENE nombre, tabla, cuenta, trabajo, capacidad, pools,
+cuenta_pools` declara un descriptor de 11 bytes: puntero a una tabla de punteros a
+managers, número de managers, puntero al array de trabajo, su capacidad en entradas
 (ocho bytes cada una: puntero a entidad, clave de 16 bits y caja envolvente), número de
-entidades afectadas y estado. Los managers se recorren en orden de tabla y
+entidades afectadas, estado, puntero a la tabla de pools de fondos y número de pools. Los managers se recorren en orden de tabla y
 cada uno en orden de slot; el orden final es global.
 
 **Llamadas** (`IX`=escena; carry limpio y `A=0`, o carry activo y `A=FWK_ECS_ERR_*`;
@@ -387,9 +388,33 @@ capturado, o si su rectángulo anterior o actual solapa con el de una afectada
 orden de tabla de managers y slot (índice de recogida), tanto al restaurar como
 al dibujar, de modo que la restauración deshace exactamente el último dibujo. Tras restaurar, `ECS_E_RENDER_PREVIOUS_WIDTH` queda a 0.
 
-**Contrato con el juego.** Cada entidad con `RENDER` tiene un buffer de fondo
-propio de al menos anchura por altura bytes, y el renderer no lo comprueba:
-tampoco busca duplicados ni solapes entre buffers. Posiciones `u8` dentro de
+**Fondos.** El juego no declara buffers por entidad. Declara pools con
+`FWK_ECS_RENDER_POOL nombre, bytes, cuenta`: `cuenta` huecos de `[flag de uso][bytes
+de buffer]`, con un descriptor de 3 bytes (`bytes` en 2, `cuenta` en 1) y una tabla
+de punteros a pools en orden creciente de `bytes`. Cuando `prepare` ve una entidad
+que debe dibujarse y tiene `ECS_E_RENDER_BACKGROUND` a 0, toma el primer buffer
+libre del primer pool cuyo `bytes` sea al menos `anchura * altura`, pone su flag de
+uso y apunta `ECS_E_RENDER_BACKGROUND` al buffer; si ningún pool lo tiene,
+`FWK_ECS_ERR_OVERFLOW` (la escena queda inactiva y desbloqueada, y lo ya asignado
+se conserva). `restore` devuelve el buffer (flag a 0 y puntero a 0) de la entidad
+que ya no se dibuja y tenía un fondo capturado (`PENDING_DESTROY`, `DISABLED` u
+oculta). Una entidad que llega a `FREE` sin pasar por `restore` no devuelve su buffer
+hasta el siguiente `fwk_ecs_render_reset`; lo mismo ocurre si `prepare` falla con
+`OVERFLOW` después de asignar a una entidad y el juego la oculta antes de dibujarla. Una plantilla DEBE dejar el
+campo a 0. El juego NO DEBE escribirlo. Entre `prepare` y `draw` una entidad no se
+destruye ni se oculta (ya prohibido arriba): el buffer que le asignó `prepare` solo lo
+devuelve `restore`, y una entidad que no llegó a capturarse no pasa por él. Tampoco
+cambia `width` ni `height` mientras conserve buffer: uno mayor que el asignado se
+desbordaría sobre el flag del hueco siguiente; para cambiar de tamaño hay que dejar de
+dibujar la entidad y esperar a su `restore`. `FWK_ECS_RENDER_POOL` exige entre 1 y 255
+huecos (el ensamblado falla con otra cantidad).
+`fwk_ecs_render_reset` (`IX`=escena, con la escena inactiva; `FWK_ECS_ERR_RENDER`
+si no) libera todos los buffers, sin tocar los punteros de las entidades: hay que
+llamarlo tras reinicializar los managers de la escena (por ejemplo al empezar un
+nivel), porque las entidades desaparecen sin pasar por `restore`. La asignación ocurre una vez por entidad y dibujo, no por frame.
+
+**Contrato con el juego.** El renderer no busca duplicados ni solapes entre buffers.
+Posiciones `u8` dentro de
 pantalla, con sumas de posición y tamaño hasta 255 (el recorte por la derecha y
 abajo lo hace el módulo de sprites); el build falla con coordenadas que no
 sean `u8`. Las sumas de las cajas envolventes saturan en 255. Cada manager
@@ -555,7 +580,7 @@ El include generado debe publicar como mínimo:
 
 ```text
 ECS_ABI_MAJOR = 2
-ECS_ABI_MINOR = 1
+ECS_ABI_MINOR = 2
 ECS_ENTITY_SIZE
 ECS_X_FORMAT / ECS_X_SIZE
 ECS_Y_FORMAT / ECS_Y_SIZE
@@ -571,7 +596,9 @@ escribir. Debug y release comparten layout, símbolos y convención de llamada.
 Cambiar tamaño, orden, offset, valor de flag, estado, registro de entrada o
 semántica de carry requiere incrementar la versión ABI. La 2.1 añade
 `ECS_E_CADENCE` (desplaza los offsets posteriores a `ECS_E_HEIGHT`),
-`fwk_ecs_tick` y `fwk_ecs_system_run_any`. Añadir una rutina sin
+`fwk_ecs_tick` y `fwk_ecs_system_run_any`. La 2.2 quita `ECS_E_RENDER_BACKGROUND_CAP`,
+hace que el renderer sea dueño de `ECS_E_RENDER_BACKGROUND`, amplía el descriptor de
+escena a 11 bytes y añade `FWK_ECS_RENDER_POOL` y `fwk_ecs_render_reset`. Añadir una rutina sin
 alterar contratos existentes puede incrementar solo `ECS_ABI_MINOR`.
 
 ## 12. Puerta G1 aprobada
