@@ -21,13 +21,11 @@ perf_sprite_pixels:
     .endm
 FWK_SPRITE_DESCRIPTOR perf_sprite, perf_sprite_pixels, 20, 40, 6, 8
 
-;; Batch: eight 4x4 sprites and their capture buffers.
+;; Batch: eight 4x4 sprites; their capture buffers come from one pool.
 perf_batch_sprite_pixels:
     .rept 16
         .db 0xF0
     .endm
-perf_batch_buffers:
-    .ds 8 * 16
 
 ;; One ECS manager with eight render entities at the same spot; row = extra render
 ;; flags (8 MASKED, 0x10 RECOLOR), source pen, replacement pen.
@@ -45,11 +43,12 @@ perf_batch_storage: .ds ECS_ENTITY_SIZE * PERF_BATCH_COUNT
 FWK_ECS_MANAGER_DESCRIPTOR perf_batch_manager, perf_batch_storage, PERF_BATCH_COUNT
 perf_batch_managers: .dw perf_batch_manager
 perf_batch_work: .ds 8 * PERF_BATCH_COUNT
-FWK_ECS_RENDER_SCENE perf_batch, perf_batch_managers, 1, perf_batch_work, PERF_BATCH_COUNT
+FWK_ECS_RENDER_POOL perf_batch_pool, 16, PERF_BATCH_COUNT
+perf_batch_pools: .dw perf_batch_pool
+FWK_ECS_RENDER_SCENE perf_batch, perf_batch_managers, 1, perf_batch_work, PERF_BATCH_COUNT, perf_batch_pools, 1
 perf_batch_template: .ds ECS_ENTITY_SIZE
 _perf_batch_index: .db 0
 _perf_batch_row:   .dw 0
-_perf_batch_bg:    .dw 0
 
 ;; Tilemap fixture: 8x6 map, 4x4 tiles, 5x4 viewport.
 perf_tilemap_types:
@@ -211,8 +210,6 @@ _perf_batch_setup:
     ld (_perf_batch_index), a
     ld hl, #perf_batch_rows
     ld (_perf_batch_row), hl
-    ld hl, #perf_batch_buffers
-    ld (_perf_batch_bg), hl
 _perf_batch_create:
     ld hl, #perf_batch_template
     ld de, #perf_batch_template + 1
@@ -229,13 +226,6 @@ _perf_batch_create:
     ld ECS_E_HEIGHT(iy), #4
     ld ECS_E_RENDER_SPRITE(iy), #<perf_batch_sprite_pixels
     ld ECS_E_RENDER_SPRITE+1(iy), #>perf_batch_sprite_pixels
-    ld hl, (_perf_batch_bg)
-    ld ECS_E_RENDER_BACKGROUND(iy), l
-    ld ECS_E_RENDER_BACKGROUND+1(iy), h
-    ld de, #16
-    add hl, de
-    ld (_perf_batch_bg), hl
-    ld ECS_E_RENDER_BACKGROUND_CAP(iy), #16
     ld hl, (_perf_batch_row)
     ld a, (hl)
     or #3                                   ; VISIBLE | DIRTY

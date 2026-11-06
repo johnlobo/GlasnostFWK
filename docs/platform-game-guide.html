@@ -206,10 +206,8 @@ FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 0, 0, 20, 25, 3</code></pr
   <pre><code>player_pixels:
     .rept 8
         .db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-    .endm
-
-player_background: .ds 8 * 8     ; width * height bytes</code></pre>
-  <p>El componente <code>RENDER</code> de cada entidad guarda el puntero al sprite (<code>ECS_E_RENDER_SPRITE</code>), el puntero a su buffer de fondo (<code>ECS_E_RENDER_BACKGROUND</code>), la capacidad de ese buffer, los flags (<code>VISIBLE</code>, <code>DIRTY</code>, <code>MASKED</code>, <code>RECOLOR</code>) y un desplazamiento de orden en Y (<code>ECS_E_RENDER_SORT_OFFSET_Y</code>). Reserve como mínimo <code>width * height</code> bytes de fondo para cada entidad que pueda estar visible: el renderer captura lo que cubre cada sprite antes de dibujarlo y lo repone al moverlo.</p>
+    .endm</code></pre>
+  <p>El componente <code>RENDER</code> de cada entidad guarda el puntero al sprite (<code>ECS_E_RENDER_SPRITE</code>), el puntero a su buffer de fondo (<code>ECS_E_RENDER_BACKGROUND</code>), los flags (<code>VISIBLE</code>, <code>DIRTY</code>, <code>MASKED</code>, <code>RECOLOR</code>) y un desplazamiento de orden en Y (<code>ECS_E_RENDER_SORT_OFFSET_Y</code>). El buffer de fondo no lo declara usted: el renderer captura lo que cubre cada sprite antes de dibujarlo y lo repone al moverlo, y para ello toma un buffer de los pools de la escena (sección 5) la primera vez que dibuja la entidad y lo devuelve cuando deja de dibujarse. La plantilla deja <code>ECS_E_RENDER_BACKGROUND</code> a cero.</p>
 
   <h2 id="estado"><span class="step">5</span> Definir jugador, física y controles</h2>
   <p>Cada actor es una entidad de un manager. El jugador combina <code>RENDER</code>, <code>MOTION</code>, <code>INPUT</code>, <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code>; las monedas y la puerta solo <code>RENDER</code> y <code>COLLISION</code>. Todas viven en un único manager, con almacenamiento propio, y una escena de render lo recorre:</p>
@@ -220,7 +218,12 @@ FWK_ECS_MANAGER_DESCRIPTOR entities, entity_storage, ENTITY_CAP
 
 managers: .dw entities
 work:     .ds 8 * ENTITY_CAP            ; 8 bytes por entidad con RENDER
-FWK_ECS_RENDER_SCENE scene, managers, 1, work, ENTITY_CAP
+
+; Buffers de fondo por clase de tamaño: ocho sprites de 4x8 (32 bytes) y uno de 8x8 (64)
+FWK_ECS_RENDER_POOL pool32, 32, 8
+FWK_ECS_RENDER_POOL pool64, 64, 1
+pools: .dw pool32, pool64
+FWK_ECS_RENDER_SCENE scene, managers, 1, work, ENTITY_CAP, pools, 2
 
 FWK_PLATFORM_CONFIG physics_config, 80, 255, 1, 8
 
@@ -246,9 +249,6 @@ bindings:
     ld ECS_E_HEIGHT(iy), #8
     ld ECS_E_RENDER_SPRITE(iy), #&lt;player_pixels
     ld ECS_E_RENDER_SPRITE+1(iy), #&gt;player_pixels
-    ld ECS_E_RENDER_BACKGROUND(iy), #&lt;player_background
-    ld ECS_E_RENDER_BACKGROUND+1(iy), #&gt;player_background
-    ld ECS_E_RENDER_BACKGROUND_CAP(iy), #64
     ld ECS_E_RENDER_FLAGS(iy), #ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY
     ld ECS_E_RENDER_SORT_OFFSET_Y(iy), #8     ; ordena por los pies
     ld hl, #tpl
@@ -288,6 +288,10 @@ bindings:
     ld ix, #entities
     call fwk_ecs_manager_init
     jp c, fatal_data_error
+    ld ix, #scene                   ; las entidades antiguas desaparecieron sin restore:
+    call fwk_ecs_render_reset       ; devolver sus buffers de fondo
+    jp c, fatal_data_error
+    ld ix, #entities
     ; ... crear monedas, puerta, jugador y enemigos con fwk_ecs_entity_create</code></pre>
   <p>Las entidades nacen con <code>VISIBLE|DIRTY</code>: el primer <code>fwk_ecs_render_prepare</code> del bucle las marca para dibujar y el primer <code>fwk_ecs_render_draw</code> las pinta. El mapa se dibuja antes, una sola vez; después solo se tocan las celdas que cambian. Si una rutina del manager devuelve carry, <code>A</code> trae el código de error de la ABI (<code>FWK_ECS_ERR_*</code>); el ejemplo lo guarda en <code>platformer_status</code> y detiene el juego.</p>
 
@@ -427,7 +431,7 @@ python3 -m json.tool .build/tests/catalog.json | less</code></pre>
       <tr><td>El jugador se desplaza el doble.</td><td>Revise si X se introdujo como píxeles; sprites y tiles usan bytes Mode 0.</td></tr>
       <tr><td>Atraviesa paredes o suelo.</td><td>Compruebe que <code>ECS_E_PLATFORM_TILEMAP</code> apunta al mapa vigente y mantenga la velocidad por debajo del tamaño del tile por frame.</td></tr>
       <tr><td>No puede saltar.</td><td>Compruebe el bit <code>FWK_PLATFORM_TILE_GROUNDED</code> en <code>ECS_E_MOTION_FLAGS</code>, <code>ECS_E_INPUT_ACTION_MASK</code> y el orden de sistemas (entrada antes de plataforma).</td></tr>
-      <tr><td>Quedan estelas.</td><td>Active <code>ECS_RENDER_DIRTY</code> al mover/cambiar/ocultar a mano, complete <code>fwk_ecs_render_restore</code> y <code>fwk_ecs_render_draw</code>, y reserve al menos <code>width*height</code> bytes por buffer de fondo.</td></tr>
+      <tr><td>Quedan estelas.</td><td>Active <code>ECS_RENDER_DIRTY</code> al mover/cambiar/ocultar a mano, complete <code>fwk_ecs_render_restore</code> y <code>fwk_ecs_render_draw</code>, y compruebe que algún pool de la escena tiene buffers de al menos <code>width*height</code> bytes (si no, el renderer devuelve <code>FWK_ECS_ERR_OVERFLOW</code>).</td></tr>
       <tr><td>El renderer devuelve carry.</td><td>Compare <code>A</code> con <code>FWK_ECS_ERR_RENDER</code> (fases fuera de orden), <code>FWK_ECS_ERR_BUSY</code> (manager bloqueado) y <code>FWK_ECS_ERR_OVERFLOW</code> (array de trabajo pequeño).</td></tr>
       <tr><td>El mapa no se dibuja.</td><td>Inspeccione carry tras <code>fwk_tilemap_render_view</code>, dimensiones, cámara, ids y <code>tile_count</code>.</td></tr>
       <tr><td>El BIN no aparece en el DSK común.</td><td>La construcción aislada no basta: sincronice las listas de integración y vuelva a ejecutar <code>make examples</code>.</td></tr>

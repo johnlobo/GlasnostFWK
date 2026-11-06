@@ -34,6 +34,7 @@ _ecsr_j:       .ds 1
 _ecsr_mode:    .ds 1
 _ecsr_changed: .ds 1
 _ecsr_tmp:     .ds 8             ; sort scratch (one entry)
+_ecsr_need:    .ds 2             ; bytes a background buffer must hold
 ;; Sprite descriptor handed to video/sprite.s: data, x, y (16-bit, high bytes
 ;; stay zero), width, height.
 _ecsr_desc:    .db 0, 0, 0, 0, 0, 0, 0, 0
@@ -74,6 +75,154 @@ fwk_ecs_render_draw::
     call _ecsr_draw
     pop iy
     pop ix
+    ret
+fwk_ecs_render_reset::
+    push ix
+    push iy
+    call _ecsr_reset
+    pop iy
+    pop ix
+    ret
+
+;; ---------------------------------------------------------------- pools
+
+;; In: IX=pool. Out: HL=flag of its first slot, DE=slot stride (bytes + 1),
+;; B=slots. Modified: AF.
+_ecsr_pool_first:
+    ld b, FWK_ECS_POOL_COUNT(ix)
+    ld e, FWK_ECS_POOL_BYTES(ix)
+    ld d, FWK_ECS_POOL_BYTES+1(ix)
+    inc de
+    push ix
+    pop hl
+    inc hl
+    inc hl
+    inc hl                          ; FWK_ECS_POOL_FLAGS
+    ret
+
+;; fwk_ecs_render_reset body. In: IX=scene.
+_ecsr_reset:
+    ld a, FWK_ECS_RENDER_STATE(ix)
+    or a
+    jp nz, _ecsr_err_render
+    ld a, FWK_ECS_RENDER_POOL_COUNT(ix)
+    or a
+    ret z                           ; no pools: nothing to free
+    ld b, a
+    ld l, FWK_ECS_RENDER_POOLS(ix)
+    ld h, FWK_ECS_RENDER_POOLS+1(ix)
+_ecsr_reset_pool:
+    ld e, (hl)
+    inc hl
+    ld d, (hl)
+    inc hl
+    push hl
+    push bc
+    push de
+    pop ix                          ; IX = pool
+    call _ecsr_pool_first
+_ecsr_reset_slot:
+    ld (hl), #0
+    add hl, de
+    djnz _ecsr_reset_slot
+    pop bc
+    pop hl
+    djnz _ecsr_reset_pool
+    xor a
+    ret
+
+;; In: IY=entity that must be drawn and owns no buffer. Gives it one.
+;; Out: carry set when no pool has a free buffer big enough. Preserves IX, IY and
+;; every register.
+_ecsr_alloc:
+    push af
+    push bc
+    push de
+    push hl
+    push ix
+    ld hl, #0                       ; need = width * height
+    ld a, ECS_E_WIDTH(iy)
+    or a
+    jr z, _ecsr_alloc_sized
+    ld b, a
+    ld e, ECS_E_HEIGHT(iy)
+    ld d, #0
+_ecsr_alloc_mul:
+    add hl, de
+    djnz _ecsr_alloc_mul
+_ecsr_alloc_sized:
+    ld (_ecsr_need), hl
+    ld ix, (_ecsr_scene)
+    ld b, FWK_ECS_RENDER_POOL_COUNT(ix)
+    ld l, FWK_ECS_RENDER_POOLS(ix)
+    ld h, FWK_ECS_RENDER_POOLS+1(ix)
+    ld a, b
+    or a
+    jr z, _ecsr_alloc_fail
+_ecsr_alloc_pool:
+    ld e, (hl)
+    inc hl
+    ld d, (hl)
+    inc hl
+    push hl
+    push bc
+    push de
+    pop ix                          ; IX = pool
+    ld e, FWK_ECS_POOL_BYTES(ix)
+    ld d, FWK_ECS_POOL_BYTES+1(ix)
+    ld hl, (_ecsr_need)
+    or a
+    sbc hl, de                      ; need - bytes
+    jr c, _ecsr_alloc_scan
+    jr nz, _ecsr_alloc_next         ; the buffers of this pool are too small
+_ecsr_alloc_scan:
+    call _ecsr_pool_first
+_ecsr_alloc_slot:
+    ld a, (hl)
+    or a
+    jr z, _ecsr_alloc_take
+    add hl, de
+    djnz _ecsr_alloc_slot
+_ecsr_alloc_next:
+    pop bc
+    pop hl
+    djnz _ecsr_alloc_pool
+_ecsr_alloc_fail:
+    pop ix
+    pop hl
+    pop de
+    pop bc
+    pop af
+    scf
+    ret
+_ecsr_alloc_take:
+    ld (hl), #1
+    inc hl                          ; the buffer follows its flag
+    ld ECS_E_RENDER_BACKGROUND(iy), l
+    ld ECS_E_RENDER_BACKGROUND+1(iy), h
+    pop bc
+    pop hl
+    pop ix
+    pop hl
+    pop de
+    pop bc
+    pop af
+    or a
+    ret
+
+;; In: IY=entity. Returns its background buffer to its pool (no-op without one).
+;; Modified: AF, HL.
+_ecsr_free:
+    ld l, ECS_E_RENDER_BACKGROUND(iy)
+    ld h, ECS_E_RENDER_BACKGROUND+1(iy)
+    ld a, h
+    or l
+    ret z
+    dec hl
+    ld (hl), #0                     ; the flag sits just before the buffer
+    xor a
+    ld ECS_E_RENDER_BACKGROUND(iy), a
+    ld ECS_E_RENDER_BACKGROUND+1(iy), a
     ret
 
 ;; ---------------------------------------------------------------- helpers
@@ -243,6 +392,16 @@ _ecsr_g_take:
     ld hl, #_ecsr_cap
     cp (hl)
     jp nc, _ecsr_err_overflow
+    ld a, d
+    or a
+    jr z, _ecsr_g_buffered          ; not drawn this frame: no buffer needed
+    ld a, ECS_E_RENDER_BACKGROUND(iy)
+    or ECS_E_RENDER_BACKGROUND+1(iy)
+    jr nz, _ecsr_g_buffered         ; it already owns one
+    call _ecsr_alloc
+    jp c, _ecsr_err_overflow
+_ecsr_g_buffered:
+    ld a, (_ecsr_n)
     inc a
     ld (_ecsr_n), a
     ld hl, (_ecsr_wptr)
@@ -595,6 +754,13 @@ _ecsr_r_loop:
     res 2, ECS_E_RENDER_FLAGS(iy)
     xor a
     ld ECS_E_RENDER_PREVIOUS_WIDTH(iy), a
+    ld a, ECS_E_STATUS(iy)
+    cp #ECS_STATUS_ACTIVE
+    jr nz, _ecsr_r_release
+    bit 0, ECS_E_RENDER_FLAGS(iy)
+    jr nz, _ecsr_r_loop             ; still drawn: keeps its buffer
+_ecsr_r_release:
+    call _ecsr_free
     jr _ecsr_r_loop
 _ecsr_r_done:
     ld ix, (_ecsr_scene)
