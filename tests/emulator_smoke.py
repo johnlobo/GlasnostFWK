@@ -67,8 +67,7 @@ def standard_screen_address(x: int, y: int) -> int:
 
 
 # SHA-256 prefixes (16 hex) of the HUD fields as drawn by examples/platformer
-# for each state, captured from the original game in the emulator. The ECS
-# port must draw the same pixels. Fields: score x=0..19, hint x=24..59,
+# for each state (frozen when the pre-ECS game was still around). Fields: score x=0..19, hint x=24..59,
 # lives x=64..79, scanlines 8..23.
 PLATFORMER_HUD_GOLDEN = {
     "score": {
@@ -103,8 +102,8 @@ def hud_field_hash(field: str) -> str:
 
 
 # Screen bands (y0, y1, x0, x1) that no entity ever crosses, hashed (SHA-256, 16 hex)
-# as examples/platformer draws them on each level. Captured from the original in
-# the emulator (level 2 reached through the door).
+# as examples/platformer draws them on each level (level 2 reached through the
+# door; frozen when the pre-ECS game was still around).
 PLATFORMER_BANDS = {"A": (40, 56, 0, 80), "B": (64, 80, 12, 64), "C": (96, 112, 12, 64), "D": (136, 152, 12, 64)}
 PLATFORMER_BAND_GOLDEN = {
     0: {"A": "aacf1deffa3d11f9", "B": "a259b7483b1637e6", "C": "3852c28a157a0406", "D": "b19bb908d872e650"},
@@ -119,8 +118,8 @@ def band_hash(key: str) -> str:
 
 
 def tmx_layer(layer: str) -> bytes:
-    """Tile ids minus one for a layer of examples/platformer_ecs/assets/src/level.tmx."""
-    text = (ROOT / "examples/platformer_ecs/assets/src/level.tmx").read_text()
+    """Tile ids minus one for a layer of examples/platformer/assets/src/level.tmx."""
+    text = (ROOT / "examples/platformer/assets/src/level.tmx").read_text()
     match = re.search(rf'<layer[^>]*name="{layer}"[^>]*>\s*<data encoding="csv">(.*?)</data>', text, re.S)
     return bytes(int(v) - 1 for v in match.group(1).replace("\n", "").split(",") if v.strip())
 
@@ -208,8 +207,6 @@ def run_example(
     name: str,
     emulator: Path,
     model: str,
-    screenshot_dir: Path | None = None,
-    platformer_regressions_only: bool = False,
 ) -> None:
     directory = ROOT / ".build" / name
     dsk = ROOT / ".build" / "tests" / "GlasnostFWK-tests.dsk"
@@ -417,17 +414,17 @@ def run_example(
                 raise RuntimeError("a too small work array did not return FWK_ECS_ERR_OVERFLOW")
             if ram(symbol(noi, "ecsrender_check_order"), 1) != bytes((0x0B,)):
                 raise RuntimeError("draw on an IDLE scene did not return FWK_ECS_ERR_RENDER")
-        if name == "platformer_ecs":
-            status = symbol(noi, "platformer_ecs_status")
-            player = symbol(noi, "platformer_ecs_player")
-            enemy_h = symbol(noi, "platformer_ecs_enemy_h")
-            enemy_v = symbol(noi, "platformer_ecs_enemy_v")
-            score = symbol(noi, "platformer_ecs_score")
-            lives = symbol(noi, "platformer_ecs_lives")
-            won = symbol(noi, "platformer_ecs_won")
-            door = symbol(noi, "platformer_ecs_door")
+        if name == "platformer":
+            status = symbol(noi, "platformer_status")
+            player = symbol(noi, "platformer_player")
+            enemy_h = symbol(noi, "platformer_enemy_h")
+            enemy_v = symbol(noi, "platformer_enemy_v")
+            score = symbol(noi, "platformer_score")
+            lives = symbol(noi, "platformer_lives")
+            won = symbol(noi, "platformer_won")
+            door = symbol(noi, "platformer_door")
             wait_for(lambda: ram(status, 1) == b"\x5A", 5, "ECS platformer initialization")
-            storage = symbol(noi, "platformer_ecs_storage")
+            storage = symbol(noi, "platformer_storage")
             if ram(storage + 2, 1) != b"\x01":
                 raise RuntimeError("ECS platformer player slot is not ACTIVE")
             enemy_h_slot = int.from_bytes(ram(enemy_h, 2), "little")
@@ -443,10 +440,10 @@ def run_example(
             player_slot = int.from_bytes(ram(player, 2), "little")
             enemy_v2_slot = storage + 42
             door_slot = int.from_bytes(ram(door, 2), "little")
-            items = symbol(noi, "platformer_ecs_items_storage")
+            items = symbol(noi, "platformer_items_storage")
             if ram(lives, 1) != b"\x0A" or ram(score, 1) != b"\x00" or ram(won, 1) != b"\x00":
                 raise RuntimeError("ECS platformer initial lives/score/won are invalid")
-            hud_dirty = symbol(noi, "platformer_ecs_hud_dirty")
+            hud_dirty = symbol(noi, "platformer_hud_dirty")
 
             def check_hud(score_key, hint_key, lives_key, label):
                 wait_for(lambda: ram(hud_dirty, 1) == b"\x00", 5, f"ECS platformer HUD drawn ({label})")
@@ -457,18 +454,18 @@ def run_example(
                     got, want = hud_field_hash(field), PLATFORMER_HUD_GOLDEN[field][key]
                     if got != want:
                         raise RuntimeError(
-                            f"ECS platformer HUD {field} differs from the original at {label}: "
+                            f"platformer HUD {field} differs from its golden at {label}: "
                             f"{got} != {want} (state {key})"
                         )
 
             check_hud(0, "collect", 10, "start")
-            level = symbol(noi, "platformer_ecs_level")
+            level = symbol(noi, "platformer_level")
 
             def check_level_screen(level_index, label):
                 for key, want in PLATFORMER_BAND_GOLDEN[level_index].items():
                     if band_hash(key) != want:
                         raise RuntimeError(
-                            f"ECS platformer screen band {key} differs from the original at {label} "
+                            f"platformer screen band {key} differs from its golden at {label} "
                             f"(level {level_index + 1}): {band_hash(key)} != {want}"
                         )
 
@@ -511,7 +508,7 @@ def run_example(
                     raise RuntimeError(f"ECS platformer does not rest on the floor: {resting}")
                 time.sleep(0.25)
 
-            # Same walkthrough as the original platformer smoke: it must collect
+            # Walkthrough: it must collect
             # the four coins and win with the same inputs.
             set_keys(row0=0xFE)
             wait_for(lambda: player_state()["y"] < 184, 5, "ECS platformer first jump")
@@ -576,7 +573,7 @@ def run_example(
             try:
                 wait_for(lambda: ram(score, 1) == b"\x04", 5, "ECS platformer upper-right coin")
             except RuntimeError as error:
-                items = symbol(noi, "platformer_ecs_items_storage")
+                items = symbol(noi, "platformer_items_storage")
                 coins = [ram(items + 42 * i + 2, 4).hex() for i in range(5)]
                 raise RuntimeError(
                     f"{error}: player={player_state()} score={ram(score, 1).hex()} "
@@ -790,48 +787,6 @@ def run_example(
                 time.sleep(0.01)
             if not heard_sfx:
                 raise RuntimeError("sound effect did not produce an observable PSG channel B signal")
-        if name == "animation":
-            enabled = symbol(noi, "animation_enabled")
-            changes = symbol(noi, "animation_changes")
-            ticks = symbol(noi, "animation_ticks")
-            frame_value = symbol(noi, "animation_frame_value")
-            status = symbol(noi, "animation_status")
-            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "four exact animation periods")
-            if ram(symbol(noi, "animation_wide_status"), 1) != b"\x5A":
-                raise RuntimeError(
-                    "descriptor with more than 128 frames returned the wrong frame "
-                    "(16-bit frame index regression)"
-                )
-            if ram(frame_value, 1) not in {b"\xF0", b"\x0F", b"\xAA"}:
-                raise RuntimeError("animation selected a frame outside its descriptor")
-            wait_for(
-                lambda: ram(standard_screen_address(20, 80), 1) == ram(frame_value, 1),
-                5,
-                "animation frame pointer rendering",
-            )
-
-            write_ram(enabled, b"\x00")
-            time.sleep(0.15)
-            paused_ticks = ram(ticks, 2)
-            paused_changes = ram(changes, 2)
-            paused_frame = ram(frame_value, 1)
-            time.sleep(0.35)
-            if (
-                ram(ticks, 2) != paused_ticks
-                or ram(changes, 2) != paused_changes
-                or ram(frame_value, 1) != paused_frame
-            ):
-                raise RuntimeError("caller-owned animation pause policy did not freeze state")
-
-            write_ram(enabled, b"\x01")
-            paused_tick_value = int.from_bytes(paused_ticks, "little")
-            paused_change_value = int.from_bytes(paused_changes, "little")
-            wait_for(
-                lambda: int.from_bytes(ram(ticks, 2), "little") > paused_tick_value + 4
-                and int.from_bytes(ram(changes, 2), "little") > paused_change_value,
-                5,
-                "animation resume",
-            )
         if name == "gravity":
             state = symbol(noi, "gravity_state")
             status = symbol(noi, "gravity_status")
@@ -963,48 +918,6 @@ def run_example(
                         f"spritemask VRAM witness {(x, y)} is {actual.hex()}, "
                         f"expected {expected.hex()}"
                     )
-        if name == "renderorder":
-            status = symbol(noi, "renderorder_status")
-            command = symbol(noi, "renderorder_command")
-            batch = symbol(noi, "renderorder_batch")
-            entries = symbol(noi, "renderorder_entries")
-            wait_for(lambda: ram(status, 1) == b"\xA5", 5, "ordered sprite draw")
-            if ram(batch + 2, 1) != b"\x02":
-                raise RuntimeError("renderorder batch count is not two")
-            if ram(entries + 4, 1) != b"\x0A" or ram(entries + 10, 1) != b"\x14":
-                raise RuntimeError("renderorder keys are not stably sorted")
-            if ram(entries + 5, 1) != b"\x01" or ram(entries + 11, 1) != b"\x01":
-                raise RuntimeError("renderorder entries were not marked captured")
-            if ram(standard_screen_address(22, 42), 1) != b"\xAA":
-                raise RuntimeError("renderorder lower layer is not visible")
-            if ram(standard_screen_address(24, 44), 1) != b"\xF0":
-                raise RuntimeError("renderorder upper layer did not win the overlap")
-
-            write_ram(command, b"\x01")
-            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "reverse sprite restore")
-            patterns = bytes.fromhex("112233445566778899122334")
-            for y, pattern in enumerate(patterns, start=40):
-                if ram(standard_screen_address(20, y), 12) != bytes((pattern,)) * 12:
-                    raise RuntimeError(f"renderorder background restore failed on row {y}")
-            if ram(entries + 5, 1) != b"\x00" or ram(entries + 11, 1) != b"\x00":
-                raise RuntimeError("renderorder captured flags survived restoration")
-
-            write_ram(command, b"\x02")
-            wait_for(lambda: ram(status, 1) == b"\xC3", 5, "sprite move and redraw")
-            if ram(standard_screen_address(23, 43), 1) != b"\x55":
-                raise RuntimeError("renderorder background update was lost")
-            if ram(standard_screen_address(30, 60), 1) != b"\xAA":
-                raise RuntimeError("renderorder moved lower layer is not visible")
-            if ram(standard_screen_address(32, 62), 1) != b"\xF0":
-                raise RuntimeError("renderorder moved upper layer did not win the overlap")
-
-            write_ram(command, b"\x03")
-            wait_for(lambda: ram(status, 1) == b"\x3C", 5, "final sprite restore")
-            for y in range(60, 68):
-                if ram(standard_screen_address(30, y), 6) != b"\x00" * 6:
-                    raise RuntimeError(f"renderorder moved background restore failed on row {y}")
-            if ram(standard_screen_address(23, 43), 1) != b"\x55":
-                raise RuntimeError("renderorder persistent background update changed")
         if name == "window":
             command = symbol(noi, "window_command")
             status = symbol(noi, "window_status")
@@ -1129,227 +1042,6 @@ def run_example(
             for x in (20, 30, 40):
                 if ram(standard_screen_address(x, 100), 1) != b"\x00":
                     raise RuntimeError(f"vertical left a collected pickup on screen at x={x}")
-        if name == "platformer":
-            player = symbol(noi, "platformer_player")
-            score = symbol(noi, "platformer_score")
-            status = symbol(noi, "platformer_status")
-            lives = symbol(noi, "platformer_lives")
-            door = symbol(noi, "platformer_door_entity")
-            enemy_h = symbol(noi, "platformer_enemy_h_entity")
-            enemy_h_behavior = symbol(noi, "platformer_enemy_h_behavior")
-            enemy_v = symbol(noi, "platformer_enemy_v_entity")
-            enemy_v_behavior = symbol(noi, "platformer_enemy_v_behavior")
-            enemy_v2 = symbol(noi, "platformer_enemy_v2_entity")
-            enemy_v2_behavior = symbol(noi, "platformer_enemy_v2_behavior")
-            contacts = symbol(noi, "platformer_enemy_contacts")
-            hud_dirty = symbol(noi, "platformer_hud_dirty")
-            wait_for(
-                lambda: ram(status, 1) in {b"\xA5", b"\x5A"},
-                20,
-                "platformer scene initialization",
-            )
-            state = ram(player, 7)
-            if state != bytes((16, 184, 0, 0, 8, 8, 2)):
-                raise RuntimeError(f"platformer initial state is invalid: {state.hex()}")
-            if (
-                ram(score, 1) != b"\x00"
-                or ram(status, 1) != b"\xA5"
-                or ram(lives, 1) != b"\x0A"
-            ):
-                raise RuntimeError("platformer initial score/status/lives are invalid")
-            if ram(door + 20, 1) != b"\x00":
-                raise RuntimeError("platformer door is visible before collecting all coins")
-            # The vertical enemies patrol y=56..154. fwk_motion_u8_step used to read
-            # a sum of 128 or more as negative and sent them to y=0.
-            v_ys = []
-            deadline = time.time() + 6.0
-            while time.time() < deadline:
-                v_ys.append(ram(enemy_v_behavior + 1, 1)[0])
-                v_ys.append(ram(enemy_v2_behavior + 1, 1)[0])
-            if min(v_ys) < 56 or max(v_ys) < 140:
-                raise RuntimeError(f"platformer vertical enemies left their patrol: y {min(v_ys)}..{max(v_ys)}")
-            if platformer_regressions_only:
-                enemy_specs = (
-                    ("horizontal", enemy_h, enemy_h_behavior),
-                    ("vertical", enemy_v, enemy_v_behavior),
-                    ("left vertical", enemy_v2, enemy_v2_behavior),
-                )
-                behavior_before = {}
-                for label, entity, behavior in enemy_specs:
-                    offset = behavior - entity
-                    snapshot = ram(entity, offset + 8)
-                    behavior_before[label] = snapshot[offset : offset + 8]
-                hold_keys(frames=4, after=0)
-                for label, entity, behavior in enemy_specs:
-                    offset = behavior - entity
-                    snapshot = ram(entity, offset + 8)
-                    before = behavior_before[label]
-                    after = snapshot[offset : offset + 8]
-                    if (
-                        int.from_bytes(before[5:7], "little") == 0
-                        or after[:2] == before[:2]
-                        or snapshot[2] != after[0]
-                        or snapshot[4] != after[1]
-                    ):
-                        raise RuntimeError(
-                            f"platformer {label} enemy is not driven by behavior/motion: "
-                            f"before={before.hex()} after={after.hex()}"
-                        )
-                old_wrong_hud_cell = b"".join(
-                    ram(standard_screen_address(44, y), 4) for y in range(10, 19)
-                )
-                old_life_digits = b"".join(
-                    ram(standard_screen_address(76, y), 4) for y in range(10, 19)
-                )
-                # Use an open part of the map so tile resolution cannot move
-                # the injected player away before the contact check.
-                write_ram(enemy_v2 + 2, bytes((16, 0, 100, 0)))
-                write_ram(enemy_v2_behavior, bytes((24, 100)))
-                write_ram(
-                    player,
-                    bytes((16, 100, 0, 0, 8, 8, 0)),
-                )
-                hold_keys(frames=2, after=0)
-                contact_lives = ram(lives, 1)
-                if contact_lives != b"\x09":
-                    raise RuntimeError(
-                        "platformer third-enemy overlap did not remove exactly one life: "
-                        f"player={ram(player, 7).hex()} "
-                        f"enemy={ram(enemy_v2 + 2, 4).hex()} "
-                        f"contacts={ram(contacts, 1).hex()} lives={contact_lives.hex()}"
-                    )
-                wait_for(
-                    lambda: ram(hud_dirty, 1)[0] & 0x02 == 0,
-                    5,
-                    "platformer life HUD update",
-                )
-                new_wrong_hud_cell = b"".join(
-                    ram(standard_screen_address(44, y), 4) for y in range(10, 19)
-                )
-                new_life_digits = b"".join(
-                    ram(standard_screen_address(76, y), 4) for y in range(10, 19)
-                )
-                if new_wrong_hud_cell != old_wrong_hud_cell:
-                    raise RuntimeError(
-                        "platformer life update corrupted the central HUD text"
-                    )
-                if new_life_digits == old_life_digits:
-                    raise RuntimeError("platformer life digits did not change in video RAM")
-                print(
-                    f"ok - platformer enemy behaviors, contact, door and HUD ({model})"
-                )
-                return
-            if screenshot_dir is not None:
-                screenshot_dir.mkdir(parents=True, exist_ok=True)
-                (screenshot_dir / f"platformer-{model}-start.png").write_bytes(
-                    get_bytes("/api/screenshot?crop=1")
-                )
-            set_keys(row0=0xFE)
-            wait_for(lambda: ram(player, 7)[1] < 184, 5, "platformer first jump")
-            set_keys()
-            wait_for(
-                lambda: ram(player, 7)[1] == 184 and ram(player, 7)[6] == 0x02,
-                5,
-                "platformer first landing",
-            )
-            if ram(score, 1) != b"\x01":
-                raise RuntimeError("platformer did not collect the lower-left coin and land")
-            # Rendering cost is allowed to make a game-loop pass span more
-            # than one video frame. Drive the walkthrough by observable game
-            # state instead of assuming 20 emulator frames == 20 updates.
-            hold_keys_until(
-                lambda: ram(player, 1)[0] >= 56,
-                row0=0xFD,
-                timeout=10,
-                label="platformer right approach",
-            )
-            if not 48 <= ram(player, 1)[0] < 64:
-                raise RuntimeError(
-                    f"platformer right approach ended outside its target: "
-                    f"x={ram(player, 1)[0]}"
-                )
-            set_keys(row0=0xFE)
-            wait_for(lambda: ram(player, 7)[1] < 184, 5, "platformer second jump")
-            set_keys()
-            wait_for(
-                lambda: ram(player, 7)[1] == 184 and ram(player, 7)[6] == 0x02,
-                5,
-                "platformer second landing",
-            )
-            if ram(score, 1) != b"\x02":
-                raise RuntimeError(
-                    "platformer did not collect the lower-right coin: "
-                    f"player={ram(player, 7).hex()} score={ram(score, 1).hex()}"
-                )
-            font = asm_hex_bytes_between(
-                ROOT / "src/ui/text.inc",
-                "_fwk_text_default_font:",
-                "_fwk_text_default_small_digits:",
-            )
-            expected_score_two = font[11 * 18 : 12 * 18]
-            actual_score_two = b"".join(
-                ram(standard_screen_address(14, y), 2) for y in range(10, 19)
-            )
-            if actual_score_two != expected_score_two:
-                raise RuntimeError(
-                    "platformer HUD was not restored before score redraw: "
-                    f"actual={actual_score_two.hex()} "
-                    f"expected={expected_score_two.hex()}"
-                )
-            hold_keys_until(
-                lambda: ram(player, 1)[0] <= 44,
-                row1=0xFE,
-                timeout=10,
-                label="platformer platform approach",
-            )
-            if not 32 <= ram(player, 1)[0] <= 48:
-                raise RuntimeError(
-                    f"platformer platform approach ended outside its target: "
-                    f"x={ram(player, 1)[0]}"
-                )
-            expected_y = (152, 120, 88, 56, 24)
-            for landing_y in expected_y:
-                start_y = ram(player, 7)[1]
-                set_keys(row0=0xFE)
-                wait_for(
-                    lambda: ram(player, 7)[1] < start_y,
-                    5,
-                    f"platformer jump towards y={landing_y}",
-                )
-                set_keys()
-                wait_for(
-                    lambda: ram(player, 7)[1] == landing_y
-                    and ram(player, 7)[6] == 0x02,
-                    5,
-                    f"platformer landing at y={landing_y}",
-                )
-                climbed = ram(player, 7)
-                if climbed[1] != landing_y or climbed[6] != 0x02:
-                    raise RuntimeError(
-                        f"platformer did not land at y={landing_y}: {climbed.hex()}"
-                    )
-            set_keys(row1=0xFE)
-            wait_for(lambda: ram(score, 1) == b"\x03", 5, "platformer upper-left coin")
-            set_keys()
-            set_keys(row0=0xFD)
-            wait_for(lambda: ram(score, 1) == b"\x04", 5, "platformer upper-right coin")
-            set_keys()
-            if ram(score, 1) != b"\x04" or ram(status, 1) != b"\x5A":
-                raise RuntimeError("platformer did not collect all coins and win")
-            for coin_x in (16, 56):
-                restored_coin_cell = b"".join(
-                    ram(standard_screen_address(coin_x, y), 4)
-                    for y in range(168, 176)
-                )
-                if restored_coin_cell != bytes(32):
-                    raise RuntimeError(
-                        "platformer left pixels in a collected lower coin cell: "
-                        f"x={coin_x} data={restored_coin_cell.hex()}"
-                    )
-            if screenshot_dir is not None:
-                (screenshot_dir / f"platformer-{model}-victory.png").write_bytes(
-                    get_bytes("/api/screenshot?crop=1")
-                )
         print(f"ok - {name} executes and advances frames ({model})")
     finally:
         try:
@@ -1367,36 +1059,18 @@ def main() -> int:
     parser.add_argument(
         "examples",
         nargs="*",
-        default=["minimal", "board", "platform", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "renderorder", "video", "resources128", "diskload", "audio", "animation", "window", "vertical", "perf", "collision", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "platformer_ecs"],
+        default=["minimal", "board", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "video", "resources128", "diskload", "audio", "window", "vertical", "perf", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender"],
     )
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     parser.add_argument("--model", choices=["464", "6128"], default="6128")
-    parser.add_argument(
-        "--screenshot-dir",
-        type=Path,
-        help="guarda capturas PNG del inicio y victoria de platformer",
-    )
-    parser.add_argument(
-        "--platformer-regressions-only",
-        action="store_true",
-        help="comprueba contactos, puerta y estado inicial sin recorrer el nivel",
-    )
     args = parser.parse_args()
-    if args.platformer_regressions_only and args.examples != ["platformer"]:
-        parser.error("--platformer-regressions-only requiere solo el ejemplo platformer")
     try:
         get("/api/ping")
         raise SystemExit("port 6128 is already occupied")
     except OSError:
         pass
     for name in args.examples:
-        run_example(
-            name,
-            args.emulator,
-            args.model,
-            args.screenshot_dir,
-            args.platformer_regressions_only,
-        )
+        run_example(name, args.emulator, args.model)
     return 0
 
 

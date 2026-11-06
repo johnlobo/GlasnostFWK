@@ -1,5 +1,17 @@
 # Fase 10: paridad y rendimiento de `platformer_ecs`
 
+> **Registro histórico.** Compara dos juegos que ya no coexisten: el original se
+> eliminó en la fase 11 parte B y sus pruebas de paridad dejaron de existir con él.
+> Las medidas siguen siendo válidas para el juego ECS.
+>
+> Nota de nombres (fase 11 parte B): los registros de este documento usan los
+> nombres de su época. `platformer` designa aquí el ejemplo original anterior al
+> ECS, eliminado en la fase 11 parte B, y `platformer_ecs` es el actual
+> `examples/platformer` (ex `platformer_ecs`; AMSDOS `PECS` pasó a `PLATGAME`).
+> Los módulos `core/pool`, `video/entity_render`, `extensions/animation`,
+> `extensions/collision_bodies` y `extensions/motion_u8` también están
+> eliminados; las medidas y resultados se conservan como historia.
+
 Criterio de salida (G3 del plan maestro): `platformer_ecs` juega igual que
 `platformer` y no es más lento ni más grande de forma injustificada.
 
@@ -90,8 +102,8 @@ rápido que el original en conjunto y el presupuesto se cumple; el máximo de 15
 
 ## Rebanada 1: hecha (2026-11-06)
 
-`platformer_ecs` usa los **mismos assets** que `platformer`. La carpeta
-`examples/platformer_ecs/assets/` es una copia con el manifiesto, la paleta, los
+`platformer_ecs` usaba los **mismos assets** que el `platformer` original. La carpeta
+`examples/platformer/assets/` (hoy la del juego ECS) conserva la copia con el manifiesto, la paleta, los
 PNG y el TMX originales y la salida generada. El pipeline es el mismo
 (`tools/import_assets.py`, conversión incremental por SHA-256, mapas ZX7B), y
 `make` en el ejemplo convierte solo si cambió un asset. La copia es deliberada:
@@ -155,7 +167,7 @@ Pruebas:
   a 0 (forzado con `write_ram`) y tras cada contacto con un enemigo. El HUD inicial es idéntico byte a byte (1.280 bytes de VRAM).
 - **Parpadeo observado** en el emulador (`border_idx` 0x1C durante el contacto,
   0x14 al terminar) en cada uno de los tres enemigos.
-- **Prueba host** (`test_platformer_ecs_hud_and_flash_match_the_original`):
+- **Prueba host** (entonces `test_platformer_ecs_hud_and_flash_match_the_original`, hoy `test_platformer_hud_and_flash` en `tests/test_ecs_manager.py` sin la comparación con el original):
   textos, posiciones, columnas de campo y constantes del parpadeo iguales a las
   del original, leídas de su fuente.
 

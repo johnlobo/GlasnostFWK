@@ -40,10 +40,10 @@
   <header>
     <h1>Crear un juego de plataformas con GlasnostFWK</h1>
     <p class="lead">Tutorial mantenible, paso a paso, basado en el flujo de construcción y en las APIs presentes en el repositorio.</p>
-    <p class="meta">Edición: 31 de octubre de 2026 · Perfil estable <code>standard-160x200.json</code> · Ensamblador Z80</p>
+    <p class="meta">Edición: 6 de noviembre de 2026 · Perfil estable <code>standard-160x200.json</code> · Ensamblador Z80</p>
   </header>
 
-  <div class="note"><strong>Alcance confirmado.</strong> Esta guía explica cómo montar un proyecto pequeño con movimiento, salto, tilemap, colisión, sprites y objetos coleccionables sobre <code>video/entity_render</code>. No presupone cámara con scroll, pendientes, streaming de mapas ni asignación dinámica de entidades: esas funciones no forman parte del contrato actual.</div>
+  <div class="note"><strong>Alcance confirmado.</strong> Esta guía explica cómo montar un proyecto pequeño con movimiento, salto, tilemap, colisión, sprites y objetos coleccionables sobre ECS 2.0: un manager por grupo de entidades, los sistemas de behavior, movimiento, entrada, plataforma, colisión y animación, y el renderer selectivo <code>video/ecs_render</code>. No presupone cámara con scroll, pendientes, streaming de mapas ni asignación dinámica de entidades: esas funciones no forman parte del contrato actual.</div>
 
   <nav aria-label="Índice">
     <h2>Índice</h2>
@@ -64,7 +64,7 @@
   </nav>
 
   <h2 id="resultado">1. Resultado y requisitos</h2>
-  <p>El proyecto queda dividido en cuatro archivos: <code>example.json</code> elige perfil y módulos, <code>game.inc</code> comparte constantes, <code>assets.s</code> conserva descriptores y configuración, y <code>main.s</code> implementa estado, inicialización y bucle. Los gráficos y mapas editables viven en <code>assets/</code> y se convierten antes de compilar. El constructor prepara un proyecto CPCTelera aislado bajo <code>.build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
+  <p>El proyecto queda dividido en tres partes: <code>example.json</code> elige perfil, módulos y el bloque <code>ecs</code> con los componentes de las entidades; <code>main.s</code> implementa constantes, estado, inicialización y bucle; y <code>assets/</code> contiene los gráficos y mapas editables, que se convierten antes de compilar. El constructor genera <code>ecs_profile.inc</code> (los offsets de cada campo de entidad) a partir del bloque <code>ecs</code> y prepara un proyecto CPCTelera aislado bajo <code>.build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
   <p>Antes de empezar, desde la raíz de GlasnostFWK, compruebe:</p>
   <pre><code>test -f /config/workspace/cpctelera_next/cpctelera/cpctelera.lib
 python3 --version
@@ -77,13 +77,12 @@ make --version</code></pre>
   </figure>
 
   <h2 id="estructura"><span class="step">2</span> Crear la estructura</h2>
-  <p>Para seguir el tutorial sin modificar el ejemplo distribuido, utilice otro nombre:</p>
+  <p>Para seguir el tutorial sin modificar el ejemplo distribuido, utilice otro nombre y parta de los assets del ejemplo:</p>
   <pre><code>mkdir -p examples/mi_plataformas
 touch examples/mi_plataformas/example.json
 touch examples/mi_plataformas/main.s
-touch examples/mi_plataformas/assets.s
-touch examples/mi_plataformas/game.inc</code></pre>
-  <p>La captura siguiente se genera leyendo el ejemplo real. Muestra la misma separación que debe conservar el proyecto nuevo y los módulos de plataforma disponibles.</p>
+cp -r examples/platformer/assets examples/mi_plataformas/assets</code></pre>
+  <p>La captura siguiente se genera leyendo el ejemplo real. Muestra la misma separación que debe conservar el proyecto nuevo.</p>
   <figure>
     <img src="images/platformer/01-estructura.png" alt="Captura de terminal con los archivos del ejemplo y los módulos de plataforma">
     <figcaption>Captura 2. Estructura obtenida mediante <code>find</code>; no es un esquema dibujado a mano.</figcaption>
@@ -93,9 +92,8 @@ touch examples/mi_plataformas/game.inc</code></pre>
     <thead><tr><th>Archivo</th><th>Responsabilidad recomendada</th></tr></thead>
     <tbody>
       <tr><td><code>example.json</code></td><td>Dependencias explícitas, perfil de vídeo, nombre AMSDOS y fuentes del juego.</td></tr>
-      <tr><td><code>game.inc</code></td><td>Offsets, máscaras y constantes compartidas entre código y assets.</td></tr>
-      <tr><td><code>assets.s</code></td><td>Tabla de tipos, descriptores, configuración, teclas y posiciones iniciales. Los tiles, sprites y mapas convertidos se enlazan desde <code>assets/generated/</code>.</td></tr>
-      <tr><td><code>main.s</code></td><td>Estado mutable, inicialización, lectura de entrada, física, reglas y render.</td></tr>
+      <tr><td><code>assets/</code></td><td>Originales editables (PNG y TMX) y datos convertidos en <code>assets/generated/</code>: tiles, sprites, mapas comprimidos y paleta.</td></tr>
+      <tr><td><code>main.s</code></td><td>Constantes, filas de creación de entidades, estado, inicialización, reglas, colisiones y bucle por frame.</td></tr>
     </tbody>
   </table>
 
@@ -108,18 +106,35 @@ touch examples/mi_plataformas/game.inc</code></pre>
   "transparency": {"pen": 0},
   "modules": [
     "core/system.s",
+    "core/ecs_manager.s",
+    "core/ecs_behavior.s",
+    "core/ecs_motion.s",
+    "core/ecs_input.s",
+    "core/ecs_platform.s",
+    "core/ecs_collision.s",
+    "core/ecs_animation.s",
+    "extensions/behavior.s",
+    "extensions/physics_platform.s",
+    "extensions/tilemap.s",
+    "extensions/platform_tilemap.s",
+    "extensions/tilemap_render.s",
     "core/input.s",
     "video/video.s",
     "video/sprite.s",
-    "video/entity_render.s",
+    "video/ecs_render.s",
     "ui/text.s",
-    "extensions/physics_platform.s",
-    "extensions/tilemap.s",
-    "extensions/tilemap_render.s",
-    "extensions/platform_tilemap.s"
+    "resources/zx7b.s"
   ],
-  "game_sources": ["main.s", "assets.s", "game.inc"]
+  "game_sources": ["main.s"],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": ["behavior", "input", "platform", "collision", "animation"]
+  }
 }</code></pre>
+  <p>El bloque <code>ecs</code> fija el formato de las coordenadas y los componentes de las entidades. <code>RENDER</code> está siempre presente y <code>MOTION</code> se inserta como dependencia de <code>input</code>, <code>platform</code> y <code>behavior</code>. Los sistemas de movimiento y behavior exigen coordenadas <code>u8</code>, y el componente <code>platform</code> necesita <code>core/ecs_platform.s</code> cuando <code>core/ecs_motion.s</code> está seleccionado; el constructor rechaza las combinaciones incoherentes. Para ver el layout resuelto (componentes, campos y offsets) antes de compilar:</p>
+  <pre><code>python3 tools/gen_ecs_profile.py examples/mi_plataformas/example.json \
+  --output examples/mi_plataformas/generated/ecs_profile.inc --preview</code></pre>
   <p><code>game_sources</code> debe incluir <code>main.s</code>. <code>transparency.pen=0</code> habilita el renderer transparente y coincide con el fondo de la fuente incorporada. Las rutas son relativas al directorio del ejemplo y el constructor rechaza rutas que escapen de él. <code>amsdos_name</code> se usa al integrar el BIN en el DSK común: debe contener entre uno y ocho caracteres AMSDOS válidos.</p>
   <figure>
     <img src="images/platformer/02-manifiesto.png" alt="Captura de terminal con el manifiesto JSON real de platformer">
@@ -127,34 +142,39 @@ touch examples/mi_plataformas/game.inc</code></pre>
   </figure>
   <div class="note"><strong>Dependencias explícitas.</strong> Añadir una llamada en ensamblador no enlaza automáticamente su implementación. El archivo que define la rutina debe aparecer en <code>modules</code>; los <code>.inc</code> asociados se copian automáticamente cuando existen.</div>
 
-  <h3>3.1 Compartir constantes del juego</h3>
-  <p>El constructor copia las fuentes del consumidor bajo <code>src/game</code>. Por eso <code>main.s</code> y <code>assets.s</code> incluyen el archivo compartido con esta ruta:</p>
-  <pre><code>.include "game/game.inc"</code></pre>
-  <p>Centralice allí offsets y reglas numéricas para no duplicarlas:</p>
-  <pre><code>PF_PLAYER_X      = 0
-PF_PLAYER_Y      = 1
-PF_PLAYER_VX     = 2
-PF_PLAYER_VY     = 3
-PF_PLAYER_WIDTH  = 4
-PF_PLAYER_HEIGHT = 5
-PF_PLAYER_FLAGS  = 6
-PF_PLAYER_SIZE   = 7
+  <h3>3.1 Constantes del juego</h3>
+  <p>El constructor copia las fuentes del consumidor bajo <code>src/game</code> y genera <code>ecs_profile.inc</code> junto a ellas. <code>main.s</code> lo incluye junto con los contratos de los módulos que usa:</p>
+  <pre><code>.include "cpctelera.h.s"
+.include "ecs_profile.inc"
+.include "core/ecs_manager.inc"
+.include "core/ecs_collision.inc"
+.include "core/ecs_animation.inc"
+.include "extensions/behavior.inc"
+.include "video/ecs_render.inc"
+.include "extensions/tilemap_render.inc"
+.include "extensions/physics_platform.inc"
+.include "assets/generated/assets.inc"</code></pre>
+  <p>Centralice al principio de <code>main.s</code> las máscaras de acción, los tipos de entidad y las reglas numéricas para no duplicarlas:</p>
+  <pre><code>INPUT_LEFT  = 0x01
+INPUT_RIGHT = 0x02
+INPUT_JUMP  = 0x04
 
-PF_INPUT_LEFT    = 0x01
-PF_INPUT_RIGHT   = 0x02
-PF_INPUT_JUMP    = 0x04
-PF_SPEED         = 2
-PF_JUMP_SPEED    = -8</code></pre>
-  <p>La ruta preparada mantiene una actualización por frame en el tramo diagnosticado con monedas visibles, por lo que <code>PF_SPEED=2</code> expresa directamente el ritmo horizontal original. No es una garantía general de rendimiento: mida de nuevo si cambia el número, tamaño o tipo de entidades.</p>
+T_PLAYER = 1
+T_COIN   = 2
+T_ENEMY  = 3
+T_DOOR   = 4
+
+LIVES_INITIAL = 10
+WIN_SCORE     = 4</code></pre>
+  <p>El campo <code>type</code> de cada entidad es un byte libre del juego: las reglas lo usan para distinguir una moneda de la puerta dentro de un mismo callback de colisión. El ejemplo distribuido mantiene una actualización de lógica por frame de vídeo (dos en el peor caso medido), pero eso no es una garantía general de rendimiento: mida de nuevo si cambia el número, tamaño o tipo de entidades.</p>
 
   <h2 id="datos" class="page-break"><span class="step">4</span> Preparar mapa, tiles y sprites</h2>
-  <div class="note"><strong>En el ejemplo distribuido.</strong> Los tiles, sprites y mapas de <code>examples/platformer</code> ya no se escriben a mano en <code>assets.s</code>: viven en <code>assets/src/*.png</code> y <code>assets/src/level.tmx</code>. <code>make</code> ejecuta <code>tools/import_assets.py</code> y solo convierte cuando cambian los originales; el resultado se ensambla desde <code>assets/generated/assets.s</code>. Los fragmentos de esta sección muestran el formato que produce el pipeline y sirven para entender los datos, pero no hace falta copiarlos.</div>
+  <div class="note"><strong>En el ejemplo distribuido.</strong> Los tiles, sprites y mapas de <code>examples/platformer</code> no se escriben a mano: viven en <code>assets/src/*.png</code> y <code>assets/src/level.tmx</code>. <code>make</code> ejecuta <code>tools/import_assets.py</code> y solo convierte cuando cambian los originales; el resultado se ensambla desde <code>assets/generated/assets.s</code>. Los fragmentos de esta sección muestran el formato que produce el pipeline y sirven para entender los datos, pero no hace falta copiarlos.</div>
   <h3>4.1 Mapa y tipos de colisión</h3>
   <p>El mapa contiene identificadores de tile en orden de filas. Otra tabla traduce cada identificador a <code>FWK_TILE_PASSABLE</code>, <code>FWK_TILE_SOLID</code> o <code>FWK_TILE_ONE_WAY</code>. El ejemplo usa las rutinas nativas de CPCTelera Next con tiles de 4 bytes por 8 scanlines: 8x8 píxeles en Mode 0 y 20 columnas para cubrir la pantalla.</p>
   <pre><code>.include "cpctelera.h.s"
 .include "extensions/tilemap.inc"
 .include "extensions/tilemap_render.inc"
-.include "video/entity_render.inc"
 
 tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID, FWK_TILE_ONE_WAY
 level_map:
@@ -182,207 +202,175 @@ FWK_TILEMAP_DESCRIPTOR level_descriptor, level_map, tile_types, 20, 25, 2, 3, 4,
 FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 0, 0, 20, 25, 3</code></pre>
   <p>La cámara y el viewport están en tiles; <code>screen_x</code> está en bytes Mode 0 y <code>screen_y</code> es una palabra alineada al alto del tile. El render completo valida la geometría y llama a <code>cpct_drawTileAligned4x8_f_asm</code> para cada celda.</p>
 
-  <h3>4.3 Prefijo de render y buffer de fondo</h3>
+  <h3>4.3 Sprite y buffer de fondo de cada entidad</h3>
   <pre><code>player_pixels:
     .rept 8
         .db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
     .endm
 
-player_background: .ds 8 * 8
-player_entity:
-    FWK_ENTITY_RENDER_PREFIX player_pixels, 16, 184, 8, 8, 192, player_background, 64, FWK_ENTITY_RENDER_VISIBLE, 0, 0</code></pre>
-  <p>El prefijo ocupa 25 bytes y debe comenzar en el offset cero de la entidad. Contiene el descriptor de sprite compatible, <code>sort_y</code>, el buffer de fondo, su capacidad, la geometría anterior, flags y pens de recoloreado. Reserve como mínimo <code>width * height</code> bytes para cada entidad que pueda estar activa.</p>
+player_background: .ds 8 * 8     ; width * height bytes</code></pre>
+  <p>El componente <code>RENDER</code> de cada entidad guarda el puntero al sprite (<code>ECS_E_RENDER_SPRITE</code>), el puntero a su buffer de fondo (<code>ECS_E_RENDER_BACKGROUND</code>), la capacidad de ese buffer, los flags (<code>VISIBLE</code>, <code>DIRTY</code>, <code>MASKED</code>, <code>RECOLOR</code>) y un desplazamiento de orden en Y (<code>ECS_E_RENDER_SORT_OFFSET_Y</code>). Reserve como mínimo <code>width * height</code> bytes de fondo para cada entidad que pueda estar visible: el renderer captura lo que cubre cada sprite antes de dibujarlo y lo repone al moverlo.</p>
 
   <h2 id="estado"><span class="step">5</span> Definir jugador, física y controles</h2>
-  <p>El perfil compacto usa un estado de siete bytes: <code>x, y, vx, vy, width, height, flags</code>. En este ejemplo comienza justo después del prefijo de render; así las rutinas de física reciben el subregistro compacto mediante <code>IY</code>, mientras el renderer recibe la base de la entidad mediante su array de punteros.</p>
-  <pre><code>.include "extensions/physics_platform.inc"
+  <p>Cada actor es una entidad de un manager. El jugador combina <code>RENDER</code>, <code>MOTION</code>, <code>INPUT</code>, <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code>; las monedas y la puerta solo <code>RENDER</code> y <code>COLLISION</code>. Los managers se declaran con almacenamiento propio y una escena de render los agrupa:</p>
+  <pre><code>ITEMS_CAP = 5
+PLAYER_CAP = 2
 
-player_background: .ds 8 * 8
-player_entity:
-    FWK_ENTITY_RENDER_PREFIX player_pixels, 16, 184, 8, 8, 192, player_background, 64, FWK_ENTITY_RENDER_VISIBLE, 0, 0
-player_state: .ds FWK_PLATFORM_STATE_SIZE
+items_storage:  .ds ECS_ENTITY_SIZE * ITEMS_CAP
+player_storage: .ds ECS_ENTITY_SIZE * PLAYER_CAP
+FWK_ECS_MANAGER_DESCRIPTOR items,   items_storage,  ITEMS_CAP
+FWK_ECS_MANAGER_DESCRIPTOR actors,  player_storage, PLAYER_CAP
 
-entity_ptrs: .dw player_entity, coin0_entity, coin1_entity
-render_work: .ds 3 * FWK_ENTITY_RENDER_WORK_SIZE
-FWK_ENTITY_RENDER_DESCRIPTOR render_list, entity_ptrs, 3, render_work, 3
+managers: .dw items, actors
+work:     .ds 8 * 7                     ; 8 bytes por entidad con RENDER
+FWK_ECS_RENDER_SCENE scene, managers, 2, work, 7
 
 FWK_PLATFORM_CONFIG physics_config, 80, 255, 1, 8
 
-ACTION_LEFT  = 0x01
-ACTION_RIGHT = 0x02
-ACTION_JUMP  = 0x04
-
 bindings:
     .dw Key_CursorLeft
-    .db ACTION_LEFT
+    .db INPUT_LEFT
     .dw Key_CursorRight
-    .db ACTION_RIGHT
+    .db INPUT_RIGHT
     .dw Key_CursorUp
-    .db ACTION_JUMP
+    .db INPUT_JUMP
     .dw 0
     .db 0</code></pre>
-  <p>La máscara cero termina la tabla. Hay como máximo ocho bits de acción. Use <code>fwk_input_held</code> para movimiento continuo y <code>fwk_input_pressed</code> para disparar el salto una sola vez.</p>
-  <p>El suelo global en 255 actúa solo como límite de seguridad si el tilemap ya posee un suelo visible. El resolver de mapa establece <code>FWK_PLATFORM_TILE_GROUNDED</code> al aterrizar sobre tiles sólidos o plataformas de una dirección.</p>
+  <p>La máscara cero termina la tabla de teclas y hay como máximo ocho bits de acción. Una entidad se crea copiando una plantilla con <code>fwk_ecs_entity_create</code> (<code>IX=manager</code>, <code>HL=plantilla</code>, devuelve <code>IY=entidad</code> y carry si falla). El ejemplo rellena la plantilla desde una fila de datos por actor; el núcleo de esa rutina, para el jugador:</p>
+  <pre><code>    ; IX=manager; plantilla de ECS_ENTITY_SIZE bytes a cero en `tpl`
+    ld iy, #tpl
+    ld ECS_E_COMPONENTS(iy), #&lt;PLAYER_COMPS
+    ld ECS_E_COMPONENTS+1(iy), #&gt;PLAYER_COMPS
+    ld ECS_E_STATUS(iy), #ECS_STATUS_ACTIVE
+    ld ECS_E_TYPE(iy), #T_PLAYER
+    ld ECS_E_X(iy), #16
+    ld ECS_E_Y(iy), #184
+    ld ECS_E_WIDTH(iy), #8
+    ld ECS_E_HEIGHT(iy), #8
+    ld ECS_E_RENDER_SPRITE(iy), #&lt;player_pixels
+    ld ECS_E_RENDER_SPRITE+1(iy), #&gt;player_pixels
+    ld ECS_E_RENDER_BACKGROUND(iy), #&lt;player_background
+    ld ECS_E_RENDER_BACKGROUND+1(iy), #&gt;player_background
+    ld ECS_E_RENDER_BACKGROUND_CAP(iy), #64
+    ld ECS_E_RENDER_FLAGS(iy), #ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY
+    ld ECS_E_RENDER_SORT_OFFSET_Y(iy), #8     ; ordena por los pies
+    ld hl, #tpl
+    call fwk_ecs_entity_create                ; carry: error, A=código
+    ; IY=entidad creada; campos de entrada y plataforma
+    ld ECS_E_INPUT_ACTION_MASK(iy), #INPUT_LEFT | INPUT_RIGHT | INPUT_JUMP
+    ld ECS_E_PLATFORM_CONFIG(iy), #&lt;physics_config
+    ld ECS_E_PLATFORM_CONFIG+1(iy), #&gt;physics_config
+    ld ECS_E_PLATFORM_TILEMAP(iy), #&lt;level_descriptor
+    ld ECS_E_PLATFORM_TILEMAP+1(iy), #&gt;level_descriptor
+    ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE</code></pre>
+  <p>Use <code>fwk_input_held</code> (a través de <code>fwk_ecs_system_input</code>) para el movimiento continuo; el sistema convierte la máscara de acciones en velocidad horizontal y dispara el salto una sola vez por pulsación desde el suelo. El suelo global en 255 actúa solo como límite de seguridad si el tilemap ya posee un suelo visible. El sistema de plataforma establece <code>FWK_PLATFORM_TILE_GROUNDED</code> al aterrizar sobre tiles sólidos o plataformas de una dirección.</p>
 
   <h2 id="inicio"><span class="step">6</span> Inicializar el juego</h2>
-  <p>La secuencia mínima es: configuración del proyecto, vídeo, módulos auxiliares, estado, entrada y escena estática. <code>fwk_project_init</code> inicializa el sistema e instala una sola vez la tabla de transparencia configurada.</p>
+  <p>La secuencia mínima es: configuración del proyecto, descompresión del mapa, vídeo, módulos auxiliares, paleta, entrada, escena estática y creación de las entidades. <code>fwk_project_init</code> inicializa el sistema e instala una sola vez la tabla de transparencia configurada.</p>
   <pre><code>_main::
     call fwk_project_init
+    ld hl, #map_packed + MAP_PACKED_SIZE - 1     ; ZX7B se descomprime hacia atrás
+    ld de, #map + MAP_SIZE - 1
+    call fwk_zx7b_unpack
     call fwk_video_init
     call fwk_text_init
-    xor a
-    call fwk_video_clear_visible
-
-    ld a, #16
-    ld (player_state + FWK_PLATFORM_X), a
-    ld a, #184
-    ld (player_state + FWK_PLATFORM_Y), a
-    xor a
-    ld (player_state + FWK_PLATFORM_VX), a
-    ld (player_state + FWK_PLATFORM_VY), a
-    ld a, #8
-    ld (player_state + FWK_PLATFORM_WIDTH), a
-    ld (player_state + FWK_PLATFORM_HEIGHT), a
-    ld a, #FWK_PLATFORM_TILE_GROUNDED
-    ld (player_state + FWK_PLATFORM_FLAGS), a
-
+    ld hl, #palette
+    ld de, #PALETTE_SIZE
+    call cpct_setPalette_asm
     call fwk_input_init
     ld hl, #bindings
     call fwk_input_set_bindings
+    xor a
+    call fwk_video_clear_visible
 
     ld ix, #level_descriptor
     ld iy, #level_view
     call fwk_tilemap_render_view
     jp c, fatal_data_error
 
-    ld ix, #render_list
-    call fwk_entity_render_init
+    ld ix, #items
+    call fwk_ecs_manager_init
     jp c, fatal_data_error
-    call fwk_entity_render_prepare_dirty
-    call restore_entities
-    call draw_entities</code></pre>
-  <p><code>fwk_entity_render_init</code> valida la lista y marca las entidades visibles para el primer dibujo. Si devuelve carry, revise punteros duplicados, capacidad del array auxiliar, flags, geometrías, spans y buffers.</p>
+    ld ix, #actors
+    call fwk_ecs_manager_init
+    jp c, fatal_data_error
+    ; ... crear monedas, puerta, jugador y enemigos con fwk_ecs_entity_create</code></pre>
+  <p>Las entidades nacen con <code>VISIBLE|DIRTY</code>: el primer <code>fwk_ecs_render_prepare</code> del bucle las marca para dibujar y el primer <code>fwk_ecs_render_draw</code> las pinta. El mapa se dibuja antes, una sola vez; después solo se tocan las celdas que cambian. Si una rutina del manager devuelve carry, <code>A</code> trae el código de error de la ABI (<code>FWK_ECS_ERR_*</code>); el ejemplo lo guarda en <code>platformer_status</code> y detiene el juego.</p>
 
   <h2 id="bucle" class="page-break"><span class="step">7</span> Construir el bucle de juego</h2>
-  <p>El orden respeta la máquina de estados <code>IDLE -&gt; RESTORED -&gt; IDLE</code> y garantiza que el resolver pueda reconstruir la posición anterior a partir de la velocidad:</p>
+  <p>El orden respeta el ciclo del renderer (preparar antes del VSYNC, restaurar y dibujar después) y ejecuta los sistemas en el orden que exigen sus dependencias:</p>
   <ol>
-    <li>Esperar el frame.</li>
-    <li>Actualizar entrada y velocidades.</li>
-    <li>Ejecutar física.</li>
-    <li>Resolver inmediatamente la colisión con el tilemap.</li>
-    <li>Aplicar reglas del juego.</li>
-    <li>Sincronizar posición y <code>sort_y</code> del prefijo; activar <code>DIRTY</code> si cambió.</li>
-    <li>Marcar entidades afectadas por cambios externos del fondo.</li>
-    <li>Restaurar todas las entidades sucias, redibujar el fondo externo y dibujar las entidades.</li>
+    <li>Leer la entrada (<code>fwk_input_update</code>).</li>
+    <li>Behavior de los enemigos y entrada del jugador (velocidades).</li>
+    <li>Plataforma: gravedad y resolución contra el tilemap, y movimiento del resto.</li>
+    <li>Animación.</li>
+    <li>Colisiones y reglas del juego; los cambios de estado de entidades se aplican fuera de los recorridos.</li>
+    <li>Preparar el render, esperar el VSYNC, restaurar y dibujar.</li>
+    <li>Recolectar los slots de las entidades destruidas y actualizar el HUD.</li>
   </ol>
   <pre><code>game_loop:
     call fwk_input_update
-    call update_horizontal_velocity
-    call try_jump
 
-    ld ix, #physics_config
-    ld iy, #player_state
-    call fwk_physics_platform_step
+    ld ix, #actors
+    call fwk_ecs_system_behavior
+    ld ix, #actors
+    call fwk_ecs_system_input
+    ld ix, #actors
+    call fwk_ecs_system_platform    ; física y resolución contra el tilemap
+    ld ix, #actors
+    call fwk_ecs_system_motion_u8   ; el resto de entidades con MOTION
+    ld ix, #actors
+    call fwk_ecs_system_animation
 
-    ld ix, #level_descriptor
-    ld iy, #player_state
-    call fwk_platform_tilemap_resolve
-    ; A contiene la mascara FWK_PLATFORM_HIT_*
+    call collisions                 ; fwk_ecs_collide y callbacks
+    call apply_events               ; reglas que cambian el estado de entidades
 
-    call update_rules
-    call sync_player_render
-
-    ; Prepare validacion, cierre y orden sin tocar VRAM.
-    ld ix, #render_list
-    call fwk_entity_render_prepare_dirty
+    ; Prepare no toca VRAM: calcula qué cambió y en qué orden dibujar.
+    ld ix, #scene
+    call fwk_ecs_render_prepare
     jp c, fatal_render_error
-    ; Tras VSYNC no espere ni haga logica entre restauracion y dibujo.
     call fwk_system_wait_frame
-    ld ix, #render_list
-    call fwk_entity_render_restore_dirty
+    ld ix, #scene
+    call fwk_ecs_render_restore     ; solo VRAM, tras el VSYNC
     jp c, fatal_render_error
-    ld ix, #render_list
-    call fwk_entity_render_draw_dirty
+    ld ix, #scene
+    call fwk_ecs_render_draw
     jp c, fatal_render_error
+
+    ld ix, #items
+    call fwk_ecs_manager_collect    ; libera los slots destruidos
     jp game_loop</code></pre>
+  <p>Cada sistema recibe <code>IX=manager</code> y devuelve carry con el código en <code>A</code>. Los sistemas de movimiento y plataforma activan <code>DIRTY</code> cuando la posición cambia, de modo que no hace falta sincronizar nada con el renderer. Entre <code>fwk_ecs_render_prepare</code> y <code>fwk_ecs_render_draw</code> los managers quedan bloqueados: no cree ni destruya entidades en ese tramo, porque las operaciones estructurales devuelven <code>FWK_ECS_ERR_BUSY</code>.</p>
 
   <h3>7.1 Movimiento horizontal</h3>
-  <pre><code>    ld a, (fwk_input_held)
-    and #ACTION_LEFT
-    jr z, check_right
-    ld a, #-4
-    ld (player_state + FWK_PLATFORM_VX), a
-    jr horizontal_done
-check_right:
-    ld a, (fwk_input_held)
-    and #ACTION_RIGHT
-    jr z, stop_horizontal
-    ld a, #4
-    ld (player_state + FWK_PLATFORM_VX), a
-    jr horizontal_done
-stop_horizontal:
-    xor a
-    ld (player_state + FWK_PLATFORM_VX), a
-horizontal_done:</code></pre>
+  <p>No se escribe a mano: <code>fwk_ecs_system_input</code> lee <code>fwk_input_held</code> y la máscara <code>ECS_E_INPUT_ACTION_MASK</code> de la entidad y fija la velocidad horizontal (la acción izquierda resta, la derecha suma y ninguna la deja a cero). La velocidad es fija: 2 bytes por frame, definida en el adaptador.</p>
 
   <h3>7.2 Salto</h3>
-  <pre><code>    ld a, (fwk_input_pressed)
-    and #ACTION_JUMP
-    jr z, no_jump
-    ld a, (player_state + FWK_PLATFORM_FLAGS)
-    and #FWK_PLATFORM_TILE_GROUNDED
-    jr z, no_jump
-    ld a, #-8
-    ld (player_state + FWK_PLATFORM_VY), a
-no_jump:</code></pre>
-  <p>La velocidad es un byte con signo. La rutina de física aplica gravedad y caída máxima; el resolver corrige paredes, techo y suelo. No use velocidades que permitan atravesar un tile completo en un solo frame: no hay barrido continuo ni subdivisión automática.</p>
+  <p>También lo resuelve <code>fwk_ecs_system_input</code>: con la acción de salto recién pulsada y el bit <code>FWK_PLATFORM_TILE_GROUNDED</code> activo en <code>ECS_E_MOTION_FLAGS</code>, fija la velocidad vertical de despegue (-8). La velocidad es un byte con signo. <code>fwk_ecs_system_platform</code> aplica gravedad y caída máxima y corrige paredes, techo y suelo. No use velocidades que permitan atravesar un tile completo en un solo frame: no hay barrido continuo ni subdivisión automática.</p>
 
-  <h3>7.3 Sincronizar el jugador con el renderer</h3>
-  <pre><code>sync_player_render:
-    ; Marque DIRTY solo si la posicion compacta ha cambiado.
-    ld a, (player_state + FWK_PLATFORM_X)
-    ld b, a
-    ld a, (player_entity + FWK_ENTITY_RENDER_X)
-    cp b
-    jr nz, player_changed
-    ld a, (player_state + FWK_PLATFORM_Y)
-    ld b, a
-    ld a, (player_entity + FWK_ENTITY_RENDER_Y)
-    cp b
-    jr z, player_store
-player_changed:
-    ld hl, #player_entity + FWK_ENTITY_RENDER_FLAGS
-    set 1, (hl) ; FWK_ENTITY_RENDER_DIRTY
-player_store:
-    ld a, (player_state + FWK_PLATFORM_X)
-    ld (player_entity + FWK_ENTITY_RENDER_X), a
-    xor a
-    ld (player_entity + FWK_ENTITY_RENDER_X + 1), a
-    ld a, (player_state + FWK_PLATFORM_Y)
-    ld (player_entity + FWK_ENTITY_RENDER_Y), a
-    ld l, a
-    ld h, #0
-    xor a
-    ld (player_entity + FWK_ENTITY_RENDER_Y + 1), a
-    ld de, #8
-    add hl, de
-    ld (player_entity + FWK_ENTITY_RENDER_SORT_Y), hl
-    ret</code></pre>
-  <div class="warning"><strong>Detalle importante.</strong> No cambie entidades desde <code>prepare_dirty</code> hasta <code>draw_dirty</code>. Si modifica punteros o rangos de buffer en <code>IDLE</code>, llame a <code>revalidate</code>. El descriptor almacena X e Y en 16 bits con signo, mientras el estado compacto usa bytes; inicialice también el byte alto. <code>sort_y</code> es la clave estable de orden, no una coordenada usada por la física.</div>
+  <h3>7.3 Mantener el renderer informado</h3>
+  <p>Si el juego cambia a mano la posición o la visibilidad de una entidad (por ejemplo al ocultar la puerta), debe activar <code>ECS_RENDER_DIRTY</code> en <code>ECS_E_RENDER_FLAGS</code> o usar <code>fwk_ecs_entity_enable</code> y <code>fwk_ecs_entity_disable</code>, que lo hacen por usted:</p>
+  <pre><code>    ld ix, #items
+    ld iy, (door)
+    call fwk_ecs_entity_disable     ; la puerta desaparece al reiniciar el nivel
+    ; ...al reunir la cuarta moneda
+    ld ix, #items
+    ld iy, (door)
+    call fwk_ecs_entity_enable      ; reaparece y se dibuja en el siguiente ciclo</code></pre>
+  <div class="warning"><strong>Detalle importante.</strong> Las coordenadas del perfil <code>u8</code> son bytes Mode 0 en X y scanlines en Y. El orden de dibujo usa Y más <code>ECS_E_RENDER_SORT_OFFSET_Y</code>; no lo confunda con la coordenada que usa la física. Una entidad destruida con <code>fwk_ecs_entity_mark_destroy</code> sigue ocupando su slot hasta que <code>fwk_ecs_manager_collect</code> se ejecute tras el dibujo, para que el renderer pueda restaurar el fondo que cubría.</div>
 
   <h2 id="objetos"><span class="step">8</span> Añadir objetos, enemigos, puerta y HUD</h2>
-  <p>Una regla sencilla almacena cada objeto como <code>x_tile, y_tile, tipo, puntero_entidad</code>. En cada frame, compare su rectángulo con el del jugador. Al recogerlo:</p>
+  <p>Cada objeto es una entidad con <code>RENDER</code> y <code>COLLISION</code>. Cada frame, el juego comprueba al jugador contra un manager con <code>fwk_ecs_collide</code> (<code>IY=jugador</code>, <code>IX=manager</code>, <code>BC=máscara de componentes</code>, <code>HL=callback</code>, <code>E=canal de contacto</code>). El callback recibe <code>IX=manager</code>, <code>IY=entidad tocada</code>, <code>HL=jugador</code> y <code>A=ENTER|STAY|EXIT</code>. Al recoger una moneda:</p>
   <ol>
-    <li>marque la entrada lógica como inactiva;</li>
-    <li>quite <code>VISIBLE</code> y active <code>DIRTY</code> en su entidad;</li>
-    <li>incremente la puntuación;</li>
-    <li>marque el HUD como sucio.</li>
+    <li>el callback llama a <code>fwk_ecs_entity_mark_destroy</code> sobre la moneda;</li>
+    <li>incrementa la puntuación;</li>
+    <li>marca el HUD como sucio.</li>
   </ol>
-  <p>En el ciclo siguiente, <code>restore_dirty</code> repone el fondo capturado de la moneda y <code>draw_dirty</code> deja de dibujarla. Mantenga el puntero en la lista hasta completar ese ciclo; retirarlo antes impediría restaurar su fondo.</p>
-  <p>Cada enemigo es otra entidad del mismo array y mantiene un registro <code>behavior</code> de ocho bytes separado del prefijo de render. Los tres pasan por el mismo adaptador: <code>fwk_behavior_run</code>, <code>fwk_motion_u8_step</code> y sincronización de X/Y, <code>sort_y</code>, sprite y <code>DIRTY</code>. El horizontal usa una primera espera de 19 ticks y tramos posteriores de 23 para conservar X=32..54. Los verticales comparten un programa inmutable de 49 ticks, pero no estado: cada registro guarda su propio cursor y temporizador. El planificador mantiene la cadencia previa actualizando horizontal y vertical derecho en frames alternos, y el vertical izquierdo en cada frame.</p>
-  <p>La detección mantiene una máscara de contactos del frame anterior y otra del actual: solo descuenta una vida cuando un bit cambia de separado a solapado. Los tres enemigos deben comprobarse de forma independiente y cada contacto sostenido conserva su bit hasta que los rectángulos vuelvan a separarse.</p>
-  <p>La puerta también forma parte del array, pero su flag <code>VISIBLE</code> permanece a cero durante el reinicio. Al recoger la cuarta moneda se activa <code>VISIBLE|DIRTY</code>; tocarla cambia al segundo mapa. Un reinicio genérico de flags no debe hacerla visible antes de tiempo.</p>
-  <p>Reserve las filas 1 y 2 del mapa como interior negro del HUD y mantenga los bordes laterales fuera del texto. El ejemplo coloca monedas en <code>x=0</code>, ayuda/estado en <code>x=24</code> y vidas en <code>x=64</code>, todos en <code>y=10</code>. Como el texto con máscara no borra el glifo anterior, restaure las celdas de tile cubiertas por el texto que va a cambiar: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para el contador completo y columnas 6–14 para todo el mensaje de ayuda. El HUD se actualiza después de <code>draw_dirty</code>, cuando el jugador ya vuelve a estar visible.</p>
+  <p>En el ciclo siguiente, <code>fwk_ecs_render_restore</code> repone el fondo capturado de la moneda y <code>fwk_ecs_render_draw</code> deja de dibujarla; después <code>fwk_ecs_manager_collect</code> libera el slot. Un callback no puede crear ni destruir entidades del manager que se está recorriendo salvo con <code>mark_destroy</code>: las reglas que cambian estados (por ejemplo mostrar la puerta) se anotan en variables y se aplican en <code>apply_events</code>, después de las colisiones.</p>
+  <p>Cada enemigo es una entidad con <code>MOTION</code>, <code>BEHAVIOR</code>, <code>COLLISION</code> y <code>ANIMATION</code>. Los tres usan el mismo par de sistemas: <code>fwk_ecs_system_behavior</code> ejecuta el programa de <code>behavior</code> (puntero en <code>ECS_E_BEHAVIOR_PROGRAM</code>) y <code>fwk_ecs_system_motion_u8</code> aplica las velocidades; la animación alterna dos sprites con un descriptor compartido. El horizontal usa una primera espera de 19 ticks y tramos posteriores de 23 para recorrer X=32..54. Los verticales comparten un programa inmutable de 49 ticks, pero no estado: cada entidad guarda su propio cursor y temporizador. Para conservar la cadencia, el horizontal y el vertical derecho viven en managers propios que el bucle procesa en frames alternos, y el vertical izquierdo comparte manager con el jugador y se actualiza en cada frame.</p>
+  <p>Cada enemigo tiene su propio canal de contacto (el registro <code>E</code> de <code>fwk_ecs_collide</code>): el sujeto guarda en cada canal si tocaba algo en la última pasada de ese canal, y el sistema emite <code>ENTER</code> solo al pasar de no tocar a tocar. El callback del enemigo descuenta una vida únicamente en <code>ENTER</code>, así que un contacto sostenido cuesta una sola vida y cada enemigo se comprueba de forma independiente.</p>
+  <p>La puerta también es una entidad, deshabilitada al reiniciar el nivel con <code>fwk_ecs_entity_disable</code>. Al recoger la cuarta moneda se habilita con <code>fwk_ecs_entity_enable</code>; tocarla cambia al segundo mapa y repite el mismo arranque de nivel. Un reinicio genérico no debe habilitarla antes de tiempo.</p>
+  <p>Reserve las filas 1 y 2 del mapa como interior negro del HUD y mantenga los bordes laterales fuera del texto. El ejemplo coloca monedas en <code>x=0</code>, ayuda/estado en <code>x=24</code> y vidas en <code>x=64</code>, todos en <code>y=10</code>. Como el texto con máscara no borra el glifo anterior, restaure las celdas de tile cubiertas por el texto que va a cambiar: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para el contador completo y columnas 6–14 para todo el mensaje de ayuda. El HUD se actualiza después de <code>fwk_ecs_render_draw</code>, cuando el jugador ya vuelve a estar visible.</p>
   <figure>
     <img src="images/platformer/platformer-6128-victory.png" alt="Captura real del estado de victoria con tiles de CPCTelera Next">
     <figcaption>Captura 4. Recorrido automatizado que recoge las cuatro monedas y publica la victoria en CPC 6128. La prueba conduce el movimiento hasta posiciones observables del jugador, sin suponer que un frame de vídeo equivale siempre a una iteración completa de lógica; también valida contactos, puerta, restauración del HUD y retirada de monedas.</figcaption>
@@ -441,10 +429,10 @@ python3 -m json.tool .build/tests/catalog.json | less</code></pre>
     <tbody>
       <tr><td>El enlazador no encuentra una rutina.</td><td>Confirme que su <code>.s</code> figura en <code>modules</code> y que el símbolo está declarado con <code>.globl</code>.</td></tr>
       <tr><td>El jugador se desplaza el doble.</td><td>Revise si X se introdujo como píxeles; sprites y tiles usan bytes Mode 0.</td></tr>
-      <tr><td>Atraviesa paredes o suelo.</td><td>Llame al resolver justo después de la física y mantenga la velocidad por debajo del tamaño del tile por frame.</td></tr>
-      <tr><td>No puede saltar.</td><td>Compruebe el bit <code>FWK_PLATFORM_TILE_GROUNDED</code>, la máscara de acción y que usa <code>fwk_input_pressed</code>.</td></tr>
-      <tr><td>Quedan estelas.</td><td>Marque <code>DIRTY</code> al mover/cambiar/ocultar, complete <code>restore_dirty</code> y <code>draw_dirty</code>, y reserve al menos <code>width*height</code> bytes por buffer.</td></tr>
-      <tr><td>El renderer devuelve carry.</td><td>Revise estado de fase, punteros duplicados, flags, spans, capacidades y solapamiento entre buffers activos.</td></tr>
+      <tr><td>Atraviesa paredes o suelo.</td><td>Compruebe que <code>ECS_E_PLATFORM_TILEMAP</code> apunta al mapa vigente y mantenga la velocidad por debajo del tamaño del tile por frame.</td></tr>
+      <tr><td>No puede saltar.</td><td>Compruebe el bit <code>FWK_PLATFORM_TILE_GROUNDED</code> en <code>ECS_E_MOTION_FLAGS</code>, <code>ECS_E_INPUT_ACTION_MASK</code> y el orden de sistemas (entrada antes de plataforma).</td></tr>
+      <tr><td>Quedan estelas.</td><td>Active <code>ECS_RENDER_DIRTY</code> al mover/cambiar/ocultar a mano, complete <code>fwk_ecs_render_restore</code> y <code>fwk_ecs_render_draw</code>, y reserve al menos <code>width*height</code> bytes por buffer de fondo.</td></tr>
+      <tr><td>El renderer devuelve carry.</td><td>Compare <code>A</code> con <code>FWK_ECS_ERR_RENDER</code> (fases fuera de orden), <code>FWK_ECS_ERR_BUSY</code> (manager bloqueado) y <code>FWK_ECS_ERR_OVERFLOW</code> (array de trabajo pequeño).</td></tr>
       <tr><td>El mapa no se dibuja.</td><td>Inspeccione carry tras <code>fwk_tilemap_render_view</code>, dimensiones, cámara, ids y <code>tile_count</code>.</td></tr>
       <tr><td>El BIN no aparece en el DSK común.</td><td>La construcción aislada no basta: sincronice las listas de integración y vuelva a ejecutar <code>make examples</code>.</td></tr>
     </tbody>
@@ -478,7 +466,7 @@ python3 tests/emulator_smoke.py platformer --model 464</code></pre>
     <li><code>docs/tilemap-collision.md</code>: consulta y resolución contra el mapa.</li>
     <li><code>docs/tilemap-render.md</code>: descriptores y render completo/parcial.</li>
     <li><code>docs/sprites.md</code>: descriptor, clipping, captura y restauración.</li>
-    <li><code>docs/render-order.md</code>: prefijo de entidad, ciclo dirty, solapamientos y orden.</li>
+    <li><code>docs/ecs-abi-2.0.md</code>: layout de entidad, managers, renderer multi-manager, colisión, behavior y animación.</li>
     <li><code>examples/platformer</code>: aplicación completa sobre la que se valida esta guía.</li>
   </ul>
 </body>

@@ -24,8 +24,9 @@ estado inicial en RAM, mantiene CursorRight mediante la matriz de teclado y
 comprueba la posición del jugador, los slots activos del manager, el marcador, el
 estado final y los bytes gráficos de los recursos antes y después de ganar
 (los puntos recogidos no quedan en la pantalla). La versión anterior,
-con un pool de registros, detectó una corrupción real en `fwk_pool_remove`
-(el contador de registros a copiar se perdía al llamar a `fwk_pool_get`).
+con un pool de registros (módulo eliminado en la fase 11 parte B), detectó una
+corrupción real en `fwk_pool_remove` (el contador de registros a copiar se
+perdía al llamar a `fwk_pool_get`).
 
 La prueba pasó en AmSpiriT-Lite 1.15.3 tanto con CPC 6128 como con CPC 464.
 No demuestra todavía temporización a 50 Hz, compatibilidad con hardware real ni

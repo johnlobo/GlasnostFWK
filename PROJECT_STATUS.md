@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-11-04 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-11-06 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -10,14 +10,22 @@ El manual de usuario canónico está en `docs/manual.html` y su versión para
 impresión en `docs/manual.pdf`. Toda funcionalidad nueva debe ampliar el HTML,
 regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum.
 
+> Nota de historia (fase 11 parte B): este registro conserva las secciones de su
+> época. Allí `platformer` es el ejemplo original anterior al ECS, eliminado en
+> la fase 11 parte B; `platformer_ecs` es el actual `examples/platformer` (AMSDOS
+> `PECS`, hoy `PLATGAME`); y `core/pool`, `video/entity_render`,
+> `extensions/animation`, `extensions/collision_bodies` y
+> `extensions/motion_u8` son módulos ya eliminados. Los hechos y mediciones no se
+> reescriben.
+
 ## Estado confirmado
 
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los veintitrés ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintidós construyen además CDT
-  y todos los BIN se reúnen en un único DSK de pruebas con 25 entradas.
+- Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
+  y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
 - La suite host contiene 115 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
@@ -1332,3 +1340,23 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [x] Criterios de la fase 10 cumplidos: paridad jugable completa (reglas, HUD,
   parpadeo, dos niveles), velocidad y tamaño dentro del presupuesto. El hito
   `2.0.0-beta.1` queda a falta de que se etiquete.
+
+## Fase 11 parte B: eliminación de lo anterior al ECS
+
+- [x] Hecha en la rama `ecs-remove-legacy`: ya no queda ningún módulo, ejemplo ni
+  API anterior al ECS, y `make test` pasa en verde.
+- [x] Ejemplos eliminados: `platformer` original, `platform`, `collision`,
+  `renderorder` y `animation`. `platformer_ecs` se renombró a `platformer`
+  (símbolos `platformer_*`, AMSDOS `PLATGAME`; etiquetas internas `_pfe_*`
+  intactas).
+- [x] Módulos eliminados: `core/pool`, `video/entity_render`,
+  `extensions/animation`, `extensions/collision_bodies` y
+  `extensions/motion_u8`. Los sustituyen `core/ecs_manager.s`,
+  `video/ecs_render.s`, `core/ecs_animation.s`, `core/ecs_collision.s` y
+  `core/ecs_motion.s`.
+- [x] Herramientas: `tools/mutate_platformer_ecs.py` es ahora
+  `tools/mutate_platformer.py`; `tools/measure_game.py` solo admite `platformer`.
+- [x] Documentación: manual, guía de plataformas, README y documentos de
+  arquitectura describen solo el ECS; `docs/render-order.md` y `docs/animation.md`
+  se eliminaron (contenido vigente en `docs/ecs-abi-2.0.md`, secciones 8 y 10).
+  Detalle en `docs/validation.md`.

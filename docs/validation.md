@@ -1,16 +1,25 @@
 # Estado de validación
 
+> Nota de nombres (fase 11 parte B): los registros de este documento usan los
+> nombres de su época. `platformer` designa aquí el ejemplo original anterior al
+> ECS, eliminado en la fase 11 parte B, y `platformer_ecs` es el actual
+> `examples/platformer` (ex `platformer_ecs`; AMSDOS `PECS` pasó a `PLATGAME`).
+> Los módulos `core/pool`, `video/entity_render`, `extensions/animation`,
+> `extensions/collision_bodies` y `extensions/motion_u8` también están
+> eliminados; las medidas y resultados se conservan como historia.
+
 Fecha: 2026-11-04 UTC.
 
 ## Implementado
 
-- Núcleo de IRQ/VSYNC, entrada con estado/flancos y pool genérico.
+- Núcleo de IRQ/VSYNC, entrada con estado/flancos (el pool genérico se eliminó en la fase 11 parte B).
 - Vídeo Mode 0 generado, CRTC explícito, tabla 16-bit y limpieza de regiones.
 - Texto Mode 0 mediante sprites recoloreables de 2x9, números pequeños de 2x5,
   audio AKG con música/SFX, copia bancaria 128 KB, lectura AMSDOS
   y descompresión ZX7B opcionales.
-- Cursor de animación opcional, independiente de entidad, render y política de
-  juego.
+- Animación como componente ECS (`core/ecs_animation.s`), independiente del
+  render y de la política de juego (el cursor `extensions/animation.s` se
+  eliminó en la fase 11 parte B).
 - Física de plataforma con velocidad byte, gravedad, límites y aterrizaje; e
   integrador 8.8 separado con fricción vectorial y rebote.
 - Consulta row-major de tilemap de solo lectura y resolución opcional de
@@ -28,7 +37,7 @@ Fecha: 2026-11-04 UTC.
   opaco y no integra todavía la máscara.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y veintitrés ejemplos, incluidas dos escenas jugables.
+- Generadores de vídeo/recursos y veintidós ejemplos, incluidas dos escenas jugables.
 - Entity manager ECS con slots estables, copia de plantillas, lifecycle diferido,
   máscaras de 16 bits, locks, recorrido por máscara y recolección.
 - Frontera de dependencias y exclusión física de módulos.
@@ -146,9 +155,9 @@ se ha medido todavía.
 
 ## Compilado
 
-Los veintitrés ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-veintidós generan además `.cdt`. Sus veintitrés BIN y los dos payloads de
-`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 25
+Los veintidós ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+veintiuno generan además `.cdt`. Sus veintidós BIN y los dos payloads de
+`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 24
 entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
 porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md` contiene
 tamaños enlazados.
@@ -243,7 +252,7 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   recogió los tres, el pool (versión anterior, sin ECS) se compactó de cuatro
   registros a uno y se activó el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
   jugador, coleccionables y victoria. La misma prueba pasó en CPC 6128 y CPC 464.
-- `platformer`, ya migrado a `entity_render`, completó su recorrido jugable
+- `platformer` (el original, hoy eliminado), ya migrado a `entity_render` (también eliminado), completó su recorrido jugable
   automatizado, recogió cuatro monedas y alcanzó la victoria en CPC 6128 y CPC
   464. Jugador y monedas usan prefijos de entidad, buffers propios, propagación
   dirty y orden por Y. La ruta prepara validación, solapamientos y orden antes
@@ -280,7 +289,8 @@ No verificado.
   modelo de memoria sí está probado; la señal de vídeo no.
 - El tilemap continúa siendo de solo lectura. No hay edición, streaming,
   transparencia, scroll sub-tile ni dirty rectangles automáticos.
-- `entity_render` sustituye al lote opaco: admite opaco, máscara, recoloreado y
+- `ecs_render` (que reemplazó a `entity_render`, eliminado en la fase 11 parte B)
+  admite opaco, máscara, recoloreado y
   ambas opciones combinadas; valida capacidades y solapamiento de buffers
   activos. Sigue trabajando con rectángulos completos, capacidad fija aportada
   por el juego y sin mezcla alfa ni asignación dinámica.
@@ -319,8 +329,6 @@ python3 tests/emulator_smoke.py diskload
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py audio
 python3 tests/emulator_smoke.py --model 464 audio
-python3 tests/emulator_smoke.py animation
-python3 tests/emulator_smoke.py --model 464 animation
 python3 tests/emulator_smoke.py gravity physics88
 python3 tests/emulator_smoke.py --model 464 gravity physics88
 python3 tests/emulator_smoke.py --model 464 tilecoll
@@ -328,8 +336,6 @@ python3 tests/emulator_smoke.py tilerender
 python3 tests/emulator_smoke.py --model 464 tilerender
 python3 tests/emulator_smoke.py spriteclip spritemask
 python3 tests/emulator_smoke.py --model 464 spriteclip spritemask
-python3 tests/emulator_smoke.py renderorder
-python3 tests/emulator_smoke.py --model 464 renderorder
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
 python3 tests/emulator_smoke.py --model 464 vertical
@@ -339,7 +345,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
 
 - `make test` pasó 125 pruebas host, construyó 24 BIN, 23 CDT y el DSK común
   con 26 entradas.
-- `python3 tests/emulator_smoke.py platformer_ecs` pasó en AmSpiriT-Lite
+- `python3 tests/emulator_smoke.py platformer_ecs` (hoy `platformer`) pasó en AmSpiriT-Lite
   1.15.3/CPC 6128: el player y dos enemigos se crean como slots ECS, los
   sistemas behavior/motion avanzan los enemigos y el puente de render dibuja
   los sprites.
@@ -446,9 +452,9 @@ python3 tests/emulator_smoke.py --model 464 vertical
   plantilla con descriptor y temporizador 0. Documentados además el efecto del
   orden de llamadas sobre la duración del frame 0, el tamaño del sprite y los
   descriptores con `count` o `duration` cero.
-- Regresión del animador no ECS: `examples/animation` comprueba al arrancar un
+- Regresión del animador no ECS (histórica: `examples/animation` y su smoke se eliminaron en la fase 11 parte B): comprobaba al arrancar un
   descriptor de 130 frames (tras 128 ticks debe estar en el frame 128) y el
-  smoke lo exige; con el índice de 8 bits anterior falla.
+  smoke lo exigía; con el índice de 8 bits anterior falla.
 
 ### Fase 9 ECS: renderer multi-manager
 
@@ -590,3 +596,21 @@ python3 tests/emulator_smoke.py --model 464 vertical
   lo notifica. El crítico en frío (FAIL en la primera ronda) halló que la escena
   ignoraba los errores y que el smoke de `vertical` solo cubría CursorRight.
 
+## Fase 11, parte B: eliminación de lo anterior al ECS
+
+Criterio: no queda ningún módulo, ejemplo ni API anterior al ECS, y `make test`
+pasa en verde. Lo eliminado en esta rama:
+
+- Ejemplos: `platformer` original (el anterior al ECS), `platform`, `collision`,
+  `renderorder` y `animation`. `platformer_ecs` pasó a llamarse `platformer`
+  (símbolos públicos `platformer_ecs_*` a `platformer_*`, nombre AMSDOS `PECS` a
+  `PLATGAME`; las etiquetas internas `_pfe_*` no cambian).
+- Módulos: `core/pool`, `video/entity_render`, `extensions/animation`,
+  `extensions/collision_bodies` y `extensions/motion_u8`. Sus equivalentes ECS son
+  `core/ecs_manager.s`, `video/ecs_render.s`, `core/ecs_animation.s`,
+  `core/ecs_collision.s` y `core/ecs_motion.s` (`fwk_ecs_system_motion_u8`).
+- Herramientas: `tools/mutate_platformer_ecs.py` pasó a `tools/mutate_platformer.py`;
+  `tools/measure_game.py` solo admite `platformer`.
+- Documentación: `docs/render-order.md` y `docs/animation.md` se eliminaron (su
+  contenido vigente está en las secciones 8 y 10 de `docs/ecs-abi-2.0.md`); el
+  manual y la guía de plataformas describen el juego ECS.

@@ -1,5 +1,5 @@
 ;; GlasnostFWK ECS 2.0 entity animation: public ABI (docs/ecs-abi-2.0.md, 10).
-;; Descriptors use the same layout as extensions/animation.inc and may be shared:
+;; Descriptors are plain data in this layout:
 ;;   byte count (1..255), byte duration in system calls (1..255),
 ;;   word frame sprite pointers[count].
 ;; count or duration of 0 is undefined and silent. The descriptor carries no

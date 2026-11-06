@@ -81,8 +81,8 @@ conservarse entre captura y restauración.
 
 ## Límites comprobados
 
-- `entity_render` selecciona las cuatro combinaciones de opacidad/máscara y
-  recoloreado mediante flags del prefijo estándar.
+- `ecs_render` selecciona las cuatro combinaciones de opacidad/máscara y
+  recoloreado mediante flags de la entidad.
 - El recoloreado sustituye un único pen por llamada; no es una remap completa
   de los 16 pens. Se realiza antes de la transparencia: sustituir por el color
   clave oculta esos píxeles y sustituir el color clave por otro pen los vuelve

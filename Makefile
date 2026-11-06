@@ -1,5 +1,5 @@
 PYTHON ?= python3
-EXAMPLES := minimal board platform gravity physics88 tilecoll tilerender spriteclip spritemask renderorder video resources128 diskload audio animation window vertical perf collision tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender platformer_ecs
+EXAMPLES := minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender
 CHECK_EXAMPLES ?= platformer
 
 .PHONY: all examples check test generate generate-ecs report manual platform-guide release clean
@@ -11,7 +11,7 @@ generate:
 	$(PYTHON) tools/gen_video.py profiles/experimental-160x288.json --out-dir generated
 	$(PYTHON) tools/gen_resources.py manifests/resources128.json --output generated/resources128.inc
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecsmanager/example.json --output examples/ecsmanager/generated/ecs_profile.inc --check
-	$(PYTHON) tools/gen_ecs_profile.py examples/platformer_ecs/example.json --output examples/platformer_ecs/generated/ecs_profile.inc --check
+	$(PYTHON) tools/gen_ecs_profile.py examples/platformer/example.json --output examples/platformer/generated/ecs_profile.inc --check
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecscollision/example.json --output examples/ecscollision/generated/ecs_profile.inc --check
 	$(PYTHON) tools/ecs_collision_model.py --output examples/ecscollision/scenario.inc --check
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecsanimation/example.json --output examples/ecsanimation/generated/ecs_profile.inc --check
