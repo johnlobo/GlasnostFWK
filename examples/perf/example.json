@@ -7,9 +7,15 @@
     "core/system.s",
     "video/video.s",
     "video/sprite.s",
-    "video/entity_render.s",
+    "core/ecs_manager.s",
+    "video/ecs_render.s",
     "extensions/tilemap.s",
     "extensions/tilemap_render.s"
   ],
-  "game_sources": ["main.s"]
+  "game_sources": ["main.s"],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": []
+  }
 }

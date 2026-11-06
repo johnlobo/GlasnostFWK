@@ -1,5 +1,8 @@
 .module example_perf
-.include "video/entity_render.inc"
+.include "video/sprite.inc"
+.include "ecs_profile.inc"
+.include "core/ecs_manager.inc"
+.include "video/ecs_render.inc"
 .include "extensions/tilemap_render.inc"
 
 .globl fwk_project_init, fwk_system_wait_frame
@@ -7,8 +10,6 @@
 .globl fwk_video_init, fwk_video_clear_visible
 .globl fwk_sprite_draw, fwk_sprite_draw_masked
 .globl fwk_sprite_capture, fwk_sprite_restore
-.globl fwk_entity_render_init, fwk_entity_render_restore_dirty
-.globl fwk_entity_render_draw_dirty
 .globl fwk_tilemap_render_view, fwk_tilemap_render_cell
 .globl cpct_setPALColour_asm
 
@@ -27,18 +28,28 @@ perf_batch_sprite_pixels:
     .endm
 perf_batch_buffers:
     .ds 8 * 16
-perf_entity0: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,0,perf_batch_buffers+0,16,FWK_ENTITY_RENDER_VISIBLE,0,0
-perf_entity1: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,1,perf_batch_buffers+16,16,FWK_ENTITY_RENDER_VISIBLE|FWK_ENTITY_RENDER_MASKED,0,0
-perf_entity2: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,2,perf_batch_buffers+32,16,FWK_ENTITY_RENDER_VISIBLE|FWK_ENTITY_RENDER_RECOLOR,5,15
-perf_entity3: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,3,perf_batch_buffers+48,16,FWK_ENTITY_RENDER_VISIBLE|FWK_ENTITY_RENDER_MASKED|FWK_ENTITY_RENDER_RECOLOR,5,15
-perf_entity4: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,4,perf_batch_buffers+64,16,FWK_ENTITY_RENDER_VISIBLE,0,0
-perf_entity5: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,5,perf_batch_buffers+80,16,FWK_ENTITY_RENDER_VISIBLE,0,0
-perf_entity6: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,6,perf_batch_buffers+96,16,FWK_ENTITY_RENDER_VISIBLE,0,0
-perf_entity7: FWK_ENTITY_RENDER_PREFIX perf_batch_sprite_pixels,10,30,4,4,7,perf_batch_buffers+112,16,FWK_ENTITY_RENDER_VISIBLE,0,0
-perf_batch_entities: .dw perf_entity0,perf_entity1,perf_entity2,perf_entity3,perf_entity4,perf_entity5,perf_entity6,perf_entity7
-perf_batch_entries:
-    .ds 8 * FWK_ENTITY_RENDER_WORK_SIZE
-FWK_ENTITY_RENDER_DESCRIPTOR perf_batch, perf_batch_entities, 8, perf_batch_entries, 8
+
+;; One ECS manager with eight render entities at the same spot; row = extra render
+;; flags (8 MASKED, 0x10 RECOLOR), source pen, replacement pen.
+PERF_BATCH_COUNT = 8
+perf_batch_rows:
+    .db 0, 0, 0
+    .db 8, 0, 0
+    .db 0x10, 5, 15
+    .db 8 | 0x10, 5, 15
+    .db 0, 0, 0
+    .db 0, 0, 0
+    .db 0, 0, 0
+    .db 0, 0, 0
+perf_batch_storage: .ds ECS_ENTITY_SIZE * PERF_BATCH_COUNT
+FWK_ECS_MANAGER_DESCRIPTOR perf_batch_manager, perf_batch_storage, PERF_BATCH_COUNT
+perf_batch_managers: .dw perf_batch_manager
+perf_batch_work: .ds 8 * PERF_BATCH_COUNT
+FWK_ECS_RENDER_SCENE perf_batch, perf_batch_managers, 1, perf_batch_work, PERF_BATCH_COUNT
+perf_batch_template: .ds ECS_ENTITY_SIZE
+_perf_batch_index: .db 0
+_perf_batch_row:   .dw 0
+_perf_batch_bg:    .dw 0
 
 ;; Tilemap fixture: 8x6 map, 4x4 tiles, 5x4 viewport.
 perf_tilemap_types:
@@ -166,17 +177,86 @@ _perf_sprite_restore:
     ret
 
 _perf_batch8:
-    ld hl, #perf_entity0+FWK_ENTITY_RENDER_FLAGS
-    ld de, #FWK_ENTITY_RENDER_PREFIX_SIZE
-    ld b, #8
+    ld iy, #perf_batch_storage
+    ld de, #ECS_ENTITY_SIZE
+    ld b, #PERF_BATCH_COUNT
 _perf_batch_dirty:
-    set 1, (hl)
-    add hl, de
+    set 1, ECS_E_RENDER_FLAGS(iy)
+    add iy, de
     djnz _perf_batch_dirty
     ld ix, #perf_batch
-    call fwk_entity_render_restore_dirty
+    call fwk_ecs_render_prepare
+    jp c, _perf_fail
     ld ix, #perf_batch
-    call fwk_entity_render_draw_dirty
+    call fwk_ecs_render_restore
+    jp c, _perf_fail
+    ld ix, #perf_batch
+    call fwk_ecs_render_draw
+    jp c, _perf_fail
+    ret
+
+;; Stop with the ABI error code in perf_status (never 0x5A).
+_perf_fail:
+    ld (perf_status), a
+_perf_fail_loop:
+    call fwk_system_wait_frame
+    jr _perf_fail_loop
+
+;; Create the eight entities from perf_batch_rows.
+_perf_batch_setup:
+    ld ix, #perf_batch_manager
+    call fwk_ecs_manager_init
+    jp c, _perf_fail
+    xor a
+    ld (_perf_batch_index), a
+    ld hl, #perf_batch_rows
+    ld (_perf_batch_row), hl
+    ld hl, #perf_batch_buffers
+    ld (_perf_batch_bg), hl
+_perf_batch_create:
+    ld hl, #perf_batch_template
+    ld de, #perf_batch_template + 1
+    ld (hl), #0
+    ld bc, #ECS_ENTITY_SIZE - 1
+    ldir
+    ld iy, #perf_batch_template
+    ld ECS_E_COMPONENTS(iy), #<ECS_C_RENDER
+    ld ECS_E_COMPONENTS+1(iy), #>ECS_C_RENDER
+    ld ECS_E_STATUS(iy), #ECS_STATUS_ACTIVE
+    ld ECS_E_X(iy), #10
+    ld ECS_E_Y(iy), #30
+    ld ECS_E_WIDTH(iy), #4
+    ld ECS_E_HEIGHT(iy), #4
+    ld ECS_E_RENDER_SPRITE(iy), #<perf_batch_sprite_pixels
+    ld ECS_E_RENDER_SPRITE+1(iy), #>perf_batch_sprite_pixels
+    ld hl, (_perf_batch_bg)
+    ld ECS_E_RENDER_BACKGROUND(iy), l
+    ld ECS_E_RENDER_BACKGROUND+1(iy), h
+    ld de, #16
+    add hl, de
+    ld (_perf_batch_bg), hl
+    ld ECS_E_RENDER_BACKGROUND_CAP(iy), #16
+    ld hl, (_perf_batch_row)
+    ld a, (hl)
+    or #3                                   ; VISIBLE | DIRTY
+    ld ECS_E_RENDER_FLAGS(iy), a
+    inc hl
+    ld a, (hl)
+    ld ECS_E_RENDER_SOURCE_PEN(iy), a
+    inc hl
+    ld a, (hl)
+    ld ECS_E_RENDER_REPLACEMENT_PEN(iy), a
+    inc hl
+    ld (_perf_batch_row), hl
+    ld ix, #perf_batch_manager
+    ld hl, #perf_batch_template
+    call fwk_ecs_entity_create
+    jp c, _perf_fail
+    ld hl, #_perf_batch_index
+    inc (hl)
+    ld a, (hl)
+    cp #PERF_BATCH_COUNT
+    jr nz, _perf_batch_create
     ret
 
 _perf_tilemap_full:
@@ -197,9 +277,8 @@ _main::
     call fwk_project_init
     call fwk_video_init
 
-    ;; Prepare the entity render list.
-    ld ix, #perf_batch
-    call fwk_entity_render_init
+    ;; Create the render entities.
+    call _perf_batch_setup
 
     ;; Results start at the beginning of the table.
     ld hl, #perf_results
@@ -247,7 +326,7 @@ _main::
     ld (perf_iterations), hl
     call _perf_measure
 
-    ;; Scene 6: batch of eight (draw + restore).
+    ;; Scene 6: batch of eight (prepare + restore + draw).
     ld hl, #_perf_batch8
     ld (perf_work), hl
     ld hl, #500

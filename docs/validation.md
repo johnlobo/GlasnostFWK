@@ -240,8 +240,8 @@ Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
   en CPC 6128 y CPC 464.
 - `vertical` cargó jugador y tres coleccionables desde fuentes de recursos
   separadas. CursorRight se mantuvo mediante la matriz de teclado: el jugador
-  recogió los tres, el pool se compactó de cuatro registros a uno y se activó
-  el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
+  recogió los tres, el pool (versión anterior, sin ECS) se compactó de cuatro
+  registros a uno y se activó el estado de victoria. También se comprobaron en RAM de vídeo los bytes de
   jugador, coleccionables y victoria. La misma prueba pasó en CPC 6128 y CPC 464.
 - `platformer`, ya migrado a `entity_render`, completó su recorrido jugable
   automatizado, recogió cuatro monedas y alcanzó la victoria en CPC 6128 y CPC
@@ -287,7 +287,7 @@ No verificado.
 - Ciclos del dibujo enmascarado medidos en `docs/performance.md` (6x8 ≈ 11022
   T-estados). No se promete 50 Hz para una escena arbitraria.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
-  `vertical` prueba entrada/movimiento/eliminación del pool y `resources128`
+  `vertical` prueba entrada, movimiento y recogida de entidades y `resources128`
   prueba detección/copia bancaria; las ramas de error de disco y los payloads
   ZX7B corruptos no están automatizados.
 
@@ -576,3 +576,17 @@ python3 tests/emulator_smoke.py --model 464 vertical
   emulador y `platformer` desaparece en la fase 11): idénticos en 300 iteraciones en
   dos semillas. Una tercera mostró un desfase del arnés, corregido y no repetido.
 - No se probó `prepare` más allá de la medición: no se optimiza.
+
+## Fase 11, parte A: `vertical` y `perf` en ECS
+
+- `examples/vertical` corre sobre un manager ECS (movimiento y colisión) en lugar
+  del pool. El smoke comprueba ahora las cuatro direcciones y la diagonal, que un
+  paso por la fila contigua no recoge ni borra ningún punto, y la recogida exacta
+  en su celda. Mutaciones a mano (puntuación sin contar, sin `collect`, jugador
+  quieto, punto sin destruir, sin estado de victoria): detectadas. Sin cubrir: la
+  rama de error de `_vertical_expect_ok`.
+- `examples/perf`: la escena del lote de ocho usa `ecs_render` y para el programa
+  con el código de error en `perf_status` si el renderer falla; `measure_perf.py`
+  lo notifica. El crítico en frío (FAIL en la primera ronda) halló que la escena
+  ignoraba los errores y que el smoke de `vertical` solo cubría CursorRight.
+

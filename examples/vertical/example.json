@@ -2,5 +2,17 @@
   "name": "vertical",
   "profile": "standard-160x200.json",
   "game_sources": ["main.s", "assets.s"],
-  "modules": ["core/system.s", "core/input.s", "core/pool.s", "video/video.s", "extensions/motion_u8.s"]
+  "modules": [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s",
+    "core/ecs_manager.s",
+    "core/ecs_motion.s",
+    "core/ecs_collision.s"
+  ],
+  "ecs": {
+    "x_format": "u8",
+    "y_format": "u8",
+    "components": ["motion", "collision"]
+  }
 }
