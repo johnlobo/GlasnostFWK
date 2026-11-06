@@ -24,6 +24,7 @@
 .globl fwk_ecs_system_input, fwk_ecs_system_platform
 .globl cpct_setPalette_asm, cpct_setPALColour_asm
 .globl platformer_map, platformer_map_packed, platformer_palette, platformer_tileset
+.globl platformer_map2, platformer_map2_packed
 .globl platformer_player_pixels, platformer_player_pixels2
 .globl platformer_enemy_pixels, platformer_enemy_pixels2
 .globl platformer_coin_pixels, platformer_door_pixels
@@ -73,6 +74,7 @@ platformer_ecs_status::  .db 0
 platformer_ecs_score::   .db 0
 platformer_ecs_lives::   .db PFE_LIVES_INITIAL
 platformer_ecs_won::     .db 0
+platformer_ecs_level::   .db 0        ; 0 = first level, 1 = second
 platformer_ecs_player::  .dw 0
 platformer_ecs_enemy_h:: .dw 0
 platformer_ecs_enemy_v:: .dw 0
@@ -80,6 +82,7 @@ platformer_ecs_door::    .dw 0
 platformer_ecs_input_witness:: .db 0, 0
 
 _pfe_phase:      .db 0
+_pfe_map_desc:  .dw platformer_ecs_map_descriptor
 _pfe_all_coins:  .db 0
 _pfe_door_hit:   .db 0
 platformer_ecs_hud_dirty:: .db 0
@@ -124,6 +127,8 @@ _pfe_types:
     .db 0, 1, 2, 0
 FWK_TILEMAP_DESCRIPTOR platformer_ecs_map_descriptor, platformer_map, _pfe_types, PLATFORMER_MAP_WIDTH, PLATFORMER_MAP_HEIGHT, 2, 3, 4, 8, 4
 FWK_TILE_RENDER_DESCRIPTOR platformer_ecs_view, platformer_tileset, 0, 0, 0, 0, PLATFORMER_MAP_WIDTH, PLATFORMER_MAP_HEIGHT, 4
+; The second map has the same size, so it is drawn with the same view.
+FWK_TILEMAP_DESCRIPTOR platformer_ecs_map2_descriptor, platformer_map2, _pfe_types, PLATFORMER_MAP2_WIDTH, PLATFORMER_MAP2_HEIGHT, 2, 3, 4, 8, 4
 FWK_PLATFORM_CONFIG platformer_ecs_config, 80, 255, 1, 8
 
 platformer_ecs_bindings:
@@ -384,6 +389,18 @@ _pfe_no_win:
     ld a, (_pfe_door_hit)
     or a
     ret z
+    ld a, (platformer_ecs_level)
+    or a
+    jr nz, _pfe_door_end
+    inc a
+    ld (platformer_ecs_level), a
+    ld hl, #platformer_ecs_map2_descriptor
+    ld (_pfe_map_desc), hl
+    ld hl, #platformer_map2_packed + PLATFORMER_MAP2_PACKED_SIZE - 1
+    ld de, #platformer_map2 + PLATFORMER_MAP2_SIZE - 1
+    call fwk_zx7b_unpack
+    jp _pfe_start_level                    ; same reset as the first start
+_pfe_door_end:
     xor a
     ld (_pfe_door_hit), a
     ld (platformer_ecs_won), a
@@ -432,8 +449,8 @@ _pfe_hud_cell:
 
 ;; In: B=tile row; the column is _pfe_hud_col.
 _pfe_hud_restore:
-    ld ix, #platformer_ecs_map_descriptor
-    ld iy, #platformer_ecs_view
+    ld ix, (_pfe_map_desc)
+    ld iy, #platformer_ecs_view            ; both maps are 20x25
     ld a, (_pfe_hud_col)
     ld c, a
     call fwk_tilemap_render_cell
@@ -523,25 +540,20 @@ _pfe_border_wait:
     jr nz, _pfe_border_wait
     ret
 
-_main::
-    call fwk_project_init
-    ld hl, #platformer_map_packed + PLATFORMER_MAP_PACKED_SIZE - 1
-    ld de, #platformer_map + PLATFORMER_MAP_SIZE - 1
-    call fwk_zx7b_unpack
-    call fwk_video_init
-    call fwk_text_init
-    ld hl, #platformer_palette
-    ld de, #PLATFORMER_PALETTE_SIZE
-    call cpct_setPalette_asm
-    call fwk_input_init
-    ld hl, #platformer_ecs_bindings
-    call fwk_input_set_bindings
-    xor a
-    call fwk_video_clear_visible
-    ld ix, #platformer_ecs_map_descriptor
-    ld iy, #platformer_ecs_view
+;; Starts the current level: draws its map and HUD, clears the managers and
+;; spawns every entity from the rows. Used at boot and when the door leads to
+;; the second level, so both begin in exactly the same state. Lives are kept.
+_pfe_start_level:
+    ld ix, (_pfe_map_desc)
+    ld iy, #platformer_ecs_view            ; both maps are 20x25
     call fwk_tilemap_render_view
     call _pfe_expect_ok
+    xor a
+    ld (platformer_ecs_score), a
+    ld (platformer_ecs_won), a
+    ld (_pfe_all_coins), a
+    ld (_pfe_door_hit), a
+    ld (_pfe_phase), a
     ld a, #PFE_HUD_SCORE | PFE_HUD_LIVES | PFE_HUD_HINT
     ld (platformer_ecs_hud_dirty), a
     call _pfe_hud_update
@@ -587,8 +599,9 @@ _main::
     ld ECS_E_INPUT_ACTION_MASK(iy), #PFE_INPUT_LEFT | PFE_INPUT_RIGHT | PFE_INPUT_JUMP
     ld ECS_E_PLATFORM_CONFIG(iy), #<platformer_ecs_config
     ld ECS_E_PLATFORM_CONFIG+1(iy), #>platformer_ecs_config
-    ld ECS_E_PLATFORM_TILEMAP(iy), #<platformer_ecs_map_descriptor
-    ld ECS_E_PLATFORM_TILEMAP+1(iy), #>platformer_ecs_map_descriptor
+    ld hl, (_pfe_map_desc)
+    ld ECS_E_PLATFORM_TILEMAP(iy), l
+    ld ECS_E_PLATFORM_TILEMAP+1(iy), h
     ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE
     ld hl, #_pfe_row_v2
     call _pfe_spawn
@@ -604,6 +617,24 @@ _main::
 
     ld a, #0x5A
     ld (platformer_ecs_status), a
+    ret
+
+_main::
+    call fwk_project_init
+    ld hl, #platformer_map_packed + PLATFORMER_MAP_PACKED_SIZE - 1
+    ld de, #platformer_map + PLATFORMER_MAP_SIZE - 1
+    call fwk_zx7b_unpack
+    call fwk_video_init
+    call fwk_text_init
+    ld hl, #platformer_palette
+    ld de, #PLATFORMER_PALETTE_SIZE
+    call cpct_setPalette_asm
+    call fwk_input_init
+    ld hl, #platformer_ecs_bindings
+    call fwk_input_set_bindings
+    xor a
+    call fwk_video_clear_visible
+    call _pfe_start_level
 
 platformer_ecs_frame:
     call fwk_input_update

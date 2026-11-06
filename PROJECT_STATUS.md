@@ -1319,6 +1319,10 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   vidas 0..10), el parpadeo se observa en el emulador por cada enemigo y el
   smoke pasa en CPC 6128 y 464. BIN: 11.798 B frente a 11.382 B del original,
   aún sin nivel 2.
-- [ ] Rebanada 3: segundo nivel y reinicio por puerta.
+- [x] Parte 3 (2026-11-06): segundo nivel y reinicio por puerta. El arranque es
+  `_pfe_start_level` y la puerta lo repite con el mapa 2, así que ambos niveles
+  empiezan igual. Píxeles de los dos niveles comparados con el original, mapa 2
+  contra el TMX, física del mapa 2 y victoria del nivel 2 en el smoke (CPC 6128 y
+  464). BIN: 11.861 B frente a 11.382 B del original (presupuesto 11.878).
 - [ ] Rebanada 4: rendimiento y presupuestos de tamaño. Detalle en
   `docs/platformer-parity.md`.

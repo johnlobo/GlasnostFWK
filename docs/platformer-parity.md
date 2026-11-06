@@ -22,7 +22,7 @@ Criterio de salida (G3 del plan maestro): `platformer_ecs` juega igual que
 1. **Entidades y reglas**: monedas, 3 enemigos, puerta, vidas y puntuación en
    ECS (colisión de fase 7, animación de fase 8, render de fase 9). Sin HUD.
 2. **HUD y efectos**: texto, victoria, parpadeo al perder vida. Hecha (2026-11-06), ver abajo.
-3. **Segundo nivel** y reinicio por puerta.
+3. **Segundo nivel** y reinicio por puerta. Hecha (2026-11-06), ver abajo.
 4. **Rendimiento**: medir fotogramas por iteración y T-states por sistema en
    `platformer` y `platformer_ecs`, y reducir el coste de `prepare` (puntero en
    vez de `call _ecsr_entry`).
@@ -87,13 +87,13 @@ Resultados medidos:
 | Contacto entre enemigos | un bit por enemigo | un canal por enemigo (V2, H y V en pasos separados) | igual que el original |
 | Parpadeo al perder vida | borde rojo 3 veces, bloqueante, antes de `prepare` y VSYNC | mismas constantes y espera; se ejecuta al final del fotograma, tras dibujar | el HUD se actualiza en ese punto; ver también la fila de varias pérdidas |
 | Varias vidas perdidas en un fotograma | un parpadeo por vida | un solo parpadeo (el bit de parpadeo es una marca, no un contador); las vidas y el HUD sí restan todas | caso raro, no cubierto por el smoke |
-| Puerta | reinicia y carga el nivel 2 | solo se oculta y `won` vuelve a 0: el jugador no puede volver a ganar | rebanada 3 (callejón sin salida hasta entonces) |
+| Puerta en el nivel 2 | se oculta y termina | igual: se oculta y `won` vuelve a 0, sin reiniciar | paridad |
 | Fotogramas de animación | el sprite quieto no se redibuja | el sistema de animación marca `DIRTY` en cada cambio de frame, también con el jugador y los enemigos quietos | coste conocido, a medir en la rebanada 4 |
 | Arranque del jugador | `GROUNDED` | `AIRBORNE` en (16, 184), aterriza en el primer fotograma | la física solo aplica gravedad a cuerpos en el aire; un salto en el fotograma 0 se ignora |
 | Orden de dibujado en empate | puerta y monedas sobre el jugador | el jugador sobre ellas; H después de V | desempate por orden de managers y slot |
 | Estado público | `platformer_status` 0x5A = ganado | `platformer_ecs_status` 0x5A = inicializado; `platformer_ecs_won` marca la victoria | el smoke ECS ya usaba 0x5A para el arranque |
 | Contador de contactos | `platformer_enemy_contacts` | sin equivalente | el canal de contacto vive en `ECS_E_COLLISION_CONTACT` |
-| Mapa 2 | solo se usa en el nivel 2 | enlazado (500 B de RAM más 50 B comprimidos) y sin usar | lo consume la rebanada 3; sesga la comparación de tamaño |
+| Mapa 2 | se descomprime al arrancar | se descomprime al tocar la puerta del nivel 1 | mismo resultado y misma RAM; el arranque es más corto |
 
 ## Rebanada 2: hecha (2026-11-06)
 
@@ -127,7 +127,7 @@ Divergencias de esta rebanada:
 | Área | Original | ECS | Motivo |
 |---|---|---|---|
 | Cambio de puntuación | restaura 2 celdas y redibuja un dígito | restaura y redibuja el campo entero (5 celdas, 10 glifos) | menos código; mismos píxeles finales, algo más de tiempo en el fotograma del evento |
-| Vidas tras ganar | `_pf_update_hud` salta el campo de vidas con el estado `WON` | se actualiza siempre | en el original los enemigos no restan tras ganar; aquí vuelven a restar tras tocar la puerta hasta la rebanada 3 |
+| Vidas tras ganar | `_pf_update_hud` salta el campo de vidas con el estado `WON` | se actualiza siempre | en el original los enemigos no restan tras ganar; aquí, en el nivel 2 tras ganar y tocar la puerta final, los enemigos vuelven a restar (el original también deja de bloquearlos: pone el estado en `READY`) |
 | Pasar de 3 a 4 monedas | observado: tras forzar los estados con `write_ram` el original dejó restos de `COINS:` ("ALL S:INS") | texto limpio | no investigado; el dorado del estado de cuatro monedas es el del original desde un estado limpio (0 a 4) |
 
 Tamaño actual: 11.798 B de BIN (código 9.453 + datos 2.345) frente a 11.382 B
@@ -135,6 +135,59 @@ Tamaño actual: 11.798 B de BIN (código 9.453 + datos 2.345) frente a 11.382 B
 416 B mayor y aún le falta el nivel 2: el presupuesto de bytes y su reducción
 (los dos juegos usan el mismo módulo de texto; de dónde sale el resto, por
 ejemplo managers, renderer ECS o tablas de filas, está por medir) se fijan y atacan en la rebanada 4.
+
+## Parte 3: hecha (2026-11-06)
+
+Al tocar la puerta del nivel 1, `platformer_ecs` pasa al nivel 2 y reinicia como
+el original: monedas, puntuación, `won`, jugador, enemigos y HUD, con el mapa 2
+dibujado y las vidas conservadas. En el nivel 2 la puerta solo se oculta.
+
+Diseño: el arranque del juego es ahora `_pfe_start_level` (dibuja el mapa y el
+HUD, reinicia los cuatro managers y crea todas las entidades desde la tabla de
+filas). El arranque y la puerta la llaman: el nivel 2 empieza en el mismo estado
+que el 1 por construcción, sin una segunda lista de reinicios que mantener. La
+puerta descomprime el mapa 2, cambia `_pfe_map_desc` (que usan la física del
+jugador y la restauración del HUD) y vuelve a llamarla. Ambos mapas miden 20x25,
+así que sirven la misma vista (lo comprueba una prueba host).
+
+Presupuesto fijado antes de escribir: BIN <= 11.798 + 80 = 11.878 B. Resultado:
+11.861 B (código 9.502, datos 2.359), 63 B más que la parte 2.
+
+Pruebas:
+
+- **Píxeles contra el original en los dos niveles.** Cuatro bandas de pantalla
+  que ninguna entidad cruza se comparan por SHA-256 con las que dibuja
+  `platformer` (nivel 1 al arrancar, nivel 2 tras la puerta, llevada con
+  `write_ram`). Los ocho hashes difieren entre niveles.
+- **Mapa 2 en RAM** igual a la capa `level2` del TMX, leída por el smoke con su
+  propio lector (independiente de la tubería de assets).
+- **Reinicio**: con 7 vidas fijadas antes de la puerta, el nivel 2 las conserva
+  (RAM y HUD), puntuación y `won` a 0, puerta oculta, cuatro monedas recreadas,
+  mismos slots de jugador y enemigos, HUD inicial, jugador exactamente en (16, 184)
+  y enemigos en su inicio (cotas de posición).
+- **Física del mapa 2**: desde (48, 40) el jugador aterriza en y=88 (en el mapa 1
+  se pararía en y=56).
+- **Victoria del nivel 2**: cuatro monedas, aparece la puerta, la puerta la oculta
+  sin reiniciar (puntuación 4 y huecos de moneda libres).
+- **Prueba host**: ambos mapas del mismo tamaño, el arranque y la puerta llaman a
+  la misma rutina, ningún `ld` a las vidas en la ruta de la puerta ni en el arranque,
+  los reinicios de estado son ceros puros, la física y el HUD siguen el mapa activo.
+  Es textual: lo que cubre el comportamiento es el smoke.
+- Tres corridas seguidas del smoke final en CPC 6128 y una en 464 (seis seguidas antes del último ajuste del orden de comprobaciones).
+
+Divergencias:
+
+| Área | Original | ECS | Motivo |
+|---|---|---|---|
+| Vidas en el HUD tras la puerta | redibuja la cadena fija `LIFE: 10` (`_pf_draw_hud_initial`), aunque las vidas reales sean otras | muestra las vidas reales | defecto del original (comprobado en el emulador: con 7 vidas la RAM dice 7 y la pantalla 10); el smoke lo fija con 7 vidas antes de la puerta |
+| Descompresión del mapa 2 | al arrancar | al tocar la puerta del nivel 1 | mismo resultado y misma RAM; el arranque es más corto |
+
+Limitación de las pruebas: la restauración del HUD con el mapa activo no se puede
+distinguir por píxeles (las filas 1 y 2 son idénticas en los dos mapas); solo la
+cubre la prueba host textual. Observación del original: tras el cambio de nivel el original no
+borra los fondos capturados por el renderer, que proceden del mapa 1; no se
+investigó si deja restos. En `platformer_ecs` las entidades se recrean, así que no
+hay fondos viejos.
 
 ### Defecto de paridad corregido en el núcleo
 

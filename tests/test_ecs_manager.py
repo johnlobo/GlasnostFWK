@@ -178,6 +178,40 @@ class ECSManagerTests(unittest.TestCase):
         self.assertEqual(flash.count("ld de, #0x1000"), 2)
         self.assertIn("ld b, #3", original.split("_pf_lose_life_flash:", 1)[0].rsplit("_pf_lose_life:", 1)[1])
 
+    def test_platformer_ecs_second_level_restarts_like_the_boot(self):
+        main = (ROOT / "examples/platformer_ecs/main.s").read_text()
+        assets = (ROOT / "examples/platformer_ecs/assets/generated/assets.inc").read_text()
+
+        def number(text, name):
+            return int(re.search(rf"^{name}\s*=\s*(\w+)", text, re.M).group(1), 0)
+
+        # One view serves both maps, so they must have the same size.
+        self.assertEqual(number(assets, "PLATFORMER_MAP2_WIDTH"), number(assets, "PLATFORMER_MAP_WIDTH"))
+        self.assertEqual(number(assets, "PLATFORMER_MAP2_HEIGHT"), number(assets, "PLATFORMER_MAP_HEIGHT"))
+        # Boot and the door run the same start routine.
+        boot = main.split("_main::", 1)[1].split("platformer_ecs_frame:", 1)[0]
+        self.assertIn("call _pfe_start_level", boot)
+        events = main.split("_pfe_apply_events:", 1)[1].split("_pfe_enemy_turn:", 1)[0]
+        self.assertIn("jp _pfe_start_level", events)
+        self.assertIn("call fwk_zx7b_unpack", events)
+        self.assertIn("ld (_pfe_map_desc), hl", events)
+        # Lives are never written on the door path (a reset there would survive
+        # the smoke whenever no enemy had hit the player earlier).
+        self.assertNotIn("platformer_ecs_lives", events)
+        # The start routine clears the level state but never the lives.
+        start = main.split("_pfe_start_level:", 1)[1].split("_main::", 1)[0]
+        for reset in ("platformer_ecs_score", "platformer_ecs_won", "_pfe_all_coins", "_pfe_door_hit", "_pfe_phase"):
+            self.assertIn(f"ld ({reset}), a", start)
+        self.assertNotIn("platformer_ecs_lives", start)
+        # The state clears are plain zero stores: no load of another value between
+        # `xor a` and the last clear (a stray `inc a` would start the phase at 1).
+        clears = start.split("    xor a\n    ld (platformer_ecs_score), a", 1)[1].split("ld (_pfe_phase), a", 1)[0]
+        for line in clears.strip().splitlines():
+            self.assertRegex(line.strip(), r"^ld \(\w+\), a$")
+        # The player's physics and the HUD follow the active map.
+        self.assertIn("ld hl, (_pfe_map_desc)", start)
+        self.assertIn("ld ix, (_pfe_map_desc)", main.split("_pfe_hud_restore:", 1)[1].split("_pfe_hud_score:", 1)[0])
+
     def test_ci_verifies_the_new_bin_and_cdt(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         artifact_section = workflow.split("Verify distributable artifacts", 1)[1]
