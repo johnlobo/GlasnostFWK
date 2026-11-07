@@ -28,6 +28,7 @@ from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import glasnost_project as gp  # noqa: E402
+import glasnost_update as gu  # noqa: E402
 from glasnost_i18n import LANGS, pick_language, say  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -446,13 +447,13 @@ def sdk_env(toolchain: Toolchain) -> dict[str, str]:
     return dict(os.environ, CPCT_NEXT_PATH=str(toolchain.path))
 
 
-def current_project(args) -> Path | None:
+def current_project(args, lang: str | None = None) -> Path | None:
     """The project the command runs in: --project, else the nearest folder above the cwd."""
     explicit = getattr(args, "project", None)
     if explicit:  # an explicit folder must be a project: never fall back to the framework
         folder = Path(explicit).resolve()
         if not (folder / gp.PROJECT_FILE).is_file():
-            raise CliError(say(lang_of(args), "proj.not_a_project", path=folder))
+            raise CliError(say(lang or lang_of(args), "proj.not_a_project", path=folder))
         return folder
     return gp.find_project(Path.cwd())
 
@@ -669,20 +670,197 @@ def cmd_config(args, root: Path, lang: str, runner: Runner) -> int:
     if args.dry_run:
         print(say(lang, "proj.config_dry"))
         return 0
+    write_replacing(folder, {rel: new_files[rel] for rel in changed})
+    print(say(lang, "proj.config_done"))
+    return 0
+
+
+def write_replacing(folder: Path, files: dict[str, bytes]) -> None:
+    """Write every file next to its target first, then swap them in (atomic per file)."""
     staged = []
-    try:  # write every file next to its target first, then swap them in
-        for rel in changed:
+    try:
+        for rel, content in files.items():
             target = folder / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             temporary = target.with_name(target.name + ".glasnost-tmp")
-            temporary.write_bytes(new_files[rel])
+            temporary.write_bytes(content)
             staged.append((temporary, target))
         for temporary, target in staged:
             os.replace(temporary, target)
     finally:
         for temporary, _target in staged:
             temporary.unlink(missing_ok=True)
-    print(say(lang, "proj.config_done"))
+
+
+# ------------------------------------------------ update / rollback / projects
+
+UPDATE_BRANCH = "glasnost-update-"
+
+
+def git_run(runner: Runner, folder: Path, *args: str) -> "subprocess.CompletedProcess[str]":
+    return runner(["git", "-C", str(folder), *args], capture_output=True, check=False)
+
+
+def project_repo(folder: Path, lang: str, runner: Runner) -> str:
+    """Name of the checked-out branch of the project's own repository, or a clear error."""
+    top = git_run(runner, folder, "rev-parse", "--show-toplevel")
+    if top.returncode != 0 or Path(top.stdout.strip()).resolve() != folder.resolve():
+        raise CliError(say(lang, "update.needs_repo", path=folder))
+    branch = git_run(runner, folder, "branch", "--show-current").stdout.strip()
+    if not branch:
+        raise CliError(say(lang, "update.detached"))
+    return branch
+
+
+def require_clean(folder: Path, lang: str, runner: Runner) -> None:
+    status = git_run(runner, folder, "status", "--porcelain")
+    if status.returncode != 0 or status.stdout.strip():
+        lines = "\n".join("  " + line for line in status.stdout.splitlines()[:10])
+        raise CliError(say(lang, "update.dirty", path=folder) + ("\n" + lines if lines else ""))
+
+
+def print_plan(plan: gu.Plan, lang: str) -> None:
+    print(say(lang, "update.plan", name=plan.folder.name, a=plan.from_format, b=plan.to_format))
+    for step in plan.steps:
+        print(say(lang, "update.step", a=step.from_format, b=step.from_format + 1, summary=step.summary))
+    for path in plan.changed:
+        print(say(lang, "update.rewrite", path=path))
+    for task in plan.tasks:
+        print(say(lang, "update.task", task=task))
+
+
+def restore_branch(folder: Path, base: str, branch: str, backups: dict[str, bytes | None],
+                   new_dirs: list[Path], runner: Runner, lang: str) -> None:
+    """Back to the starting branch exactly as it was, and drop the update branch.
+
+    `backups` holds the bytes of every file the update was going to write (None when it did not
+    exist): they are put back even when Git does not track them (a gitignored generated/).
+    """
+    ok = git_run(runner, folder, "switch", "-q", "-f", base).returncode == 0  # only our own changes die
+    for relative, content in backups.items():
+        target = folder / relative
+        if content is None:
+            target.unlink(missing_ok=True)
+        elif not target.is_file() or target.read_bytes() != content:
+            target.write_bytes(content)
+    for directory in new_dirs:  # innermost first
+        with contextlib.suppress(OSError):
+            directory.rmdir()
+    ok = git_run(runner, folder, "branch", "-q", "-D", branch).returncode == 0 and ok
+    if not ok:
+        print(say(lang, "update.restore_failed", base=base, branch=branch), file=sys.stderr)
+
+
+def cmd_update(args, root: Path, lang: str, runner: Runner) -> int:
+    folder = current_project(args, lang)
+    if not folder:
+        raise CliError(say(lang, "proj.not_in_project"))
+    try:
+        plan = gu.plan_update(folder, sdk_version(root, runner))
+    except gu.UpdateError as error:
+        raise CliError(say(lang, "update.cannot_plan", reason=error)) from error
+    if plan.empty:
+        print(say(lang, "update.up_to_date", name=folder.name, a=plan.from_format))
+        return 0
+    print_plan(plan, lang)
+    if args.dry_run:
+        print(say(lang, "update.dry_run"))
+        return 0
+
+    toolchain = resolve_toolchain(root, load_lock(root, lang), lang)  # before anything is touched
+    base = project_repo(folder, lang, runner)
+    require_clean(folder, lang, runner)
+    branch = f"{UPDATE_BRANCH}{plan.from_format}-to-{plan.to_format}"
+    if git_run(runner, folder, "rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0:
+        raise CliError(say(lang, "update.branch_exists", branch=branch))
+    if git_run(runner, folder, "switch", "-q", "-c", branch).returncode != 0:
+        raise CliError(say(lang, "update.git_failed", step="switch -c"))
+    backups = {path: ((folder / path).read_bytes() if (folder / path).is_file() else None)
+               for path in plan.changed}
+    new_dirs = sorted({parent for path in plan.changed if backups[path] is None
+                       for parent in (folder / path).parents
+                       if parent != folder and folder in parent.parents and not parent.exists()},
+                      key=lambda p: len(p.parts), reverse=True)
+
+    build_code = 0
+    try:
+        if git_run(runner, folder, "config", f"branch.{branch}.glasnostBase", base).returncode != 0:
+            raise CliError(say(lang, "update.git_failed", step="config"))
+        write_replacing(folder, {path: plan.files[path] for path in plan.changed})
+        problems = gp.check_project(folder)
+        if problems:
+            raise CliError(say(lang, "proj.check_failed", path=folder) + "\n"
+                           + "\n".join(f"  - {p}" for p in problems))
+        build_code = build_project(folder, toolchain, root, lang, runner)
+        if build_code != 0 and not plan.tasks:
+            raise CliError(say(lang, "update.build_failed", code=build_code, base=base))
+        message = (f"glasnost update: project format {plan.from_format} to {plan.to_format}\n\n"
+                   + "\n".join(f"- {step.summary}" for step in plan.steps)
+                   + ("\n\nManual tasks:\n" + "\n".join(f"- {task}" for task in plan.tasks)
+                      if plan.tasks else ""))
+        if (git_run(runner, folder, "add", "-A").returncode != 0
+                or git_run(runner, folder, "commit", "-q", "-m", message).returncode != 0):
+            raise CliError(say(lang, "update.commit_failed", base=base))
+    except BaseException:  # failure, write error, Ctrl-C: everything goes back as it was
+        restore_branch(folder, base, branch, backups, new_dirs, runner, lang)
+        raise
+    print(say(lang, "update.done", a=plan.from_format, b=plan.to_format, branch=branch, base=base))
+    if plan.tasks:
+        print(say(lang, "update.tasks_pending", count=len(plan.tasks)))
+        return 3 if build_code != 0 else 0
+    return 0
+
+
+def cmd_rollback(args, root: Path, lang: str, runner: Runner) -> int:
+    """Leave an update branch and go back to the branch it started from. Loses nothing."""
+    folder = current_project(args, lang)
+    if not folder:
+        raise CliError(say(lang, "proj.not_in_project"))
+    branch = project_repo(folder, lang, runner)
+    found = git_run(runner, folder, "config", "--get", f"branch.{branch}.glasnostBase")
+    base = found.stdout.strip() if found.returncode == 0 else ""
+    if not branch.startswith(UPDATE_BRANCH) or not base:
+        raise CliError(say(lang, "rollback.not_update_branch", branch=branch))
+    require_clean(folder, lang, runner)
+    if git_run(runner, folder, "switch", "-q", base).returncode != 0:
+        raise CliError(say(lang, "rollback.base_missing", base=base))
+    if args.delete:
+        counted = git_run(runner, folder, "rev-list", "--count", f"{base}..{branch}").stdout.strip()
+        extra = int(counted) - 1 if counted.isdigit() else 1  # the update commit itself is not "yours"
+        if extra > 0:  # never silently drop commits the user added on the update branch
+            print(say(lang, "rollback.delete_refused", base=base, branch=branch, count=extra), file=sys.stderr)
+            return 1
+        git_run(runner, folder, "branch", "-q", "-D", branch)
+        print(say(lang, "rollback.deleted", base=base, branch=branch))
+    else:
+        print(say(lang, "rollback.kept", base=base, branch=branch))
+    return 0
+
+
+def cmd_projects(args, root: Path, lang: str, runner: Runner) -> int:
+    base = Path(args.dir).resolve() if args.dir else root / "projects"
+    rows = []
+    if base.is_dir():
+        for folder in sorted(base.iterdir()):
+            if folder.is_symlink() or not (folder / gp.PROJECT_FILE).is_file():
+                continue
+            try:
+                meta, _example = gp.load_project(folder)
+                found = gp.project_format(meta)
+                status = ("current" if found == gp.FORMAT else
+                          "outdated" if found < gp.FORMAT else "newer")
+                status = say(lang, f"projects.{status}", a=found, b=gp.FORMAT)
+            except gp.ProjectError as error:
+                status = say(lang, "projects.invalid", reason=error)
+            branch = git_run(runner, folder, "branch", "--show-current").stdout.strip() or "-"
+            dirty = git_run(runner, folder, "status", "--porcelain").stdout.strip()
+            rows.append((folder.name, status, branch + (" *" if dirty else "")))
+    if not rows:
+        print(say(lang, "projects.none", path=base))
+        return 0
+    width = max(len(name) for name, _s, _b in rows)
+    for name, status, branch in rows:
+        print(f"  {name:<{width}}  {branch:<28}  {status}")
     return 0
 
 
@@ -754,6 +932,20 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
                          help=say(lang, "help.no_extended"))
     config.add_argument("--dry-run", action="store_true", help=say(lang, "help.config_dry"))
     config.set_defaults(func=cmd_config)
+
+    update = sub.add_parser("update", help=say(lang, "help.update"))
+    update.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
+    update.add_argument("--dry-run", action="store_true", help=say(lang, "help.update_dry"))
+    update.set_defaults(func=cmd_update)
+
+    rollback = sub.add_parser("rollback", help=say(lang, "help.rollback"))
+    rollback.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
+    rollback.add_argument("--delete", action="store_true", help=say(lang, "help.rollback_delete"))
+    rollback.set_defaults(func=cmd_rollback)
+
+    projects = sub.add_parser("projects", help=say(lang, "help.projects"))
+    projects.add_argument("--dir", metavar="DIR", help=say(lang, "help.new_dir"))
+    projects.set_defaults(func=cmd_projects)
 
     build = sub.add_parser("build", help=say(lang, "help.build"))
     build.add_argument("examples", nargs="*", help=say(lang, "help.examples"))

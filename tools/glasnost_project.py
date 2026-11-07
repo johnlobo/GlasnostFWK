@@ -24,6 +24,9 @@ TEMPLATE = "ecs-welcome"
 TEMPLATE_DIR = ROOT / "templates" / TEMPLATE
 PROJECT_FILE = "glasnost.project.json"
 SCHEMA = 1
+# Project format: bumped when what glasnost generates or expects of a project changes in a
+# way that needs a migration (tools/glasnost_update.py). A project without the key is format 1.
+FORMAT = 1
 
 NAME_RE = re.compile(r"[a-z][a-z0-9_]{0,23}")
 TITLE_MAX = 30
@@ -183,7 +186,8 @@ def example_manifest(spec: Spec) -> dict:
 
 
 def project_manifest(spec: Spec, framework: str) -> dict:
-    return {"schema": SCHEMA, "template": TEMPLATE, "framework": framework, "title": spec.title}
+    return {"schema": SCHEMA, "template": TEMPLATE, "format": FORMAT, "framework": framework,
+            "title": spec.title}
 
 
 def project_include(title: str) -> str:
@@ -200,12 +204,12 @@ def ecs_profile_include(manifest: dict) -> str:
         from gen_ecs_profile import DEFAULT_PORTFOLIO, generate
     except ModuleNotFoundError:  # imported as tools.glasnost_project
         from tools.gen_ecs_profile import DEFAULT_PORTFOLIO, generate
-    portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
-    profile = json.loads((ROOT / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
     try:
+        portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
+        profile = json.loads((ROOT / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
         return generate(manifest, portfolio, profile).include
-    except ValueError as error:
-        raise ProjectError(f"the ECS profile cannot be generated: {error}") from error
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ProjectError(f"the ECS profile cannot be generated: {type(error).__name__}: {error}") from error
 
 
 def dump_json(data: dict) -> str:
@@ -295,6 +299,14 @@ def load_project(folder: Path) -> tuple[dict, dict]:
     return meta, example
 
 
+def project_format(meta: dict) -> int:
+    """The format of a project; projects made before the key existed are format 1."""
+    value = meta.get("format", 1)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ProjectError(f"{PROJECT_FILE}: format must be a whole number from 1")
+    return value
+
+
 def find_project(start: Path) -> Path | None:
     """The nearest folder at or above `start` that holds a glasnost.project.json."""
     current = start.resolve()
@@ -325,10 +337,14 @@ def check_project(folder: Path) -> list[str]:
     problems: list[str] = []
     try:
         meta, example = load_project(folder)
+        found = project_format(meta)
         profile_key(example.get("profile", ""))
         expected = owned_files(meta, example)
     except ProjectError as error:
         return [str(error)]
+    if found > FORMAT:
+        return [f"the project is format {found} but this glasnost supports up to {FORMAT}: "
+                "use a newer glasnost, or run `glasnost rollback` if you just updated"]
     if example.get("name") != folder.name:
         problems.append(f"example.json name {example.get('name')!r} differs from the folder {folder.name!r}")
     amsdos = example.get("amsdos_name")

@@ -16,6 +16,9 @@ repositorio salvo lo que se indica en «Alcance».
 | `glasnost install-toolchain [--dry-run] [--force]` | Descarga el commit fijado y compila SDCC, hex2bin, iDSK, 2cdt, cpc2cdt, la biblioteca y zx7b. `--dry-run` solo lista los pasos. `--force` rehace desde cero. |
 | `glasnost new [nombre] [--manifest F] [--title T] [--extended-memory] [--dir D] [--no-git] [--no-build]` | Crea un proyecto en `projects/<nombre>` (ver «Proyectos»). Sin nombre ni manifiesto, en una terminal, lanza el asistente. |
 | `glasnost config [--title T] [--extended-memory \| --no-extended-memory] [--dry-run]` | Dentro de un proyecto: sin opciones muestra la configuración; con ellas regenera lo que posee glasnost. |
+| `glasnost update [--dry-run]` | Dentro de un proyecto: lo actualiza al formato de este glasnost con migraciones consecutivas, en una rama de Git (ver «Actualizar proyectos»). |
+| `glasnost rollback [--delete]` | Sale de una rama de actualización y vuelve a la rama de origen sin perder nada; `--delete` borra además la rama de actualización. |
+| `glasnost projects [--dir D]` | Lista los proyectos de `projects/` con su rama Git (`*` si tienen cambios) y si están al día. |
 | `glasnost build [ejemplo...]` | Fuera de un proyecto: `make generate` y `tools/build_examples.py` con el toolchain resuelto (todos los ejemplos si no se nombra ninguno). Dentro de un proyecto: compila ese proyecto. |
 | `glasnost test` | Fuera de un proyecto: `make test`. Dentro: comprueba la coherencia del proyecto y que compila. |
 | `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/run_example.py`). Las opciones del emulador van tras `--`. |
@@ -144,6 +147,66 @@ espacios.
 - GitHub Actions, empaquetado y paquetes compartidos del proyecto son de las
   fases 14 a 16.
 
+## Actualizar proyectos
+
+El **formato** de un proyecto (`format` en `glasnost.project.json`; sin la clave
+es 1) dice qué espera de glasnost. Este glasnost conoce hasta
+`glasnost_project.FORMAT` (hoy 1, el primero). Subir de formato es una cadena de
+migraciones de un paso, N a N+1: no se salta ninguna y un hueco es un error.
+`framework` (la versión de glasnost con la que se hizo o actualizó) es
+informativo; lo único que decide es el formato.
+
+```sh
+glasnost projects                 # ¿cuáles están al día?
+glasnost update --dry-run         # plan: pasos, ficheros que se reescriben, tareas manuales
+glasnost update                   # rama glasnost-update-N-to-M, migra, regenera, prueba y confirma
+git merge glasnost-update-1-to-2  # si todo va bien (desde la rama de origen)
+glasnost rollback [--delete]      # si no: vuelve a la rama de origen
+```
+
+**Qué exige `update`** (y si algo falta, no toca nada): el repositorio Git
+propio del proyecto (el que crea `new`; uno ajeno que lo contenga no vale),
+árbol limpio (sin modificados ni sin seguimiento), una rama (no HEAD
+desacoplado), que no exista ya la rama de actualización y un toolchain
+instalado. `--dry-run` no exige nada de eso.
+
+**Qué hace:** crea `glasnost-update-N-to-M` (guarda de qué rama parte en
+`branch.<rama>.glasnostBase`), aplica las migraciones, regenera `generated/*`,
+comprueba la coherencia, compila y hace el commit con los pasos y las tareas
+manuales en el mensaje. Tu rama de origen no se modifica. **Si algo falla**
+(no compila, error de escritura, commit imposible o rechazado por un hook,
+Ctrl-C en cualquier punto) vuelve a la rama de origen exactamente como estaba
+y borra la rama de actualización; los ficheros que iba a escribir se restauran
+byte a byte aunque Git no los siga (un `generated/` en `.gitignore`) y las
+carpetas que tuvo que crear se quitan. Si ni siquiera eso es posible, lo dice
+con un aviso. Lo compilado en `.build/` no se restaura (es salida ignorada).
+
+**Qué puede tocar una migración.** Es una función pura sobre
+`glasnost.project.json` y `example.json` (por ejemplo, renombrar un módulo del
+framework en `modules`): nunca ve `main.s` ni `common.inc`, así que no puede
+editar tu código. Si un formato exige cambiar tu código, la migración lo
+devuelve como **tarea manual**: aparece en la vista previa, en el informe y en
+el commit, y `update` sale con código 3 si además el proyecto no compila
+hasta que la hagas (la rama se conserva en ese caso; sin tareas declaradas, un
+fallo de compilación deshace todo). Una migración no puede renombrar el
+proyecto ni fijar el formato (lo hace el motor), y sus errores se detectan
+antes de escribir nada.
+
+**Añadir una migración** (cuando cambie lo que glasnost genera o espera): sube
+`FORMAT`, añade `MIGRATIONS[N] = Migration(N, "resumen", apply)` en
+`tools/glasnost_update.py` y su prueba, en el mismo commit; un test falla si
+`FORMAT` sube sin migración.
+
+**`rollback`** solo actúa en una rama `glasnost-update-*` creada por glasnost,
+exige árbol limpio (no pierde trabajo sin confirmar) y conserva la rama de
+actualización salvo con `--delete`, que además se niega (código 1, la rama
+se conserva) si en ella hay commits tuyos aparte del de la actualización. Un proyecto de un formato **más nuevo**
+que el de este glasnost se rechaza en `build`, `test` y `update`: nunca se
+degrada.
+
+`update` y `rollback` no usan la red (un test lo comprueba) y `make` nunca
+actualiza nada.
+
 ## Instalar el comando y varias versiones
 
 `install-cli` solo crea un enlace (`GLASNOST_BIN_DIR` o `--prefix` cambian
@@ -174,6 +237,8 @@ Los ejemplos y herramientas siguen aceptando `CPCT_NEXT_PATH` y
 CLI nunca usa porque siempre fija la variable.
 
 ## Pruebas
+
+`tests/test_glasnost_update.py` (56 casos) cubre el motor de migraciones y `update`/`rollback`/`projects` contra repositorios Git reales (rama, árbol sucio, repositorio ajeno, HEAD desacoplado, ramas con barra, hook que rechaza, ficheros ignorados por Git, Ctrl-C en compilar y en commit, fallos de compilación, escritura y commit, Ctrl-C, tareas manuales, sin red), más un caso con compilación real.
 
 `tests/test_glasnost_project.py` (72 casos) cubre el generador, `new`, `config` y los comandos dentro de un proyecto, incluida la compilación real de la plantilla en cada configuración (se omite sin toolchain). `tests/project_smoke.py` es el smoke opcional en emulador (CPC 464, 6128 y memoria extendida): la nave arranca, se mueve y no sale del área.
 

@@ -1420,3 +1420,19 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [ ] Límite: solo perfil de vídeo `standard`; el `experimental` (288 líneas)
   necesita Y de 16 bits y la plantilla usa 8.
 - [ ] Pendiente: Actions, empaquetado reproducible del proyecto (fases 14 a 16).
+
+## Fase 14: actualización de proyectos con migraciones y rollback (2026-11-07)
+
+- [x] Decisiones de David: formato entero, rollback con rama de Git, las migraciones
+  no editan tu código.
+- [x] `format` en `glasnost.project.json` (sin clave = 1; `FORMAT` = 1 hoy);
+  `tools/glasnost_update.py` (motor puro: migraciones consecutivas sobre
+  `glasnost.project.json` y `example.json`, nunca sobre `main.s` ni `common.inc`).
+- [x] `glasnost update [--dry-run]`, `rollback [--delete]`, `projects`; los proyectos
+  de un formato más nuevo se rechazan.
+- [x] 56 casos en `tests/test_glasnost_update.py` con Git real y una compilación real.
+- [ ] Todavía no hay ninguna migración real (el formato 1 es el primero): el
+  mecanismo está probado con migraciones sintéticas y un test impide subir `FORMAT`
+  sin su migración.
+- [ ] Pendiente: «versionado semántico y política mayor actual + anterior» de los
+  paquetes (fase 15) y la comparación de versiones del framework.

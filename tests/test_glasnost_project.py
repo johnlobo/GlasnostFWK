@@ -194,7 +194,8 @@ class Rendering(unittest.TestCase):
 
     def test_metadata_files(self):
         meta = json.loads(self.files["glasnost.project.json"])
-        self.assertEqual(meta, {"schema": 1, "template": "ecs-welcome", "framework": "9.9.9", "title": "HELLO"})
+        self.assertEqual(meta, {"schema": 1, "template": "ecs-welcome", "format": 1, "framework": "9.9.9",
+                                "title": "HELLO"})
         example = json.loads(self.files["example.json"])
         self.assertEqual((example["name"], example["amsdos_name"], example["extended_memory"]),
                          ("demo", "DEMO", False))
