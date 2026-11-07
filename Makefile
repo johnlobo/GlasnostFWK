@@ -1,5 +1,5 @@
 PYTHON ?= python3
-EXAMPLES := minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender
+EXAMPLES := minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender nave
 CHECK_EXAMPLES ?= platformer
 
 .PHONY: all examples check test generate generate-ecs report manual platform-guide release clean
@@ -18,6 +18,7 @@ generate:
 	$(PYTHON) tools/ecs_animation_model.py --output examples/ecsanimation/scenario.inc --check
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecsrender/example.json --output examples/ecsrender/generated/ecs_profile.inc --check
 	$(PYTHON) tools/ecs_render_model.py --output examples/ecsrender/scenario.inc --check
+	$(PYTHON) tools/gen_ecs_profile.py examples/nave/example.json --output examples/nave/generated/ecs_profile.inc --check
 
 generate-ecs:
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecsmanager/example.json --output examples/ecsmanager/generated/ecs_profile.inc

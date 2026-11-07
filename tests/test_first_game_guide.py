@@ -155,6 +155,47 @@ class StepFiles(unittest.TestCase):
         self.assertEqual([values[p] for p in (0, 1, 3, 6, 10, 15)], [0, 8, 3, 24, 20, 26])
 
 
+class ExampleMatchesGuide(unittest.TestCase):
+    """examples/nave is the finished game of the guide: it cannot drift from the steps."""
+
+    EXAMPLE = ROOT / "examples" / "nave"
+
+    def overlay(self) -> dict[str, bytes]:
+        files: dict[str, bytes] = {}
+        for step in STEP_NAMES:
+            for path in sorted((STEPS / step).rglob("*")):
+                if path.is_file():
+                    files[str(path.relative_to(STEPS / step))] = path.read_bytes()
+        return files
+
+    def test_every_file_of_the_steps_is_in_the_example_unchanged(self):
+        for relative, content in self.overlay().items():
+            with self.subTest(relative):
+                self.assertEqual((self.EXAMPLE / relative).read_bytes(), content)
+
+    def test_the_generated_files_are_what_glasnost_generates(self):
+        title = json.loads(gp.render_project(gp.Spec("nave", "mi primer juego"), "x", "es")["glasnost.project.json"])["title"]
+        self.assertEqual((self.EXAMPLE / "generated" / "project.inc").read_text(), gp.project_include(title))
+        example = json.loads((self.EXAMPLE / "example.json").read_text())
+        self.assertEqual((self.EXAMPLE / "generated" / "ecs_profile.inc").read_text(), gp.ecs_profile_include(example))
+
+    def test_it_has_no_files_the_guide_does_not_explain(self):
+        expected = set(self.overlay()) | {"Makefile", "generated/project.inc", "generated/ecs_profile.inc", "README.md"}
+        found = {str(p.relative_to(self.EXAMPLE)) for p in self.EXAMPLE.rglob("*")
+                 if p.is_file() and "assets/generated" not in str(p)}
+        self.assertEqual(found, expected)
+
+    def test_it_is_not_a_glasnost_project(self):
+        """It is an example of the framework (built by make); it carries no project metadata."""
+        self.assertFalse((self.EXAMPLE / gp.PROJECT_FILE).exists())
+
+    def test_the_converted_assets_are_committed_so_a_clean_checkout_needs_no_img2cpc(self):
+        generated = self.EXAMPLE / "assets" / "generated"
+        for name in ("assets.s", "assets.inc", "pipeline.json"):
+            self.assertTrue((generated / name).is_file(), name)
+        self.assertIn("game_ship_pixels", (generated / "assets.s").read_text())
+
+
 @unittest.skipUnless(real_toolchain(), "needs a CPCTelera Next toolchain")
 class StepsBuild(unittest.TestCase):
     """The reader's path, executed: new, then each step applied over the previous one, then built."""

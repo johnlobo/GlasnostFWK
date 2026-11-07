@@ -1462,3 +1462,12 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   sprites (el renderer borra y redibuja tras el vsync y el haz alcanza esas líneas antes
   de terminar). Hay que medirlo (perfilado de la fase 16) y decidir si el renderer o la
   plantilla deben mover menos sprites por fotograma.
+
+## `examples/nave`: el juego de la guía como ejemplo (2026-11-07)
+
+- [x] `examples/nave` (BIN, DSK común, CDT; AMSDOS `NAVE`): la copia acumulada de
+  `docs/first-game/step1..3`, con sus `assets/` convertidos y `generated/` versionados.
+  Registrado en `Makefile` (`EXAMPLES` y `make generate --check`), CI, empaquetado de
+  releases, manual y `docs/build-sizes.md`: 23 ejemplos.
+- [x] `tests/test_first_game_guide.py` comprueba que coincide byte a byte con los pasos de la
+  guía, que lo generado es lo que genera glasnost y que no tiene ficheros sin explicar.

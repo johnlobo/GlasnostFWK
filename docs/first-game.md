@@ -10,7 +10,8 @@ emulador de CPC. Los ficheros completos de cada paso están en
 [`docs/first-game/`](first-game/), y un test los aplica uno tras otro y los
 compila, así que lo que lees aquí es lo que funciona. Al terminar, tu `main.s` y tu
 `common.inc` serán los de `step3/` salvo por los comentarios y por el sitio exacto de
-algún bloque.
+algún bloque. El juego completo, con todos sus ficheros juntos, está en
+[`examples/nave`](../examples/nave/) y se compila con `make` o con `glasnost build nave`.
 
 ![El juego terminado](first-game/images/step3.png)
 

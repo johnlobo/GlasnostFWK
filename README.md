@@ -49,7 +49,7 @@ toolchain vive en `.toolchain/` (fuera de Git, sin `sudo`). Detalle en
 make generate   # vídeo y manifiesto de recursos, deterministas
 make check      # pruebas host + platformer; bucle rápido durante desarrollo
 make check CHECK_EXAMPLES="spritemask ecsrender"  # solo ejemplos afectados
-make examples   # veintidós ejemplos, incluidas dos escenas jugables
+make examples   # veintitrés ejemplos, incluidas tres escenas jugables
 make test       # pruebas host + construcción y DSK completos; cierre/commit
 make report     # actualiza docs/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -57,7 +57,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintidós BIN de prueba se
+Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintitrés BIN de prueba se
 reúnen en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
@@ -139,7 +139,8 @@ posteriores.
 - `src/extensions`: behavior, física y tilemaps optativos, sin entidad universal.
 - `profiles`, `manifests`: entradas declarativas.
 - `tools`: generación, validación, staging y medición.
-- `examples`: veintidós consumidores pequeños, sin copias internas del framework.
+- `examples`: veintitrés consumidores pequeños, sin copias internas del framework (`examples/nave`
+  es el juego terminado de la guía `docs/first-game.md`).
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
 
 La aplicación didáctica de plataformas dispone de una guía paso a paso con
