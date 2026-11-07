@@ -2,7 +2,7 @@
 """Emulator smoke of the finished game of docs/first-game (step 3). Optional, like project_smoke.py:
 
     flock /tmp/amspirit.lock python3 tests/first_game_smoke.py \\
-        --emulator /config/workspace/tools/amspirit-lite/run.sh [--model 464] [--screenshot out.png]
+        --emulator /config/workspace/tools/amspirit-lite/run.sh [--model 464] [--screenshot out.png] [--example]
 
 Creates the project with the real CLI, applies the three steps of the guide, builds it, runs it and
 checks through RAM (symbols from the .noi) that:
@@ -78,22 +78,31 @@ def main() -> int:
     parser.add_argument("--emulator", type=Path, required=True)
     parser.add_argument("--model", default="6128", choices=("464", "6128"))
     parser.add_argument("--screenshot", type=Path, help="save a PNG of the running game here")
+    parser.add_argument("--example", action="store_true",
+                        help="check examples/nave (built with the CLI) instead of a project made from the guide")
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory(prefix="glasnost-guide-") as tmp:
-        code = glasnost.main(["--lang", "en", "new", "nave", "--dir", tmp, "--no-git", "--no-build"])
-        if code != 0:
-            return code
-        folder = Path(tmp) / "nave"
-        apply_steps(folder)
-        code = glasnost.main(["--lang", "en", "build", "--project", str(folder)])
-        if code != 0:
-            return code
+        if args.example:
+            code = glasnost.main(["--lang", "en", "build", "nave"])
+            if code != 0:
+                return code
+            folder, built = ROOT / "examples" / "nave", ROOT / ".build" / "nave"
+        else:
+            code = glasnost.main(["--lang", "en", "new", "nave", "--dir", tmp, "--no-git", "--no-build"])
+            if code != 0:
+                return code
+            folder = Path(tmp) / "nave"
+            apply_steps(folder)
+            code = glasnost.main(["--lang", "en", "build", "--project", str(folder)])
+            if code != 0:
+                return code
+            built = folder / ".build" / "nave"
         offsets = constants(folder, {"ECS_E_X", "ECS_E_Y", "ECS_E_RENDER_SPRITE", "ECS_E_RENDER_FLAGS", "ECS_ENTITY_SIZE"})
         x_off, y_off, sprite_off, flags_off, size = (
             offsets[k] for k in ("ECS_E_X", "ECS_E_Y", "ECS_E_RENDER_SPRITE", "ECS_E_RENDER_FLAGS", "ECS_ENTITY_SIZE"))
-        noi = folder / ".build" / "nave" / "obj" / "nave.noi"
-        dsk = folder / ".build" / "nave" / "nave.dsk"
+        noi = built / "obj" / "nave.noi"
+        dsk = built / "nave.dsk"
         status, storage = emu.symbol(noi, "game_status"), emu.symbol(noi, "game_storage")
         hits, frame = emu.symbol(noi, "game_hits"), emu.symbol(noi, "fwk_system_frame_count")
 

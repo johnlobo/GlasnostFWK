@@ -14,6 +14,7 @@ Generated from SDCC linker maps. Binary size may include sparse absolute-address
 | experimental | 1073 | 9 | 1082 |
 | gravity | 1098 | 21 | 1119 |
 | minimal | 974 | 24 | 998 |
+| nave | 7637 | 657 | 8294 |
 | perf | 5561 | 841 | 6402 |
 | physics88 | 1304 | 32 | 1336 |
 | platformer | 9663 | 2331 | 11994 |
