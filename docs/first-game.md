@@ -303,7 +303,7 @@ _game_anim:     .dw 0                  ; descriptor of the row being spawned
 <!-- guia: step2/main.s -->
 ```asm
     ld ix, #game_manager
-    call fwk_ecs_system_animation    ; the next frame of every animation
+    call fwk_ecs_system_animation    ; every animation counts down and changes frame
     call _game_expect_ok
 ```
 
@@ -361,7 +361,7 @@ GAME_PLAYER_COMPS = ECS_C_RENDER|ECS_C_MOTION|ECS_C_INPUT|ECS_C_ANIMATION|ECS_C_
 GAME_DRONE_COMPS  = ECS_C_RENDER|ECS_C_MOTION|ECS_C_BEHAVIOR|ECS_C_ANIMATION|ECS_C_COLLISION
 
 ;; Contact channel of the player against the drones. Each channel remembers by
-;; itself whether a pair was touching, so a hit counts once per touch.
+;; itself whether the player was touching, so a hit counts once per touch.
 GAME_CH_DRONE = 0x01
 
 ;; Score: where it is drawn (byte column, scanline) and its size (bytes, lines).
@@ -371,7 +371,7 @@ GAME_HUD_W = 16
 GAME_HUD_H = 9
 ```
 
-   Cada **canal** recuerda por su cuenta qué parejas se estaban tocando, de modo
+   Cada **canal** recuerda por su cuenta si la nave ya estaba tocando algo, de modo
    que el golpe se cuenta cuando el contacto empieza y no en cada fotograma.
 
 3. En `main.s`, tres datos nuevos: el contador (público, para poder verlo en el
@@ -398,16 +398,16 @@ _game_str_hits:    .asciz "HITS: 00"      ; the two digits are patched in place
 ```asm
 _game_drone_cb:
     cp #ECS_COLLISION_ENTER
-    jr nz, _game_drone_cb_done
+    jr nz, _game_drone_cb_done      ; STAY and EXIT do not count
     ld a, (game_hits)
     cp #99
-    jr z, _game_drone_cb_done
+    jr z, _game_drone_cb_done       ; the score has two digits
     inc a
     ld (game_hits), a
     ld a, #1
-    ld (_game_hud_dirty), a
+    ld (_game_hud_dirty), a         ; ask _game_hud_update to redraw
 _game_drone_cb_done:
-    xor a
+    xor a                           ; carry clear, A=0: keep going
     ret
 ```
 
@@ -420,11 +420,11 @@ _game_drone_cb_done:
 _game_hud_update:
     ld a, (_game_hud_dirty)
     or a
-    ret z
+    ret z                           ; nothing changed
     xor a
     ld (_game_hud_dirty), a
     ld a, (game_hits)
-    ld b, #'0'
+    ld b, #'0'                      ; B = tens digit, counted up by subtracting 10
 _game_hud_tens:
     cp #10
     jr c, _game_hud_units
@@ -432,8 +432,8 @@ _game_hud_tens:
     inc b
     jr _game_hud_tens
 _game_hud_units:
-    add a, #'0'
-    ld (_game_str_hits + 7), a
+    add a, #'0'                     ; A = units digit
+    ld (_game_str_hits + 7), a      ; "HITS: 00": units at offset 7, tens at offset 6
     ld a, b
     ld (_game_str_hits + 6), a
     ld hl, #GAME_HUD_Y
@@ -480,6 +480,8 @@ es el juego de la captura de arriba.
 
 ## Dónde seguir
 
+- **Entender el código terminado**: [`nave-walkthrough.md`](nave-walkthrough.md) recorre
+  `examples/nave` rutina por rutina, con el contrato de cada una y dos ejercicios.
 - **Más sistemas del ECS**: el mismo patrón sirve para todos. Añade el componente y
   el módulo a `example.json`, ejecuta `glasnost config`, y declara las etiquetas y
   constantes en `common.inc`. Mira `examples/platformer` (física de plataformas,

@@ -39,7 +39,7 @@ _game_managers: .dw game_manager
 _game_work:     .ds 8 * GAME_CAP
 FWK_ECS_RENDER_SCENE game_scene, _game_managers, 1, _game_work, GAME_CAP, _game_pools, 1
 
-;; ---- Keyboard: (key, action bit) pairs ended by a zero key ----
+;; ---- Keyboard: (key, action bit) pairs ended by a zero action ----
 game_bindings:
     .dw Key_CursorLeft
     .db GAME_INPUT_LEFT
@@ -77,21 +77,51 @@ _game_row_drone2: GAME_ROW GAME_DRONE_COMPS, GAME_T_DRONE, 30, 130, 4, 8, game_d
 
 .area _CODE
 
-;; Stops the game with the ABI error code in game_status.
+;; ----------------------------------------------------------------------------
+;; _game_fail
+;;   Stops the game: stores the error code and waits frames forever.
+;;   In : A=ABI error code (from _game_expect_ok).
+;;   Out: game_status=A. Never returns.
+;;   Clobbers: all (never returns)
+;;   Notes: Entered by jp only, so the stack of the failing caller is abandoned. It keeps
+;;          calling fwk_system_wait_frame so the interrupts and the screen stay alive and
+;;          the code stays readable in game_status.
+;; ----------------------------------------------------------------------------
 _game_fail:
     ld (game_status), a
 _game_fail_loop:
     call fwk_system_wait_frame
     jr _game_fail_loop
 
-;; Continues on success; on error stops the game.
+;; ----------------------------------------------------------------------------
+;; _game_expect_ok
+;;   Error guard used after each framework call that reports errors through the carry
+;;   (ECS, renderer): continues on success, stops the game on error.
+;;   In : carry from the call just made (clear = ok, set = error); A=error code when set.
+;;   Out: success: returns with carry clear and A untouched. Error: does not return.
+;;   Clobbers: none (on the error path HL is overwritten, but that path never returns)
+;;   Notes: On error it drops its own return address (pop hl) and jumps to _game_fail.
+;;          Call it right after the framework call: anything in between may change the carry.
+;; ----------------------------------------------------------------------------
 _game_expect_ok:
     ret nc
     pop hl
     jp _game_fail
 
-;; In: IX=manager, HL=spawn row. Out: IY=entity. Builds a template from the row.
+;; ----------------------------------------------------------------------------
+;; _game_spawn
+;;   Builds an entity from a spawn row (GAME_ROW), creates it in the manager and,
+;;   if the row names an animation, starts it.
+;;   In : IX=manager, HL=spawn row (13 bytes, see GAME_ROW in common.inc).
+;;   Out: success: carry clear, IY=the new entity. Failure: carry set, A=ABI error code.
+;;        _game_tpl and _game_anim are overwritten.
+;;   Clobbers: AF, BC, DE, HL, IY
+;;   Notes: IX is preserved. The template is zeroed first, so every field the row does not
+;;          set (cadence, velocity, flags) starts at 0. The row is read in order: components,
+;;          type, x, y, width, height, sprite, behavior program, animation descriptor.
+;; ----------------------------------------------------------------------------
 _game_spawn:
+    ;; Zero the template: ldir copies the first byte (0) over the rest.
     push hl
     ld hl, #_game_tpl
     ld de, #_game_tpl + 1
@@ -100,37 +130,38 @@ _game_spawn:
     ldir
     pop hl
     ld iy, #_game_tpl
+    ;; Copy the row into the template, field by field, in the order GAME_ROW writes it.
     ld a, (hl)
     inc hl
-    ld ECS_E_COMPONENTS(iy), a
+    ld ECS_E_COMPONENTS(iy), a      ; components: which systems act on it (low byte)
     ld a, (hl)
     inc hl
-    ld ECS_E_COMPONENTS+1(iy), a
+    ld ECS_E_COMPONENTS+1(iy), a    ; (high byte)
     ld ECS_E_STATUS(iy), #ECS_STATUS_ACTIVE
     ld a, (hl)
     inc hl
-    ld ECS_E_TYPE(iy), a
+    ld ECS_E_TYPE(iy), a            ; type: GAME_T_PLAYER or GAME_T_DRONE
     ld a, (hl)
     inc hl
-    ld ECS_E_X(iy), a
+    ld ECS_E_X(iy), a               ; position: x in bytes, y in scanlines
     ld a, (hl)
     inc hl
     ld ECS_E_Y(iy), a
     ld a, (hl)
     inc hl
-    ld ECS_E_WIDTH(iy), a
+    ld ECS_E_WIDTH(iy), a           ; size: width in bytes, height in scanlines
     ld a, (hl)
     inc hl
     ld ECS_E_HEIGHT(iy), a
     ld a, (hl)
     inc hl
-    ld ECS_E_RENDER_SPRITE(iy), a
+    ld ECS_E_RENDER_SPRITE(iy), a   ; sprite pixels (low byte, then high)
     ld a, (hl)
     inc hl
     ld ECS_E_RENDER_SPRITE+1(iy), a
     ld a, (hl)
     inc hl
-    ld ECS_E_BEHAVIOR_PROGRAM(iy), a
+    ld ECS_E_BEHAVIOR_PROGRAM(iy), a ; patrol program, 0 = none (low byte, then high)
     ld a, (hl)
     inc hl
     ld ECS_E_BEHAVIOR_PROGRAM+1(iy), a
@@ -138,51 +169,82 @@ _game_spawn:
     inc hl
     ld d, (hl)
     ld (_game_anim), de             ; animation descriptor of this row
-    ld ECS_E_RENDER_FLAGS(iy), #ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY
+    ld ECS_E_RENDER_FLAGS(iy), #ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY   ; draw it on the first frame
+    ;; Hand the finished template to the manager, which copies it into a free slot.
     ld hl, #_game_tpl
     call fwk_ecs_entity_create
-    ret c
+    ret c                           ; manager full or bad template: carry and error in A
     ld hl, (_game_anim)
     ld a, h
     or l
     ret z                           ; no animation
     jp fwk_ecs_anim_set             ; IY = the new entity
 
-;; In: B=scanline, HL=string. Draws it at the left margin.
+;; ----------------------------------------------------------------------------
+;; _game_text
+;;   Draws a string at the left margin (GAME_TEXT_X) on a given scanline.
+;;   In : B=scanline, HL=NUL-terminated string.
+;;   Out: the text is drawn on the visible screen. IY is left pointing at the string.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: Tail-jumps to fwk_text_draw, which returns to the caller. IX is listed because
+;;          fwk_text_draw documents it as modified (its current body restores it). Bytes the
+;;          font does not have (lowercase, for example) advance one cell without drawing.
+;; ----------------------------------------------------------------------------
 _game_text:
-    push hl
+    push hl                         ; keep the string while HL carries the scanline
     ld l, b
     ld h, #0
     ld c, #GAME_TEXT_X
-    call fwk_video_get_ptr
-    pop iy
+    call fwk_video_get_ptr          ; HL = screen address of (GAME_TEXT_X, scanline)
+    pop iy                          ; IY = string, HL = where to draw it
     jp fwk_text_draw
 
-;; Collision callback: IX=manager, IY=drone, HL=player, A=ENTER/STAY/EXIT. Counts a hit
-;; when a drone starts touching the player (not on every frame of the contact).
+;; ----------------------------------------------------------------------------
+;; _game_drone_cb
+;;   Collision callback: counts a hit when the player goes from touching no drone to
+;;   touching one, not on every frame of the contact. The state is remembered per subject
+;;   and channel: a drone touched while the player already touched another one in an earlier
+;;   pass arrives as STAY and does not count.
+;;   In : IX=manager, IY=drone (0 on EXIT), HL=player, A=ECS_COLLISION_ENTER, STAY or EXIT.
+;;   Out: carry clear and A=0 (keep going). On ENTER: game_hits +1 and _game_hud_dirty=1.
+;;   Clobbers: AF
+;;   Notes: Touches only A and the flags (the framework does not require a collide callback to
+;;          keep IX or IY). game_hits stops at 99 because the score has two digits.
+;; ----------------------------------------------------------------------------
 _game_drone_cb:
     cp #ECS_COLLISION_ENTER
-    jr nz, _game_drone_cb_done
+    jr nz, _game_drone_cb_done      ; STAY and EXIT do not count
     ld a, (game_hits)
     cp #99
-    jr z, _game_drone_cb_done
+    jr z, _game_drone_cb_done       ; the score has two digits
     inc a
     ld (game_hits), a
     ld a, #1
-    ld (_game_hud_dirty), a
+    ld (_game_hud_dirty), a         ; ask _game_hud_update to redraw
 _game_drone_cb_done:
-    xor a
+    xor a                           ; carry clear, A=0: keep going
     ret
 
-;; Redraws the score when it changed: patches the two digits, clears its box, draws it.
+;; ----------------------------------------------------------------------------
+;; _game_hud_update
+;;   Redraws the score when it changed: patches the two digits into the string,
+;;   clears its box and draws it.
+;;   In : reads _game_hud_dirty and game_hits.
+;;   Out: _game_hud_dirty cleared; the digits of _game_str_hits patched and the score drawn.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: IX is listed because fwk_text_draw documents it as modified. When nothing changed it
+;;          returns after touching only AF. The tens digit comes from
+;;          repeated subtraction of 10 (game_hits <= 99). Call it after the render: the text
+;;          goes over whatever the renderer left.
+;; ----------------------------------------------------------------------------
 _game_hud_update:
     ld a, (_game_hud_dirty)
     or a
-    ret z
+    ret z                           ; nothing changed
     xor a
     ld (_game_hud_dirty), a
     ld a, (game_hits)
-    ld b, #'0'
+    ld b, #'0'                      ; B = tens digit, counted up by subtracting 10
 _game_hud_tens:
     cp #10
     jr c, _game_hud_units
@@ -190,8 +252,8 @@ _game_hud_tens:
     inc b
     jr _game_hud_tens
 _game_hud_units:
-    add a, #'0'
-    ld (_game_str_hits + 7), a
+    add a, #'0'                     ; A = units digit
+    ld (_game_str_hits + 7), a      ; "HITS: 00": units at offset 7, tens at offset 6
     ld a, b
     ld (_game_str_hits + 6), a
     ld hl, #GAME_HUD_Y
@@ -208,8 +270,16 @@ _game_hud_units:
     ld iy, #_game_str_hits
     jp fwk_text_draw
 
-;; Steering system, run before motion: UP and DOWN set the vertical velocity.
-;; Callbacks of fwk_ecs_system_run get IX=manager, IY=entity and must keep both.
+;; ----------------------------------------------------------------------------
+;; _game_steer
+;;   Steering system, run before motion: UP and DOWN set the vertical velocity of
+;;   every entity with the INPUT component.
+;;   In : IX=manager, IY=entity (fwk_ecs_system_run callback); reads fwk_input_held.
+;;   Out: carry clear and A=0. ECS_E_MOTION_VELOCITY_Y(iy) = -GAME_SPEED_Y (UP), +GAME_SPEED_Y (DOWN) or 0.
+;;   Clobbers: AF, C
+;;   Notes: IX and IY are saved and restored: the traversal requires it. If both keys are held,
+;;          DOWN wins.
+;; ----------------------------------------------------------------------------
 _game_steer:
     push ix
     push iy
@@ -230,8 +300,17 @@ _game_steer_set:
     xor a
     ret
 
-;; Keeps the player inside the play area, run after motion. Positions are
-;; unsigned bytes: going left past 0 wraps to 254, which the first test catches.
+;; ----------------------------------------------------------------------------
+;; _game_clamp
+;;   Keeps the entity inside the play area, run after motion: X within 0..GAME_X_MAX,
+;;   Y within GAME_Y_MIN..GAME_Y_MAX.
+;;   In : IX=manager, IY=entity (fwk_ecs_system_run callback).
+;;   Out: carry clear and A=0. ECS_E_X(iy) and ECS_E_Y(iy) are inside the limits.
+;;   Clobbers: AF
+;;   Notes: Positions are unsigned bytes, but fwk_ecs_system_motion_u8 already saturates at 0, so
+;;          with it the X >= 200 test never fires; it only guards a position that wrapped to
+;;          254. IX and IY are saved and restored.
+;; ----------------------------------------------------------------------------
 _game_clamp:
     push ix
     push iy
@@ -264,7 +343,19 @@ _game_clamp_done:
     xor a
     ret
 
+;; ----------------------------------------------------------------------------
+;; _main
+;;   Program entry: starts the framework, draws the texts, creates the manager, the
+;;   renderer and the four entities, then runs the frame loop forever.
+;;   In : none.
+;;   Out: never returns. game_status=0x5A once the game runs, or an ABI error code.
+;;   Clobbers: all (never returns)
+;;   Notes: Each frame runs, in order: input, behavior, input system, steering, motion,
+;;          animation, clamp, collisions, then the selective render around the VSYNC wait,
+;;          then the score.
+;; ----------------------------------------------------------------------------
 _main::
+    ;; System up (firmware off, interrupts on), Mode 0, text, palette, keyboard, clear screen.
     call fwk_project_init
     call fwk_video_init
     call fwk_text_init
@@ -277,6 +368,7 @@ _main::
     xor a
     call fwk_video_clear_visible
 
+    ;; The three static texts: welcome, the project title, the help line.
     ld b, #GAME_TEXT_Y_WELCOME
     ld hl, #_game_str_welcome
     call _game_text
@@ -287,6 +379,7 @@ _main::
     ld hl, #_game_str_help
     call _game_text
 
+    ;; Empty manager and renderer, then spawn the player and the three drones.
     ld ix, #game_manager
     call fwk_ecs_manager_init
     call _game_expect_ok
@@ -298,8 +391,8 @@ _main::
     ld hl, #_game_row_player
     call _game_spawn
     call _game_expect_ok
-    ld (game_player), iy
-    ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT
+    ld (game_player), iy            ; the collision pass needs the player's address
+    ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT   ; LEFT/RIGHT steer it
     ld ix, #game_manager
     ld hl, #_game_row_drone0
     call _game_spawn
@@ -314,10 +407,11 @@ _main::
     call _game_expect_ok
 
     ld a, #0x5A
-    ld (game_status), a
+    ld (game_status), a             ; running: tests and the emulator wait for this
 
+    ;; ---- One game frame ----
 game_frame:
-    call fwk_input_update
+    call fwk_input_update           ; read the keys once per frame
     ld ix, #game_manager
     call fwk_ecs_system_behavior
     call _game_expect_ok
@@ -333,7 +427,7 @@ game_frame:
     call fwk_ecs_system_motion_u8    ; velocity moves every entity
     call _game_expect_ok
     ld ix, #game_manager
-    call fwk_ecs_system_animation    ; the next frame of every animation
+    call fwk_ecs_system_animation    ; every animation counts down and changes frame
     call _game_expect_ok
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT

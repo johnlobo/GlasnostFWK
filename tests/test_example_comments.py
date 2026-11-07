@@ -21,8 +21,10 @@ it, a `.dw` table or a `#label` operand takes its address (a callback), or it is
 Loop and branch labels reached only by jr/jp/djnz are local and stay undocumented. Whether the register lists are
 TRUE is not machine-checkable here; that is what review is for.
 
-Not covered on purpose: examples/nave (the guide's game, kept byte-identical to
-docs/first-game/step3 by test_first_game_guide.py) and generated or third-party data files.
+examples/nave is covered: it is the guide's game, kept byte-identical to
+docs/first-game/step3 by test_first_game_guide.py, so the guide's final step carries the
+headers too. Not covered on purpose: generated or third-party data files, and the
+intermediate steps step1 and step2 of the guide.
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples"
 
-SKIP_EXAMPLES = {"nave"}
+SKIP_EXAMPLES: set[str] = set()
 SKIP_FILES = {"song.s", "sfx.s", "scenario.inc", "assets.s"}  # generated or pure data
 
 RULE = re.compile(r"^;; -{40,}$")

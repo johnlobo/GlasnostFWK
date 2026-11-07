@@ -349,6 +349,6 @@ _nombre:
 La prueba `tests/test_example_comments.py` exige la cabecera, su orden
 (`In`, `Out`, `Clobbers`, `Notes`) y que el nombre coincida con la etiqueta. Si los
 registros son ciertos no lo puede decir una máquina: eso es trabajo de revisión.
-Quedan fuera `examples/nave` (idéntico a los pasos de `docs/first-game/`) y los
-ficheros generados. Las pruebas que leen el fuente de un ejemplo, como la tabla de
+`examples/nave` también la cumple, y por tanto el paso 3 de `docs/first-game/` (son
+idénticos). Quedan fuera los pasos 1 y 2 de la guía y los ficheros generados. Las pruebas que leen el fuente de un ejemplo, como la tabla de
 mutaciones de `tools/mutate_platformer.py`, ignoran los comentarios.

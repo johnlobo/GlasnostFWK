@@ -46,13 +46,13 @@ GAME_TEXT_Y_WELCOME = 4
 GAME_TEXT_Y_TITLE = 16
 GAME_TEXT_Y_HELP = 28
 
-;; Drone patrol: the first leg is half a leg long, so a drone sweeps 20 bytes
+;; Drone patrol: the first leg is half a leg long, so a drone sweeps about 20 bytes
 ;; either side of where it starts.
 GAME_DRONE_FIRST_LEG = 20
 GAME_DRONE_LEG = 40
 
 ;; Contact channel of the player against the drones. Each channel remembers by
-;; itself whether a pair was touching, so a hit counts once per touch.
+;; itself whether the player was touching, so a hit counts once per touch.
 GAME_CH_DRONE = 0x01
 
 ;; Score: where it is drawn (byte column, scanline) and its size (bytes, lines).
@@ -64,8 +64,16 @@ GAME_HUD_H = 9
 ;; Frames of an animation last this many calls of the animation system.
 GAME_ANIM_TICKS = 8
 
-;; Spawn row: components, type, x, y, width and height (bytes, lines), sprite,
-;; behavior program, animation descriptor (0 = none).
+;; ----------------------------------------------------------------------------
+;; GAME_ROW
+;;   Spawn row: the 13 bytes of data _game_spawn turns into one entity.
+;;   In : comps = component mask (ECS_C_*), type = GAME_T_*, x in bytes, y in scanlines,
+;;        w in bytes, h in scanlines, sprite = pixel data, program = behavior program
+;;        (0 = none), anim = animation descriptor (0 = none).
+;;   Out: emits .dw comps / .db type, x, y, w, h / .dw sprite / .dw program, anim.
+;;   Clobbers: none (it only emits data; no code runs).
+;;   Notes: _game_spawn reads these fields in exactly this order. Use it in a data area.
+;; ----------------------------------------------------------------------------
 .macro GAME_ROW comps, type, x, y, w, h, sprite, program, anim
     .dw comps
     .db type, x, y, w, h

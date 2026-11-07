@@ -1488,3 +1488,43 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   en 96 rutinas: ningún error en las listas de registros; 7 comentarios falsos, corregidos.
 - Pendiente: lo que no puede decir una máquina es que los registros sean ciertos; queda a
   la revisión. `examples/nave` y los pasos de la guía no llevan cabeceras todavía.
+
+## Recorrido por el código de `nave` y cabeceras en la guía (2026-11-07)
+
+- [x] `docs/nave-walkthrough.md`: tutorial que explica `examples/nave` rutina por rutina
+  (conceptos, datos, las 9 rutinas, un fotograma y dos ejercicios). Los 21 bloques de código
+  son copias literales de `main.s` y `common.inc`; `tests/test_nave_walkthrough.py` lo
+  comprueba, además de que se explica toda rutina de `main.s`, que los enlaces existen y que
+  los ejercicios compilan (con toolchain).
+- [x] `examples/nave` y el paso 3 de la guía (`docs/first-game/step3/`, idénticos) llevan las
+  cabeceras In/Out/Clobbers/Notes y comentarios por bloque; `tests/test_example_comments.py`
+  ya cubre `nave`. El binario de `nave` es idéntico byte a byte (SHA-256 `84b8e2c6...`).
+- [x] Corregidos comentarios falsos que habían entrado en la plantilla y en los pasos de la
+  guía: ir a la izquierda no da la vuelta a 254 (`fwk_ecs_system_motion_u8` satura en 0, el
+  test `X >= 200` de `_game_clamp` no se ejecuta con él); el bucle de teclas termina en la
+  acción 0, no en la tecla; el estado del contacto es por sujeto y canal, no por pareja (con
+  la nave ya tocando un dron, un segundo llega como `STAY` y no suma).
+- [x] Resultados medidos con `tests/nave_walkthrough_smoke.py` (AmSpiriT, 6128), 2026-11-07:
+
+  | Prueba | Resultado |
+  |---|---|
+  | Nave desde arriba mantiene DOWN 60 fotogramas de pantalla, `GAME_SPEED_Y = 2` | 58 a 60 líneas (tres ejecuciones) |
+  | Igual con `GAME_SPEED_Y = 4` (ejercicio 1) | 116 líneas (cociente 1,93 a 2,00) |
+  | Cuarto dron (ejercicio 2): `game_status`, tipo de la entidad 4, se mueve | `0x5A`, tipo 2 (dron), sí |
+  | Tocar el cuarto dron | suma al menos 1 golpe |
+  | Cuarto dron sin subir `GAME_CAP` | `game_status = 0x03` (`FWK_ECS_ERR_FULL`) |
+
+  Una pasada del bucle de `nave` tarda dos fotogramas de pantalla (unas 60 líneas en 60
+  fotogramas a velocidad 2). El smoke usa 60 fotogramas porque con 20 (10 pasadas) una pasada
+  de más o de menos movía el cociente fuera de 1,8 a 2,2.
+- [x] Revisión en frío del tutorial: cinco rondas de un crítico sin memoria que lo lee como
+  un novato y contrasta cada afirmación con `src/`. Cada ronda corrigió lo que halló. La última
+  (quinta) no halló nada HIGH (ni falso ni que bloquee a un lector); las dos anteriores sí. Hallazgos
+  corregidos entre otros: el estado de contacto es por sujeto y canal (dos drones que empiezan a
+  tocar en la misma pasada suman los dos), `WAIT n` dura `n-1` ticks, `_game_expect_ok` no va tras
+  todas las llamadas, el bucle de teclas termina en la acción 0.
+- Pendiente (LOW, sin tratar): `step1` y `step2` de la guía y `templates/ecs-welcome` no llevan
+  cabeceras (solo se corrigieron sus comentarios falsos); la guía y el tutorial usan «fotograma»
+  con sentidos distintos (el tutorial lo avisa); el tutorial no lista todos los símbolos
+  `Key_*`/`cpct_*`/`ECS_*` que usa `main.s`; los comentarios de `main.s` que dicen «cuatro
+  entidades» no cambian con el ejercicio 2 (el tutorial lo avisa).
