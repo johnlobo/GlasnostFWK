@@ -32,6 +32,7 @@ bin/glasnost install-toolchain    # descarga y compila el commit de toolchain.lo
 bin/glasnost build platformer     # compila ejemplos con ese toolchain
 bin/glasnost test                 # make test
 bin/glasnost run platformer       # abre el ejemplo en el emulador
+bin/glasnost new minave           # proyecto nuevo en projects/minave (asistente si no das nombre)
 bin/glasnost install-cli          # enlace ~/.local/bin/glasnost (sin sudo)
 bin/glasnost toolchains           # toolchains instalados; clean-toolchains los limpia
 ```

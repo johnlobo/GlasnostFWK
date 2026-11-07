@@ -1402,3 +1402,21 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [ ] Los ejemplos y herramientas conservan la ruta heredada
   `/config/workspace/cpctelera_next/cpctelera` como valor por defecto; el CLI
   siempre fija `CPCT_NEXT_PATH`, así que no la usa.
+
+## Fase 13 parte 1: `glasnost new` y `glasnost config` (2026-11-07)
+
+- [x] Decisiones de David: asistente y manifiesto desde el primer día, plantilla
+  mini juego ECS, enlace con `glasnost.project.json` y `glasnost build`, `config`
+  solo con cambios seguros.
+- [x] `tools/glasnost_project.py` (generador determinista, comprobaciones y
+  `config` sin escribir hasta validar), plantilla `templates/ecs-welcome/`,
+  `build_examples.py` y `run_example.py` aceptan `--project DIR`. Los 22
+  binarios de los ejemplos salen idénticos byte a byte tras el refactor.
+- [x] `build`, `test` y `run` dentro de un proyecto; `new` crea, compila, borra
+  lo creado si falla y hace el primer commit en un repositorio propio.
+- [x] 72 casos en `tests/test_glasnost_project.py` (con compilación real de la
+  plantilla estándar y con memoria extendida) y `tests/project_smoke.py`
+  (CPC 464, 6128 y memoria extendida: la nave se mueve y no sale del área).
+- [ ] Límite: solo perfil de vídeo `standard`; el `experimental` (288 líneas)
+  necesita Y de 16 bits y la plantilla usa 8.
+- [ ] Pendiente: Actions, empaquetado reproducible del proyecto (fases 14 a 16).

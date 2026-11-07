@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import fcntl
 import json
 import os
@@ -26,6 +27,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import glasnost_project as gp  # noqa: E402
 from glasnost_i18n import LANGS, pick_language, say  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -444,8 +446,40 @@ def sdk_env(toolchain: Toolchain) -> dict[str, str]:
     return dict(os.environ, CPCT_NEXT_PATH=str(toolchain.path))
 
 
+def current_project(args) -> Path | None:
+    """The project the command runs in: --project, else the nearest folder above the cwd."""
+    explicit = getattr(args, "project", None)
+    if explicit:  # an explicit folder must be a project: never fall back to the framework
+        folder = Path(explicit).resolve()
+        if not (folder / gp.PROJECT_FILE).is_file():
+            raise CliError(say(lang_of(args), "proj.not_a_project", path=folder))
+        return folder
+    return gp.find_project(Path.cwd())
+
+
+def lang_of(args) -> str:
+    return getattr(args, "lang_resolved", "es")
+
+
+def require_project_ok(folder: Path, lang: str) -> None:
+    problems = gp.check_project(folder)
+    if problems:
+        raise CliError(say(lang, "proj.check_failed", path=folder) + "\n" + "\n".join(f"  - {p}" for p in problems))
+
+
+def build_project(folder: Path, toolchain: Toolchain, root: Path, lang: str, runner: Runner) -> int:
+    require_project_ok(folder, lang)
+    return runner([sys.executable, "tools/build_examples.py", "--project", str(folder)],
+                  cwd=root, env=sdk_env(toolchain), check=False).returncode
+
+
 def cmd_build(args, root: Path, lang: str, runner: Runner) -> int:
     toolchain = resolve_toolchain(root, load_lock(root, lang), lang)
+    folder = current_project(args)
+    if folder:
+        if args.examples:
+            raise CliError(say(lang, "proj.no_examples", path=folder))
+        return build_project(folder, toolchain, root, lang, runner)
     check_examples(root, args.examples, lang)
     env = sdk_env(toolchain)
     python = sys.executable
@@ -459,16 +493,197 @@ def cmd_build(args, root: Path, lang: str, runner: Runner) -> int:
 
 def cmd_test(args, root: Path, lang: str, runner: Runner) -> int:
     toolchain = resolve_toolchain(root, load_lock(root, lang), lang)
+    folder = current_project(args)
+    if folder:  # a project: its integrity, then that it builds
+        code = build_project(folder, toolchain, root, lang, runner)
+        if code == 0:
+            print(say(lang, "proj.test_ok", name=folder.name))
+        return code
     return runner(["make", "test", f"PYTHON={sys.executable}"],
                   cwd=root, env=sdk_env(toolchain), check=False).returncode
 
 
 def cmd_run(args, root: Path, lang: str, runner: Runner) -> int:
     toolchain = resolve_toolchain(root, load_lock(root, lang), lang)
-    check_examples(root, [args.example], lang)
-    extra = args.rest  # argparse already consumed the separating "--"
-    return runner([sys.executable, "tools/run_example.py", args.example, *extra],
+    folder = current_project(args)
+    tokens = list(args.rest)  # [example] [-- emulator options]
+    example = tokens.pop(0) if tokens and not tokens[0].startswith("-") else None
+    extra = tokens[1:] if tokens[:1] == ["--"] else tokens
+    if folder:
+        if example:
+            raise CliError(say(lang, "proj.no_examples", path=folder))
+        return runner([sys.executable, "tools/run_example.py", "--project", str(folder), *extra],
+                      cwd=root, env=sdk_env(toolchain), check=False).returncode
+    if not example:
+        raise CliError(say(lang, "cmd.run_needs_example"))
+    check_examples(root, [example], lang)
+    return runner([sys.executable, "tools/run_example.py", example, *extra],
                   cwd=root, env=sdk_env(toolchain), check=False).returncode
+
+
+# --------------------------------------------------------- new / config
+
+YES = {"es": {"s", "si", "sí", "y", "yes"}, "en": {"y", "yes", "s"}}
+
+
+def ask_until_valid(args, lang: str, key: str, default: str, convert):
+    """Ask one question until `convert` accepts the answer; EOF aborts."""
+    for _ in range(5):
+        try:
+            answer = args.ask(say(lang, key, default=default)).strip() or default
+        except EOFError as error:
+            raise CliError(say(lang, "new.aborted")) from error
+        try:
+            return convert(answer)
+        except gp.ProjectError as error:
+            print(say(lang, "new.invalid", reason=error), file=sys.stderr)
+    raise CliError(say(lang, "new.aborted"))
+
+
+def interactive_spec(args, lang: str) -> gp.Spec:
+    def as_name(value):
+        return gp.validate(gp.Spec(value, "X")).name
+
+    def as_profile(value):
+        choice = {"1": "standard", "2": "experimental"}.get(value, value.lower())
+        return gp.validate(gp.Spec("x", "X", choice)).profile
+
+    def as_yes(value):
+        return value.strip().lower() in YES[lang]
+
+    name = ask_until_valid(args, lang, "new.ask_name", "", as_name)
+    title = ask_until_valid(args, lang, "new.ask_title", name.upper(), gp.normalize_title)
+    profile = "standard"
+    if len(gp.PROFILES) > 1:
+        profile = ask_until_valid(args, lang, "new.ask_video", "1", as_profile)
+    extended = ask_until_valid(args, lang, "new.ask_extended", "n", as_yes)
+    git = ask_until_valid(args, lang, "new.ask_git", "s" if lang == "es" else "y", as_yes)
+    return gp.Spec(name, title, profile, extended, git)
+
+
+def new_spec(args, lang: str) -> gp.Spec:
+    """Manifest, flags or questions; explicit flags override. One validation path."""
+    if args.manifest:
+        try:
+            data = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise CliError(say(lang, "new.bad_manifest", reason=error)) from error
+        if args.name and isinstance(data, dict):
+            data = dict(data, name=args.name)
+        spec = gp.spec_from_manifest(data)
+    elif args.name:
+        spec = gp.Spec(args.name, args.name)
+    elif args.interactive:
+        spec = interactive_spec(args, lang)
+    else:
+        raise CliError(say(lang, "new.needs_input"))
+    changes = {}
+    if args.title is not None:
+        changes["title"] = args.title
+    if args.profile is not None:
+        changes["profile"] = args.profile
+    if args.extended_memory is not None:
+        changes["extended_memory"] = args.extended_memory
+    if args.no_git:
+        changes["git"] = False
+    return gp.validate(dataclasses.replace(spec, **changes))
+
+
+def write_files(folder: Path, files: dict[str, bytes]) -> None:
+    for relative, content in files.items():
+        path = folder / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+
+
+def git_first_commit(folder: Path, lang: str, runner: Runner) -> None:
+    """Independent repository with the first commit; never fails the creation."""
+    steps = (["git", "-c", "init.defaultBranch=main", "init", "-q"],
+             ["git", "add", "-A"],
+             ["git", "commit", "-q", "-m", "Initial project from glasnost (template ecs-welcome)"])
+    for command in steps:
+        try:
+            result = runner(command, cwd=folder, capture_output=True, check=False)
+        except OSError:
+            result = None
+        if result is None or result.returncode != 0:
+            print(say(lang, "new.git_failed", path=folder), file=sys.stderr)
+            return
+
+
+def cmd_new(args, root: Path, lang: str, runner: Runner) -> int:
+    spec = new_spec(args, lang)
+    base = Path(args.dir).resolve() if args.dir else root / "projects"
+    folder = base / spec.name
+    if folder.exists() or folder.is_symlink():
+        raise CliError(say(lang, "new.exists", path=folder))
+    toolchain = None if args.no_build else resolve_toolchain(root, load_lock(root, lang), lang)
+    files = gp.render_project(spec, sdk_version(root, runner), lang)
+    new_dirs = [d for d in (base, *base.parents) if not d.exists()]  # deepest last
+    base.mkdir(parents=True, exist_ok=True)
+    folder.mkdir()
+    try:
+        write_files(folder, files)
+        if toolchain is not None:
+            code = build_project(folder, toolchain, root, lang, runner)
+            if code != 0:
+                raise CliError(say(lang, "new.build_failed", code=code))
+        if spec.git:
+            git_first_commit(folder, lang, runner)
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)  # we created it a moment ago: it did not exist
+        for directory in new_dirs:  # only the levels this command created, innermost first
+            with contextlib.suppress(OSError):
+                directory.rmdir()
+        raise
+    print(say(lang, "new.done", name=spec.name, path=folder, amsdos=spec.amsdos_name))
+    return 0
+
+
+def config_summary(meta: dict, example: dict) -> list[str]:
+    return [f"title: {meta.get('title')}", f"profile: {gp.profile_key(example.get('profile', ''))}",
+            f"extended_memory: {str(example.get('extended_memory', False)).lower()}",
+            f"amsdos_name: {example.get('amsdos_name')}"]
+
+
+def cmd_config(args, root: Path, lang: str, runner: Runner) -> int:
+    folder = current_project(args)
+    if not folder:
+        raise CliError(say(lang, "proj.not_in_project"))
+    try:
+        meta, example = gp.load_project(folder)
+        if args.title is None and args.profile is None and args.extended_memory is None:
+            print("\n".join(config_summary(meta, example)))
+            return 0
+        new_files = gp.apply_config(folder, title=args.title, profile=args.profile,
+                                    extended_memory=args.extended_memory)
+    except gp.ProjectError as error:
+        raise CliError(say(lang, "proj.config_invalid", reason=error)) from error
+    changed = [rel for rel, content in sorted(new_files.items())
+               if not (folder / rel).is_file() or (folder / rel).read_bytes() != content]
+    if not changed:
+        print(say(lang, "proj.config_nochange"))
+        return 0
+    for rel in changed:
+        print(say(lang, "proj.config_file", path=rel))
+    if args.dry_run:
+        print(say(lang, "proj.config_dry"))
+        return 0
+    staged = []
+    try:  # write every file next to its target first, then swap them in
+        for rel in changed:
+            target = folder / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temporary = target.with_name(target.name + ".glasnost-tmp")
+            temporary.write_bytes(new_files[rel])
+            staged.append((temporary, target))
+        for temporary, target in staged:
+            os.replace(temporary, target)
+    finally:
+        for temporary, _target in staged:
+            temporary.unlink(missing_ok=True)
+    print(say(lang, "proj.config_done"))
+    return 0
 
 
 def cmd_path(args, root: Path, lang: str, runner: Runner) -> int:
@@ -513,16 +728,46 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
             cli.add_argument("--force", action="store_true", help=say(lang, "help.cli_force"))
         cli.set_defaults(func=func)
 
+    new = sub.add_parser("new", help=say(lang, "help.new"))
+    new.add_argument("name", nargs="?", help=say(lang, "help.new_name"))
+    new.add_argument("--manifest", metavar="FILE", help=say(lang, "help.new_manifest"))
+    new.add_argument("--title", help=say(lang, "help.title"))
+    new.add_argument("--profile", choices=sorted(gp.PROFILES), help=say(lang, "help.profile"))
+    memory = new.add_mutually_exclusive_group()
+    memory.add_argument("--extended-memory", dest="extended_memory", action="store_true", default=None,
+                        help=say(lang, "help.extended"))
+    memory.add_argument("--no-extended-memory", dest="extended_memory", action="store_false",
+                        help=say(lang, "help.no_extended"))
+    new.add_argument("--dir", metavar="DIR", help=say(lang, "help.new_dir"))
+    new.add_argument("--no-git", action="store_true", help=say(lang, "help.no_git"))
+    new.add_argument("--no-build", action="store_true", help=say(lang, "help.no_build"))
+    new.set_defaults(func=cmd_new)
+
+    config = sub.add_parser("config", help=say(lang, "help.config"))
+    config.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
+    config.add_argument("--title", help=say(lang, "help.title"))
+    config.add_argument("--profile", choices=sorted(gp.PROFILES), help=say(lang, "help.profile"))
+    cmemory = config.add_mutually_exclusive_group()
+    cmemory.add_argument("--extended-memory", dest="extended_memory", action="store_true", default=None,
+                         help=say(lang, "help.extended"))
+    cmemory.add_argument("--no-extended-memory", dest="extended_memory", action="store_false",
+                         help=say(lang, "help.no_extended"))
+    config.add_argument("--dry-run", action="store_true", help=say(lang, "help.config_dry"))
+    config.set_defaults(func=cmd_config)
+
     build = sub.add_parser("build", help=say(lang, "help.build"))
     build.add_argument("examples", nargs="*", help=say(lang, "help.examples"))
+    build.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
     build.set_defaults(func=cmd_build)
 
     test = sub.add_parser("test", help=say(lang, "help.test"))
+    test.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
     test.set_defaults(func=cmd_test)
 
     run = sub.add_parser("run", help=say(lang, "help.run"))
-    run.add_argument("example", help=say(lang, "help.example"))
-    run.add_argument("rest", nargs=argparse.REMAINDER, help=say(lang, "help.rest"))
+    run.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
+    run.add_argument("rest", nargs=argparse.REMAINDER, metavar="[example] [-- options]",
+                     help=say(lang, "help.rest"))
     run.set_defaults(func=cmd_run)
 
     sub.add_parser("path", help=say(lang, "help.path")).set_defaults(func=cmd_path)
@@ -530,7 +775,8 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None, root: Path = ROOT, runner: Runner = default_runner) -> int:
+def main(argv: Sequence[str] | None = None, root: Path = ROOT, runner: Runner = default_runner,
+         ask: Callable[[str], str] = input, interactive: bool | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     flag = None
     for index, token in enumerate(argv):
@@ -540,10 +786,16 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT, runner: Runner = 
             flag = token.split("=", 1)[1]
     args = build_parser(pick_language(flag)).parse_args(argv)
     lang = pick_language(args.lang)
+    args.lang_resolved = lang
+    args.ask = ask
+    args.interactive = sys.stdin.isatty() if interactive is None else interactive
     try:
         return args.func(args, root, lang, runner)
     except CliError as error:
         print(str(error), file=sys.stderr)
+        return 1
+    except gp.ProjectError as error:
+        print(say(lang, "cmd.project_error", reason=error), file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print(say(lang, "cmd.interrupted"), file=sys.stderr)
