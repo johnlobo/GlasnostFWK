@@ -635,6 +635,82 @@ class ProjectCommands(unittest.TestCase):
         self.cmd("config", "--no-extended-memory")
         self.assertEqual(json.loads((self.folder / "example.json").read_text())["extended_memory"], False)
 
+    def add_collision(self):
+        """What a game developer does to use a framework system: edit example.json."""
+        text = (self.folder / "example.json").read_text()
+        example = json.loads(text)
+        example["ecs"]["components"].append("collision")
+        example["modules"].append("core/ecs_collision.s")
+        edited = json.dumps(example)  # deliberately not the 2-space layout glasnost writes
+        (self.folder / "example.json").write_text(edited)
+        return edited
+
+    def test_config_without_options_regenerates_a_stale_ecs_profile(self):
+        edited = self.add_collision()
+        self.assertTrue(any("ecs_profile.inc is stale" in p for p in gp.check_project(self.folder)))
+        code, out, err = self.cmd("config")
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertIn("title: DEMO", out)
+        self.assertIn("regenerating generated/ecs_profile.inc", out)
+        self.assertEqual(gp.check_project(self.folder), [], "build asked for `glasnost config`: it must fix it")
+        self.assertIn("ECS_C_COLLISION", (self.folder / "generated" / "ecs_profile.inc").read_text())
+        self.assertEqual((self.folder / "example.json").read_text(), edited, "the user's file is untouched")
+        recorder = Recorder()
+        self.assertEqual(self.cmd("build", runner=recorder)[0], 0)
+        self.assertEqual(len(recorder.calls), 1)
+
+    def test_config_without_options_regenerates_a_deleted_generated_file(self):
+        (self.folder / "generated" / "project.inc").unlink()
+        self.assertEqual(self.cmd("config")[0], 0)
+        self.assertEqual(gp.check_project(self.folder), [])
+
+    def test_config_without_options_only_writes_generated_files(self):
+        self.add_collision()
+        before = tree(self.folder)
+        self.cmd("config")
+        changed = {path for path, digest in tree(self.folder).items() if before.get(path) != digest}
+        self.assertEqual(changed, {"generated/ecs_profile.inc"})
+
+    def test_config_without_options_dry_run_previews_the_regeneration(self):
+        self.add_collision()
+        before = tree(self.folder)
+        code, out, _ = self.cmd("config", "--dry-run")
+        self.assertEqual(code, 0)
+        self.assertIn("regenerating generated/ecs_profile.inc", out)
+        self.assertIn("Dry run", out)
+        self.assertEqual(tree(self.folder), before)
+
+    def test_config_without_options_on_a_fresh_project_writes_nothing_and_says_nothing_extra(self):
+        before = tree(self.folder)
+        code, out, _ = self.cmd("config")
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip().splitlines()[0], "title: DEMO")
+        self.assertNotIn("regenerating", out)
+        self.assertEqual(tree(self.folder), before)
+
+    def test_config_never_touches_a_project_from_a_newer_format(self):
+        meta = json.loads((self.folder / gp.PROJECT_FILE).read_text())
+        meta["format"] = 99
+        (self.folder / gp.PROJECT_FILE).write_text(json.dumps(meta))
+        self.add_collision()
+        before = tree(self.folder)
+        for argv in ([], ["--dry-run"], ["--title", "other"], ["--extended-memory"]):
+            with self.subTest(argv):
+                code, _, err = self.cmd("config", *argv)
+                self.assertEqual(code, 1)
+                self.assertIn("this glasnost supports up to", err)
+                self.assertEqual(tree(self.folder), before)
+
+    def test_config_without_options_explains_why_it_cannot_regenerate(self):
+        example = json.loads((self.folder / "example.json").read_text())
+        example["ecs"]["components"].append("no_such_component")
+        (self.folder / "example.json").write_text(json.dumps(example))
+        before = tree(self.folder)
+        code, _, err = self.cmd("config")
+        self.assertEqual(code, 1)
+        self.assertIn("no_such_component", err)
+        self.assertEqual(tree(self.folder), before)
+
     def test_config_dry_run_and_noop_change_nothing(self):
         before = tree(self.folder)
         code, out, _ = self.cmd("config", "--title", "fresh", "--dry-run")
