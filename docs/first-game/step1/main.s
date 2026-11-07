@@ -35,7 +35,7 @@ _game_managers: .dw game_manager
 _game_work:     .ds 8 * GAME_CAP
 FWK_ECS_RENDER_SCENE game_scene, _game_managers, 1, _game_work, GAME_CAP, _game_pools, 1
 
-;; ---- Keyboard: (key, action bit) pairs ended by a zero key ----
+;; ---- Keyboard: (key, action bit) pairs ended by a zero action ----
 game_bindings:
     .dw Key_CursorLeft
     .db GAME_INPUT_LEFT
@@ -160,7 +160,8 @@ _game_steer_set:
     ret
 
 ;; Keeps the player inside the play area, run after motion. Positions are
-;; unsigned bytes: going left past 0 wraps to 254, which the first test catches.
+;; unsigned bytes, but fwk_ecs_system_motion_u8 already saturates at 0, so with it the
+;; first test never fires: it only guards a position that wrapped to 254.
 _game_clamp:
     push ix
     push iy
