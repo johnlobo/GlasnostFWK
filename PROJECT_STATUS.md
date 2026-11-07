@@ -1445,3 +1445,20 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   muestra la configuración y regenera únicamente `generated/*`; no toca
   `example.json` ni tu código. 6 tests nuevos (5 fallan con el código anterior) y
   el caso real (añadir colisión, `config`, `build`) compila.
+
+## Guía «Tu primer juego» (2026-11-07)
+
+- [x] `docs/first-game.md` y `docs/first-game/step1..3/`: de la plantilla a un juego con
+  sprites desde PNG (`assets/`), animación (`animation`) y colisiones con marcador
+  (`collision`). Los fragmentos del texto se extraen de los ficheros de cada paso.
+- [x] `tests/test_first_game_guide.py`: cada fragmento existe literalmente en su fichero,
+  cada paso se aplica sobre el anterior y compila con el toolchain real, el perfil queda
+  desactualizado hasta `glasnost config` (como dice la guía), y los datos convertidos del
+  PNG son byte a byte los del arte escrito a mano de la plantilla.
+- [x] `tests/first_game_smoke.py` (opcional, emulador): la animación cambia de fotograma, un
+  contacto continuo suma exactamente un golpe, otro contacto suma otro y el marcador se
+  dibuja tras jugar con las flechas. PASS en CPC 464 y 6128.
+- [ ] Parpadeo: en las capturas del emulador algunos fotogramas aparecen sin uno o varios
+  sprites (el renderer borra y redibuja tras el vsync y el haz alcanza esas líneas antes
+  de terminar). Hay que medirlo (perfilado de la fase 16) y decidir si el renderer o la
+  plantilla deben mover menos sprites por fotograma.
