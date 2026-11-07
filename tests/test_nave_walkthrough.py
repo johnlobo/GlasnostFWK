@@ -11,6 +11,7 @@ import io
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -114,7 +115,11 @@ class ExercisesBuild(unittest.TestCase):
 
     def test_the_example_as_a_project_builds_to_the_example_binary(self):
         built = self.build(None)
-        self.assertEqual(built, (ROOT / ".build" / "nave" / "obj" / "nave.bin").stat().st_size)
+        reference = ROOT / ".build" / "nave" / "obj" / "nave.bin"
+        if not reference.is_file():   # `make test` builds the examples only after the tests: a clean CI checkout has none yet
+            subprocess.run([sys.executable, str(ROOT / "tools" / "build_examples.py"), "nave"], cwd=ROOT, check=True,
+                           env=dict(os.environ, CPCT_NEXT_PATH=str(toolchain())), stdout=subprocess.DEVNULL)
+        self.assertEqual(built, reference.stat().st_size)
 
     def test_exercise_1_builds(self):
         self.assertGreater(self.build(ex.faster_ship), 0)

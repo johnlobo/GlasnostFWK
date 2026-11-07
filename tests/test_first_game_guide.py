@@ -37,6 +37,21 @@ STEP_NAMES = ("step1", "step2", "step3")
 SNIPPET = re.compile(r"<!-- guia: (?P<file>[\w./]+) -->\n```\w*\n(?P<body>.*?)\n```", re.S)
 
 
+def tail_runner(out):
+    """Like quiet_runner, but a failing command leaves the tail of its output in `out`.
+
+    A build that fails only on another machine (CI) is undiagnosable from "step1: " alone.
+    """
+    def runner(command, **kwargs):
+        if "capture_output" in kwargs:
+            return quiet_runner(command, **kwargs)
+        result = glasnost.default_runner(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
+        if result.returncode:
+            out.write("\n".join(["$ " + " ".join(map(str, command)), *(result.stdout or "").splitlines()[-40:]]))
+        return result
+    return runner
+
+
 def run(argv, cwd=None, env=None):
     out, err = io.StringIO(), io.StringIO()
     previous = os.getcwd()
@@ -46,7 +61,7 @@ def run(argv, cwd=None, env=None):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
                 mock.patch.dict(os.environ, env or {}, clear=False):
             try:
-                code = glasnost.main(["--lang", "en", *argv], root=ROOT, runner=quiet_runner)
+                code = glasnost.main(["--lang", "en", *argv], root=ROOT, runner=tail_runner(out))
             except SystemExit as exit_:
                 code = exit_.code
     finally:

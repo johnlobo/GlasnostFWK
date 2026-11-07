@@ -43,8 +43,9 @@ jobs:
           path: ${{ env.CPCTELERA_ROOT }}
           key: cpctelera-next-${{ runner.os }}-${{ runner.arch }}-${{ env.CPCTELERA_REV }}
 
+      # Always installed: the cache only restores the CPCTelera build, and the tests
+      # (glasnost doctor / install-toolchain) check that the build tools exist.
       - name: Install CPCTelera build dependencies
-        if: steps.cpct-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
@@ -74,12 +75,17 @@ jobs:
       - name: Build required ZX7B compressor
         run: make -C "$CPCT_NEXT_PATH/tools/zx7b" -j2
 
+      # Also outside the cache step: a cache saved before img2cpc was required lacks it.
+      - name: Build img2cpc (PNG to CPC pixels)
+        run: make -C "$CPCT_NEXT_PATH/tools/img2cpc"
+
       - name: Verify CPCTelera installation
         shell: bash
         run: |
           set -euo pipefail
           test "$(git -C "$CPCTELERA_ROOT" rev-parse HEAD)" = "$CPCTELERA_REV"
           test -x "$CPCT_NEXT_PATH/tools/zx7b/bin/zx7b"
+          test -x "$CPCT_NEXT_PATH/tools/img2cpc/bin/img2cpc"
           test -s "$CPCT_NEXT_PATH/cpctelera.lib"
 
       - name: Test and package released revision
