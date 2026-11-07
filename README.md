@@ -33,6 +33,7 @@ bin/glasnost build platformer     # compila ejemplos con ese toolchain
 bin/glasnost test                 # make test
 bin/glasnost run platformer       # abre el ejemplo en el emulador
 bin/glasnost new minave           # proyecto nuevo en projects/minave (asistente si no das nombre)
+                                  # guía paso a paso: docs/first-game.md
 bin/glasnost projects              # proyectos y si están al día; glasnost update los actualiza
 bin/glasnost install-cli          # enlace ~/.local/bin/glasnost (sin sudo)
 bin/glasnost toolchains           # toolchains instalados; clean-toolchains los limpia

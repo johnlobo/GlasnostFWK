@@ -111,6 +111,10 @@ El asistente, el manifiesto y las opciones pasan por la misma validación y
 producen exactamente los mismos ficheros (hay un test que lo comprueba).
 Las opciones pisan al manifiesto.
 
+**Primer juego.** [`docs/first-game.md`](first-game.md) parte de lo que crea `new` y
+añade, en tres pasos con el juego compilando en cada uno, sprites desde un PNG,
+animación y colisiones con marcador. Un test aplica los pasos y los compila.
+
 **Qué crea `new`** (plantilla `ecs-welcome`: una nave que se mueve con el
 cursor y tres drones que patrullan, sobre el ECS del framework):
 `main.s` y `common.inc` (tu código, con la convención de `common.inc`),

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "palette": "palette.json",
+  "palette_symbol": "game_palette",
+  "images": [
+    {
+      "source": "src/sprites.png",
+      "width": 8,
+      "height": 8,
+      "tiles": [
+        "game_ship_pixels",
+        "game_drone_pixels"
+      ]
+    }
+  ]
+}
