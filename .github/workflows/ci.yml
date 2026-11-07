@@ -35,8 +35,9 @@ jobs:
           path: ${{ env.CPCTELERA_ROOT }}
           key: cpctelera-next-${{ runner.os }}-${{ runner.arch }}-${{ env.CPCTELERA_REV }}
 
+      # Always installed: the cache only restores the CPCTelera build, and the tests
+      # (glasnost doctor / install-toolchain) check that the build tools exist.
       - name: Install CPCTelera build dependencies
-        if: steps.cpct-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
