@@ -1380,3 +1380,22 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 - [x] Presupuesto de código del renderer 1.150 a 1.400 B (235 B de los pools).
 - [ ] Presupuesto de tamaño de `platformer` (+100 B) no cumplido: +211 B.
   Detalle en `docs/validation.md`.
+
+## Fase 12 parte 1: CLI `glasnost` y toolchain interno (2026-11-07)
+
+- [x] `bin/glasnost` (castellano por defecto, `--lang en` o `GLASNOST_LANG`):
+  `doctor`, `install-toolchain`, `build`, `test`, `run`, `path`, `version`.
+  Referencia en `docs/glasnost-cli.md`.
+- [x] `toolchain.lock.json` fija CPCTelera Next por commit completo; un test exige
+  que `release.yml` fije el mismo.
+- [x] Instalación en `.toolchain/cpctelera-next/<commit>/` (fuera de Git, sin
+  `sudo`, marca de instalación completa al final, reanudable, `--force`).
+  Instalación real medida: 4 min 42 s; `platformer.bin` compilado con ella es
+  idéntico byte a byte al compilado con el árbol local (11.994 B).
+- [x] `tests/test_glasnost.py`: 54 casos locales sin red, instalación completa
+  contra un repositorio de juguete con la forma de CPCTelera Next.
+- [ ] Pendiente de la fase 12: instalador de `bin/` en `~/.local/bin`, varias
+  versiones del SDK coexistiendo, limpieza de toolchains antiguos.
+- [ ] Los ejemplos y herramientas conservan la ruta heredada
+  `/config/workspace/cpctelera_next/cpctelera` como valor por defecto; el CLI
+  siempre fija `CPCT_NEXT_PATH`, así que no la usa.
