@@ -46,6 +46,7 @@ MAKE_STEPS = (
     "tools/iDSK-0.13",
     "tools/2cdt",
     "tools/cpc2cdt",
+    "tools/img2cpc",
     ".",
     "tools/zx7b",
 )
@@ -57,6 +58,7 @@ REQUIRED_FILES = (
     "tools/iDSK-0.13/bin/iDSK",
     "tools/2cdt/bin/2cdt",
     "tools/cpc2cdt/bin/cpc2cdt",
+    "tools/img2cpc/bin/img2cpc",
     "tools/zx7b/bin/zx7b",
 )
 
