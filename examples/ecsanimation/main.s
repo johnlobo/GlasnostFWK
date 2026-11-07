@@ -56,13 +56,39 @@ _ecsanimation_i: .db 0
 
 .area _CODE
 
+;; ----------------------------------------------------------------------------
+;; _ecsanimation_fail
+;;   Stops the harness with an error code. Reached by jp from every failing step in this file.
+;;   In : A=error code (0xE1..0xE5, one per harness step, see _main).
+;;   Out: none. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Stores A in ecsanimation_status for the host, then falls through into _ecsanimation_halt.
+;; ----------------------------------------------------------------------------
 _ecsanimation_fail:
     ld (ecsanimation_status), a
+;; ----------------------------------------------------------------------------
+;; _ecsanimation_halt
+;;   Idles forever, one vertical sync per pass, so the host can read ecsanimation_status and
+;;   ecsanimation_log.
+;;   In : none.
+;;   Out: none. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Entered by fall-through from _ecsanimation_fail and by jp from _ecsanimation_finished. Loops
+;;          on fwk_system_wait_frame.
+;; ----------------------------------------------------------------------------
 _ecsanimation_halt:
     call fwk_system_wait_frame
     jr _ecsanimation_halt
 
-;; In: A=entity index 0..2. Out: IY=entity. Modified: AF,DE,HL.
+;; ----------------------------------------------------------------------------
+;; _ecsanimation_entity_ptr
+;;   Returns the slot address of an entity from its harness index.
+;;   In : A=entity index 0..ECSANIMATION_CAPACITY-1 (not range checked). Reads
+;;          ecsanimation_entities.
+;;   Out: IY=entity slot address.
+;;   Clobbers: AF, DE, HL, IY.
+;;   Notes: Preserves BC and IX. The index is not range checked.
+;; ----------------------------------------------------------------------------
 _ecsanimation_entity_ptr:
     add a, a
     ld e, a
@@ -76,7 +102,15 @@ _ecsanimation_entity_ptr:
     pop iy
     ret
 
-;; In: A=descriptor code 0..2. Out: HL=descriptor address or 0.
+;; ----------------------------------------------------------------------------
+;; _ecsanimation_descriptor
+;;   Maps a descriptor code to an animation descriptor address.
+;;   In : A=descriptor code 0..4 (not range checked): 0 none, 1 descriptor A, 2 B, 3 C, 4 D.
+;;          Reads ecsanimation_descriptors.
+;;   Out: HL=descriptor address, or 0 for code 0.
+;;   Clobbers: AF, DE, HL.
+;;   Notes: Preserves BC, IX and IY. The code is not range checked.
+;; ----------------------------------------------------------------------------
 _ecsanimation_descriptor:
     add a, a
     ld e, a
@@ -89,12 +123,30 @@ _ecsanimation_descriptor:
     ex de, hl
     ret
 
+;; ----------------------------------------------------------------------------
+;; _main
+;;   Program entry. Creates the animated entities, then replays the generated command table: per
+;;   tick it optionally switches one entity's animation, runs the animation system and logs
+;;   every entity.
+;;   In : none. Reads the generated tables ecsanimation_templated, ecsanimation_initial,
+;;          ecsanimation_initial_frame and ecsanimation_commands (two bytes per tick: entity
+;;          index, descriptor code).
+;;   Out: none. Never returns: it ends in _ecsanimation_finished (status 0x5A) or
+;;          _ecsanimation_fail.
+;;   Clobbers: all (never returns).
+;;   Notes: Status codes written to ecsanimation_status on failure: 0xE1 manager init, 0xE2 entity
+;;          create, 0xE3 initial fwk_ecs_anim_set, 0xE4 per-tick fwk_ecs_anim_set, 0xE5
+;;          fwk_ecs_system_animation. Fills ecsanimation_log (1 + 5 * entities bytes per tick) and
+;;          ecsanimation_log_length.
+;; ----------------------------------------------------------------------------
 _main::
+    ;; Bring up the system, then the manager that owns every entity.
     call fwk_project_init
     ld ix, #ecsanimation_manager
     call fwk_ecs_manager_init
     ld a, #0xE1
     jp c, _ecsanimation_fail
+    ;; Template shared by all entities: ACTIVE, RENDER | ANIMATION, 4x8 bytes.
     ld iy, #ecsanimation_template
     ld ECS_E_STATUS(iy), #ECS_STATUS_ACTIVE
     ld ECS_E_COMPONENTS(iy), #(ECS_C_RENDER | ECS_C_ANIMATION)
@@ -103,6 +155,7 @@ _main::
     ld ECS_E_HEIGHT(iy), #8
     xor a
     ld (_ecsanimation_i), a
+    ;; Create entity _ecsanimation_i and store its slot address in ecsanimation_entities[i].
 _ecsanimation_create:
     ld ix, #ecsanimation_manager
     ld hl, #ecsanimation_template
@@ -122,6 +175,7 @@ _ecsanimation_create:
     ld (hl), d
     ;; Entities flagged "templated" already hold descriptor B with TIMER 0, as
     ;; if copied from such a template; fwk_ecs_anim_set must still start them.
+    ;; Look up ecsanimation_templated[i].
     ld a, (_ecsanimation_i)
     ld e, a
     ld d, #0
@@ -170,6 +224,7 @@ _ecsanimation_started:
     xor a
     ld (_ecsanimation_tick), a
 
+    ;; One tick per pass: clear DIRTY, apply the optional command, run the system, log.
 _ecsanimation_next_tick:
     ;; Clear DIRTY on every entity so the log shows what this tick marked.
     xor a
@@ -185,6 +240,7 @@ _ecsanimation_clear:
     jr nz, _ecsanimation_clear
 
     ;; Optional descriptor change for this tick.
+    ;; Command byte: 0xFE ends the table, 0xFF means no change, else the entity index.
     ld hl, (_ecsanimation_cmd_ptr)
     ld a, (hl)
     cp #0xFE
@@ -203,6 +259,7 @@ _ecsanimation_clear:
     jp c, _ecsanimation_fail
 
 _ecsanimation_run:
+    ;; A tick without a command (0xFF) jumps here. One run of the animation system is the step under test.
     ld ix, #ecsanimation_manager
     call fwk_ecs_system_animation
     ld a, #0xE5
@@ -250,6 +307,14 @@ _ecsanimation_record:
     inc (hl)
     jp _ecsanimation_next_tick
 
+;; ----------------------------------------------------------------------------
+;; _ecsanimation_finished
+;;   End of the command table: publishes success to the host and idles.
+;;   In : none.
+;;   Out: ecsanimation_status = 0x5A. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Jumps to _ecsanimation_halt.
+;; ----------------------------------------------------------------------------
 _ecsanimation_finished:
     ld a, #0x5A
     ld (ecsanimation_status), a

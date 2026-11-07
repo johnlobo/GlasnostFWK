@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from tools.build_examples import _invalidate_objects_if_profile_changed
+from tools.mutate_platformer import code_only
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,7 +153,7 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ld bc, #ECS_C_COLLISION | ECS_C_BEHAVIOR", collisions)
 
     def test_platformer_hud_and_flash(self):
-        main = (ROOT / "examples/platformer/main.s").read_text()
+        main = code_only((ROOT / "examples/platformer/main.s").read_text())   # comments are not behavior
         common = (ROOT / "examples/platformer/common.inc").read_text()
 
         def number(text, name):

@@ -78,14 +78,44 @@ _ecsrender_cmd: .db 0
 
 .area _CODE
 
+;; ----------------------------------------------------------------------------
+;; _ecsrender_fail
+;;   Stops the harness with an error code. Reached by jp from every failing step in this file.
+;;   In : A=error code (0xE1..0xE9, one per harness step, see _main).
+;;   Out: none. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Stores A in ecsrender_status for the host, then falls through into _ecsrender_halt, which
+;;          calls fwk_system_wait_frame forever.
+;; ----------------------------------------------------------------------------
 _ecsrender_fail:
     ld (ecsrender_status), a
+;; ----------------------------------------------------------------------------
+;; _ecsrender_halt
+;;   Idles forever, one vertical sync per pass, so the host can read ecsrender_status and video
+;;   RAM.
+;;   In : none.
+;;   Out: none. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Entered by fall-through from _ecsrender_fail and by jp from _ecsrender_finished. Interrupts
+;;          are not touched.
+;; ----------------------------------------------------------------------------
 _ecsrender_halt:
     call fwk_system_wait_frame
     jr _ecsrender_halt
 
-;; In: A=entity index. Out: IY=entity, HL=its entity-table row. Modified: AF,BC,DE.
+;; ----------------------------------------------------------------------------
+;; _ecsrender_entity
+;;   Looks up an entity by harness index: its slot address and its row in the generated entity
+;;   table.
+;;   In : A=entity index 0..ECSRENDER_ENTITIES-1. Reads ecsrender_entities (word per index) and
+;;          ecsrender_entity_table.
+;;   Out: IY=entity slot address, HL=address of the entity's row in ecsrender_entity_table
+;;          (table + index * 7).
+;;   Clobbers: AF, C, DE, HL, IY. C=index on return; B and IX are untouched.
+;;   Notes: The index is not range checked. Preserves B and IX.
+;; ----------------------------------------------------------------------------
 _ecsrender_entity:
+    ;; IY = ecsrender_entities[index].
     ld c, a
     add a, a
     ld e, a
@@ -97,6 +127,7 @@ _ecsrender_entity:
     ld d, (hl)
     push de
     pop iy
+    ;; HL = ecsrender_entity_table + index * 7.
     ld a, c
     add a, a
     add a, a
@@ -108,15 +139,36 @@ _ecsrender_entity:
     add hl, de
     ret
 
-;; In: A=manager index (0/1). Out: IX=manager.
+;; ----------------------------------------------------------------------------
+;; _ecsrender_manager
+;;   Maps a manager index from the entity table to its descriptor.
+;;   In : A=manager index, 0 for ecsrender_manager_a, any other value for ecsrender_manager_b.
+;;   Out: IX=descriptor of the selected manager. A is unchanged.
+;;   Clobbers: F, IX. Carry is clear on return.
+;;   Notes: A and all other registers are preserved. Z is set when A=0 (manager A selected).
+;; ----------------------------------------------------------------------------
 _ecsrender_manager:
+    ;; Both managers start with every slot FREE.
     ld ix, #ecsrender_manager_a
     or a
     ret z
     ld ix, #ecsrender_manager_b
     ret
 
+;; ----------------------------------------------------------------------------
+;; _main
+;;   Program entry. Builds two ECS managers with nine render entities, runs the error-case
+;;   checks, then replays the generated frames and hands every frame to the host.
+;;   In : none.
+;;   Out: none. Never returns: it ends in _ecsrender_finished (status 0x5A) or _ecsrender_fail.
+;;   Clobbers: all (never returns).
+;;   Notes: Status codes written to ecsrender_status on failure: 0xE1 manager init, 0xE2 entity create,
+;;          0xE3 disable/enable/destroy, 0xE4 render prepare, 0xE5 restore, 0xE6 draw, 0xE7 collect,
+;;          0xE8 manager C setup, 0xE9 scene reset. Per frame the host handshake is ecsrender_done
+;;          (frames completed, written here) and ecsrender_go (set by the host, cleared here).
+;; ----------------------------------------------------------------------------
 _main::
+    ;; Bring up the system and Mode 0 video before touching the screen.
     call fwk_project_init
     call fwk_video_init
     ;; Background: byte = 5 * low + high of its own address, over the whole 16 KB.
@@ -143,6 +195,7 @@ _ecsrender_fill:
     jp c, _ecsrender_fail
     xor a
     ld (_ecsrender_i), a
+    ;; Create entity _ecsrender_i (0..8): fill the template from its row of ecsrender_entity_table, then create it.
 _ecsrender_create:
     ld a, (_ecsrender_i)
     ld iy, #ecsrender_template
@@ -154,6 +207,7 @@ _ecsrender_create:
     push hl
     call _ecsrender_manager
     pop hl
+    ;; Skip the manager byte; the row continues with width, height, sort offset (word), sprite (word).
     inc hl
     ld a, (hl)
     ld ECS_E_WIDTH(iy), a
@@ -172,10 +226,12 @@ _ecsrender_create:
     inc hl
     ld a, (hl)
     ld ECS_E_RENDER_SPRITE+1(iy), a
+    ;; IX = manager, HL = template; IY comes back as the new slot.
     ld hl, #ecsrender_template
     call fwk_ecs_entity_create
     ld a, #0xE2
     jp c, _ecsrender_fail
+    ;; Remember the slot address in ecsrender_entities[i].
     ld a, (_ecsrender_i)
     add a, a
     ld e, a
@@ -233,6 +289,7 @@ _ecsrender_moved:
     ld ECS_E_Y(iy), e
     set 1, ECS_E_RENDER_FLAGS(iy)
 _ecsrender_same_position:
+    ;; Commands: 0 move only, 1 hide, 2 show, 3 disable, 4 enable, 5 destroy.
     ld a, (_ecsrender_cmd)
     or a
     jr z, _ecsrender_apply_next
@@ -248,6 +305,7 @@ _ecsrender_not_hide:
     set 1, ECS_E_RENDER_FLAGS(iy)
     jr _ecsrender_apply_next
 _ecsrender_api:
+    ;; Disable, enable and destroy go through the manager API, which wants IX=manager and IY=entity.
     ld a, b
     call _ecsrender_manager          ; IX = manager
     ld a, (_ecsrender_cmd)
@@ -263,6 +321,7 @@ _ecsrender_not_disable:
 _ecsrender_destroy:
     call fwk_ecs_entity_mark_destroy
 _ecsrender_api_done:
+    ;; A=0xE3 is only used when carry is set; ld does not change carry.
     ld a, #0xE3
     jp c, _ecsrender_fail
 _ecsrender_apply_next:
@@ -272,6 +331,7 @@ _ecsrender_apply_next:
     cp #ECSRENDER_ENTITIES
     jr nz, _ecsrender_apply
 
+    ;; Renderer under test, one frame: prepare (gather, sort, lock), wait for vsync, restore old backgrounds, draw.
     ld ix, #ecsrender_scene
     call fwk_ecs_render_prepare
     ld a, #0xE4
@@ -302,11 +362,24 @@ _ecsrender_wait_host:
     ld a, (ecsrender_go)
     or a
     jr z, _ecsrender_wait_host
+    ;; Host answered: clear the flag so the next frame waits again.
     xor a
     ld (ecsrender_go), a
     jp _ecsrender_next_frame
 
-;; Two 4x8 entities in manager C, still without a background buffer.
+;; ----------------------------------------------------------------------------
+;; _ecsrender_make_c
+;;   Initializes manager C and creates two ACTIVE|RENDER entities of 4x8 bytes in it, both
+;;   without a background buffer.
+;;   In : none. Uses ecsrender_template, which it overwrites.
+;;   Out: Carry clear on success, with IY=second entity created. Carry set and A=ABI error code
+;;          if the manager init or a create failed.
+;;   Clobbers: AF, BC, DE, HL, IX, IY (fwk_ecs_manager_init and fwk_ecs_entity_create modify AF, BC, DE, HL;
+;;             IX is loaded here, IY is loaded here and returned by the create).
+;;   Notes: The second create is a tail jump to fwk_ecs_entity_create, so its result is this routine's
+;;          result. Position, sprite pointer and other template fields keep whatever the template held
+;;          before.
+;; ----------------------------------------------------------------------------
 _ecsrender_make_c:
     ld ix, #ecsrender_manager_c
     call fwk_ecs_manager_init
@@ -327,7 +400,20 @@ _ecsrender_make_c:
     ld hl, #ecsrender_template
     jp fwk_ecs_entity_create
 
-;; Background pool error cases. Each stores the A of the call (0 when it succeeded).
+;; ----------------------------------------------------------------------------
+;; _ecsrender_pool_checks
+;;   Exercises the background pool error paths of the renderer on manager C: buffers too small,
+;;   one buffer for two sprites, reset, reset of a non-IDLE scene and spill into a second pool.
+;;   In : none. Needs fwk_ecs_* and render scenes ecsrender_scene_toosmall, _one and _spill, all
+;;          IDLE with unlocked managers.
+;;   Out: Writes ecsrender_check_size, _pool, _reset, _args, _spill and _spill_used. Returns
+;;          with carry clear (A=0xE9 is stale). Never returns if manager C setup (0xE8) or a
+;;          scene reset (0xE9) fails: it jumps to _ecsrender_fail.
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: Sets scene_one PREPARED by hand to test the reset refusal, then IDLE again; forces
+;;          scene_spill IDLE and the lock of manager C to 0 by hand after the spill prepare. Leaves
+;;          manager C holding two entities.
+;; ----------------------------------------------------------------------------
 _ecsrender_pool_checks:
     call _ecsrender_make_c
     ld a, #0xE8
@@ -338,6 +424,7 @@ _ecsrender_pool_checks:
     ld ix, #ecsrender_scene_one              ; one buffer for two sprites
     call fwk_ecs_render_prepare
     ld (ecsrender_check_pool), a
+    ;; Reset must hand back the buffer taken by the failed prepare above.
     ld ix, #ecsrender_scene_one
     call fwk_ecs_render_reset
     ld a, #0xE9
@@ -371,6 +458,18 @@ _ecsrender_pool_checks:
     jp c, _ecsrender_fail
     ret
 
+;; ----------------------------------------------------------------------------
+;; _ecsrender_checks
+;;   Runs the pool checks, then the overflow and out-of-order checks of the renderer. Called
+;;   once, while all nine entities are still candidates.
+;;   In : none.
+;;   Out: ecsrender_check_overflow = A of fwk_ecs_render_prepare on a scene whose work array is
+;;          too small (0 if that call wrongly succeeded). ecsrender_check_order = A of
+;;          fwk_ecs_render_draw on an IDLE scene (0 if it wrongly succeeded).
+;;   Clobbers: AF, BC, DE, HL, IX, IY (including everything _ecsrender_pool_checks clobbers).
+;;   Notes: If the overflow prepare wrongly succeeds it leaves ecsrender_scene_small PREPARED and its
+;;          managers locked. May end in _ecsrender_fail through _ecsrender_pool_checks.
+;; ----------------------------------------------------------------------------
 _ecsrender_checks:
     call _ecsrender_pool_checks
     ld ix, #ecsrender_scene_small            ; nine candidates do not fit in 1 entry
@@ -378,6 +477,7 @@ _ecsrender_checks:
     jr nc, _ecsrender_check_missing
     ld (ecsrender_check_overflow), a
     jr _ecsrender_check_order
+    ;; prepare succeeded although the work array is too small: report 0.
 _ecsrender_check_missing:
     xor a
     ld (ecsrender_check_overflow), a
@@ -387,21 +487,38 @@ _ecsrender_check_order:
     jr nc, _ecsrender_order_missing
     ld (ecsrender_check_order), a
     ret
+    ;; draw succeeded although the scene was IDLE: report 0.
 _ecsrender_order_missing:
     xor a
     ld (ecsrender_check_order), a
     ret
 
+;; ----------------------------------------------------------------------------
+;; _ecsrender_finished
+;;   End of the replay: publishes success to the host and idles.
+;;   In : none.
+;;   Out: ecsrender_status = 0x5A. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Jumps to _ecsrender_halt.
+;; ----------------------------------------------------------------------------
 _ecsrender_finished:
     ld a, #0x5A
     ld (ecsrender_status), a
     jp _ecsrender_halt
 
-;; In: A=entity index. Out: HL=entity-table row, A=its manager index.
-;; Row address = table + index * ECSRENDER_ROW, with ECSRENDER_ROW = 7 (8 - 1).
+;; Guard for _ecsrender_row: its multiply is index * 8 - index, so ECSRENDER_ROW must be 7.
 .if ECSRENDER_ROW-7
 .error 1
 .endif
+;; ----------------------------------------------------------------------------
+;; _ecsrender_row
+;;   Finds the entity-table row of an entity index and returns the manager index stored in it.
+;;   In : A=entity index. Reads ecsrender_entity_table.
+;;   Out: HL=row address (table + index * 7), A=first byte of the row (manager index 0 or 1).
+;;   Clobbers: AF, C, DE, HL. C=index on return; B, IX and IY are untouched.
+;;   Notes: The multiply by 7 is index * 8 - index in 8 bits, so it only works up to index 36.
+;;          Duplicates the arithmetic of _ecsrender_entity.
+;; ----------------------------------------------------------------------------
 _ecsrender_row:
     ld c, a
     add a, a

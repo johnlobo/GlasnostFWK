@@ -65,8 +65,21 @@ PFE_ALL_CAP = 9                  ; 4 coins, door, player, 3 enemies in one manag
 PFE_CAD_ODD  = 0x11
 PFE_CAD_EVEN = 0x01
 
-;; Spawn row: components, type, x, y, width, height, sprite, behavior program,
-;; animation descriptor, cadence byte.
+;; ----------------------------------------------------------------------------
+;; PFE_ROW
+;;   Spawn row: components, type, x, y, width, height, sprite, behavior program,
+;;   animation descriptor, cadence byte. Read by _pfe_spawn in this order.
+;;   In : comps=component mask (word), type=PFE_T_* (byte), x and y=position
+;;        (bytes, x in bytes and y in lines), w and h=size (bytes, bytes and
+;;        lines), sprite=sprite pointer (word), program=behavior program
+;;        pointer or 0 (word), anim=animation descriptor pointer or 0 (word),
+;;        cadence=cadence byte (phase << 4) | (every - 1).
+;;   Out: emits 14 bytes of data in the current area; no code, no registers, no
+;;        flags touched.
+;;   Clobbers: none
+;;   Notes: put it in a data area, label the row. The field order and the size
+;;           are fixed because _pfe_spawn walks the row with HL.
+;; ----------------------------------------------------------------------------
 .macro PFE_ROW comps, type, x, y, w, h, sprite, program, anim, cadence
     .dw comps
     .db type, x, y, w, h
