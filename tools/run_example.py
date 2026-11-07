@@ -28,26 +28,27 @@ MACAPE_CANDIDATES = (
 )
 
 
-def project_name(example: str) -> str:
-    manifest = ROOT / "examples" / example / "example.json"
+def project_name(example: str, folder: Path | None = None) -> str:
+    manifest = (folder or ROOT / "examples" / example) / "example.json"
     if not manifest.is_file():
-        raise SystemExit(f"No existe el ejemplo {example}: falta {manifest.relative_to(ROOT)}")
+        raise SystemExit(f"No existe el ejemplo {example}: falta {manifest}")
     return json.loads(manifest.read_text(encoding="utf-8"))["name"]
 
 
-def example_images(name: str) -> list[Path]:
-    build = ROOT / ".build" / name
+def example_images(name: str, build_root: Path | None = None) -> list[Path]:
+    build = (build_root or ROOT / ".build") / name
     return [build / f"{name}.cdt", build / f"{name}.dsk"]
 
 
-def select_image(name: str, requested: str | None) -> Path:
-    available = [path for path in example_images(name) if path.is_file()]
+def select_image(name: str, requested: str | None, build_root: Path | None = None) -> Path:
+    build_root = build_root or ROOT / ".build"
+    available = [path for path in example_images(name, build_root) if path.is_file()]
     if not available:
         raise SystemExit(
             f"No hay imagen construida para {name}: ejecute `make` en examples/{name}."
         )
     if requested is not None:
-        wanted = ROOT / ".build" / name / f"{name}.{requested}"
+        wanted = build_root / name / f"{name}.{requested}"
         if not wanted.is_file():
             formats = ", ".join(path.suffix.lstrip(".") for path in available)
             raise SystemExit(
@@ -80,7 +81,8 @@ def find_emulator(explicit: str | None) -> str | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("example", help="nombre del ejemplo, por ejemplo minimal")
+    parser.add_argument("example", nargs="?", help="nombre del ejemplo, por ejemplo minimal")
+    parser.add_argument("--project", type=Path, help="carpeta de un proyecto glasnost en vez de un ejemplo")
     parser.add_argument("--emulator", help="ejecutable del emulador a usar")
     parser.add_argument(
         "--image",
@@ -94,8 +96,16 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    name = project_name(args.example)
-    image = select_image(name, args.image)
+    if args.project:
+        folder = args.project.resolve()
+        build_root = folder / ".build"
+        name = project_name(folder.name, folder)
+    elif args.example:
+        folder, build_root = None, ROOT / ".build"
+        name = project_name(args.example)
+    else:
+        parser.error("indique un ejemplo o --project")
+    image = select_image(name, args.image, build_root)
     emulator = find_emulator(args.emulator)
 
     if args.print_path or emulator is None:
@@ -114,7 +124,7 @@ def main() -> int:
     if base == "macape":
         if image.suffix.lower() == ".dsk":
             command.append("/A")
-        noi = ROOT / ".build" / name / "obj" / f"{name}.noi"
+        noi = build_root / name / "obj" / f"{name}.noi"
         if noi.is_file():
             command.append(f"/SYM:{noi}")
     return subprocess.run(command).returncode

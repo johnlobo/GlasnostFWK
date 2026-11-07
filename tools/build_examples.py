@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 try:
@@ -344,8 +345,16 @@ def _validate_ecs_systems(name: str, manifest: dict, modules: list[str]) -> None
             )
 
 
-def stage_example(name: str, cpct_path: Path) -> Path:
-    example = ROOT / "examples" / name
+def stage_example(
+    name: str, cpct_path: Path, example: Path | None = None, target: Path | None = None
+) -> Path:
+    """Stage one example, or a project folder shaped like one, into its build tree.
+
+    ``example`` defaults to ``examples/<name>`` and ``target`` to ``.build/<name>``;
+    a glasnost project passes its own folder and ``<project>/.build/<name>``. The
+    framework (modules, profiles, templates) always comes from this repository.
+    """
+    example = example if example is not None else ROOT / "examples" / name
     if not example.is_dir():
         raise ValueError(f"unknown example: {name}")
     manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
@@ -354,7 +363,7 @@ def stage_example(name: str, cpct_path: Path) -> Path:
     capabilities = parse_capabilities(manifest, profile["mode"])
     modules = effective_modules(name, manifest["modules"], capabilities)
     _validate_ecs_systems(name, manifest, modules)
-    target = ROOT / ".build" / name
+    target = target if target is not None else ROOT / ".build" / name
     target.mkdir(parents=True, exist_ok=True)
     (target / "src").mkdir(parents=True, exist_ok=True)
     (target / "src" / "game").mkdir(parents=True, exist_ok=True)
@@ -397,8 +406,8 @@ def stage_example(name: str, cpct_path: Path) -> Path:
         ):
             raise ValueError(
                 f"{name}: stale ECS profile; run python3 tools/gen_ecs_profile.py "
-                f"examples/{name}/example.json --output "
-                f"examples/{name}/generated/ecs_profile.inc"
+                f"{_config_label(example / 'example.json')} --output "
+                f"{_config_label(example / 'generated' / 'ecs_profile.inc')}"
             )
         profile_changed = _write_if_changed(
             target / "src" / "ecs_profile.inc", generated_profile.include, encoding="ascii"
@@ -543,11 +552,14 @@ def validate_linked_memory(target: Path, name: str, capabilities: ProjectCapabil
             )
 
 
-def build(name: str, cpct_path: Path) -> None:
+def build(
+    name: str, cpct_path: Path, example: Path | None = None, target: Path | None = None
+) -> None:
     if not (cpct_path / "cpctelera.lib").is_file():
         raise ValueError(f"invalid CPCT_PATH: {cpct_path}")
-    target = stage_example(name, cpct_path)
-    manifest = json.loads((ROOT / "examples" / name / "example.json").read_text(encoding="utf-8"))
+    example = example if example is not None else ROOT / "examples" / name
+    target = stage_example(name, cpct_path, example, target)
+    manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
     profile = json.loads((ROOT / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
     env = os.environ.copy()
@@ -559,8 +571,19 @@ def build(name: str, cpct_path: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("examples", nargs="*", help="example names; default: all")
+    parser.add_argument("--project", type=Path, help="build a glasnost project folder instead of examples")
     parser.add_argument("--cpct-path", type=Path, default=Path(os.environ.get("CPCT_NEXT_PATH", DEFAULT_CPCT)))
     args = parser.parse_args()
+    if args.project:
+        folder = args.project.resolve()
+        name = json.loads((folder / "example.json").read_text(encoding="utf-8"))["name"]
+        print(f"== building {name} ==", flush=True)
+        try:
+            build(name, args.cpct_path.resolve(), folder, folder / ".build" / name)
+        except (ValueError, subprocess.CalledProcessError) as error:  # a project's own mistake: no traceback
+            print(f"error: {name} did not build: {error}", file=sys.stderr)
+            return 1
+        return 0
     names = args.examples or sorted(path.name for path in (ROOT / "examples").iterdir() if (path / "example.json").is_file())
     for name in names:
         print(f"== building {name} ==", flush=True)
