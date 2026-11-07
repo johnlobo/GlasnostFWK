@@ -24,6 +24,20 @@ modo que excluir una funcionalidad la excluye también del enlazado.
 Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 `tools/build_examples.py --cpct-path`.
 
+### CLI `glasnost`
+
+```sh
+bin/glasnost doctor               # herramientas, dependencias y toolchain
+bin/glasnost install-toolchain    # descarga y compila el commit de toolchain.lock.json
+bin/glasnost build platformer     # compila ejemplos con ese toolchain
+bin/glasnost test                 # make test
+bin/glasnost run platformer       # abre el ejemplo en el emulador
+```
+
+Mensajes en castellano; `--lang en` o `GLASNOST_LANG=en` para inglés. El
+toolchain vive en `.toolchain/` (fuera de Git, sin `sudo`). Detalle en
+`docs/glasnost-cli.md`.
+
 ## Construcción y pruebas
 
 ```sh

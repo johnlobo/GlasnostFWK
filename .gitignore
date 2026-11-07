@@ -10,3 +10,5 @@ examples/*/*.dsk
 __pycache__/
 *.pyc
 .venv-docs/
+.toolchain/
+projects/

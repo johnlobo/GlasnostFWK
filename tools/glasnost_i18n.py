@@ -1,0 +1,130 @@
+"""Messages of the glasnost CLI in Spanish (default) and English.
+
+Every key must exist in both languages: tests/test_glasnost.py checks it, and
+checks that both texts use the same {placeholders}.
+"""
+
+from __future__ import annotations
+
+import os
+
+DEFAULT_LANG = "es"
+LANGS = ("es", "en")
+
+MESSAGES: dict[str, dict[str, str]] = {
+    "es": {
+        "doctor.title": "GlasnostFWK {version}: diagnóstico",
+        "doctor.ok": "  OK       {name}: {detail}",
+        "doctor.missing": "  FALTA    {name}: {detail}",
+        "doctor.summary_ok": "Todo listo.",
+        "doctor.summary_fail": "Faltan {count} elemento(s). Corrige lo indicado y repite `glasnost doctor`.",
+        "doctor.tool_found": "{path}",
+        "doctor.tool_missing": "no está en el PATH",
+        "doctor.lib_boost": "cabeceras de Boost",
+        "doctor.lib_boost_missing": "no se encuentran; en Debian/Ubuntu: sudo apt install libboost-dev",
+        "doctor.toolchain_managed": "CPCTelera Next {rev} en {path}",
+        "doctor.toolchain_env": "CPCT_NEXT_PATH={path} (sustituye al toolchain administrado)",
+        "help.network": "comprueba también el acceso a la red (solo install-toolchain lo necesita)",
+        "doctor.network": "sin acceso a {url}; solo hace falta para install-toolchain",
+        "doctor.network_ok": "acceso a {url}",
+        "toolchain.plan_title": "CPCTelera Next {rev}",
+        "toolchain.plan_step": "  [{n}/{total}] {text}",
+        "toolchain.step_fetch": "descargar {url} en {path}",
+        "toolchain.step_make": "compilar {target}",
+        "toolchain.step_verify": "verificar la instalación",
+        "toolchain.step_publish": "marcar la instalación completa en {path}",
+        "toolchain.dry_run": "Simulación: no se ha cambiado nada.",
+        "toolchain.already": "CPCTelera Next {rev} ya está instalado en {path}; nada que hacer (usa --force para rehacerlo).",
+        "toolchain.done": "CPCTelera Next {rev} instalado en {path}",
+        "toolchain.failed": "Instalación fallida en el paso «{step}». El trabajo parcial queda en {path}: repetir el comando continúa desde ahí, --force empieza de cero.",
+        "toolchain.missing_prereq": "Faltan herramientas de compilación: {names}. Ejecuta `glasnost doctor`.",
+        "toolchain.not_installed": "No hay CPCTelera Next instalado. Ejecuta `glasnost install-toolchain`.",
+        "toolchain.invalid": "CPCTelera Next en {path} está incompleto (faltan {missing}). Ejecuta `glasnost install-toolchain --force`.",
+        "toolchain.rev_mismatch": "El árbol descargado está en {got}, el lockfile fija {want}.",
+        "cmd.unknown_example": "No existe el ejemplo «{name}». Ejemplos: {names}",
+        "cmd.lockfile_bad": "toolchain.lock.json no es válido: {reason}",
+        "toolchain.locked": "Otra instalación de {path} está en marcha; espera a que termine.",
+        "cmd.interrupted": "Interrumpido.",
+        "cmd.os_error": "Error del sistema: {detail}",
+        "cmd.path": "{path}",
+        "cmd.no_images": "El ejemplo {name} no ha generado imágenes; ejecuta `glasnost build {name}`.",
+        "help.description": "Interfaz única del SDK GlasnostFWK.",
+        "help.lang": "idioma de los mensajes (es o en; también GLASNOST_LANG)",
+        "help.doctor": "comprueba herramientas, dependencias y toolchain",
+        "help.install": "descarga y compila CPCTelera Next en el commit fijado por el lockfile",
+        "help.install_dry": "muestra los pasos sin ejecutarlos",
+        "help.install_force": "rehace la instalación aunque ya exista",
+        "help.build": "compila ejemplos (todos si no se indican)",
+        "help.test": "ejecuta la batería completa (make test)",
+        "help.run": "abre un ejemplo en el emulador",
+        "help.path": "imprime la ruta de CPCTelera Next en uso",
+        "help.version": "muestra la versión del SDK",
+        "help.examples": "nombres de ejemplos",
+        "help.example": "nombre del ejemplo",
+        "help.rest": "opciones para el emulador (tras --)",
+    },
+    "en": {
+        "doctor.title": "GlasnostFWK {version}: diagnostics",
+        "doctor.ok": "  OK       {name}: {detail}",
+        "doctor.missing": "  MISSING  {name}: {detail}",
+        "doctor.summary_ok": "All set.",
+        "doctor.summary_fail": "{count} item(s) missing. Fix them and run `glasnost doctor` again.",
+        "doctor.tool_found": "{path}",
+        "doctor.tool_missing": "not in PATH",
+        "doctor.lib_boost": "Boost headers",
+        "doctor.lib_boost_missing": "not found; on Debian/Ubuntu: sudo apt install libboost-dev",
+        "doctor.toolchain_managed": "CPCTelera Next {rev} at {path}",
+        "doctor.toolchain_env": "CPCT_NEXT_PATH={path} (overrides the managed toolchain)",
+        "help.network": "also check network access (only install-toolchain needs it)",
+        "doctor.network": "cannot reach {url}; only install-toolchain needs it",
+        "doctor.network_ok": "can reach {url}",
+        "toolchain.plan_title": "CPCTelera Next {rev}",
+        "toolchain.plan_step": "  [{n}/{total}] {text}",
+        "toolchain.step_fetch": "fetch {url} into {path}",
+        "toolchain.step_make": "build {target}",
+        "toolchain.step_verify": "verify the installation",
+        "toolchain.step_publish": "mark the installation complete at {path}",
+        "toolchain.dry_run": "Dry run: nothing was changed.",
+        "toolchain.already": "CPCTelera Next {rev} is already installed at {path}; nothing to do (use --force to redo it).",
+        "toolchain.done": "CPCTelera Next {rev} installed at {path}",
+        "toolchain.failed": "Install failed at step \"{step}\". The partial work stays in {path}: running the command again resumes from it, --force starts over.",
+        "toolchain.missing_prereq": "Missing build tools: {names}. Run `glasnost doctor`.",
+        "toolchain.not_installed": "CPCTelera Next is not installed. Run `glasnost install-toolchain`.",
+        "toolchain.invalid": "CPCTelera Next at {path} is incomplete (missing {missing}). Run `glasnost install-toolchain --force`.",
+        "toolchain.rev_mismatch": "The fetched tree is at {got}, the lockfile pins {want}.",
+        "cmd.unknown_example": "There is no example \"{name}\". Examples: {names}",
+        "cmd.lockfile_bad": "toolchain.lock.json is not valid: {reason}",
+        "toolchain.locked": "Another install of {path} is running; wait for it to finish.",
+        "cmd.interrupted": "Interrupted.",
+        "cmd.os_error": "System error: {detail}",
+        "cmd.path": "{path}",
+        "cmd.no_images": "Example {name} has no images; run `glasnost build {name}`.",
+        "help.description": "Single interface of the GlasnostFWK SDK.",
+        "help.lang": "message language (es or en; also GLASNOST_LANG)",
+        "help.doctor": "check tools, dependencies and toolchain",
+        "help.install": "fetch and build CPCTelera Next at the commit pinned by the lockfile",
+        "help.install_dry": "show the steps without running them",
+        "help.install_force": "redo the installation even if it exists",
+        "help.build": "build examples (all when none is given)",
+        "help.test": "run the full suite (make test)",
+        "help.run": "open an example in the emulator",
+        "help.path": "print the path of the CPCTelera Next in use",
+        "help.version": "show the SDK version",
+        "help.examples": "example names",
+        "help.example": "example name",
+        "help.rest": "emulator options (after --)",
+    },
+}
+
+
+def pick_language(flag: str | None, environ: dict[str, str] | None = None) -> str:
+    """--lang beats GLASNOST_LANG; anything unsupported falls back to Spanish."""
+    env = os.environ if environ is None else environ
+    for candidate in (flag, env.get("GLASNOST_LANG")):
+        if candidate and candidate.lower()[:2] in LANGS:
+            return candidate.lower()[:2]
+    return DEFAULT_LANG
+
+
+def say(lang: str, key: str, **values: object) -> str:
+    return MESSAGES[lang][key].format(**values)
