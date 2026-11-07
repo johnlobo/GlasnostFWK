@@ -94,7 +94,7 @@ _pfe_anim_enemy_slow: .db 2, PFE_ANIM_TICKS_SLOW
     .dw platformer_enemy_pixels, platformer_enemy_pixels2
 
 ;; Enemy patrol programs for the behavior system. Horizontal: right for 19 ticks,
-;; then left and right in legs of 23 (x 36 to 54). Vertical: down and up in legs
+;; then left and right in legs of 23 ticks (x 32 to 54). Vertical: down and up in legs
 ;; of 49 ticks at 2 px per tick (y 56 to 152).
 _pfe_program_h:
     FWK_BEHAVIOR_SET_VX 1
@@ -127,32 +127,70 @@ _pfe_row_door:   PFE_ROW PFE_ITEM_COMPS, PFE_T_DOOR, 72, 160, 4, 8, platformer_d
 
 .area _CODE
 
+;; ----------------------------------------------------------------------------
+;; _pfe_fail
+;;   Fatal error stop: publishes the status byte and waits frames forever.
+;;   In : A=value to publish (an ABI error code from _pfe_expect_ok, or 0xEF
+;;        from _pfe_hud_restore).
+;;   Out: platformer_status=A. Never returns.
+;;   Clobbers: all (never returns)
+;;   Notes: entered by jp only, so the stack of the failing caller is abandoned.
+;;           Loops on fwk_system_wait_frame with interrupts untouched. A=0 reaches here only
+;;           from a framework call that returns it unnormalised (fwk_ecs_collide maps a callback's
+;;           A=0 with carry to ERR_CALLBACK, 0x09); that publishes 0, same as a game not started.
+;; ----------------------------------------------------------------------------
 _pfe_fail:
     ld (platformer_status), a
 _pfe_fail_loop:
     call fwk_system_wait_frame
     jr _pfe_fail_loop
 
-;; Continue on success; on error stop the game with the ABI code in the status.
+;; ----------------------------------------------------------------------------
+;; _pfe_expect_ok
+;;   Continues on success; on error stops the game with the ABI code in the
+;;   status byte.
+;;   In : carry and A as left by a framework call (carry set = error, A=code).
+;;   Out: returns only with carry clear; A and every other register unchanged.
+;;        On carry it never returns (jumps to _pfe_fail with A intact).
+;;   Clobbers: none (HL is modified only on the error path, which never returns)
+;;   Notes: on the error path it discards its own return address (pop hl) and does
+;;           not rebalance the caller's stack. Call it right after the framework call,
+;;           before any instruction that changes carry or A.
+;; ----------------------------------------------------------------------------
 _pfe_expect_ok:
     ret nc
-    pop hl
+    pop hl                     ; drop the return address: the caller never resumes
     jp _pfe_fail
 
-;; In: IX=manager, HL=spawn row. Out: IY=entity. Builds a template from the row.
+;; ----------------------------------------------------------------------------
+;; _pfe_spawn
+;;   Builds a template entity from a PFE_ROW spawn row and creates it in the
+;;   manager, then starts its animation if the row has one.
+;;   In : IX=manager, HL=spawn row (14 bytes, layout of PFE_ROW).
+;;   Out: carry clear, A=0 and IY=new entity; or carry set, A=ABI error, IY=0
+;;        (fwk_ecs_entity_create contract). IX preserved.
+;;   Clobbers: AF, BC, DE, HL, IY
+;;   Notes: IX preserved. Overwrites _pfe_tpl and _pfe_anim. Tail-jumps to
+;;           fwk_ecs_anim_set when the animation pointer is non-zero (it clobbers AF, DE,
+;;           HL and preserves IX/IY). fwk_ecs_entity_create clobbers AF, BC, DE, HL. The
+;;           template cadence byte must be valid or the create fails with a template
+;;           error.
+;; ----------------------------------------------------------------------------
 _pfe_spawn:
+    ; Zero the whole template: seed the first byte, then ldir it forward over itself.
     push hl
     ld hl, #_pfe_tpl
     ld de, #_pfe_tpl + 1
     ld (hl), #0
     ld bc, #ECS_ENTITY_SIZE - 1
     ldir
-    pop hl
+    pop hl                     ; HL = spawn row again
     ld iy, #_pfe_tpl
-    ld a, (hl)
+    ; Copy the row fields in PFE_ROW order, advancing HL through the row.
+    ld a, (hl)                 ; component mask, low byte
     inc hl
     ld ECS_E_COMPONENTS(iy), a
-    ld a, (hl)
+    ld a, (hl)                 ; component mask, high byte
     inc hl
     ld ECS_E_COMPONENTS+1(iy), a
     ld ECS_E_STATUS(iy), #ECS_STATUS_ACTIVE
@@ -171,100 +209,150 @@ _pfe_spawn:
     ld a, (hl)
     inc hl
     ld ECS_E_HEIGHT(iy), a
-    ld a, (hl)
+    ld a, (hl)                 ; sprite pointer, low byte
     inc hl
     ld ECS_E_RENDER_SPRITE(iy), a
-    ld a, (hl)
+    ld a, (hl)                 ; sprite pointer, high byte
     inc hl
     ld ECS_E_RENDER_SPRITE+1(iy), a
-    ld a, (hl)
+    ld a, (hl)                 ; behavior program pointer, low byte (0 = none)
     inc hl
     ld ECS_E_BEHAVIOR_PROGRAM(iy), a
     ld a, (hl)
     inc hl
     ld ECS_E_BEHAVIOR_PROGRAM+1(iy), a
+    ; The animation descriptor is not a template field: keep it for after the create.
     ld e, (hl)
     inc hl
     ld d, (hl)
     inc hl
     ld (_pfe_anim), de
-    ld a, (hl)
+    ld a, (hl)                 ; cadence byte, last field of the row
     ld ECS_E_CADENCE(iy), a
     ld ECS_E_RENDER_FLAGS(iy), #ECS_RENDER_VISIBLE | ECS_RENDER_DIRTY
     ld ECS_E_RENDER_SORT_OFFSET_Y(iy), #8      ; sort by the feet, like the original
     ld hl, #_pfe_tpl
-    call fwk_ecs_entity_create
+    call fwk_ecs_entity_create            ; IX=manager; IY = new slot on success
     ret c
+    ; Start the animation on the new entity (IY), if the row named one.
     ld hl, (_pfe_anim)
     ld a, h
     or l
-    ret z
+    ret z                      ; no animation: carry clear, A=0
     jp fwk_ecs_anim_set
 
-;; Spawns the row in HL into the manager in IX and stores the entity in (DE).
+;; ----------------------------------------------------------------------------
+;; _pfe_spawn_to
+;;   Spawns the row in HL into the manager in IX and stores the entity address
+;;   in the 16-bit variable at (DE).
+;;   In : IX=manager, HL=spawn row, DE=address of a 16-bit variable.
+;;   Out: carry clear. (DE as given) holds the entity address, low byte first.
+;;        IY=new entity, DE=entity address, HL=variable address + 1.
+;;   Clobbers: AF, BC, DE, HL, IY
+;;   Notes: IX preserved. Does not return on a create error (goes through
+;;           _pfe_expect_ok to _pfe_fail).
+;; ----------------------------------------------------------------------------
 _pfe_spawn_to:
-    push de
+    push de                    ; keep the destination across the spawn
     call _pfe_spawn
     call _pfe_expect_ok
-    pop hl
+    pop hl                     ; HL = destination variable
     push iy
-    pop de
+    pop de                     ; DE = entity address (IY cannot be stored directly)
     ld (hl), e
     inc hl
     ld (hl), d
     ret
 
-;; Collision callbacks: IX=manager, IY=target, HL=subject, A=ENTER/STAY/EXIT.
+;; ----------------------------------------------------------------------------
+;; _pfe_items_cb
+;;   Collision callback for the player against every collidable entity: takes a
+;;   coin (score, HUD, win flag) or records a touch of the door. Other entities
+;;   (the enemies also carry the collision component) are ignored.
+;;   In : IX=manager, IY=target entity (0 on EXIT), HL=subject (unused),
+;;        A=ECS_COLLISION_ENTER/STAY/EXIT.
+;;   Out: carry clear and A=0 to keep walking; carry set and A=error code when
+;;        marking the coin for destruction fails (stops the pass).
+;;        IX and IY preserved.
+;;   Clobbers: AF, BC, DE, HL (only AF on the EXIT, enemy and door paths)
+;;   Notes: IX and IY preserved (pushed around fwk_ecs_entity_mark_destroy). Sets
+;;           bit 0 (score) of platformer_hud_dirty per coin, sets _pfe_all_coins when the
+;;           coin count reaches PFE_WIN_SCORE, sets _pfe_door_hit on the door. Runs inside
+;;           a traversal, so it only marks the coin for destruction.
+;; ----------------------------------------------------------------------------
 _pfe_items_cb:
     cp #ECS_COLLISION_EXIT
-    jr z, _pfe_cb_ok
+    jr z, _pfe_cb_ok           ; EXIT carries no target (IY=0): nothing to do
     ld a, ECS_E_TYPE(iy)
     cp #PFE_T_DOOR
     jr z, _pfe_cb_door
     cp #PFE_T_COIN
-    jr nz, _pfe_cb_ok
+    jr nz, _pfe_cb_ok          ; an enemy or any other type: not handled here
+    ; Coin: destroy it (the callback must keep IX/IY, the framework call may not).
     push ix
     push iy
     call fwk_ecs_entity_mark_destroy
     pop iy
     pop ix
-    ret c
+    ret c                      ; error: A=code, stop the pass
     ld a, (platformer_score)
     inc a
     ld (platformer_score), a
     ld hl, #platformer_hud_dirty
-    set 0, (hl)
+    set 0, (hl)                ; PFE_HUD_SCORE
     cp #PFE_WIN_SCORE
     jr nz, _pfe_cb_ok
-    ld (_pfe_all_coins), a
+    ld (_pfe_all_coins), a     ; last coin: any non-zero value flags the win
 _pfe_cb_ok:
-    xor a
+    xor a                      ; carry clear, A=0: continue
     ret
 _pfe_cb_door:
     ld a, #1
-    ld (_pfe_door_hit), a
+    ld (_pfe_door_hit), a      ; the door is only ACTIVE (hence visited) once enabled
     xor a
     ret
 
+;; ----------------------------------------------------------------------------
+;; _pfe_enemy_cb
+;;   Collision callback for the player against the enemies: costs one life when
+;;   the contact starts and flags the HUD and the border flash.
+;;   In : A=ECS_COLLISION_ENTER/STAY/EXIT. IX=manager, IY=target (0 on EXIT) and
+;;        HL=subject are not used.
+;;   Out: carry clear and A=0 always. IX, IY, BC and DE preserved.
+;;   Clobbers: AF, HL (only AF unless a life is lost)
+;;   Notes: IX, IY, BC and DE preserved. Only ENTER counts, so a continued contact
+;;           costs nothing. Lives stop at 0 (no change, no flash). Sets bits 1 (lives) and
+;;           3 (flash) of platformer_hud_dirty.
+;; ----------------------------------------------------------------------------
 _pfe_enemy_cb:
     cp #ECS_COLLISION_ENTER
     jr nz, _pfe_cb_ok
     ld a, (platformer_lives)
     or a
-    jr z, _pfe_cb_ok
+    jr z, _pfe_cb_ok           ; already at 0: never go below
     dec a
     ld (platformer_lives), a
     ld hl, #platformer_hud_dirty
-    set 1, (hl)
-    set 3, (hl)
+    set 1, (hl)                ; PFE_HUD_LIVES
+    set 3, (hl)                ; PFE_HUD_FLASH
     xor a
     ret
 
-;; Player against the coins and the door, then against the enemies. Enemies are
-;; the BEHAVIOR entities and share one contact channel, so a life is lost when
-;; the player starts touching an enemy, not every frame. Once all coins are
-;; taken enemies stop hurting.
+;; ----------------------------------------------------------------------------
+;; _pfe_collisions
+;;   Player against the coins and the door, then against the enemies. Enemies
+;;   are the BEHAVIOR entities and share one contact channel, so a life is lost
+;;   when the player starts touching an enemy, not every frame. Once all coins
+;;   are taken enemies stop hurting.
+;;   In : none. Reads platformer_player, platformer_won, _pfe_all_coins.
+;;   Out: carry clear. Side effects of the callbacks: platformer_score,
+;;        platformer_lives, platformer_hud_dirty, _pfe_all_coins, _pfe_door_hit.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: does not return on a framework error (via _pfe_expect_ok). The enemy
+;;           pass is skipped when the level is won or the last coin was just taken.
+;; ----------------------------------------------------------------------------
 _pfe_collisions:
+    ; Pass 1: every collidable entity as a target, no contact channel (E=0).
     ld iy, (platformer_player)
     ld ix, #platformer_manager
     ld bc, #ECS_C_COLLISION
@@ -277,7 +365,9 @@ _pfe_collisions:
     ld a, (platformer_won)
     ld hl, #_pfe_all_coins
     or (hl)
-    ret nz
+    ret nz                     ; carry clear (or clears it): skip the enemy pass
+    ; Pass 2: only BEHAVIOR entities (the enemies), on their own contact channel
+    ; so ENTER fires once per touch.
     ld iy, (platformer_player)
     ld ix, #platformer_manager
     ld bc, #ECS_C_COLLISION | ECS_C_BEHAVIOR
@@ -286,39 +376,55 @@ _pfe_collisions:
     call fwk_ecs_collide
     jp _pfe_expect_ok
 
-;; Rules that change entity states cannot run inside a traversal: they are
-;; applied here, after the collision passes.
+;; ----------------------------------------------------------------------------
+;; _pfe_apply_events
+;;   Applies the rules that change entity states and cannot run inside a
+;;   traversal: they are applied here, after the collision passes. A won level
+;;   enables the door; touching the door starts level 2 or, on level 2, hides it.
+;;   In : none. Reads _pfe_all_coins, _pfe_door_hit, platformer_level,
+;;        platformer_door.
+;;   Out: carry clear. May change platformer_won, platformer_level,
+;;        _pfe_map_desc, platformer_map2 (unpacked), platformer_hud_dirty, and clears
+;;        _pfe_all_coins and _pfe_door_hit; through _pfe_start_level, the whole level state.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: does not return on a framework error. Tail-jumps to _pfe_start_level
+;;           for the level change. fwk_zx7b_unpack clobbers AF, BC, DE, HL.
+;; ----------------------------------------------------------------------------
 _pfe_apply_events:
+    ; Level won: consume the flag, show the door and ask for the HUD hint and score.
     ld a, (_pfe_all_coins)
     or a
     jr z, _pfe_no_win
     xor a
     ld (_pfe_all_coins), a
-    inc a
+    inc a                      ; A = 1
     ld (platformer_won), a
     ld hl, #platformer_hud_dirty
-    set 0, (hl)
-    set 2, (hl)
+    set 0, (hl)                ; PFE_HUD_SCORE
+    set 2, (hl)                ; PFE_HUD_HINT
     ld ix, #platformer_manager
     ld iy, (platformer_door)
     call fwk_ecs_entity_enable
     call _pfe_expect_ok
 _pfe_no_win:
+    ; Door touched? Level 1 continues into level 2, level 2 only hides the door.
     ld a, (_pfe_door_hit)
     or a
     ret z
     ld a, (platformer_level)
     or a
     jr nz, _pfe_door_end
-    inc a
+    inc a                      ; A = 1: second level
     ld (platformer_level), a
     ld hl, #platformer_map2_descriptor
     ld (_pfe_map_desc), hl
+    ; ZX7B unpacks backwards: HL and DE point at the LAST byte of source and destination.
     ld hl, #platformer_map2_packed + PLATFORMER_MAP2_PACKED_SIZE - 1
     ld de, #platformer_map2 + PLATFORMER_MAP2_SIZE - 1
     call fwk_zx7b_unpack
     jp _pfe_start_level                    ; same reset as the first start
 _pfe_door_end:
+    ; Level 2 door: clear the flags (not restarting) and hide the door again.
     xor a
     ld (_pfe_door_hit), a
     ld (platformer_won), a
@@ -328,18 +434,29 @@ _pfe_door_end:
     jp _pfe_expect_ok
 
 ;; ---- HUD -------------------------------------------------------------------
-;; In: B=first tile column, C=column after the last, IY=string. Restores the map
-;; under the two tile rows of the text, then draws the string at byte x=4*B.
+;; ----------------------------------------------------------------------------
+;; _pfe_hud_field
+;;   Restores the map under the two tile rows of the text, then draws the
+;;   string at byte x=4*B.
+;;   In : B=first tile column, C=column after the last, IY=NUL-terminated
+;;        string. The field must satisfy B < C (the loop runs at least once).
+;;   Out: none. Tail-jumps to fwk_text_draw, which returns to the caller.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: fwk_text_draw documents AF, BC, DE, HL, IX, IY. Uses _pfe_hud_col,
+;;           _pfe_hud_end and _pfe_hud_x as scratch. Does not return on a tile render
+;;           error (_pfe_hud_restore).
+;; ----------------------------------------------------------------------------
 _pfe_hud_field:
     ld a, b
     ld (_pfe_hud_col), a
     add a, a
-    add a, a
+    add a, a                   ; 4 bytes per tile column
     ld (_pfe_hud_x), a
     ld a, c
     ld (_pfe_hud_end), a
-    push iy
+    push iy                    ; the tile redraw clobbers IY; the string is needed later
 _pfe_hud_cell:
+    ; Redraw the map tile of this column in tile rows 1 and 2 (the text rows).
     ld b, #1
     call _pfe_hud_restore
     ld b, #2
@@ -348,15 +465,24 @@ _pfe_hud_cell:
     inc (hl)
     ld a, (_pfe_hud_end)
     cp (hl)
-    jr nz, _pfe_hud_cell
-    ld hl, #PFE_HUD_Y
+    jr nz, _pfe_hud_cell       ; until column == end
+    ld hl, #PFE_HUD_Y          ; y in scanlines
     ld a, (_pfe_hud_x)
-    ld c, a
+    ld c, a                    ; x in bytes
     call fwk_video_get_ptr
-    pop iy
+    pop iy                     ; IY = string, HL = screen address
     jp fwk_text_draw
 
-;; In: B=tile row; the column is _pfe_hud_col.
+;; ----------------------------------------------------------------------------
+;; _pfe_hud_restore
+;;   Redraws one map tile of the active level, wiping the HUD text under it.
+;;   In : B=tile row. Reads _pfe_hud_col (tile column) and _pfe_map_desc.
+;;   Out: carry clear; the tile is drawn on the visible screen.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: fwk_tilemap_render_cell preserves IX/IY, but this routine reloads them.
+;;           A render error stops the game with status 0xEF (jp _pfe_fail), so it never
+;;           returns then.
+;; ----------------------------------------------------------------------------
 _pfe_hud_restore:
     ld ix, (_pfe_map_desc)
     ld iy, #platformer_view            ; both maps are 20x25
@@ -364,21 +490,39 @@ _pfe_hud_restore:
     ld c, a
     call fwk_tilemap_render_cell
     ret nc
-    ld a, #0xEF
+    ld a, #0xEF                ; status code for a failed HUD tile redraw
     jp _pfe_fail
 
+;; ----------------------------------------------------------------------------
+;; _pfe_hud_score
+;;   Draws the score field: "COINS: n/4", or "ALL COINS" once the score is
+;;   PFE_WIN_SCORE.
+;;   In : none. Reads platformer_score.
+;;   Out: none. Patches the digit of _pfe_str_score in place.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: jumps to _pfe_hud_field, which returns to the caller.
+;; ----------------------------------------------------------------------------
 _pfe_hud_score:
     ld iy, #_pfe_str_all
     ld a, (platformer_score)
     cp #PFE_WIN_SCORE
     jr z, _pfe_hud_score_draw
     add a, #'0'
-    ld (_pfe_str_score + 7), a
+    ld (_pfe_str_score + 7), a ; offset 7 is the digit in "COINS: 0/4"
     ld iy, #_pfe_str_score
 _pfe_hud_score_draw:
-    ld bc, #0x0005
+    ld bc, #0x0005             ; tile columns 0..4 (B=0 first, C=5 end)
     jr _pfe_hud_field
 
+;; ----------------------------------------------------------------------------
+;; _pfe_hud_hint
+;;   Draws the hint field: "COLLECT ALL COINS", or "GO TO THE DOOR" once the
+;;   level is won.
+;;   In : none. Reads platformer_won.
+;;   Out: none.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: jumps to _pfe_hud_field, which returns to the caller.
+;; ----------------------------------------------------------------------------
 _pfe_hud_hint:
     ld iy, #_pfe_str_hint
     ld a, (platformer_won)
@@ -386,49 +530,68 @@ _pfe_hud_hint:
     jr z, _pfe_hud_hint_draw
     ld iy, #_pfe_str_go
 _pfe_hud_hint_draw:
-    ld bc, #0x060F
+    ld bc, #0x060F             ; tile columns 6..14
     jr _pfe_hud_field
 
+;; ----------------------------------------------------------------------------
+;; _pfe_hud_lives
+;;   Draws the lives field "LIFE: nn".
+;;   In : none. Reads platformer_lives (0..19: the tens digit is only '0' or '1').
+;;   Out: none. Patches both digits of _pfe_str_life in place.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: jumps to _pfe_hud_field, which returns to the caller.
+;; ----------------------------------------------------------------------------
 _pfe_hud_lives:
     ld a, (platformer_lives)
-    ld b, #'0'
+    ld b, #'0'                 ; tens digit
     cp #10
     jr c, _pfe_hud_lives_units
     ld b, #'1'
     sub #10
 _pfe_hud_lives_units:
     add a, #'0'
-    ld (_pfe_str_life + 7), a
+    ld (_pfe_str_life + 7), a  ; units digit ("LIFE: 10", offset 7)
     ld a, b
-    ld (_pfe_str_life + 6), a
+    ld (_pfe_str_life + 6), a  ; tens digit
     ld iy, #_pfe_str_life
-    ld bc, #0x1014
+    ld bc, #0x1014             ; tile columns 16..19
     jp _pfe_hud_field
 
-;; Redraws the fields flagged in platformer_hud_dirty. Losing a life also flashes the
-;; border red three times, as in the original (blocking, about 0.2 s).
+;; ----------------------------------------------------------------------------
+;; _pfe_hud_update
+;;   Redraws the fields flagged in platformer_hud_dirty. Losing a life also
+;;   flashes the border red three times, as in the original (blocking, about
+;;   0.2 s).
+;;   In : none. Reads platformer_hud_dirty (PFE_HUD_* bits).
+;;   Out: none. platformer_hud_dirty cleared; _pfe_hud_pending holds the bits
+;;        that were handled.
+;;   Clobbers: AF, BC, DE, HL, IX, IY (only AF when nothing is dirty)
+;;   Notes: returns at once when nothing is dirty. The flag byte is cleared before
+;;           drawing, so a draw cannot lose a bit set meanwhile. Border flash is a busy
+;;           wait of 6 delay loops.
+;; ----------------------------------------------------------------------------
 _pfe_hud_update:
     ld a, (platformer_hud_dirty)
-    ld (_pfe_hud_pending), a
+    ld (_pfe_hud_pending), a   ; work on a snapshot, the callees clobber A
     or a
     ret z
     xor a
     ld (platformer_hud_dirty), a
     ld a, (_pfe_hud_pending)
-    bit 0, a
+    bit 0, a                   ; PFE_HUD_SCORE
     call nz, _pfe_hud_score
     ld a, (_pfe_hud_pending)
-    bit 2, a
+    bit 2, a                   ; PFE_HUD_HINT
     call nz, _pfe_hud_hint
     ld a, (_pfe_hud_pending)
-    bit 1, a
+    bit 1, a                   ; PFE_HUD_LIVES
     call nz, _pfe_hud_lives
     ld a, (_pfe_hud_pending)
-    bit 3, a
+    bit 3, a                   ; PFE_HUD_FLASH
     ret z
     ld b, #PFE_FLASH_COUNT
 _pfe_flash:
-    push bc
+    push bc                    ; _pfe_border clobbers B
     ld h, #PFE_BORDER_RED
     call _pfe_border
     ld h, #PFE_BORDER_BLACK
@@ -437,7 +600,16 @@ _pfe_flash:
     djnz _pfe_flash
     ret
 
-;; In: H=hardware colour. Sets the border, then waits.
+;; ----------------------------------------------------------------------------
+;; _pfe_border
+;;   Sets the border colour, then waits a fixed busy-wait delay.
+;;   In : H=hardware colour for the border pen.
+;;   Out: border pen PFE_BORDER_PEN set to H. Returns after PFE_FLASH_DELAY
+;;        loop iterations.
+;;   Clobbers: AF, B, DE, L
+;;   Notes: H and C preserved (cpct_setPALColour_asm documents AF, B destroyed).
+;;           The delay does not depend on VSYNC.
+;; ----------------------------------------------------------------------------
 _pfe_border:
     ld l, #PFE_BORDER_PEN
     call cpct_setPALColour_asm
@@ -449,14 +621,29 @@ _pfe_border_wait:
     jr nz, _pfe_border_wait
     ret
 
-;; Starts the current level: draws its map and HUD, clears the managers and
-;; spawns every entity from the rows. Used at boot and when the door leads to
-;; the second level, so both begin in exactly the same state. Lives are kept.
+;; ----------------------------------------------------------------------------
+;; _pfe_start_level
+;;   Starts the current level: draws its map and HUD, clears the managers and
+;;   spawns every entity from the rows. Used at boot and when the door leads to
+;;   the second level, so both begin in exactly the same state. Lives are kept.
+;;   In : none. Reads _pfe_map_desc (active tilemap).
+;;   Out: carry clear. Score, won, _pfe_all_coins, _pfe_door_hit and
+;;        fwk_ecs_tick reset to 0; HUD redrawn; four coins, the door (disabled),
+;;        the player and three enemies created; platformer_player, _door,
+;;        _enemy_h and _enemy_v set; platformer_status=0x5A.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: does not return on a framework error (via _pfe_expect_ok). Leaves
+;;           platformer_lives and platformer_level untouched. Draws on the visible screen
+;;           (blocking). It overwrites platformer_hud_dirty with SCORE|LIVES|HINT, so no border
+;;           flash happens here and any pending FLASH bit is dropped.
+;; ----------------------------------------------------------------------------
 _pfe_start_level:
+    ; Draw the map of the active level over the whole screen (wipes old sprites).
     ld ix, (_pfe_map_desc)
     ld iy, #platformer_view            ; both maps are 20x25
     call fwk_tilemap_render_view
     call _pfe_expect_ok
+    ; Reset the state of the level; A=0 is also stored in the cadence tick.
     xor a
     ld (platformer_score), a
     ld (platformer_won), a
@@ -467,6 +654,7 @@ _pfe_start_level:
     ld (platformer_hud_dirty), a
     call _pfe_hud_update
 
+    ; Empty the manager and give the renderer's background buffers back.
     ld ix, #platformer_manager
     call fwk_ecs_manager_init
     call _pfe_expect_ok
@@ -475,6 +663,8 @@ _pfe_start_level:
     call _pfe_expect_ok
     ld ix, #platformer_manager             ; the spawns below take IX=manager
 
+    ; Spawn in storage order: 0..3 coins, 4 door, 5 player, 6 left vertical
+    ; enemy, 7 horizontal enemy, 8 right vertical enemy.
     ld hl, #_pfe_row_coin0
     call _pfe_spawn
     call _pfe_expect_ok
@@ -494,6 +684,7 @@ _pfe_start_level:
     call fwk_ecs_entity_disable            ; the door appears after the last coin
     call _pfe_expect_ok
 
+    ; Player: the row cannot hold the platform fields, so set them on the new entity.
     ld hl, #_pfe_row_player
     ld de, #platformer_player
     call _pfe_spawn_to
@@ -501,10 +692,11 @@ _pfe_start_level:
     ld ECS_E_INPUT_ACTION_MASK(iy), #PFE_INPUT_LEFT | PFE_INPUT_RIGHT | PFE_INPUT_JUMP
     ld ECS_E_PLATFORM_CONFIG(iy), #<platformer_config
     ld ECS_E_PLATFORM_CONFIG+1(iy), #>platformer_config
-    ld hl, (_pfe_map_desc)
+    ld hl, (_pfe_map_desc)                 ; physics collides with the active map
     ld ECS_E_PLATFORM_TILEMAP(iy), l
     ld ECS_E_PLATFORM_TILEMAP+1(iy), h
-    ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE
+    ld ECS_E_MOTION_FLAGS(iy), #FWK_PLATFORM_AIRBORNE   ; starts in the air and falls
+    ; Enemies. The left vertical one needs no pointer; the other two are tracked.
     ld hl, #_pfe_row_v2
     call _pfe_spawn
     call _pfe_expect_ok
@@ -515,12 +707,26 @@ _pfe_start_level:
     ld de, #platformer_enemy_v
     call _pfe_spawn_to
 
-    ld a, #0x5A
+    ld a, #0x5A                ; smoke marker: the level is ready
     ld (platformer_status), a
     ret
 
+;; ----------------------------------------------------------------------------
+;; _main
+;;   Program entry. Initialises the framework, video, text, palette and input,
+;;   starts level 1 and runs the frame loop forever.
+;;   In : none.
+;;   Out: none. Never returns.
+;;   Clobbers: all (never returns)
+;;   Notes: the frame loop (platformer_frame) runs one tick per iteration: input,
+;;           behavior, input system, platform physics, motion, animation, collisions,
+;;           events, then the selective render (prepare before VSYNC, restore and draw
+;;           after it), slot collection and the HUD. platformer_input_witness is written
+;;           for the emulator smoke.
+;; ----------------------------------------------------------------------------
 _main::
     call fwk_project_init
+    ; Level 1 map: unpack the ZX7B data into its RAM buffer (backwards, ends first).
     ld hl, #platformer_map_packed + PLATFORMER_MAP_PACKED_SIZE - 1
     ld de, #platformer_map + PLATFORMER_MAP_SIZE - 1
     call fwk_zx7b_unpack
@@ -536,12 +742,14 @@ _main::
     call fwk_video_clear_visible
     call _pfe_start_level
 
+    ; ---- Frame loop: one iteration per game frame, never leaves ----
 platformer_frame:
     ld hl, #fwk_ecs_tick               ; one tick per loop iteration, for the cadence bytes
     inc (hl)
     call fwk_input_update
     ld a, (fwk_input_held)
-    ld (platformer_input_witness), a
+    ld (platformer_input_witness), a   ; actions held, for the smoke
+    ; Systems in order: behavior (enemy programs), input, physics, motion, animation.
     ld ix, #platformer_manager
     call fwk_ecs_system_behavior
     call _pfe_expect_ok
@@ -550,7 +758,7 @@ platformer_frame:
     call _pfe_expect_ok
     ld iy, (platformer_player)
     ld a, ECS_E_MOTION_VELOCITY_X(iy)
-    ld (platformer_input_witness+1), a
+    ld (platformer_input_witness+1), a ; player X velocity after the input system
     ld ix, #platformer_manager
     call fwk_ecs_system_platform
     call _pfe_expect_ok
@@ -560,6 +768,7 @@ platformer_frame:
     ld ix, #platformer_manager
     call fwk_ecs_system_animation
     call _pfe_expect_ok
+    ; Game rules on the new positions.
     call _pfe_collisions
     call _pfe_apply_events
     ;; Selective render: find what changed before VSYNC, touch video RAM after it.

@@ -316,3 +316,39 @@ ocultas del núcleo con 128 KB y reduce el riesgo de ejecutar código paginado.
 - No comprueba límites ni corrupción. Los tamaños exactos se generan desde
   `disk_files` como `FWK_DISK_<SYMBOL>_SIZE` y
   `FWK_DISK_<SYMBOL>_UNPACKED_SIZE`.
+
+## Comentarios de rutinas en los ejemplos
+
+Toda rutina de `examples/` lleva una cabecera encima de su etiqueta, sin línea en
+blanco entre medias:
+
+```
+;; ----------------------------------------------------------------------------
+;; _nombre
+;;   Una o dos líneas sobre lo que hace.
+;;   In : registros y memoria que lee (o "none")
+;;   Out: registros, flags y memoria que deja (o "none")
+;;   Clobbers: registros y flags que modifica y no restaura, salidas incluidas,
+;;             y los que modifican las rutinas a las que llama (o "none")
+;;   Notes: registros preservados, orden de llamada, límites, avisos
+;; ----------------------------------------------------------------------------
+_nombre:
+```
+
+- Una **rutina** es una etiqueta de código a la que se entra con `call`, por un
+  puntero de tabla (`.dw`, `ld hl, #etiqueta`) o `_main`. Las etiquetas de bucle y
+  salto que solo alcanzan `jr`/`jp`/`djnz` son locales: llevan un comentario en línea.
+- Las macros llevan la misma cabecera: `In` son sus parámetros, `Clobbers` lo que
+  modifica la expansión.
+- Una rutina que no vuelve (bucle infinito, `jp` de salida) escribe
+  `Clobbers: all (never returns)`.
+- Si no se conoce el contrato de una rutina llamada, la lista es conservadora y
+  `Notes` lo dice. Una lista errónea es peor que una conservadora.
+- Los comentarios en línea explican cada bloque lógico, no cada instrucción.
+
+La prueba `tests/test_example_comments.py` exige la cabecera, su orden
+(`In`, `Out`, `Clobbers`, `Notes`) y que el nombre coincida con la etiqueta. Si los
+registros son ciertos no lo puede decir una máquina: eso es trabajo de revisión.
+Quedan fuera `examples/nave` (idéntico a los pasos de `docs/first-game/`) y los
+ficheros generados. Las pruebas que leen el fuente de un ejemplo, como la tabla de
+mutaciones de `tools/mutate_platformer.py`, ignoran los comentarios.

@@ -1471,3 +1471,20 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   releases, manual y `docs/build-sizes.md`: 23 ejemplos.
 - [x] `tests/test_first_game_guide.py` comprueba que coincide byte a byte con los pasos de la
   guía, que lo generado es lo que genera glasnost y que no tiene ficheros sin explicar.
+
+## Cabeceras de rutina en los ejemplos (2026-11-07)
+
+- [x] Los 22 ejemplos de `examples/` (salvo `nave`, idéntico a los pasos de la guía, y los
+  ficheros generados) documentan cada rutina con una cabecera: nombre, descripción,
+  `In`, `Out`, `Clobbers` y `Notes`, más comentarios en línea por bloque. 96 cabeceras
+  (95 rutinas y la macro `PFE_ROW`). Formato en `docs/architecture-and-api.md`.
+- [x] `tests/test_example_comments.py` exige la cabecera de toda rutina (llamada por
+  `call`, por tabla o `_main`), su orden y que el nombre coincida con la etiqueta.
+- [x] Cambio solo de comentarios: los binarios de los 22 ejemplos salen idénticos (SHA-256
+  antes y después). La tabla de mutaciones de `tools/mutate_platformer.py` y
+  `test_platformer_hud_and_flash` ignoran ahora los comentarios; mismos veredictos en las 32
+  mutaciones antes y después.
+- [x] Revisión en frío: un crítico derivó In/Out/Clobbers desde el código sin leer la cabecera
+  en 96 rutinas: ningún error en las listas de registros; 7 comentarios falsos, corregidos.
+- Pendiente: lo que no puede decir una máquina es que los registros sean ciertos; queda a
+  la revisión. `examples/nave` y los pasos de la guía no llevan cabeceras todavía.

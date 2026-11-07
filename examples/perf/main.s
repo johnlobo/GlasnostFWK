@@ -84,14 +84,33 @@ perf_sprite_buffer:: .ds 48
 
 .area _CODE
 
-;; Indirect call to the routine whose address is in HL.
+;; ----------------------------------------------------------------------------
+;; _perf_call
+;;   Calls the routine whose address is in HL: the caller does call _perf_call, and the jp makes
+;;   the target return straight to the caller.
+;;   In : HL=address of the routine to run.
+;;   Out: Whatever the target leaves.
+;;   Clobbers: none of its own: it is a single jp (hl), so the clobbers are those of the target.
+;;   Notes: Registers are passed through to the target unchanged. Costs one jp (hl) of overhead per
+;;          iteration, included in every measurement.
+;; ----------------------------------------------------------------------------
 _perf_call:
     jp (hl)
 
-;; Wait until the 16-bit frame counter changes once.
+;; ----------------------------------------------------------------------------
+;; _perf_wait_frame_change
+;;   Spins until the 16-bit fwk_system_frame_count differs from its value at entry, to start a
+;;   measurement on a frame boundary.
+;;   In : none. Reads fwk_system_frame_count.
+;;   Out: none (HL=count at entry, DE=the new count).
+;;   Clobbers: AF, DE, HL.
+;;   Notes: Needs the system interrupt to be running to advance the counter; it never returns
+;;          otherwise. BC, IX and IY are preserved.
+;; ----------------------------------------------------------------------------
 _perf_wait_frame_change:
     ld hl, (fwk_system_frame_count)
 _perf_wait_frame_loop:
+    ;; Compare high bytes first, then low bytes.
     ld de, (fwk_system_frame_count)
     ld a, h
     cp d
@@ -102,8 +121,21 @@ _perf_wait_frame_loop:
 _perf_wait_frame_done:
     ret
 
-;; Run the routine in perf_work for perf_iterations iterations and store
-;; frames/iterations in perf_results through perf_results_ptr.
+;; ----------------------------------------------------------------------------
+;; _perf_measure
+;;   Runs the routine in perf_work for perf_iterations iterations and appends the elapsed frames
+;;   and the iteration count to the results table.
+;;   In : perf_work=address of the routine (word), perf_iterations=iteration count (word, must
+;;          not be 0: 0 would run 65536 times), perf_results_ptr=where to write the next 4
+;;          bytes.
+;;   Out: At perf_results_ptr: elapsed frames (word, low byte first) then perf_iterations
+;;          (word); perf_results_ptr advanced by 4. perf_start, perf_end and perf_remaining are
+;;          updated.
+;;   Clobbers: AF, BC, DE, HL, IX, IY (the measured routine may use all of them).
+;;   Notes: Frames are the difference of fwk_system_frame_count (16 bit, wraps correctly) between start
+;;          and end, so the loop overhead is included; scene 0 calibrates it. Interrupts must be
+;;          running.
+;; ----------------------------------------------------------------------------
 _perf_measure:
     call _perf_wait_frame_change
     ld hl, (fwk_system_frame_count)
@@ -111,6 +143,7 @@ _perf_measure:
     ld hl, (perf_iterations)
     ld (perf_remaining), hl
 _perf_measure_loop:
+    ;; Run the work routine, then count down perf_remaining.
     ld hl, (perf_work)
     call _perf_call
     ld hl, (perf_remaining)
@@ -122,11 +155,13 @@ _perf_measure_loop:
     ld hl, (fwk_system_frame_count)
     ld (perf_end), hl
 
+    ;; Elapsed frames = end - start (16 bit).
     ld hl, (perf_end)
     ld de, (perf_start)
     or a
     sbc hl, de
 
+    ;; Append frames (low, high) and iterations (low, high) to the table.
     ld de, (perf_results_ptr)
     ld a, l
     ld (de), a
@@ -145,41 +180,105 @@ _perf_measure_loop:
     ret
 
 ;; Scene routines.
+;; ----------------------------------------------------------------------------
+;; _perf_empty
+;;   Scene 0: does nothing, so the measurement shows the loop and call overhead.
+;;   In : none.
+;;   Out: none.
+;;   Clobbers: none.
+;;   Notes: Preserves every register.
+;; ----------------------------------------------------------------------------
 _perf_empty:
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_video_clear
+;;   Scene 1: fills every visible video region with the byte 0.
+;;   In : none.
+;;   Out: Visible regions cleared; hole regions are kept.
+;;   Clobbers: AF, BC, DE, HL, IX (fwk_video_clear_visible).
+;;   Notes: IY is preserved.
+;; ----------------------------------------------------------------------------
 _perf_video_clear:
+    ;; Fill value 0: black.
     xor a
     call fwk_video_clear_visible
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_sprite_opaque
+;;   Scene 2: draws perf_sprite (6 by 8 bytes at x=20, y=40) with fwk_sprite_draw.
+;;   In : none.
+;;   Out: Carry set if the descriptor is invalid, clear otherwise (the result of
+;;          fwk_sprite_draw).
+;;   Clobbers: AF, BC, DE, HL, IX.
+;;   Notes: IY is preserved by fwk_sprite_draw.
+;; ----------------------------------------------------------------------------
 _perf_sprite_opaque:
     ld ix, #perf_sprite
     call fwk_sprite_draw
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_sprite_masked
+;;   Scene 3: draws perf_sprite with fwk_sprite_draw_masked, using the project transparency
+;;   table.
+;;   In : none.
+;;   Out: Carry set if the descriptor is invalid, clear otherwise.
+;;   Clobbers: AF, BC, DE, HL, IX.
+;;   Notes: Always assembles, but links only when the project enables transparency (fwk_sprite_draw_masked
+;;          is defined under that flag; perf/example.json sets transparency pen 0). IY is preserved.
+;; ----------------------------------------------------------------------------
 _perf_sprite_masked:
     ld ix, #perf_sprite
     call fwk_sprite_draw_masked
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_sprite_capture
+;;   Scene 4: copies the screen area under perf_sprite into perf_sprite_buffer.
+;;   In : none.
+;;   Out: Carry as fwk_sprite_capture (clear on success); IY=end of the bytes written.
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: The buffer holds 48 bytes, exactly width * height of the unclipped sprite.
+;; ----------------------------------------------------------------------------
 _perf_sprite_capture:
     ld ix, #perf_sprite
     ld de, #perf_sprite_buffer
     call fwk_sprite_capture
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_sprite_restore
+;;   Scene 5: writes perf_sprite_buffer back over the screen area of perf_sprite.
+;;   In : none. Reads perf_sprite_buffer.
+;;   Out: Carry as fwk_sprite_restore (clear on success); IY=end of the bytes read.
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: Reads the 48 bytes that _perf_sprite_capture wrote.
+;; ----------------------------------------------------------------------------
 _perf_sprite_restore:
     ld ix, #perf_sprite
     ld hl, #perf_sprite_buffer
     call fwk_sprite_restore
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_batch8
+;;   Scene 6: one render frame of the eight-entity batch. Marks every entity DIRTY, then
+;;   prepare, restore and draw on scene perf_batch.
+;;   In : none. Needs _perf_batch_setup to have created the entities.
+;;   Out: Carry clear on success (the last result of fwk_ecs_render_draw). On any error it jumps
+;;          to _perf_fail and never returns.
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: DIRTY is set by hand each call, which forces all eight entities through the restore and
+;;          draw phases every time.
+;; ----------------------------------------------------------------------------
 _perf_batch8:
     ld iy, #perf_batch_storage
     ld de, #ECS_ENTITY_SIZE
     ld b, #PERF_BATCH_COUNT
 _perf_batch_dirty:
+    ;; Force a redraw of all eight entities: set DIRTY (bit 1 of RENDER_FLAGS).
     set 1, ECS_E_RENDER_FLAGS(iy)
     add iy, de
     djnz _perf_batch_dirty
@@ -194,14 +293,34 @@ _perf_batch_dirty:
     jp c, _perf_fail
     ret
 
-;; Stop with the ABI error code in perf_status (never 0x5A).
+;; ----------------------------------------------------------------------------
+;; _perf_fail
+;;   Stops the measurement run with the ABI error code, so the host sees a status that is never
+;;   0x5A.
+;;   In : A=ABI error code from a failed render or ECS call.
+;;   Out: perf_status = A. Never returns.
+;;   Clobbers: all (never returns).
+;;   Notes: Idles with fwk_system_wait_frame, one vsync per pass.
+;; ----------------------------------------------------------------------------
 _perf_fail:
     ld (perf_status), a
 _perf_fail_loop:
+    ;; Idle forever, one vsync per pass.
     call fwk_system_wait_frame
     jr _perf_fail_loop
 
-;; Create the eight entities from perf_batch_rows.
+;; ----------------------------------------------------------------------------
+;; _perf_batch_setup
+;;   Initializes perf_batch_manager and creates the eight batch entities at (10, 30), 4x4 bytes,
+;;   from the rows of perf_batch_rows.
+;;   In : none. Reads perf_batch_rows (extra render flags, source pen, replacement pen per
+;;          entity).
+;;   Out: Eight ACTIVE|RENDER entities in the manager, carry clear. On an ECS error it jumps to
+;;          _perf_fail and never returns.
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: Zeroes perf_batch_template before every entity, so the background pointer starts at 0 and
+;;          the pool provides the buffers. Updates _perf_batch_index and _perf_batch_row.
+;; ----------------------------------------------------------------------------
 _perf_batch_setup:
     ld ix, #perf_batch_manager
     call fwk_ecs_manager_init
@@ -211,6 +330,7 @@ _perf_batch_setup:
     ld hl, #perf_batch_rows
     ld (_perf_batch_row), hl
 _perf_batch_create:
+    ;; Zero the template, then fill it for the next row.
     ld hl, #perf_batch_template
     ld de, #perf_batch_template + 1
     ld (hl), #0
@@ -226,6 +346,7 @@ _perf_batch_create:
     ld ECS_E_HEIGHT(iy), #4
     ld ECS_E_RENDER_SPRITE(iy), #<perf_batch_sprite_pixels
     ld ECS_E_RENDER_SPRITE+1(iy), #>perf_batch_sprite_pixels
+    ;; Row bytes: extra render flags (OR 3 = VISIBLE | DIRTY), source pen, replacement pen.
     ld hl, (_perf_batch_row)
     ld a, (hl)
     or #3                                   ; VISIBLE | DIRTY
@@ -249,12 +370,29 @@ _perf_batch_create:
     jr nz, _perf_batch_create
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_tilemap_full
+;;   Scene 7: draws the whole 5x4 tile viewport perf_view of perf_tilemap.
+;;   In : none.
+;;   Out: Carry as fwk_tilemap_render_view (clear on success).
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: IX and IY are loaded here; fwk_tilemap_render_view itself preserves them.
+;; ----------------------------------------------------------------------------
 _perf_tilemap_full:
     ld ix, #perf_tilemap
     ld iy, #perf_view
     call fwk_tilemap_render_view
     ret
 
+;; ----------------------------------------------------------------------------
+;; _perf_tilemap_cell
+;;   Scene 8: redraws the single tile at viewport row 1, column 2.
+;;   In : none.
+;;   Out: Carry as fwk_tilemap_render_cell (clear on success).
+;;   Clobbers: AF, BC, DE, HL, IX, IY.
+;;   Notes: B and C are loaded here with row and column; IX and IY are loaded here and preserved by
+;;          fwk_tilemap_render_cell.
+;; ----------------------------------------------------------------------------
 _perf_tilemap_cell:
     ld ix, #perf_tilemap
     ld iy, #perf_view
@@ -263,6 +401,16 @@ _perf_tilemap_cell:
     call fwk_tilemap_render_cell
     ret
 
+;; ----------------------------------------------------------------------------
+;; _main
+;;   Program entry. Sets up the batch entities, then measures nine scenes in order and leaves
+;;   the results in perf_results for the host.
+;;   In : none.
+;;   Out: perf_results holds 9 entries of (frames, iterations), word each; perf_status = 0x5A
+;;          when done. Never returns: it idles in _perf_idle (or in _perf_fail).
+;;   Clobbers: all (never returns).
+;;   Notes: Ends in the _perf_idle loop (or _perf_fail).
+;; ----------------------------------------------------------------------------
 _main::
     call fwk_project_init
     call fwk_video_init
@@ -340,6 +488,7 @@ _main::
     ld a, #0x5A
     ld (perf_status), a
 
+    ;; Measurements finished: idle forever; the host reads perf_results and perf_status.
 _perf_idle:
     call fwk_system_wait_frame
     jr _perf_idle

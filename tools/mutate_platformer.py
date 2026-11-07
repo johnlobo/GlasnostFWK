@@ -10,13 +10,16 @@ always restores both files byte for byte, whatever happens.
     python3 tools/mutate_platformer.py                      # full run, ~1.5 min each
     python3 tools/mutate_platformer.py --only flash         # name filter
 
-`tests/test_ecs_manager.py` checks that every pattern below still matches exactly
-once across main.s and common.inc, so the table cannot rot silently.
+`tests/test_mutation_table.py` checks that every pattern below still matches exactly
+once across main.s and common.inc, so the table cannot rot silently. Patterns match the
+CODE lines only: comments and blank lines in the sources (and in the patterns) are ignored,
+so documenting the game never breaks the table.
 """
 from __future__ import annotations
 
 import argparse
 import fcntl
+import re
 import signal
 import subprocess
 import sys
@@ -28,10 +31,56 @@ COMMON = ROOT / "examples/platformer/common.inc"
 SOURCES = (MAIN, COMMON)
 
 
+_LITERAL = re.compile(r"'(\\.|[^'\\])'")           # an assembler character literal such as '0'
+_GAP = r"[ \t]*(?:;[^\n]*)?\n(?:[ \t]*(?:;[^\n]*)?\n)*"   # end of a line plus any blank or comment-only lines
+_EOL = r"[ \t]*(?:;[^\n]*)?\n"
+
+
+def strip_comment(line: str) -> str:
+    """`line` without its `;` comment (a `;` inside a string or a character literal is kept)."""
+    out, quote, i = [], None, 0
+    while i < len(line):
+        ch = line[i]
+        if quote:
+            out.append(ch)
+            quote = None if ch == quote else quote
+        elif ch == '"':
+            quote = ch
+            out.append(ch)
+        elif ch == "'" and (literal := _LITERAL.match(line, i)):
+            out.append(literal.group(0))
+            i = literal.end() - 1
+        elif ch == ";":
+            break
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out).rstrip()
+
+
+def code_only(text: str) -> str:
+    """The source with comments and blank lines removed: what the assembler sees, line by line."""
+    lines = (strip_comment(line) for line in text.split("\n"))
+    return "\n".join(line for line in lines if line.strip()) + "\n"
+
+
+def spans(text: str, old: str) -> list[tuple[int, int]]:
+    """Where the code lines of `old` occur in `text`, ignoring comments and blank lines between
+    and after them. Comments are documentation: adding one must not break a mutation."""
+    tokens = [strip_comment(line) for line in old.split("\n")]
+    closed = tokens[-1] == ""                              # `old` ends with a newline
+    body = [t for t in tokens[:-1] if t.strip()] if closed else [t for t in tokens if t.strip()]
+    if not body:
+        raise ValueError("a mutation pattern needs at least one line of code")
+    pattern = _GAP.join(re.escape(t) for t in body) + (_EOL if closed else "")
+    return [match.span() for match in re.finditer(pattern, text)]
+
+
 def locate(texts: dict, old: str):
     """The one source file that holds `old` exactly once, or None."""
-    hits = [path for path, text in texts.items() if text.count(old) == 1]
-    total = sum(text.count(old) for text in texts.values())
+    found = {path: spans(text, old) for path, text in texts.items()}
+    hits = [path for path, matches in found.items() if len(matches) == 1]
+    total = sum(len(matches) for matches in found.values())
     return hits[0] if len(hits) == 1 and total == 1 else None
 EMULATOR = Path("/config/workspace/tools/amspirit-lite/run.sh")
 LOCK = "/tmp/amspirit.lock"
@@ -142,7 +191,8 @@ def main() -> int:
                 continue
             for path, data in originals.items():
                 path.write_bytes(data)
-            target.write_text(texts[target].replace(old, new, 1))
+            start, end = spans(texts[target], old)[0]
+            target.write_text(texts[target][:start] + new + texts[target][end:])
             if not host_tests_pass():
                 verdict = "detected by the host tests"
             elif args.host_only:
