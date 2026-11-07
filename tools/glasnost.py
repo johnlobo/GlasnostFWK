@@ -651,27 +651,36 @@ def cmd_config(args, root: Path, lang: str, runner: Runner) -> int:
     folder = current_project(args)
     if not folder:
         raise CliError(say(lang, "proj.not_in_project"))
+    just_show = args.title is None and args.profile is None and args.extended_memory is None
     try:
         meta, example = gp.load_project(folder)
-        if args.title is None and args.profile is None and args.extended_memory is None:
+        found = gp.project_format(meta)
+        if found > gp.FORMAT:  # never rewrite what a newer glasnost generated
+            raise gp.ProjectError(gp.newer_format_message(found))
+        if just_show:
             print("\n".join(config_summary(meta, example)))
-            return 0
         new_files = gp.apply_config(folder, title=args.title, profile=args.profile,
                                     extended_memory=args.extended_memory)
     except gp.ProjectError as error:
         raise CliError(say(lang, "proj.config_invalid", reason=error)) from error
+    if just_show:
+        # No options: bring only the generated files up to date. This is what `build` asks for
+        # when it says "run glasnost config" (after editing components or modules in example.json);
+        # the documents the user edits (example.json, glasnost.project.json) stay byte for byte.
+        new_files = {rel: content for rel, content in new_files.items() if rel.startswith("generated/")}
     changed = [rel for rel, content in sorted(new_files.items())
                if not (folder / rel).is_file() or (folder / rel).read_bytes() != content]
     if not changed:
-        print(say(lang, "proj.config_nochange"))
+        if not just_show:
+            print(say(lang, "proj.config_nochange"))
         return 0
     for rel in changed:
-        print(say(lang, "proj.config_file", path=rel))
+        print(say(lang, "proj.config_regen" if just_show else "proj.config_file", path=rel))
     if args.dry_run:
         print(say(lang, "proj.config_dry"))
         return 0
     write_replacing(folder, {rel: new_files[rel] for rel in changed})
-    print(say(lang, "proj.config_done"))
+    print(say(lang, "proj.config_regenerated" if just_show else "proj.config_done"))
     return 0
 
 

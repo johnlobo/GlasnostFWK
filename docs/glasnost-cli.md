@@ -15,7 +15,7 @@ repositorio salvo lo que se indica en «Alcance».
 | `glasnost doctor [--network]` | Comprueba python3 >= 3.10, git, make, gcc, g++, bison, flex, cabeceras de Boost y CPCTelera Next. Sale con 1 si falta algo y dice cómo arreglarlo (con un lockfile inválido, muestra su error y sale con 1). `--network` comprueba también el acceso al repositorio de CPCTelera. |
 | `glasnost install-toolchain [--dry-run] [--force]` | Descarga el commit fijado y compila SDCC, hex2bin, iDSK, 2cdt, cpc2cdt, la biblioteca y zx7b. `--dry-run` solo lista los pasos. `--force` rehace desde cero. |
 | `glasnost new [nombre] [--manifest F] [--title T] [--extended-memory] [--dir D] [--no-git] [--no-build]` | Crea un proyecto en `projects/<nombre>` (ver «Proyectos»). Sin nombre ni manifiesto, en una terminal, lanza el asistente. |
-| `glasnost config [--title T] [--extended-memory \| --no-extended-memory] [--dry-run]` | Dentro de un proyecto: sin opciones muestra la configuración; con ellas regenera lo que posee glasnost. |
+| `glasnost config [--title T] [--extended-memory \| --no-extended-memory] [--dry-run]` | Dentro de un proyecto: sin opciones muestra la configuración y regenera los ficheros de `generated/` si están desactualizados; con ellas regenera lo que posee glasnost. |
 | `glasnost update [--dry-run]` | Dentro de un proyecto: lo actualiza al formato de este glasnost con migraciones consecutivas, en una rama de Git (ver «Actualizar proyectos»). |
 | `glasnost rollback [--delete]` | Sale de una rama de actualización y vuelve a la rama de origen sin perder nada; `--delete` borra además la rama de actualización. |
 | `glasnost projects [--dir D]` | Lista los proyectos de `projects/` con su rama Git (`*` si tienen cambios) y si están al día. |
@@ -131,6 +131,14 @@ cada fichero es atómico pero el conjunto no: si el proceso muere a mitad,
 `glasnost config` lo repara. `--dry-run` lista lo que cambiaría. `example.json` se reescribe con sangría de 2
 espacios.
 
+**Usar un sistema del framework (colisión, animación, ...).** Añade su
+componente en `ecs.components` y su módulo en `modules` de `example.json`, y
+ejecuta `glasnost config` sin opciones: regenera `generated/ecs_profile.inc` (y
+`project.inc`) y no toca nada más, ni siquiera el formato de tu `example.json`.
+Es lo que pide `glasnost build` cuando dice que el perfil ECS está
+desactualizado. `--dry-run` muestra qué regeneraría. Si el componente o la
+combinación no es válido, `config` lo dice y no escribe nada.
+
 **Límites actuales.**
 - La carpeta del proyecto debe llamarse como su `name` (`example.json`): si la
   renombras, `build` y `test` lo rechazan. `config` no cambia el nombre.
@@ -240,7 +248,7 @@ CLI nunca usa porque siempre fija la variable.
 
 `tests/test_glasnost_update.py` (56 casos) cubre el motor de migraciones y `update`/`rollback`/`projects` contra repositorios Git reales (rama, árbol sucio, repositorio ajeno, HEAD desacoplado, ramas con barra, hook que rechaza, ficheros ignorados por Git, Ctrl-C en compilar y en commit, fallos de compilación, escritura y commit, Ctrl-C, tareas manuales, sin red), más un caso con compilación real.
 
-`tests/test_glasnost_project.py` (72 casos) cubre el generador, `new`, `config` y los comandos dentro de un proyecto, incluida la compilación real de la plantilla en cada configuración (se omite sin toolchain). `tests/project_smoke.py` es el smoke opcional en emulador (CPC 464, 6128 y memoria extendida): la nave arranca, se mueve y no sale del área.
+`tests/test_glasnost_project.py` (79 casos) cubre el generador, `new`, `config` y los comandos dentro de un proyecto, incluida la compilación real de la plantilla en cada configuración (se omite sin toolchain). `tests/project_smoke.py` es el smoke opcional en emulador (CPC 464, 6128 y memoria extendida): la nave arranca, se mueve y no sale del área.
 
 `tests/test_glasnost.py` (76 casos, locales, sin red): mensajes es/en con las
 mismas claves y marcadores, lockfile válido e inválidos, coincidencia con el

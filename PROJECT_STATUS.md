@@ -1414,7 +1414,7 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   binarios de los ejemplos salen idénticos byte a byte tras el refactor.
 - [x] `build`, `test` y `run` dentro de un proyecto; `new` crea, compila, borra
   lo creado si falla y hace el primer commit en un repositorio propio.
-- [x] 72 casos en `tests/test_glasnost_project.py` (con compilación real de la
+- [x] 79 casos en `tests/test_glasnost_project.py` (con compilación real de la
   plantilla estándar y con memoria extendida) y `tests/project_smoke.py`
   (CPC 464, 6128 y memoria extendida: la nave se mueve y no sale del área).
 - [ ] Límite: solo perfil de vídeo `standard`; el `experimental` (288 líneas)
@@ -1436,3 +1436,12 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   sin su migración.
 - [ ] Pendiente: «versionado semántico y política mayor actual + anterior» de los
   paquetes (fase 15) y la comparación de versiones del framework.
+
+## Arreglo: `glasnost config` regenera lo desactualizado (2026-11-07)
+
+- [x] `glasnost build` decía «run glasnost config» cuando el perfil ECS estaba
+  desactualizado (tras añadir componentes o módulos a `example.json`), pero
+  `config` sin opciones solo mostraba la configuración. Ahora, sin opciones,
+  muestra la configuración y regenera únicamente `generated/*`; no toca
+  `example.json` ni tu código. 6 tests nuevos (5 fallan con el código anterior) y
+  el caso real (añadir colisión, `config`, `build`) compila.
