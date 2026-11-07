@@ -1392,10 +1392,13 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   `sudo`, marca de instalación completa al final, reanudable, `--force`).
   Instalación real medida: 4 min 42 s; `platformer.bin` compilado con ella es
   idéntico byte a byte al compilado con el árbol local (11.994 B).
-- [x] `tests/test_glasnost.py`: 54 casos locales sin red, instalación completa
+- [x] `tests/test_glasnost.py`: 76 casos locales sin red, instalación completa
   contra un repositorio de juguete con la forma de CPCTelera Next.
-- [ ] Pendiente de la fase 12: instalador de `bin/` en `~/.local/bin`, varias
-  versiones del SDK coexistiendo, limpieza de toolchains antiguos.
+- [x] Fase 12 parte 2: `install-cli`/`uninstall-cli` (enlace en `~/.local/bin`, sin
+  `sudo`, nunca pisa lo ajeno), `toolchains` y `clean-toolchains` (vista previa por
+  defecto, `--yes`, `--keep`, ignora lo que no sea carpeta de commit, no sigue
+  enlaces, respeta el bloqueo de instalación). 76 casos en `tests/test_glasnost.py`;
+  11 mutaciones manuales de lo nuevo, todas detectadas.
 - [ ] Los ejemplos y herramientas conservan la ruta heredada
   `/config/workspace/cpctelera_next/cpctelera` como valor por defecto; el CLI
   siempre fija `CPCT_NEXT_PATH`, así que no la usa.

@@ -300,6 +300,133 @@ def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runne
     return 0
 
 
+# ------------------------------------------- toolchains: list and clean
+
+REV_DIR = re.compile(r"[0-9a-f]{40}")
+
+
+@dataclass(frozen=True)
+class InstalledToolchain:
+    rev: str
+    path: Path
+    complete: bool
+    size: int
+    pinned: bool
+
+
+def tree_size(path: Path) -> int:
+    total = 0
+    for base, _dirs, files in os.walk(path):  # os.walk does not follow directory symlinks
+        for name in files:
+            with contextlib.suppress(OSError):
+                total += os.lstat(os.path.join(base, name)).st_size
+    return total
+
+
+def installed_toolchains(root: Path, lock: Lock) -> list[InstalledToolchain]:
+    """Real directories named like a commit under cpctelera-next/; anything else is ignored."""
+    parent = toolchain_dir(root) / "cpctelera-next"
+    found = []
+    if parent.is_dir() and not parent.is_symlink():
+        for entry in sorted(parent.iterdir()):
+            if not REV_DIR.fullmatch(entry.name) or entry.is_symlink() or not entry.is_dir():
+                continue
+            complete = (entry / COMPLETE_MARKER).is_file() and not missing_files(entry / "cpctelera")
+            found.append(InstalledToolchain(entry.name, entry, complete, tree_size(entry), entry.name == lock.rev))
+    return found
+
+
+def human_size(size: int) -> str:
+    return f"{size / 1_000_000:.0f} MB" if size >= 1_000_000 else f"{size / 1000:.0f} kB"
+
+
+def cmd_toolchains(args, root: Path, lang: str, runner: Runner) -> int:
+    lock = load_lock(root, lang)
+    found = installed_toolchains(root, lock)
+    if not found:
+        print(say(lang, "tc.none", path=toolchain_dir(root)))
+        return 0
+    for item in found:
+        state = say(lang, "tc.complete" if item.complete else "tc.partial")
+        pinned = say(lang, "tc.pinned") if item.pinned else ""
+        print(say(lang, "tc.row", rev=item.rev[:12], state=state, size=human_size(item.size), pinned=pinned).rstrip())
+    return 0
+
+
+def cmd_clean(args, root: Path, lang: str, runner: Runner) -> int:
+    """Remove every installed toolchain except the one the lockfile pins.
+
+    Without --yes it only lists. A shared GLASNOST_TOOLCHAIN_DIR may hold toolchains
+    that another SDK version pins: --keep REV protects those.
+    """
+    lock = load_lock(root, lang)
+    keep = {lock.rev, *(rev.lower() for rev in args.keep)}
+    for rev in args.keep:
+        if not REV_DIR.fullmatch(rev.lower()):
+            raise CliError(say(lang, "tc.bad_keep", rev=rev))
+    doomed = [item for item in installed_toolchains(root, lock) if item.rev not in keep]
+    if not doomed:
+        print(say(lang, "tc.nothing_to_clean"))
+        return 0
+    for item in doomed:
+        print(say(lang, "tc.will_remove", rev=item.rev[:12], size=human_size(item.size), path=item.path))
+    if os.environ.get("GLASNOST_TOOLCHAIN_DIR"):
+        print(say(lang, "tc.shared_warning", path=toolchain_dir(root)))
+    if not args.yes:
+        print(say(lang, "tc.clean_preview"))
+        return 0
+    freed = 0
+    for item in doomed:
+        with install_lock(item.path, lang):  # never race an install of the same commit
+            shutil.rmtree(item.path)
+        (item.path.parent / f".{item.rev}.lock").unlink(missing_ok=True)
+        freed += item.size
+    print(say(lang, "tc.cleaned", count=len(doomed), size=human_size(freed)))
+    return 0
+
+
+# ------------------------------------------------------ install-cli / uninstall
+
+def cli_link(args) -> Path:
+    base = args.prefix or os.environ.get("GLASNOST_BIN_DIR") or str(Path.home() / ".local" / "bin")
+    return Path(base).expanduser().resolve() / "glasnost"
+
+
+def cmd_install_cli(args, root: Path, lang: str, runner: Runner) -> int:
+    link, source = cli_link(args), (root / "bin" / "glasnost").resolve()
+    if args.dry_run:
+        print(say(lang, "cli.plan", link=link, source=source))
+        return 0
+    if link.is_symlink() and link.resolve() == source:
+        print(say(lang, "cli.already", link=link))
+    else:
+        if link.exists() or link.is_symlink():
+            if not args.force:
+                raise CliError(say(lang, "cli.exists", link=link))
+            link.unlink()
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(source)
+        print(say(lang, "cli.installed", link=link, source=source))
+    if str(link.parent) not in os.environ.get("PATH", "").split(os.pathsep):
+        print(say(lang, "cli.path_hint", dir=link.parent))
+    return 0
+
+
+def cmd_uninstall_cli(args, root: Path, lang: str, runner: Runner) -> int:
+    """Remove only the symlink that points at this SDK; nothing else, ever."""
+    link, source = cli_link(args), (root / "bin" / "glasnost").resolve()
+    if not link.is_symlink():
+        if link.exists():
+            raise CliError(say(lang, "cli.not_ours", link=link))
+        print(say(lang, "cli.absent", link=link))
+        return 0
+    if link.resolve() != source:
+        raise CliError(say(lang, "cli.not_ours", link=link))
+    link.unlink()
+    print(say(lang, "cli.removed", link=link))
+    return 0
+
+
 # ------------------------------------------------------- build / test / run
 
 def example_names(root: Path) -> list[str]:
@@ -369,6 +496,22 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     install.add_argument("--dry-run", action="store_true", help=say(lang, "help.install_dry"))
     install.add_argument("--force", action="store_true", help=say(lang, "help.install_force"))
     install.set_defaults(func=cmd_install)
+
+    sub.add_parser("toolchains", help=say(lang, "help.toolchains")).set_defaults(func=cmd_toolchains)
+
+    clean = sub.add_parser("clean-toolchains", help=say(lang, "help.clean"))
+    clean.add_argument("--yes", action="store_true", help=say(lang, "help.clean_yes"))
+    clean.add_argument("--keep", action="append", default=[], metavar="REV", help=say(lang, "help.clean_keep"))
+    clean.set_defaults(func=cmd_clean)
+
+    for name, func, key in (("install-cli", cmd_install_cli, "help.install_cli"),
+                            ("uninstall-cli", cmd_uninstall_cli, "help.uninstall_cli")):
+        cli = sub.add_parser(name, help=say(lang, key))
+        cli.add_argument("--prefix", help=say(lang, "help.prefix"))
+        if name == "install-cli":
+            cli.add_argument("--dry-run", action="store_true", help=say(lang, "help.install_dry"))
+            cli.add_argument("--force", action="store_true", help=say(lang, "help.cli_force"))
+        cli.set_defaults(func=func)
 
     build = sub.add_parser("build", help=say(lang, "help.build"))
     build.add_argument("examples", nargs="*", help=say(lang, "help.examples"))

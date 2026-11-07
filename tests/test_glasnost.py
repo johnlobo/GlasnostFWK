@@ -578,6 +578,244 @@ class Commands(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+class Toolchains(unittest.TestCase):
+    OLD = "a" * 40
+    OLDER = "b" * 40
+
+    def setUp(self):
+        self.sdk = FakeSdk(self)
+        self.assertEqual(self.sdk.cli("install-toolchain")[0], 0)
+        self.parent = self.sdk.tmp / "tc" / "cpctelera-next"
+
+    def fake(self, rev, complete=True):
+        directory = self.parent / rev / "cpctelera"
+        directory.mkdir(parents=True)
+        (directory / "cpctelera.lib").write_text("x" * 2000, encoding="utf-8")
+        if complete:
+            for relative in glasnost.REQUIRED_FILES:
+                file = directory / relative
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text("x", encoding="utf-8")
+                file.chmod(0o755)
+            (self.parent / rev / glasnost.COMPLETE_MARKER).write_text(rev, encoding="utf-8")
+        return self.parent / rev
+
+    def test_listing_marks_pinned_complete_and_partial(self):
+        self.fake(self.OLD)
+        self.fake(self.OLDER, complete=False)
+        code, out, _ = self.sdk.cli("toolchains")
+        self.assertEqual(code, 0)
+        rows = {line.split()[0]: line for line in out.splitlines()}
+        self.assertIn("complete", rows[self.OLD[:12]])
+        self.assertNotIn("pinned", rows[self.OLD[:12]])
+        self.assertIn("partial", rows[self.OLDER[:12]])
+        self.assertIn("pinned by the lockfile", rows[self.sdk.rev[:12]])
+
+    def test_listing_ignores_things_that_are_not_toolchains(self):
+        (self.parent / "notes").mkdir()
+        (self.parent / ("c" * 40)).write_text("a file named like a commit", encoding="utf-8")
+        (self.parent / ("d" * 40)).symlink_to(self.sdk.tmp)
+        (self.parent / ("E" * 40)).mkdir()
+        _, out, _ = self.sdk.cli("toolchains")
+        rows = out.strip().splitlines()
+        self.assertEqual(len(rows), 1)
+        self.assertIn(self.sdk.rev[:12], rows[0])
+        self.assertIn("pinned by the lockfile", rows[0])
+
+    def test_listing_with_nothing_installed(self):
+        empty = FakeSdk(self)
+        code, out, _ = empty.cli("toolchains")
+        self.assertEqual(code, 0)
+        self.assertIn("No toolchains installed", out)
+
+    def test_clean_without_yes_only_previews(self):
+        old = self.fake(self.OLD)
+        code, out, _ = self.sdk.cli("clean-toolchains")
+        self.assertEqual(code, 0)
+        self.assertIn("would remove", out)
+        self.assertIn("Preview", out)
+        self.assertTrue(old.is_dir())
+
+    def test_clean_removes_everything_except_the_pinned_toolchain(self):
+        old, older = self.fake(self.OLD), self.fake(self.OLDER, complete=False)
+        (self.parent / f".{self.OLD}.lock").write_text("", encoding="utf-8")
+        code, out, _ = self.sdk.cli("clean-toolchains", "--yes")
+        self.assertEqual(code, 0)
+        self.assertFalse(old.exists() or older.exists())
+        self.assertFalse((self.parent / f".{self.OLD}.lock").exists())
+        self.assertTrue((self.sdk.checkout / glasnost.COMPLETE_MARKER).is_file())
+        self.assertEqual(glasnost.missing_files(self.sdk.checkout / "cpctelera"), [])
+        self.assertIn("Removed 2", out)
+        self.assertEqual(self.sdk.cli("clean-toolchains", "--yes")[0], 0)
+
+    def test_keep_protects_extra_commits_and_is_validated(self):
+        old, older = self.fake(self.OLD), self.fake(self.OLDER)
+        self.assertEqual(self.sdk.cli("clean-toolchains", "--yes", "--keep", self.OLD.upper())[0], 0)
+        self.assertTrue(old.is_dir())
+        self.assertFalse(older.exists())
+        for bad in ("abc", "../x", "", "main"):
+            with self.subTest(bad):
+                code, _, err = self.sdk.cli("clean-toolchains", "--yes", "--keep", bad)
+                self.assertEqual(code, 1)
+                self.assertIn("--keep expects", err)
+                self.assertTrue(old.is_dir())
+
+    def test_clean_never_touches_unknown_entries_or_follows_symlinks(self):
+        victim = self.sdk.tmp / "precious"
+        victim.mkdir()
+        (victim / "file.txt").write_text("keep me", encoding="utf-8")
+        (self.parent / ("c" * 40)).symlink_to(victim)
+        notes = self.parent / "notes"
+        notes.mkdir()
+        projects = self.sdk.tmp / "tc" / "projects"
+        projects.mkdir()
+        (projects / "game.txt").write_text("my game", encoding="utf-8")
+        self.fake(self.OLD)
+        self.assertEqual(self.sdk.cli("clean-toolchains", "--yes")[0], 0)
+        self.assertEqual((victim / "file.txt").read_text(encoding="utf-8"), "keep me")
+        self.assertTrue((self.parent / ("c" * 40)).is_symlink())
+        self.assertTrue(notes.is_dir())
+        self.assertEqual((projects / "game.txt").read_text(encoding="utf-8"), "my game")
+
+    def test_clean_refuses_to_remove_a_toolchain_being_installed(self):
+        import fcntl
+        old = self.fake(self.OLD)
+        with open(self.parent / f".{self.OLD}.lock", "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            code, _, err = self.sdk.cli("clean-toolchains", "--yes")
+        self.assertEqual(code, 1)
+        self.assertIn("Another install", err)
+        self.assertTrue(old.is_dir())
+
+    def test_clean_warns_when_the_toolchain_directory_is_shared(self):
+        self.fake(self.OLD)
+        _, out, _ = self.sdk.cli("clean-toolchains")  # the test env sets GLASNOST_TOOLCHAIN_DIR
+        self.assertIn("--keep", out)
+        self.assertIn("GLASNOST_TOOLCHAIN_DIR", out)
+
+    def test_clean_does_not_follow_a_symlinked_cpctelera_next(self):
+        elsewhere = self.sdk.tmp / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / self.OLD
+        victim.mkdir()
+        (victim / "data.txt").write_text("keep", encoding="utf-8")
+        link_parent = self.sdk.tmp / "tc2"
+        (link_parent).mkdir()
+        (link_parent / "cpctelera-next").symlink_to(elsewhere)
+        code, out, _ = self.sdk.cli("clean-toolchains", "--yes",
+                                    extra_env={"GLASNOST_TOOLCHAIN_DIR": str(link_parent)})
+        self.assertEqual(code, 0)
+        self.assertIn("Nothing to clean", out)
+        self.assertEqual((victim / "data.txt").read_text(encoding="utf-8"), "keep")
+
+    def test_clean_needs_a_valid_lockfile(self):
+        (self.sdk.root / glasnost.LOCKFILE).write_text("{}", encoding="utf-8")
+        old = self.fake(self.OLD)
+        code, _, err = self.sdk.cli("clean-toolchains", "--yes")
+        self.assertEqual(code, 1)
+        self.assertIn("not valid", err)
+        self.assertTrue(old.is_dir())
+
+
+class CliLink(unittest.TestCase):
+    def setUp(self):
+        self.sdk = FakeSdk(self)
+        (self.sdk.root / "bin").mkdir()
+        (self.sdk.root / "bin" / "glasnost").write_text("#!/bin/sh\n", encoding="utf-8")
+        self.bin = self.sdk.tmp / "home" / ".local" / "bin"
+        self.link = self.bin / "glasnost"
+
+    def test_install_creates_the_link_and_the_directory(self):
+        code, out, _ = self.sdk.cli("install-cli", "--prefix", str(self.bin))
+        self.assertEqual(code, 0)
+        self.assertEqual(self.link.resolve(), (self.sdk.root / "bin" / "glasnost").resolve())
+        self.assertIn("not in your PATH", out)
+
+    def test_no_path_hint_when_the_directory_is_in_path(self):
+        self.bin.mkdir(parents=True)
+        with mock.patch.dict(os.environ, {"PATH": f"/usr/bin:{self.bin}"}):
+            _, out, _ = self.sdk.cli("install-cli", "--prefix", str(self.bin))
+        self.assertNotIn("PATH", out)
+
+    def test_install_is_idempotent(self):
+        self.sdk.cli("install-cli", "--prefix", str(self.bin))
+        code, out, _ = self.sdk.cli("install-cli", "--prefix", str(self.bin))
+        self.assertEqual(code, 0)
+        self.assertIn("already points", out)
+
+    def test_install_never_overwrites_something_else_without_force(self):
+        self.bin.mkdir(parents=True)
+        self.link.write_text("someone else's tool", encoding="utf-8")
+        code, _, err = self.sdk.cli("install-cli", "--prefix", str(self.bin))
+        self.assertEqual(code, 1)
+        self.assertIn("--force", err)
+        self.assertEqual(self.link.read_text(encoding="utf-8"), "someone else's tool")
+        self.assertEqual(self.sdk.cli("install-cli", "--prefix", str(self.bin), "--force")[0], 0)
+        self.assertTrue(self.link.is_symlink())
+
+    def test_install_replaces_a_link_to_another_sdk_only_with_force(self):
+        self.bin.mkdir(parents=True)
+        self.link.symlink_to("/bin/true")
+        self.assertEqual(self.sdk.cli("install-cli", "--prefix", str(self.bin))[0], 1)
+        self.assertEqual(os.readlink(self.link), "/bin/true")
+        self.assertEqual(self.sdk.cli("install-cli", "--prefix", str(self.bin), "--force")[0], 0)
+
+    def test_dry_run_writes_nothing(self):
+        code, out, _ = self.sdk.cli("install-cli", "--prefix", str(self.bin), "--dry-run")
+        self.assertEqual(code, 0)
+        self.assertIn("Would link", out)
+        self.assertFalse(self.bin.exists())
+
+    def test_prefix_from_the_environment_and_relative_prefix(self):
+        self.assertEqual(self.sdk.cli("install-cli", extra_env={"GLASNOST_BIN_DIR": str(self.bin)})[0], 0)
+        self.assertTrue(self.link.is_symlink())
+        self.link.unlink()
+        previous = os.getcwd()
+        os.chdir(self.sdk.tmp)
+        try:
+            self.assertEqual(self.sdk.cli("install-cli", "--prefix", "rel-bin")[0], 0)
+        finally:
+            os.chdir(previous)
+        self.assertTrue((self.sdk.tmp / "rel-bin" / "glasnost").is_symlink())
+
+    def test_uninstall_removes_only_our_link(self):
+        self.sdk.cli("install-cli", "--prefix", str(self.bin))
+        code, out, _ = self.sdk.cli("uninstall-cli", "--prefix", str(self.bin))
+        self.assertEqual(code, 0)
+        self.assertFalse(self.link.is_symlink())
+        self.assertTrue((self.sdk.root / "bin" / "glasnost").is_file())
+        self.assertIn("untouched", out)
+
+    def test_uninstall_leaves_foreign_files_and_links_alone(self):
+        self.bin.mkdir(parents=True)
+        self.link.write_text("not ours", encoding="utf-8")
+        code, _, err = self.sdk.cli("uninstall-cli", "--prefix", str(self.bin))
+        self.assertEqual(code, 1)
+        self.assertEqual(self.link.read_text(encoding="utf-8"), "not ours")
+        self.link.unlink()
+        self.link.symlink_to("/bin/true")
+        self.assertEqual(self.sdk.cli("uninstall-cli", "--prefix", str(self.bin))[0], 1)
+        self.assertTrue(self.link.is_symlink())
+
+    def test_uninstall_with_nothing_there_is_fine(self):
+        code, out, _ = self.sdk.cli("uninstall-cli", "--prefix", str(self.bin))
+        self.assertEqual(code, 0)
+        self.assertIn("Nothing at", out)
+
+    def test_the_installed_link_runs_the_real_cli(self):
+        real = subprocess.run([str(SHIM), "install-cli", "--prefix", str(self.bin)], capture_output=True,
+                              text=True, env=dict(os.environ, GLASNOST_TOOLCHAIN_DIR=str(self.sdk.tmp)))
+        self.assertEqual(real.returncode, 0, real.stderr)
+        try:
+            result = subprocess.run([str(self.link), "--lang", "en", "install-toolchain", "--dry-run"],
+                                    capture_output=True, text=True, cwd="/",
+                                    env=dict(os.environ, GLASNOST_TOOLCHAIN_DIR=str(self.sdk.tmp)))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Dry run", result.stdout)
+        finally:
+            subprocess.run([str(SHIM), "uninstall-cli", "--prefix", str(self.bin)], capture_output=True)
+
+
 class RelativePaths(unittest.TestCase):
     def test_relative_toolchain_dir_and_cpct_path_are_resolved_against_the_caller(self):
         sdk = FakeSdk(self)
