@@ -35,7 +35,14 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCKFILE = "toolchain.lock.json"
 COMPLETE_MARKER = ".glasnost-complete"
 MIN_PYTHON = (3, 10)
-BOOST_HEADER = Path("/usr/include/boost/version.hpp")
+BOOST_HEADER_CANDIDATES = (
+    Path("/usr/include/boost/version.hpp"),
+    Path("/opt/homebrew/include/boost/version.hpp"),
+    Path("/usr/local/include/boost/version.hpp"),
+    Path("/opt/local/include/boost/version.hpp"),
+)
+BOOST_HEADER = next((p for p in BOOST_HEADER_CANDIDATES if p.is_file()),
+                    BOOST_HEADER_CANDIDATES[0])
 BUILD_TOOLS = ("git", "make", "gcc", "g++", "bison", "flex")
 
 # Built by install-toolchain, in this order (same list as the release workflow).
