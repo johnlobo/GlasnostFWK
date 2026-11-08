@@ -6,6 +6,9 @@ CHECK_EXAMPLES ?= platformer
 
 all: test
 
+setup:
+	./setup.sh
+
 generate:
 	$(PYTHON) tools/gen_video.py profiles/standard-160x200.json --out-dir generated
 	$(PYTHON) tools/gen_video.py profiles/experimental-160x288.json --out-dir generated

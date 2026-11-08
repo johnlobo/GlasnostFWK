@@ -44,6 +44,22 @@ Mensajes en castellano; `--lang en` o `GLASNOST_LANG=en` para inglés. El
 toolchain vive en `.toolchain/` (fuera de Git, sin `sudo`). Detalle en
 `docs/glasnost-cli.md`.
 
+## Configuración inicial
+
+```sh
+./setup.sh          # instala dependencias, toolchain, genera y compila (un solo paso)
+```
+
+O manualmente, en este orden:
+
+```sh
+bin/glasnost install-deps
+bin/glasnost install-toolchain
+bin/glasnost doctor
+make generate
+make check
+```
+
 ## Construcción y pruebas
 
 ```sh
