@@ -13,6 +13,9 @@ FWK_ECS_INPUT_JUMP  = 0x04
 FWK_ECS_INPUT_UP    = 0x08
 FWK_ECS_INPUT_DOWN  = 0x10
 FWK_ECS_INPUT_SPEED = 2
+;; In Mode 0 pixels are roughly twice as wide as they are tall, so vertical
+;; movement needs about twice the speed to look diagonal (45 degrees).
+FWK_ECS_INPUT_SPEED_Y = 4
 FWK_ECS_INPUT_JUMP_SPEED = 0xF8
 .area _CODE
 
@@ -55,12 +58,12 @@ _fwk_ecs_input_vertical:
     and c
     bit 3, a                         ; FWK_ECS_INPUT_UP
     jr z, _fwk_ecs_input_down
-    ld ECS_E_MOTION_VELOCITY_Y(iy), #-FWK_ECS_INPUT_SPEED
+    ld ECS_E_MOTION_VELOCITY_Y(iy), #-FWK_ECS_INPUT_SPEED_Y
     jr _fwk_ecs_input_done
 _fwk_ecs_input_down:
     bit 4, a                         ; FWK_ECS_INPUT_DOWN
     jr z, _fwk_ecs_input_vstop
-    ld ECS_E_MOTION_VELOCITY_Y(iy), #FWK_ECS_INPUT_SPEED
+    ld ECS_E_MOTION_VELOCITY_Y(iy), #FWK_ECS_INPUT_SPEED_Y
     jr _fwk_ecs_input_done
 _fwk_ecs_input_vstop:
     ld ECS_E_MOTION_VELOCITY_Y(iy), #0
