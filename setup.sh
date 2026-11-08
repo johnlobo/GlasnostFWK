@@ -19,16 +19,9 @@ echo "==> [1/5] Dependencias del sistema"
 "$GLASNOST" install-deps --yes
 
 # 2. Toolchain (CPCTelera Next + SDCC)
-# En macOS, compilar SDCC desde fuente no es compatible con clang/modern headers:
-# se recomienda usar una instalacion precompilada (CPCT_NEXT_PATH) o Docker/Linux.
+# En macOS se usa SDCC de Homebrew (precompilado) y se compilan el resto de
+# herramientas (img2cpc ya no requiere FreeImage).
 echo "==> [2/5] Toolchain"
-if [ "$(uname -s)" = "Darwin" ] && [ -z "${CPCT_NEXT_PATH:-}" ]; then
-    # En macOS se intenta compilar con adaptaciones (BFD, CPATH, etc.).
-    # Si falla, usa Docker o un toolchain precompilado.
-    if command -v docker >/dev/null 2>&1; then
-        echo "==> macOS detectado: se intentara compilar; si falla, usa Docker."
-    fi
-fi
 "$GLASNOST" install-toolchain
 
 # 3. Verificación

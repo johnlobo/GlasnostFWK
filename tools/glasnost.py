@@ -157,7 +157,7 @@ def default_runner(command: Sequence[str], **kwargs) -> "subprocess.CompletedPro
 # -------------------------------------------------------- install-deps
 
 PLATFORM_PACKAGES = {
-    "darwin": {"brew": ["python3", "git", "make", "bison", "flex", "boost"]},
+    "darwin": {"brew": ["python3", "git", "make", "bison", "flex", "boost", "sdcc"]},
     "debian": {"apt": ["python3", "git", "build-essential", "bison", "flex", "libboost-dev"]},
     "fedora": {"dnf": ["python3", "git", "make", "gcc", "gcc-c++", "bison", "flex", "boost-devel"]},
     "arch": {"pacman": ["python", "git", "base-devel", "bison", "flex", "boost"]},
@@ -187,6 +187,8 @@ def missing_dependencies() -> list[str]:
     absent = [tool for tool in BUILD_TOOLS if not shutil.which(tool)]
     if not BOOST_HEADER.is_file():
         absent.append("libboost-dev")
+    if sys.platform == "darwin" and not shutil.which("sdcc"):
+        absent.append("sdcc")
     return absent
 
 
