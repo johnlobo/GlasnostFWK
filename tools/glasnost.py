@@ -157,7 +157,7 @@ def default_runner(command: Sequence[str], **kwargs) -> "subprocess.CompletedPro
 # -------------------------------------------------------- install-deps
 
 PLATFORM_PACKAGES = {
-    "darwin": {"brew": ["python3", "git", "make", "bison", "flex", "boost", "sdcc"]},
+    "darwin": {"brew": ["python3", "git", "make", "bison", "flex", "boost"]},
     "debian": {"apt": ["python3", "git", "build-essential", "bison", "flex", "libboost-dev"]},
     "fedora": {"dnf": ["python3", "git", "make", "gcc", "gcc-c++", "bison", "flex", "boost-devel"]},
     "arch": {"pacman": ["python", "git", "base-devel", "bison", "flex", "boost"]},
@@ -187,8 +187,6 @@ def missing_dependencies() -> list[str]:
     absent = [tool for tool in BUILD_TOOLS if not shutil.which(tool)]
     if not BOOST_HEADER.is_file():
         absent.append("libboost-dev")
-    if sys.platform == "darwin" and not shutil.which("sdcc"):
-        absent.append("sdcc")
     return absent
 
 
@@ -420,14 +418,6 @@ def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runne
         if command == [FETCH]:
             fetch_pinned(runner, lock, checkout, label, lang)
             if sys.platform == "darwin":
-                sdcc_bin = shutil.which("sdcc")
-                if sdcc_bin:
-                    sdcc_dir = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "bin"
-                    sdcc_dir.mkdir(parents=True, exist_ok=True)
-                    link = sdcc_dir / "sdcc"
-                    if not link.exists():
-                        link.symlink_to(sdcc_bin)
-
                 # Adapt GNU BFD for Apple Silicon (arm64), as per CPCtelera guide.
                 config_bfd = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "bfd" / "config.bfd"
                 if config_bfd.is_file():
