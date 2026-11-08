@@ -12,3 +12,5 @@ __pycache__/
 .venv-docs/
 .toolchain/
 projects/
+tools/img2cpc/bin/
+tools/img2cpc/obj/

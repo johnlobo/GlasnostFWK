@@ -243,6 +243,8 @@ def _tool(cpct_path: Path | None, name: str, env: str) -> Path:
         raise AssetError(f"{env} does not point to an executable file: {candidate}")
 
     roots: list[Path] = []
+    # Prefer the framework's own bundled tools (e.g. img2cpc without FreeImage).
+    roots.append(Path(__file__).resolve().parent.parent)
     if cpct_path is not None:
         roots.append(cpct_path)
     for variable in ("CPCT_NEXT_PATH", "CPCT_PATH"):
