@@ -10,6 +10,8 @@
 FWK_ECS_INPUT_LEFT  = 0x01
 FWK_ECS_INPUT_RIGHT = 0x02
 FWK_ECS_INPUT_JUMP  = 0x04
+FWK_ECS_INPUT_UP    = 0x08
+FWK_ECS_INPUT_DOWN  = 0x10
 FWK_ECS_INPUT_SPEED = 2
 FWK_ECS_INPUT_JUMP_SPEED = 0xF8
 .area _CODE
@@ -41,6 +43,28 @@ _fwk_ecs_input_right:
     jr _fwk_ecs_input_jump
 _fwk_ecs_input_stop:
     ld ECS_E_MOTION_VELOCITY_X(iy), #0
+
+;; Vertical handling: if the entity opts into UP/DOWN (4-direction / top-down),
+;; fwk_ecs_system_input drives VELOCITY_Y directly and skips the jump. Otherwise
+;; (platformer profile) only the JUMP action applies an impulse when grounded.
+_fwk_ecs_input_vertical:
+    ld a, c
+    and #(FWK_ECS_INPUT_UP | FWK_ECS_INPUT_DOWN)
+    jr z, _fwk_ecs_input_jump        ; no vertical actions: try jump (platformer)
+    ld a, (fwk_input_held)
+    and c
+    bit 3, a                         ; FWK_ECS_INPUT_UP
+    jr z, _fwk_ecs_input_down
+    ld ECS_E_MOTION_VELOCITY_Y(iy), #-FWK_ECS_INPUT_SPEED
+    jr _fwk_ecs_input_done
+_fwk_ecs_input_down:
+    bit 4, a                         ; FWK_ECS_INPUT_DOWN
+    jr z, _fwk_ecs_input_vstop
+    ld ECS_E_MOTION_VELOCITY_Y(iy), #FWK_ECS_INPUT_SPEED
+    jr _fwk_ecs_input_done
+_fwk_ecs_input_vstop:
+    ld ECS_E_MOTION_VELOCITY_Y(iy), #0
+    jr _fwk_ecs_input_done
 
 _fwk_ecs_input_jump:
     ld a, (fwk_input_pressed)
