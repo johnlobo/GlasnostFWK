@@ -44,7 +44,22 @@ Mensajes en castellano; `--lang en` o `GLASNOST_LANG=en` para inglés. El
 toolchain vive en `.toolchain/` (fuera de Git, sin `sudo`). Detalle en
 `docs/glasnost-cli.md`.
 
-## Configuración inicial
+## Configuración con Docker (recomendado en macOS y Windows)
+
+```sh
+docker build -t glasnostfwk .
+docker run --rm -it -v "$(pwd)":/work -w /work glasnostfwk bash
+# dentro del contenedor:
+./setup.sh
+```
+
+O en un solo comando:
+
+```sh
+docker run --rm -it -v "$(pwd)":/work -w /work glasnostfwk bash -c './setup.sh'
+```
+
+## Configuración inicial (Linux nativo)
 
 ```sh
 ./setup.sh          # instala dependencias, toolchain, genera y compila (un solo paso)
