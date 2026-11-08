@@ -369,6 +369,13 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
         os.environ["C_INCLUDE_PATH"] = joined + os.pathsep + os.environ.get("C_INCLUDE_PATH", "")
         os.environ["CPPFLAGS"] = " ".join(f"-I{d}" for d in include_dirs) + " " + os.environ.get("CPPFLAGS", "")
 
+    # SDCC's bundled binutils do not build cleanly against modern macOS/clang
+    # headers. Force the missing definitions so the compile can proceed.
+    if sys.platform == "darwin":
+        extra = "-DDEFAULT_AR_DETERMINISTIC=1 -include utime.h"
+        os.environ["CFLAGS"] = extra + " " + os.environ.get("CFLAGS", "")
+        os.environ["CXXFLAGS"] = extra + " " + os.environ.get("CXXFLAGS", "")
+
     with install_lock(checkout, lang):
         return run_install(args, lock, checkout, plan, lang, runner)
 
@@ -394,6 +401,21 @@ def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runne
         print(say(lang, "toolchain.plan_step", n=number, total=len(plan), text=label), flush=True)
         if command == [FETCH]:
             fetch_pinned(runner, lock, checkout, label, lang)
+            if sys.platform == "darwin":
+                ar_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "ar.c"
+                rename_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "rename.c"
+                if ar_c.is_file():
+                    text = ar_c.read_text()
+                    if "#include <utime.h>" not in text:
+                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
+                    if "ifndef DEFAULT_AR_DETERMINISTIC" not in text:
+                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef DEFAULT_AR_DETERMINISTIC\n#define DEFAULT_AR_DETERMINISTIC 1\n#endif", 1)
+                    ar_c.write_text(text)
+                if rename_c.is_file():
+                    text = rename_c.read_text()
+                    if "#include <utime.h>" not in text:
+                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
+                    rename_c.write_text(text)
         elif command == [VERIFY]:
             absent_files = missing_files(checkout / "cpctelera")
             if absent_files:
