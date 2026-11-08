@@ -18,8 +18,17 @@ echo "==> GlasnostFWK: configuración inicial"
 echo "==> [1/5] Dependencias del sistema"
 "$GLASNOST" install-deps --yes
 
-# 2. Toolchain (CPCTelera Next + SDCC, compilado desde fuente)
+# 2. Toolchain (CPCTelera Next + SDCC)
+# En macOS, compilar SDCC desde fuente no es compatible con clang/modern headers:
+# se recomienda usar una instalacion precompilada (CPCT_NEXT_PATH) o Docker/Linux.
 echo "==> [2/5] Toolchain"
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${CPCT_NEXT_PATH:-}" ]; then
+    echo "    Aviso: en macOS la compilacion desde fuente de SDCC no esta soportada."
+    echo "    Opciones:"
+    echo "      - Usa un CPCTelera Next precompilado: export CPCT_NEXT_PATH=/ruta/a/cpctelera"
+    echo "      - Usa Docker/VM con Linux y ejecuta ./setup.sh dentro."
+    echo "    Continuando de todos modos (puede fallar)..."
+fi
 "$GLASNOST" install-toolchain
 
 # 3. Verificación
