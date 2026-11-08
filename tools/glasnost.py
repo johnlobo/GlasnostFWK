@@ -297,6 +297,10 @@ def install_plan(root: Path, lock: Lock, lang: str, jobs: int) -> list[tuple[str
         (say(lang, "toolchain.step_fetch", url=lock.url, path=checkout), [FETCH]),
     ]
     for relative in MAKE_STEPS:
+        # On macOS, SDCC is provided by Homebrew instead of being built from
+        # source (its bundled binutils do not compile with clang).
+        if sys.platform == "darwin" and relative == "tools/sdcc-4.5.0":
+            continue
         target = cpct if relative == "." else cpct / relative
         label = "cpctelera.lib" if relative == "." else relative
         steps.append((say(lang, "toolchain.step_make", target=label),
@@ -350,6 +354,10 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
         absent.append("libboost-dev")
     if absent:
         raise CliError(say(lang, "toolchain.missing_prereq", names=", ".join(absent)))
+
+    # On macOS, use Homebrew's prebuilt SDCC instead of compiling from source.
+    if sys.platform == "darwin" and shutil.which("brew") and not shutil.which("sdcc"):
+        run_checked(runner, ["brew", "install", "sdcc"], "brew install sdcc", lang, checkout)
 
     # Make sure the SDCC configure step finds Boost (and other headers) on
     # platforms where they are not in the default search path (e.g. macOS
@@ -407,28 +415,36 @@ def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runne
         if command == [FETCH]:
             fetch_pinned(runner, lock, checkout, label, lang)
             if sys.platform == "darwin":
-                ar_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "ar.c"
-                rename_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "rename.c"
-                if ar_c.is_file():
-                    text = ar_c.read_text()
-                    if "#include <utime.h>" not in text:
-                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
-                    if "ifndef DEFAULT_AR_DETERMINISTIC" not in text:
-                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef DEFAULT_AR_DETERMINISTIC\n#define DEFAULT_AR_DETERMINISTIC 1\n#endif", 1)
-                    ar_c.write_text(text)
-                if rename_c.is_file():
-                    text = rename_c.read_text()
-                    if "#include <utime.h>" not in text:
-                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
-                    rename_c.write_text(text)
-                bucomm_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "bucomm.c"
-                if bucomm_c.is_file():
-                    text = bucomm_c.read_text()
-                    if "#include <utime.h>" not in text:
-                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
-                    if "ifndef TARGET" not in text:
-                        text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef TARGET\n#define TARGET \"unknown\"\n#endif", 1)
-                    bucomm_c.write_text(text)
+                sdcc_bin = shutil.which("sdcc")
+                if sdcc_bin:
+                    sdcc_dir = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "bin"
+                    sdcc_dir.mkdir(parents=True, exist_ok=True)
+                    link = sdcc_dir / "sdcc"
+                    if not link.exists():
+                        link.symlink_to(sdcc_bin)
+                if sys.platform == "darwin":
+                    ar_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "ar.c"
+                    rename_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "rename.c"
+                    if ar_c.is_file():
+                        text = ar_c.read_text()
+                        if "#include <utime.h>" not in text:
+                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
+                        if "ifndef DEFAULT_AR_DETERMINISTIC" not in text:
+                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef DEFAULT_AR_DETERMINISTIC\n#define DEFAULT_AR_DETERMINISTIC 1\n#endif", 1)
+                        ar_c.write_text(text)
+                    if rename_c.is_file():
+                        text = rename_c.read_text()
+                        if "#include <utime.h>" not in text:
+                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
+                        rename_c.write_text(text)
+                    bucomm_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "bucomm.c"
+                    if bucomm_c.is_file():
+                        text = bucomm_c.read_text()
+                        if "#include <utime.h>" not in text:
+                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
+                        if "ifndef TARGET" not in text:
+                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef TARGET\n#define TARGET \"unknown\"\n#endif", 1)
+                        bucomm_c.write_text(text)
         elif command == [VERIFY]:
             absent_files = missing_files(checkout / "cpctelera")
             if absent_files:
