@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-11-06 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-11-08 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -1542,3 +1542,16 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
 
 Límites: el ratio es una aproximación para Mode 0 estándar (160x200); para el
 perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
+
+## Fase implementada: patrón de comprobación defensiva en línea
+
+- [x] Sustituidas las llamadas a `_xxx_expect_ok` por el macro `<PREFIX>_CHECK_OK`
+  (`jp c, _xxx_fail`) en `platformer`, `vertical` y `ecsmanager`. El macro se
+  desactiva con `<PREFIX>_DEBUG_CHECKS = 0` (cero ciclos en release).
+- [x] `platformone` define el mismo macro (`GAME_CHECK_OK`) pero sin llamadas
+  activas por defecto.
+- [x] El patrón queda documentado en la sección 11 del manual HTML/PDF.
+- [x] `nave` se mantiene con `_game_expect_ok` para no romper la guía
+  `docs/first-game.md` ni `docs/nave-walkthrough.md`, que citan su código
+  literalmente.
+- [x] `make test`: 436 pruebas correctas.
