@@ -146,6 +146,18 @@ python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pr
 
   <section aria-labelledby="primeros-pasos">
     <h2 id="primeros-pasos">3. Primeros pasos</h2>
+    <h3>3.0 Configuración inicial (una sola vez)</h3>
+    <p>Desde una copia recién descargada, la forma más sencilla es:</p>
+    <pre><code>cd /config/workspace/GlasnostFWK
+./setup.sh</code></pre>
+    <p><code>setup.sh</code> detecta la plataforma, instala las dependencias del sistema (Boost, bison, flex, gcc...), descarga y compila el toolchain fijado, verifica el entorno, genera los recursos y construye el framework. Equivale a:</p>
+    <pre><code>bin/glasnost install-deps
+bin/glasnost install-toolchain
+bin/glasnost doctor
+make generate
+make check</code></pre>
+    <p>Si prefiere hacerlo a mano, ejecute esos cinco comandos en ese orden. <code>bin/glasnost install-deps --yes</code> omite la confirmación.</p>
+
     <h3>3.1 Construir todo</h3>
     <pre><code>cd /config/workspace/GlasnostFWK
 make generate
