@@ -23,25 +23,11 @@ echo "==> [1/5] Dependencias del sistema"
 # se recomienda usar una instalacion precompilada (CPCT_NEXT_PATH) o Docker/Linux.
 echo "==> [2/5] Toolchain"
 if [ "$(uname -s)" = "Darwin" ] && [ -z "${CPCT_NEXT_PATH:-}" ]; then
-    # En macOS intentamos usar Docker automaticamente si esta disponible.
+    # En macOS se intenta compilar con adaptaciones (BFD, CPATH, etc.).
+    # Si falla, usa Docker o un toolchain precompilado.
     if command -v docker >/dev/null 2>&1; then
-        echo "==> macOS detectado: usando Docker para la compilacion."
-        docker build -t glasnostfwk . && \
-        docker run --rm -it -v "$(pwd)":/work -w /work glasnostfwk bash -c './setup.sh'
-        exit $?
+        echo "==> macOS detectado: se intentara compilar; si falla, usa Docker."
     fi
-    echo
-    echo "ERROR: la compilacion desde fuente del toolchain no esta soportada en macOS."
-    echo "       (SDCC y las herramientas de CPCTelera no compilan con clang/modern headers.)"
-    echo
-    echo "Opciones:"
-    echo "  1) Instala Docker Desktop y vuelve a ejecutar ./setup.sh (recomendado)."
-    echo "  2) Usa un CPCTelera Next precompilado (si lo tienes):"
-    echo "       export CPCT_NEXT_PATH=/ruta/a/cpctelera"
-    echo "       ./setup.sh"
-    echo "  3) Usa una VM Linux."
-    echo
-    exit 1
 fi
 "$GLASNOST" install-toolchain
 

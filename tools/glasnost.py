@@ -359,6 +359,11 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
     if sys.platform == "darwin" and shutil.which("brew") and not shutil.which("sdcc"):
         run_checked(runner, ["brew", "install", "sdcc"], "brew install sdcc", lang, checkout)
 
+    # macOS/Homebrew: expose headers and libraries to the legacy configure.
+    if sys.platform == "darwin":
+        os.environ["CPATH"] = "/opt/homebrew/include:" + os.environ.get("CPATH", "")
+        os.environ["LIBRARY_PATH"] = "/opt/homebrew/lib:" + os.environ.get("LIBRARY_PATH", "")
+
     # Make sure the SDCC configure step finds Boost (and other headers) on
     # platforms where they are not in the default search path (e.g. macOS
     # Homebrew installs them under /opt/homebrew/include).
@@ -422,6 +427,36 @@ def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runne
                     link = sdcc_dir / "sdcc"
                     if not link.exists():
                         link.symlink_to(sdcc_bin)
+
+                # Adapt GNU BFD for Apple Silicon (arm64), as per CPCtelera guide.
+                config_bfd = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "bfd" / "config.bfd"
+                if config_bfd.is_file():
+                    text = config_bfd.read_text()
+                    marker = "arm*-*-darwin*)"
+                    if marker not in text:
+                        # Insert before the Intel Darwin case.
+                        needle = "i[3-7]86-*-darwin*"
+                        case = ("arm*-*-darwin*)\n"
+                                "    targ_defvec=mach_o_le_vec\n"
+                                "    targ_selvecs=\"mach_o_le_vec mach_o_be_vec mach_o_fat_vec sym_vec\"\n"
+                                "    targ64_selvecs=x86_64_mach_o_vec\n"
+                                "    ;;\n")
+                        if needle in text:
+                            text = text.replace(needle, case + needle, 1)
+                            config_bfd.write_text(text)
+
+                # Make the Makefile respect the binutils configuration.
+                makefile_in = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "Makefile.in"
+                if makefile_in.is_file():
+                    text = makefile_in.read_text()
+                    text = text.replace("sdcc-libs: sdcc-sdbinutils", "sdcc-libs: $(SDCC_BINUTILS)")
+                    makefile_in.write_text(text)
+
+                # Clean partial builds.
+                obj_dir = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "obj"
+                if obj_dir.is_dir():
+                    import shutil as _sh
+                    _sh.rmtree(obj_dir, ignore_errors=True)
                 if sys.platform == "darwin":
                     ar_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "ar.c"
                     rename_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "rename.c"
