@@ -18,6 +18,14 @@ VERTICAL_ACTION_RIGHT = 0x02
 VERTICAL_ACTION_UP    = 0x04
 VERTICAL_ACTION_DOWN  = 0x08
 
+;; Comprobación defensiva de carry tras una llamada al framework.
+VERTICAL_DEBUG_CHECKS = 1
+.macro VERTICAL_CHECK_OK
+.if VERTICAL_DEBUG_CHECKS
+    jp c, _vertical_fail
+.endif
+.endm
+
 VERTICAL_ENTITY_PLAYER = 0x01
 VERTICAL_ENTITY_PICKUP = 0x02
 VERTICAL_CAPACITY      = 4
@@ -79,11 +87,6 @@ _vertical_fail_loop:               ; freeze here: keep the machine alive but sto
 ;;          call or by jp (tail call): both work because the error path never returns to
 ;;          the caller.
 ;; ----------------------------------------------------------------------------
-_vertical_expect_ok:
-    ret nc                           ; success: back to the caller
-    pop hl                           ; error: drop the caller's return address
-    jp _vertical_fail                ; A still holds the ABI error code
-
 ;; ----------------------------------------------------------------------------
 ;; _vertical_spawn
 ;;   Creates one 1x1 entity with MOTION and COLLISION in vertical_manager, built from
@@ -124,7 +127,8 @@ _vertical_spawn:
     ld ix, #vertical_manager
     ld hl, #_vertical_template
     call fwk_ecs_entity_create
-    jp _vertical_expect_ok           ; tail call: checks the result and returns
+    ret nc
+    jp _vertical_fail
 
 ;; ----------------------------------------------------------------------------
 ;; _load_level
@@ -142,7 +146,7 @@ _vertical_spawn:
 _load_level:
     ld ix, #vertical_manager
     call fwk_ecs_manager_init
-    call _vertical_expect_ok
+    VERTICAL_CHECK_OK
     ;; Player first so it takes slot 0 (vertical_player). B=x=10, C=y=100.
     ld a, #VERTICAL_ENTITY_PLAYER
     ld bc, #10 << 8 | 100
@@ -315,7 +319,8 @@ _collect_pickups:
     ld hl, #_pickup_cb
     ld e, #0                         ; channel 0: no ENTER/STAY/EXIT state kept
     call fwk_ecs_collide
-    jp _vertical_expect_ok
+    ret nc
+    jp _vertical_fail
 
 ;; ----------------------------------------------------------------------------
 ;; _main
@@ -349,10 +354,10 @@ _vertical_loop:                    ; one iteration per frame
     call _apply_input
     ld ix, #vertical_manager
     call fwk_ecs_system_motion_u8    ; integrate velocity, clamped to the screen
-    call _vertical_expect_ok
+    VERTICAL_CHECK_OK
     call _collect_pickups
     ld ix, #vertical_manager
     call fwk_ecs_manager_collect     ; free the pickups destroyed this frame
-    call _vertical_expect_ok
+    VERTICAL_CHECK_OK
     call _draw_player
     jr _vertical_loop

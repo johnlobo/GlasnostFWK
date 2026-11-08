@@ -157,11 +157,6 @@ _pfe_fail_loop:
 ;;           not rebalance the caller's stack. Call it right after the framework call,
 ;;           before any instruction that changes carry or A.
 ;; ----------------------------------------------------------------------------
-_pfe_expect_ok:
-    ret nc
-    pop hl                     ; drop the return address: the caller never resumes
-    jp _pfe_fail
-
 ;; ----------------------------------------------------------------------------
 ;; _pfe_spawn
 ;;   Builds a template entity from a PFE_ROW spawn row and creates it in the
@@ -255,7 +250,7 @@ _pfe_spawn:
 _pfe_spawn_to:
     push de                    ; keep the destination across the spawn
     call _pfe_spawn
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     pop hl                     ; HL = destination variable
     push iy
     pop de                     ; DE = entity address (IY cannot be stored directly)
@@ -359,7 +354,7 @@ _pfe_collisions:
     ld hl, #_pfe_items_cb
     ld e, #0
     call fwk_ecs_collide
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ;; The last coin wins before enemies are checked, as in the original: no life
     ;; is lost in the frame that takes it (_pfe_all_coins is not yet in `won`).
     ld a, (platformer_won)
@@ -374,7 +369,8 @@ _pfe_collisions:
     ld hl, #_pfe_enemy_cb
     ld e, #PFE_CH_ENEMY
     call fwk_ecs_collide
-    jp _pfe_expect_ok
+    ret nc
+    jp _pfe_fail
 
 ;; ----------------------------------------------------------------------------
 ;; _pfe_apply_events
@@ -405,7 +401,7 @@ _pfe_apply_events:
     ld ix, #platformer_manager
     ld iy, (platformer_door)
     call fwk_ecs_entity_enable
-    call _pfe_expect_ok
+    PFE_CHECK_OK
 _pfe_no_win:
     ; Door touched? Level 1 continues into level 2, level 2 only hides the door.
     ld a, (_pfe_door_hit)
@@ -431,7 +427,8 @@ _pfe_door_end:
     ld ix, #platformer_manager
     ld iy, (platformer_door)
     call fwk_ecs_entity_disable
-    jp _pfe_expect_ok
+    ret nc
+    jp _pfe_fail
 
 ;; ---- HUD -------------------------------------------------------------------
 ;; ----------------------------------------------------------------------------
@@ -642,7 +639,7 @@ _pfe_start_level:
     ld ix, (_pfe_map_desc)
     ld iy, #platformer_view            ; both maps are 20x25
     call fwk_tilemap_render_view
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ; Reset the state of the level; A=0 is also stored in the cadence tick.
     xor a
     ld (platformer_score), a
@@ -657,32 +654,32 @@ _pfe_start_level:
     ; Empty the manager and give the renderer's background buffers back.
     ld ix, #platformer_manager
     call fwk_ecs_manager_init
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld ix, #platformer_scene               ; the old entities vanished unrestored:
     call fwk_ecs_render_reset              ; give their background buffers back
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld ix, #platformer_manager             ; the spawns below take IX=manager
 
     ; Spawn in storage order: 0..3 coins, 4 door, 5 player, 6 left vertical
     ; enemy, 7 horizontal enemy, 8 right vertical enemy.
     ld hl, #_pfe_row_coin0
     call _pfe_spawn
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld hl, #_pfe_row_coin1
     call _pfe_spawn
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld hl, #_pfe_row_coin2
     call _pfe_spawn
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld hl, #_pfe_row_coin3
     call _pfe_spawn
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld hl, #_pfe_row_door
     ld de, #platformer_door
     call _pfe_spawn_to
     ld iy, (platformer_door)
     call fwk_ecs_entity_disable            ; the door appears after the last coin
-    call _pfe_expect_ok
+    PFE_CHECK_OK
 
     ; Player: the row cannot hold the platform fields, so set them on the new entity.
     ld hl, #_pfe_row_player
@@ -699,7 +696,7 @@ _pfe_start_level:
     ; Enemies. The left vertical one needs no pointer; the other two are tracked.
     ld hl, #_pfe_row_v2
     call _pfe_spawn
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld hl, #_pfe_row_h
     ld de, #platformer_enemy_h
     call _pfe_spawn_to
@@ -752,39 +749,39 @@ platformer_frame:
     ; Systems in order: behavior (enemy programs), input, physics, motion, animation.
     ld ix, #platformer_manager
     call fwk_ecs_system_behavior
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld ix, #platformer_manager
     call fwk_ecs_system_input
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld iy, (platformer_player)
     ld a, ECS_E_MOTION_VELOCITY_X(iy)
     ld (platformer_input_witness+1), a ; player X velocity after the input system
     ld ix, #platformer_manager
     call fwk_ecs_system_platform
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld ix, #platformer_manager
     call fwk_ecs_system_motion_u8
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld ix, #platformer_manager
     call fwk_ecs_system_animation
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ; Game rules on the new positions.
     call _pfe_collisions
     call _pfe_apply_events
     ;; Selective render: find what changed before VSYNC, touch video RAM after it.
     ld ix, #platformer_scene
     call fwk_ecs_render_prepare
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     call fwk_system_wait_frame
     ld ix, #platformer_scene
     call fwk_ecs_render_restore
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ld ix, #platformer_scene
     call fwk_ecs_render_draw
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     ;; Coins taken this frame have been erased: free their slots.
     ld ix, #platformer_manager
     call fwk_ecs_manager_collect
-    call _pfe_expect_ok
+    PFE_CHECK_OK
     call _pfe_hud_update
     jp platformer_frame
