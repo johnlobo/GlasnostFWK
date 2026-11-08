@@ -351,6 +351,24 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
     if absent:
         raise CliError(say(lang, "toolchain.missing_prereq", names=", ".join(absent)))
 
+    # Make sure the SDCC configure step finds Boost (and other headers) on
+    # platforms where they are not in the default search path (e.g. macOS
+    # Homebrew installs them under /opt/homebrew/include).
+    include_dirs = []
+    for candidate in BOOST_HEADER_CANDIDATES:
+        parent = str(candidate.parent)
+        if candidate.is_file() and parent not in include_dirs:
+            include_dirs.append(parent)
+    # Common fallbacks.
+    for fallback in ("/usr/include", "/usr/local/include", "/opt/homebrew/include", "/opt/local/include"):
+        if fallback not in include_dirs and Path(fallback).is_dir():
+            include_dirs.append(fallback)
+    if include_dirs:
+        joined = os.pathsep.join(include_dirs)
+        os.environ["CPLUS_INCLUDE_PATH"] = joined + os.pathsep + os.environ.get("CPLUS_INCLUDE_PATH", "")
+        os.environ["C_INCLUDE_PATH"] = joined + os.pathsep + os.environ.get("C_INCLUDE_PATH", "")
+        os.environ["CPPFLAGS"] = " ".join(f"-I{d}" for d in include_dirs) + " " + os.environ.get("CPPFLAGS", "")
+
     with install_lock(checkout, lang):
         return run_install(args, lock, checkout, plan, lang, runner)
 
