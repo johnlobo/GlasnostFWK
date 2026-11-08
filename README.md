@@ -28,6 +28,7 @@ Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
 
 ```sh
 bin/glasnost doctor               # herramientas, dependencias y toolchain
+bin/glasnost install-deps         # instala las dependencias del sistema (Boost, bison, flex, ...)
 bin/glasnost install-toolchain    # descarga y compila el commit de toolchain.lock.json
 bin/glasnost build platformer     # compila ejemplos con ese toolchain
 bin/glasnost test                 # make test

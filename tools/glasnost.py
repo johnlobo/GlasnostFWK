@@ -149,6 +149,83 @@ def default_runner(command: Sequence[str], **kwargs) -> "subprocess.CompletedPro
     return subprocess.run(list(command), text=True, **kwargs)
 
 
+# -------------------------------------------------------- install-deps
+
+PLATFORM_PACKAGES = {
+    "darwin": {"brew": ["python3", "git", "make", "bison", "flex", "boost"]},
+    "debian": {"apt": ["python3", "git", "build-essential", "bison", "flex", "libboost-dev"]},
+    "fedora": {"dnf": ["python3", "git", "make", "gcc", "gcc-c++", "bison", "flex", "boost-devel"]},
+    "arch": {"pacman": ["python", "git", "base-devel", "bison", "flex", "boost"]},
+    "suse": {"zypper": ["python3", "git", "make", "gcc", "gcc-c++", "bison", "flex", "boost-devel"]},
+}
+
+
+def detect_platform() -> tuple[str, str] | None:
+    """Return (platform_key, manager) or None if unsupported."""
+    if sys.platform == "darwin":
+        return ("darwin", "brew")
+    if sys.platform.startswith("linux"):
+        for manager in ("apt", "dnf", "pacman", "zypper"):
+            if shutil.which(manager):
+                if manager == "apt":
+                    return ("debian", "apt")
+                if manager == "dnf":
+                    return ("fedora", "dnf")
+                if manager == "pacman":
+                    return ("arch", "pacman")
+                if manager == "zypper":
+                    return ("suse", "zypper")
+    return None
+
+
+def missing_dependencies() -> list[str]:
+    absent = [tool for tool in BUILD_TOOLS if not shutil.which(tool)]
+    if not BOOST_HEADER.is_file():
+        absent.append("libboost-dev")
+    return absent
+
+
+def cmd_install_deps(args, root: Path, lang: str, runner: Runner) -> int:
+    platform = detect_platform()
+    if platform is None:
+        print(say(lang, "install_deps.no_manager", platform=sys.platform,
+                  packages=", ".join(BUILD_TOOLS) + ", libboost-dev"))
+        return 1
+    platform_key, manager = platform
+    packages = PLATFORM_PACKAGES[platform_key][manager]
+    print(say(lang, "install_deps.platform", platform=sys.platform, manager=manager))
+    if not missing_dependencies():
+        print(say(lang, "install_deps.already"))
+        return 0
+    print(say(lang, "install_deps.running", packages=", ".join(packages)))
+    if not args.yes:
+        try:
+            answer = input(say(lang, "install_deps.confirm", packages=", ".join(packages)) + " ").strip().lower()
+        except EOFError:
+            answer = ""
+        if answer not in ("s", "y", "si", "sí", "yes"):
+            print(say(lang, "install_deps.cancelled"))
+            return 1
+    if manager == "brew":
+        command = ["brew", "install", *packages]
+    elif manager == "apt":
+        command = ["sudo", "apt", "install", "-y", *packages]
+    elif manager == "dnf":
+        command = ["sudo", "dnf", "install", "-y", *packages]
+    elif manager == "pacman":
+        command = ["sudo", "pacman", "-S", "--noconfirm", *packages]
+    elif manager == "zypper":
+        command = ["sudo", "zypper", "install", "-y", *packages]
+    else:
+        print(say(lang, "install_deps.no_manager", platform=sys.platform, packages=", ".join(packages)))
+        return 1
+    result = runner(command, check=False)
+    if result.returncode != 0:
+        raise CliError(say(lang, "install_deps.failed", platform=sys.platform))
+    print(say(lang, "install_deps.done"))
+    return 0
+
+
 # ----------------------------------------------------------------- doctor
 
 def sdk_version(root: Path, runner: Runner) -> str:
@@ -895,6 +972,10 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     doctor = sub.add_parser("doctor", help=say(lang, "help.doctor"))
     doctor.add_argument("--network", action="store_true", help=say(lang, "help.network"))
     doctor.set_defaults(func=cmd_doctor)
+
+    install_deps = sub.add_parser("install-deps", help=say(lang, "help.install_deps"))
+    install_deps.add_argument("--yes", action="store_true", help=say(lang, "help.install_deps_yes"))
+    install_deps.set_defaults(func=cmd_install_deps)
 
     install = sub.add_parser("install-toolchain", help=say(lang, "help.install"))
     install.add_argument("--dry-run", action="store_true", help=say(lang, "help.install_dry"))
