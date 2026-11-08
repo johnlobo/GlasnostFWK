@@ -381,7 +381,7 @@ FWK_ECS_RENDER_SCENE escena, managers, 1, trabajo, 8, pools, 1
     </article>
     <article class="api" data-module="core/ecs_input.s">
       <h4>Sistema ECS de entrada — <code>core/ecs_input.s</code></h4>
-      <p><code>fwk_ecs_system_input</code> recibe <code>IX=manager</code>, recorre entidades con <code>INPUT</code> y traduce el estado global de <code>fwk_input_update</code> a velocidad horizontal y salto. El campo <code>action_mask</code> usa izquierda <code>0x01</code>, derecha <code>0x02</code> y salto <code>0x04</code>. El sistema conserva el contrato de callback del manager y marca render dirty al iniciar un salto.</p>
+      <p><code>fwk_ecs_system_input</code> recibe <code>IX=manager</code>, recorre entidades con <code>INPUT</code> y traduce el estado global de <code>fwk_input_update</code> a velocidad. El campo <code>action_mask</code> usa izquierda <code>0x01</code>, derecha <code>0x02</code> y salto <code>0x04</code>. Si la entidad incluye arriba <code>0x08</code> y/o abajo <code>0x10</code>, el sistema gestiona tambi&eacute;n la velocidad vertical directa (movimiento de cuatro direcciones) y omite el salto; en ese caso la velocidad vertical es <code>FWK_ECS_INPUT_SPEED_Y</code> (el doble de <code>FWK_ECS_INPUT_SPEED</code>, para compensar la geometr&iacute;a ancha de los p&iacute;xeles Mode 0). Si no incluye esos bits, se comporta como antes (plataformas: solo horizontal m&aacute;s salto desde el suelo). El sistema conserva el contrato de callback del manager y marca render dirty al iniciar un salto.</p>
     </article>
     <article class="api" data-module="core/ecs_platform.s">
       <h4>Sistema ECS de plataforma — <code>core/ecs_platform.s</code></h4>

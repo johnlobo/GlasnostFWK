@@ -1528,3 +1528,17 @@ sustituyó por un diseño mínimo con presupuesto de tamaño fijado de antemano.
   con sentidos distintos (el tutorial lo avisa); el tutorial no lista todos los símbolos
   `Key_*`/`cpct_*`/`ECS_*` que usa `main.s`; los comentarios de `main.s` que dicen «cuatro
   entidades» no cambian con el ejercicio 2 (el tutorial lo avisa).
+
+## Fase implementada: movimiento vertical en el adaptador de entrada
+
+- [x] `fwk_ecs_system_input` gestiona ahora también la velocidad vertical directa
+  cuando la entidad incluye los bits `FWK_ECS_INPUT_UP` (0x08) y/o
+  `FWK_ECS_INPUT_DOWN` (0x10) en su `action_mask`. En ese caso se omite el salto.
+- [x] Nueva constante `FWK_ECS_INPUT_SPEED_Y = 4`, el doble de
+  `FWK_ECS_INPUT_SPEED`, para compensar la geometría ancha de los píxeles Mode 0.
+- [x] El esqueleto `platformone` usa movimiento de cuatro direcciones a través del
+  framework y deja de usar `_game_steer`.
+- [x] Manual y guía de plataformas actualizados; PDFs y checksums regenerados.
+
+Límites: el ratio es una aproximación para Mode 0 estándar (160x200); para el
+perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
