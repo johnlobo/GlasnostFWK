@@ -718,6 +718,15 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
         <tr><td>Falla <code>make test</code> por el manual.</td><td>Documente el nuevo ejemplo/módulo en este HTML y ejecute <code>make manual</code>.</td></tr>
       </tbody>
     </table>
+    <h3>Comprobación defensiva tras llamadas al framework</h3>
+    <p>Las rutinas del framework devuelven carry activo y un código de error en <code>A</code> cuando fallan. Un patrón recomendado en el juego es comprobar inmediatamente ese carry y, si hay error, saltar a una rutina que publique el código en una variable observable (<code>game_status</code>) y detenga el juego. Para evitar el coste de una llamada en el bucle principal, conviene inlinarlo con un macro condicional:</p>
+    <pre><code>GAME_DEBUG_CHECKS = 1
+.macro GAME_CHECK_OK
+.if GAME_DEBUG_CHECKS
+    jp c, _game_fail
+.endif
+.endm</code></pre>
+    <p>Usado justo después de cada llamada (<code>GAME_CHECK_OK</code>), el macro se expande a <code>jp c, _game_fail</code> en desarrollo y a nada en release (<code>GAME_DEBUG_CHECKS = 0</code>), sin ciclos de call/ret. El mismo patrón se aplica a <code>fwk_ecs_system_input</code> y al resto de sistemas.</p>
   </section>
 
   <section aria-labelledby="mantenimiento">

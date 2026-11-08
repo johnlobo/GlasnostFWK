@@ -103,11 +103,6 @@ _game_fail_loop:
 ;;   Notes: On error it drops its own return address (pop hl) and jumps to _game_fail.
 ;;          Call it right after the framework call: anything in between may change the carry.
 ;; ----------------------------------------------------------------------------
-_game_expect_ok:
-    ret nc
-    pop hl
-    jp _game_fail
-
 ;; ----------------------------------------------------------------------------
 ;; _game_spawn
 ;;   Builds an entity from a spawn row (GAME_ROW), creates it in the manager and,
@@ -382,29 +377,29 @@ _main::
     ;; Empty manager and renderer, then spawn the player and the three drones.
     ld ix, #game_manager
     call fwk_ecs_manager_init
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_scene
     call fwk_ecs_render_reset
-    call _game_expect_ok
+    GAME_CHECK_OK
 
     ld ix, #game_manager
     ld hl, #_game_row_player
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld (game_player), iy            ; the collision pass needs the player's address
     ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT   ; LEFT/RIGHT steer it
     ld ix, #game_manager
     ld hl, #_game_row_drone0
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld hl, #_game_row_drone1
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld hl, #_game_row_drone2
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
 
     ld a, #0x5A
     ld (game_status), a             ; running: tests and the emulator wait for this
@@ -414,43 +409,43 @@ game_frame:
     call fwk_input_update           ; read the keys once per frame
     ld ix, #game_manager
     call fwk_ecs_system_behavior
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     call fwk_ecs_system_input        ; LEFT and RIGHT set the horizontal velocity
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_steer              ; UP and DOWN set the vertical velocity
     call fwk_ecs_system_run
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     call fwk_ecs_system_motion_u8    ; velocity moves every entity
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     call fwk_ecs_system_animation    ; every animation counts down and changes frame
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_clamp
     call fwk_ecs_system_run
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager             ; the player against every drone (collision + behavior)
     ld iy, (game_player)
     ld bc, #ECS_C_COLLISION | ECS_C_BEHAVIOR
     ld hl, #_game_drone_cb
     ld e, #GAME_CH_DRONE
     call fwk_ecs_collide
-    call _game_expect_ok
+    GAME_CHECK_OK
     ;; Selective render: find what changed before VSYNC, touch video RAM after it.
     ld ix, #game_scene
     call fwk_ecs_render_prepare
-    call _game_expect_ok
+    GAME_CHECK_OK
     call fwk_system_wait_frame
     ld ix, #game_scene
     call fwk_ecs_render_restore
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_scene
     call fwk_ecs_render_draw
-    call _game_expect_ok
+    GAME_CHECK_OK
     call _game_hud_update            ; after the render: text goes over what it left
     jp game_frame

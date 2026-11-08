@@ -8,6 +8,14 @@
 ECSMANAGER_CAPACITY = 3
 ECSMANAGER_CAD_CAPACITY = 5
 
+;; Comprobación defensiva de carry tras una llamada al framework.
+ECSMANAGER_DEBUG_CHECKS = 1
+.macro ECSMANAGER_CHECK_OK
+.if ECSMANAGER_DEBUG_CHECKS
+    jp c, _ecsmanager_fail
+.endif
+.endm
+
 .area _DATA
 ecsmanager_storage:: .ds ECS_ENTITY_SIZE * ECSMANAGER_CAPACITY
 FWK_ECS_MANAGER_DESCRIPTOR ecsmanager_manager, ecsmanager_storage, ECSMANAGER_CAPACITY
@@ -120,11 +128,6 @@ _ecsmanager_loop:
 ;;   Notes: On error it pops its own return address (HL is overwritten), so the
 ;;          caller's caller is skipped, and jumps to _ecsmanager_fail with A unchanged.
 ;; ----------------------------------------------------------------------------
-_ecsmanager_expect_ok:
-    ret nc                              ; carry clear: the call succeeded
-    pop hl                              ; drop our return address: never go back to the caller
-    jp _ecsmanager_fail
-
 ;; ----------------------------------------------------------------------------
 ;; _ecsmanager_callback
 ;;   TEST-system callback for the destroy scenario. Counts its calls in
@@ -242,21 +245,21 @@ _main::
     call fwk_project_init
     ld ix, #ecsmanager_manager          ; IX stays the manager for the whole first half
     call fwk_ecs_manager_init
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
 
     ;; Three deterministic stable slots.
     ld hl, #ecsmanager_template
     call fwk_ecs_entity_create
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     push iy
     pop hl
     ld (ecsmanager_first_slot), hl      ; slot 0, used by the motion checks and the reuse check
     ld hl, #ecsmanager_template
     call fwk_ecs_entity_create
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     ld hl, #ecsmanager_template
     call fwk_ecs_entity_create
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     ld a, FWK_ECS_MANAGER_ACTIVE_COUNT(ix)
     cp #3                               ; all three created
     ld a, #0xE1                         ; (ld leaves the flags of cp alone)
@@ -268,9 +271,9 @@ _main::
 _ecsmanager_system_loop:                ; behavior sets vx, motion applies it
     push bc
     call fwk_ecs_system_behavior
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     call fwk_ecs_system_motion_u8
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     pop bc
     djnz _ecsmanager_system_loop
     ld iy, (ecsmanager_first_slot)
@@ -310,14 +313,14 @@ _ecsmanager_motion_probe_loop:
     ;; Disable the middle stable slot.
     ld iy, #ecsmanager_storage + ECS_ENTITY_SIZE
     call fwk_ecs_entity_disable
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
 
     ;; Run TEST only for the two ACTIVE entities. First callback destroys one.
     ld iy, #0xBEEF                      ; sentinel: the system must hand IY back unchanged
     ld bc, #ECS_C_TEST
     ld hl, #_ecsmanager_callback
     call fwk_ecs_system_run
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     push iy
     pop hl
     ld de, #0xBEEF
@@ -337,7 +340,7 @@ _ecsmanager_motion_probe_loop:
     ;; Collection frees exactly one slot, then creation reuses index zero.
     ld iy, #0xCAFE                      ; sentinel: collect must preserve IY
     call fwk_ecs_manager_collect
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     push iy
     pop hl
     ld de, #0xCAFE
@@ -351,7 +354,7 @@ _ecsmanager_motion_probe_loop:
     jp nz, _ecsmanager_fail
     ld hl, #ecsmanager_template
     call fwk_ecs_entity_create
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     push iy
     pop de
     ld hl, (ecsmanager_first_slot)
@@ -363,7 +366,7 @@ _ecsmanager_motion_probe_loop:
     ;; Re-enable the middle slot: render must become dirty.
     ld iy, #ecsmanager_storage + ECS_ENTITY_SIZE
     call fwk_ecs_entity_enable
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     bit 1, ECS_E_RENDER_FLAGS(iy)       ; bit 1 = render dirty
     ld a, #0xE6
     jp z, _ecsmanager_fail
@@ -411,7 +414,7 @@ _ecsmanager_motion_probe_loop:
     ;; Cadence: create five entities with different periods and phases.
     ld ix, #ecsmanager_cad_manager
     call fwk_ecs_manager_init
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     ld hl, #ecsmanager_cad_table
     ld b, #ECSMANAGER_CAD_CAPACITY
 _ecsmanager_cad_create:                 ; one entity per cadence byte
@@ -430,7 +433,7 @@ _ecsmanager_cad_create:                 ; one entity per cadence byte
     ld ECS_E_TYPE(iy), #0               ; TYPE is the running tick sum
     ld hl, #ecsmanager_cad_template
     call fwk_ecs_entity_create
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     pop hl
     pop bc
     djnz _ecsmanager_cad_create
@@ -443,7 +446,7 @@ _ecsmanager_cad_tick:                   ; ticks 0..15
     ld bc, #ECS_C_TEST
     ld hl, #_ecsmanager_cadence_callback
     call fwk_ecs_system_run
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     ld hl, #fwk_ecs_tick
     inc (hl)                            ; the game loop would do this once per frame
     ld a, (hl)
@@ -479,7 +482,7 @@ _ecsmanager_cad_tick:                   ; ticks 0..15
     ld bc, #ECS_C_TEST
     ld hl, #_ecsmanager_cadence_callback
     call fwk_ecs_system_run_any
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     ld a, (ecsmanager_cad_storage + ECS_E_TYPE)
     cp #121
     ld a, #0xD6
@@ -505,7 +508,7 @@ _ecsmanager_cad_tick:                   ; ticks 0..15
     ld bc, #ECS_C_TEST
     ld hl, #_ecsmanager_cadence_callback
     call fwk_ecs_system_run
-    call _ecsmanager_expect_ok
+    ECSMANAGER_CHECK_OK
     ld a, (ecsmanager_cad_storage + ECS_ENTITY_SIZE + ECS_E_TYPE)
     cp #57                                  ; every 2nd from phase 0: not due at tick 1
     ld a, #0xDB
