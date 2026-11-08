@@ -23,11 +23,19 @@ echo "==> [1/5] Dependencias del sistema"
 # se recomienda usar una instalacion precompilada (CPCT_NEXT_PATH) o Docker/Linux.
 echo "==> [2/5] Toolchain"
 if [ "$(uname -s)" = "Darwin" ] && [ -z "${CPCT_NEXT_PATH:-}" ]; then
-    echo "    Aviso: en macOS la compilacion desde fuente de SDCC no esta soportada."
-    echo "    Opciones:"
-    echo "      - Usa un CPCTelera Next precompilado: export CPCT_NEXT_PATH=/ruta/a/cpctelera"
-    echo "      - Usa Docker/VM con Linux y ejecuta ./setup.sh dentro."
-    echo "    Continuando de todos modos (puede fallar)..."
+    echo
+    echo "ERROR: la compilacion desde fuente del toolchain no esta soportada en macOS."
+    echo "       (SDCC y las herramientas de CPCTelera no compilan con clang/modern headers.)"
+    echo
+    echo "Opciones:"
+    echo "  1) Usa un CPCTelera Next precompilado (si lo tienes):"
+    echo "       export CPCT_NEXT_PATH=/ruta/a/cpctelera"
+    echo "       ./setup.sh"
+    echo "  2) Usa Docker o una VM Linux:"
+    echo "       docker run -it --rm -v \"\$(pwd)\":/work -w /work ubuntu:24.04 bash -c './setup.sh'"
+    echo "  3) Usa un SDCC precompilado de Homebrew (experimental, no garantizado)."
+    echo
+    exit 1
 fi
 "$GLASNOST" install-toolchain
 
