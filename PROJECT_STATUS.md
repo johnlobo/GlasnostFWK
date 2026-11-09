@@ -1585,3 +1585,15 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   activo) porque la guía y el recorrido citan ese código; el paso 2 de la guía lo avisa.
 - [x] `tests/project_smoke.py` exige también el suelo del mapa en la última línea.
 
+## Se elimina `_game_expect_ok` de `nave` y la guía (2026-11-09)
+
+- [x] `docs/first-game/step2|3` y `examples/nave` ya no llaman a `_game_expect_ok` tras
+  cada llamada del framework (la rutina desaparece). Definen el macro `GAME_CHECK_OK`
+  desactivado (`GAME_DEBUG_CHECKS = 0`, cero ciclos), como la plantilla, y un comentario
+  en `game_frame` explica cómo activarlo. Solo la llamada del mapa lleva el macro.
+- [x] `docs/first-game.md` y `docs/nave-walkthrough.md` reescritos (sección
+  `_game_fail` y `GAME_CHECK_OK`, bloques y ejercicio 2); `nave_exercises.py` y el umbral de
+  rutinas de `test_nave_walkthrough` (9 a 8) ajustados.
+- Sustituye la línea de la fase «patrón de comprobación defensiva» que decía que `nave` se
+  mantenía con `_game_expect_ok`.
+

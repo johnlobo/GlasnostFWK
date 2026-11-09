@@ -19,8 +19,7 @@ ROW_LINE = ("_game_row_drone3: GAME_ROW GAME_DRONE_COMPS, GAME_T_DRONE, 40, 160,
             "game_drone_pixels, _game_program_drone, _game_anim_drone")
 SPAWN_BLOCK = ("    ld ix, #game_manager\n"
                "    ld hl, #_game_row_drone3\n"
-               "    call _game_spawn\n"
-               "    call _game_expect_ok\n")
+               "    call _game_spawn\n")
 ROW_ANCHOR = "_game_row_drone2:"
 SPAWN_ANCHOR = "    ld a, #0x5A\n    ld (game_status), a"
 

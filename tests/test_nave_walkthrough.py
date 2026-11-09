@@ -69,7 +69,7 @@ class WalkthroughText(unittest.TestCase):
         shown = "\n".join(body for name, body in self.blocks if name == "main.s")
         main = (NAVE / "main.s").read_text(encoding="utf-8")
         routines = re.findall(r"^;; (_\w+)\n;;   [A-Z]", main, re.M)
-        self.assertGreaterEqual(len(routines), 9)
+        self.assertGreaterEqual(len(routines), 8)
         for routine in routines:
             with self.subTest(routine):
                 self.assertRegex(shown, rf"(?m)^;; {re.escape(routine)}$")

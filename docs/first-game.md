@@ -168,11 +168,11 @@ componente y su módulo en `example.json`.
 Ficheros de este paso: [`step2/`](first-game/step2/).
 
 Los `main.s` y `common.inc` de `step2/` y `step3/` son completos, así que puedes copiarlos
-enteros en vez de editar. Una diferencia con la plantilla: ahí la comprobación del carry
-tras una llamada al framework es el macro `GAME_CHECK_OK`, desactivado por defecto; en
-estos ficheros es la rutina `_game_expect_ok`, que comprueba siempre y detiene el juego
-con el código de error en `game_status`. Si editas a mano, cambia cada
-`call _game_expect_ok` que veas más abajo por `GAME_CHECK_OK`.
+enteros en vez de editar. Ni la plantilla ni estos ficheros comprueban el carry de las
+llamadas al framework: el macro `GAME_CHECK_OK` de `common.inc` está desactivado
+(`GAME_DEBUG_CHECKS = 0`, cero ciclos). Para depurar, pon `GAME_DEBUG_CHECKS = 1` y escribe
+`GAME_CHECK_OK` justo después de la llamada que quieras vigilar: si falla, el juego se
+detiene y `game_status` guarda el código de error.
 
 1. Dibuja los fotogramas nuevos: una tira de 32x8 con la nave, la nave con las
    llamas cambiadas, el dron y el dron con las patas cambiadas
@@ -312,14 +312,12 @@ _game_anim:     .dw 0                  ; descriptor of the row being spawned
     jp fwk_ecs_anim_set             ; IY = the new entity
 ```
 
-   Y en el bucle principal, justo después de `call fwk_ecs_system_motion_u8` y su
-   comprobación, el sistema de animación:
+   Y en el bucle principal, justo después de `call fwk_ecs_system_motion_u8`, el sistema de animación:
 
 <!-- guia: step2/main.s -->
 ```asm
     ld ix, #game_manager
     call fwk_ecs_system_animation    ; every animation counts down and changes frame
-    call _game_expect_ok
 ```
 
 Compila y ejecuta: la nave y los drones ahora alternan dos fotogramas. Si el juego
@@ -467,7 +465,7 @@ _game_hud_units:
 ```
 
 6. En el bucle principal (`game_frame`), después de la llamada al sistema de recorte
-   (`call fwk_ecs_system_run` con `#_game_clamp` y su `call _game_expect_ok`) y antes del
+   (`call fwk_ecs_system_run` con `#_game_clamp`) y antes del
    comentario `;; Selective render`, la comparación de la nave con los drones:
 
 <!-- guia: step3/main.s -->
@@ -478,7 +476,6 @@ _game_hud_units:
     ld hl, #_game_drone_cb
     ld e, #GAME_CH_DRONE
     call fwk_ecs_collide
-    call _game_expect_ok
 ```
 
 Y al final del bucle, justo antes de `jp game_frame`, el marcador:
