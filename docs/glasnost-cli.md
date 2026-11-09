@@ -68,7 +68,7 @@ BluePixel (johnlobo/BluePixel en GitHub, Apple Silicon)`; las opciones se numera
 - **BluePixel** consulta el último release de `johnlobo/BluePixel` en la API de GitHub, baja su
   zip de macOS arm64, comprueba el SHA-256 que publica GitHub para ese fichero (un release sin
   digest se rechaza), lo extrae en `tools/emulators/bluepixel-<tag>-macos-arm64/` y lo guarda.
-  Se lanza como MacAPE: `imagen [/A] [/SYM:fichero.noi]`.
+  Se lanza con `imagen [/A] [/SYM:fichero.noi]`.
 - **3** no guarda nada; se volverá a preguntar. **4** (solo si no hay ninguno guardado) deja de
   preguntar: sin terminal, o tras elegirla, `run` sigue usando lo que encuentre y si no, imprime
   la ruta de la imagen, hasta que ejecutes `glasnost emulator`. Con un emulador ya guardado,
@@ -85,11 +85,11 @@ emulador tiene opción para ello:
 
 | Emulador | Línea de comandos | Símbolos |
 |---|---|---|
-| BluePixel, MacAPE | `imagen.dsk /A /SYM:<nombre>.noi` (`/A` teclea `RUN"<programa>` por ti) | sí |
+| BluePixel | `imagen.dsk /A /SYM:<nombre>.noi` (`/A` teclea `RUN"<programa>` por ti) | sí |
 | Retro Virtual Machine | como `cpct_rvm` de CPCtelera: `-ns -b=<máquina> -i= imagen -c=RUN"<nombre>"\n`; CDT con `-p -w`; SNA con `-s` | no hay opción conocida |
 | Otros (AmSpiriT...) | la imagen como único argumento | no |
 
-Con BluePixel, MacAPE y Retro Virtual Machine, `run` abre el **DSK** (arranca solo); con cualquier otro
+Con BluePixel y Retro Virtual Machine, `run` abre el **DSK** (arranca solo); con cualquier otro
 emulador abre el CDT si existe. `-- --image cdt|dsk` fuerza el formato (un CDT en BluePixel no
 arranca solo: hay que escribir `RUN"` tras darle a reproducir). `run` imprime la línea de comandos
 completa que lanza.

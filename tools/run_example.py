@@ -24,11 +24,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import emulator_setup  # noqa: E402
 DEFAULT_EMULATOR = ROOT.parent / "tools" / "amspirit-lite" / "run.sh"
-EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "macape", "cpct_macape")
-MACAPE_CANDIDATES = (
-    Path("/Applications/MacAPE.app/Contents/MacOS/MacAPE"),
-    Path.home() / "Proyectos" / "macape" / "tools" / "macape",
-    Path.home() / "Proyectos" / "macape" / "build" / "MacAPE.app" / "Contents" / "MacOS" / "MacAPE",
+EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "bluepixel")
+BLUEPIXEL_CANDIDATES = (
+    Path("/Applications/BluePixel.app/Contents/MacOS/BluePixel"),
+    Path.home() / "Applications" / "BluePixel.app" / "Contents" / "MacOS" / "BluePixel",
 )
 
 
@@ -64,7 +63,7 @@ def select_image(name: str, requested: str | None, build_dir: Path | None = None
             raise SystemExit(f"No hay imagen .{requested} construida para {name}; disponibles: {formats}. {how.capitalize()}.")
         return wanted
     # CDT first unless the emulator starts discs by itself: the tape made by 2cdt autoruns, while a
-    # DSK needs RUN" typed by hand, which BluePixel (/A), MacAPE (/A) and RVM (-c=RUN"...") do for us.
+    # DSK needs RUN" typed by hand, which BluePixel (/A) and RVM (-c=RUN"...") do for us.
     return available[0]
 
 
@@ -86,7 +85,7 @@ def find_emulator(explicit: str | None) -> str | None:
         found = shutil.which(command)
         if found:
             return found
-    for candidate in MACAPE_CANDIDATES:
+    for candidate in BLUEPIXEL_CANDIDATES:
         if candidate.is_file():
             return str(candidate)
     return None

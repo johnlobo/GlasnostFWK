@@ -128,10 +128,10 @@ para que puedas cogerlos directamente. Esas copias están ignoradas por git;
 se copia al repositorio.
 
 `make run` usa el emulador indicado en `GLASNOST_EMULATOR` o, si no se indica,
-busca AmSpiriT-Lite junto al repositorio y, si no lo encuentra, MacAPE
-(`/Applications/MacAPE.app` o `~/Proyectos/macape`). Para forzarlo use
-`GLASNOST_EMULATOR=/ruta/a/cpct_macape`. Sin emulador imprime la ruta de la
-imagen para abrirla a mano.
+usa el que `glasnost run` dejó configurado (`tools/emulators/emulator.json`) o,
+sin él, busca AmSpiriT-Lite junto al repositorio o BluePixel (`/Applications`).
+Para forzarlo use `GLASNOST_EMULATOR=/ruta/al/emulador`. Sin emulador imprime
+la ruta de la imagen para abrirla a mano.
 
 ### Configuración CPCtelera y gráficos por ejemplo
 

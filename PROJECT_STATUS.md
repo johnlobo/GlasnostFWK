@@ -871,14 +871,13 @@ Cambios aún sin commit/push.
 - [x] `tests/test_example_targets.py` cubre la copia y la limpieza de artefactos.
 - [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
 
-## Fase implementada: emulador MacAPE
+## Fase implementada: emulador BluePixel
 
-- [x] Creado `cpctelera_next/cpctelera/tools/scripts/cpct_macape`, un wrapper
-  WinAPE-style para MacAPE que carga DSK/CDT/SNA y auto-ejecuta el primer
-  programa de un DSK con `/A` (o `/A:nombre`).
-- [x] `tools/run_example.py` detecta MacAPE automáticamente
-  (`/Applications/MacAPE.app`, `~/Proyectos/macape`) y añade `/A` al abrir un DSK.
-- [x] `make run` puede usar MacAPE mediante `GLASNOST_EMULATOR=.../cpct_macape`.
+- [x] Un wrapper WinAPE-style para el emulador (entonces con otro nombre; hoy BluePixel)
+  carga DSK/CDT/SNA y auto-ejecuta el primer programa de un DSK con `/A` (o `/A:nombre`).
+- [x] `tools/run_example.py` detecta el emulador automáticamente
+  (`/Applications`) y añade `/A` al abrir un DSK.
+- [x] `make run` puede usar el emulador mediante `GLASNOST_EMULATOR=/ruta/al/emulador`.
 - [x] Documentado en README y manual; PDF y checksum regenerados.
 - [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
 
@@ -1627,7 +1626,7 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - [x] Retro Virtual Machine se invoca como `tools/scripts/cpct_rvm` de CPCtelera
   (`-ns -b=<máquina> -i= imagen -c=RUN"<nombre>"\n`, CDT con `-p -w`, SNA con `-s`;
   `cpc6128` para DSK). Pendiente de probar con la 2.1.20; RVM no tiene opción conocida de
-  símbolos. BluePixel y MacAPE reciben `/A` y `/SYM:<nombre>.noi`; AmSpiriT no tiene opción.
+  símbolos. BluePixel recibe `/A` y `/SYM:<nombre>.noi`; AmSpiriT no tiene opción.
 
 ## Arreglo: `glasnost run` no encontraba la imagen de un proyecto (2026-11-09)
 
@@ -1643,7 +1642,7 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 ## Arreglo: BluePixel abría el CDT sin arrancar nada (2026-11-09)
 
 - [x] `run_example.py` elegía siempre el CDT primero; BluePixel recibía una cinta, sin `/A`, y
-  el emulador se abría sin cargar el DSK ni lanzar el programa. Ahora, con BluePixel, MacAPE y
+  el emulador se abría sin cargar el DSK ni lanzar el programa. Ahora, con BluePixel y
   RVM (que arrancan discos solos) se prefiere el DSK (`image /A /SYM:...`); con otros se
   mantiene el CDT; `--image` fuerza el formato. `run` imprime la línea de comandos completa.
 - [x] Pruebas: `RunExampleChoosesTheImage` en `tests/test_emulator_setup.py`.

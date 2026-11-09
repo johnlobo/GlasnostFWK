@@ -43,4 +43,4 @@ fi
 
 echo
 echo "==> Listo. Usa 'make check' mientras desarrollas y 'make test' al cerrar."
-echo "    Emulador: GLASNOST_EMULATOR=/ruta/a/cpct_macape make run"
+echo "    Emulador: GLASNOST_EMULATOR=/ruta/al/emulador make run"
