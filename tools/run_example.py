@@ -19,6 +19,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import emulator_setup  # noqa: E402
 DEFAULT_EMULATOR = ROOT.parent / "tools" / "amspirit-lite" / "run.sh"
 EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "macape", "cpct_macape")
 MACAPE_CANDIDATES = (
@@ -61,12 +64,17 @@ def select_image(name: str, requested: str | None, build_root: Path | None = Non
 
 
 def find_emulator(explicit: str | None) -> str | None:
+    """--emulator, GLASNOST_EMULATOR, the emulator saved by `glasnost run`/`glasnost emulator`,
+    then whatever can be found on this machine (so `make run` keeps working unattended)."""
     candidate = explicit or os.environ.get("GLASNOST_EMULATOR", "").strip()
     if candidate:
         path = Path(candidate).expanduser()
         if not path.is_file():
             raise SystemExit(f"El emulador indicado no existe: {path}")
         return str(path)
+    saved = emulator_setup.configured(ROOT)
+    if saved:
+        return str(saved)
     if DEFAULT_EMULATOR.is_file():
         return str(DEFAULT_EMULATOR)
     for command in EMULATOR_COMMANDS:
@@ -111,22 +119,15 @@ def main() -> int:
     if args.print_path or emulator is None:
         if emulator is None and not args.print_path:
             print(
-                "No se encontró ningún emulador. Abra la imagen anterior o indique uno con "
-                "`make run GLASNOST_EMULATOR=/ruta/al/emulador`.",
+                "No se encontró ningún emulador. Abra la imagen anterior, configure uno con "
+                "`glasnost emulator` o indique uno con `make run GLASNOST_EMULATOR=/ruta/al/emulador`.",
                 file=sys.stderr,
             )
         print(image)
         return 0
 
     print(f"{emulator} {image}")
-    command = [emulator, str(image)]
-    base = Path(emulator).name.lower()
-    if base == "macape":
-        if image.suffix.lower() == ".dsk":
-            command.append("/A")
-        noi = build_root / name / "obj" / f"{name}.noi"
-        if noi.is_file():
-            command.append(f"/SYM:{noi}")
+    command = emulator_setup.build_command(emulator, image, build_root, name, ROOT)
     return subprocess.run(command).returncode
 
 

@@ -38,7 +38,7 @@ def run_cli(argv, root=ROOT, runner=glasnost.default_runner, env=None):
         if not (env and "CPCT_NEXT_PATH" in env):
             os.environ.pop("CPCT_NEXT_PATH", None)  # `glasnost test` exports it; tests must not inherit it
         try:
-            code = glasnost.main(argv, root=root, runner=runner)
+            code = glasnost.main(argv, root=root, runner=runner, interactive=False)  # never prompt: a tty must not hang the tests
         except SystemExit as exit_:
             code = exit_.code
     return code, out.getvalue(), err.getvalue()

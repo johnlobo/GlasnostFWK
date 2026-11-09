@@ -1597,3 +1597,19 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - Sustituye la línea de la fase «patrón de comprobación defensiva» que decía que `nave` se
   mantenía con `_game_expect_ok`.
 
+## `glasnost run` configura el emulador (2026-11-09)
+
+- [x] `tools/emulator_setup.py`: configuración en `tools/emulators/emulator.json`
+  (ignorada por git), descubrimiento de emuladores del equipo, descarga de Retro Virtual
+  Machine 2.1.20 desde `static.retrovm.org` con tamaño y SHA-256 fijados (Linux x64/arm64,
+  Windows x64, macOS `.dmg`), extracción segura y comando de lanzamiento por tipo.
+- [x] `glasnost run` pregunta una vez en una terminal si no hay emulador (usar uno del
+  equipo, descargar RVM, ahora no, no volver a preguntar); la siguiente vez funciona solo.
+  Nuevo `glasnost emulator [--set|--download|--reset]`. `run_example.py` y `make run` leen el
+  emulador guardado.
+- [x] Pruebas: `tests/test_emulator_setup.py` (52, sin red ni emulador); descarga real
+  verificada a mano (Linux x64, SHA correcto) y menú probado en un pseudo-terminal.
+- Pendiente: los argumentos con que se lanza RVM no están verificados (no se pudo ejecutar el
+  binario descargado); BluePixel no se ofrece porque no tiene releases en GitHub; el `.dmg` de
+  macOS y el zip de Windows solo están probados con archivos simulados.
+
