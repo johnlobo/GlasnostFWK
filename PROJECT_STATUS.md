@@ -1664,3 +1664,13 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - Pendiente (no incluido a propósito): separar `tools/` en `glasnost/`, `build/` y `dev/`,
   ordenar `docs/` en subcarpetas y mover `Dockerfile`/`setup.sh` fuera de la raíz.
 
+## `glasnost --help` completa y traducida (2026-11-09)
+
+- [x] `glasnost --help` (`-h`, o `glasnost` sin argumentos) lista los comandos agrupados (instalación
+  y diagnóstico, proyectos, compilar y ejecutar, otros), cada uno con su explicación y todas sus
+  opciones, más opciones generales y primeros pasos. `glasnost <comando> --help` y `glasnost help
+  <comando>` dan la de un comando con su línea de uso. Se genera desde el parser, en castellano e
+  inglés, sin textos por defecto de argparse; un `glasnost` a secas ya no es un error de uso.
+- [x] Pruebas: `tests/test_glasnost_help.py` (todo comando en un grupo, toda opción con su texto, sin
+  inglés mezclado, líneas dentro del ancho del terminal).
+

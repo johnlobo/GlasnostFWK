@@ -8,6 +8,14 @@ se leen las dos primeras letras y un valor desconocido cae a castellano.
 Primera parte de la fase 12 (P3). Sin `sudo`, sin tocar nada fuera del
 repositorio salvo lo que se indica en «Alcance».
 
+## Ayuda
+
+`glasnost --help` (o `-h`, o `glasnost` a secas) lista los comandos agrupados por función, cada
+uno con su explicación y todas sus opciones; `glasnost <comando> --help` o `glasnost help
+<comando>` muestran la de un comando con su línea de uso. Sale en castellano o en inglés
+(`--lang`). Se genera desde el propio parser, así que no puede quedar desactualizada; la
+tabla de abajo es la referencia larga.
+
 ## Comandos
 
 | Comando | Qué hace |
@@ -29,6 +37,7 @@ repositorio salvo lo que se indica en «Alcance».
 | `glasnost uninstall-cli [--prefix DIR]` | Quita ese enlace, solo si apunta a este SDK. |
 | `glasnost path` | Imprime la ruta de CPCTelera Next en uso. |
 | `glasnost version` | `git describe --tags --always` del SDK. |
+| `glasnost help [comando]` | Lo mismo que `--help`, o la ayuda de un comando. |
 
 Códigos de salida: 0 bien, 1 fallo (mensaje traducido en stderr), 2 uso
 incorrecto, 130 interrumpido con Ctrl-C. Un error del sistema (carpeta no
