@@ -20,12 +20,15 @@
     "video/sprite.s",
     "video/ecs_render.s",
     "ui/text.s",
-    "resources/zx7b.s"
+    "resources/zx7b.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s"
   ],
   "game_sources": [
     "main.s",
     "common.inc",
-    "generated/project.inc"
+    "generated/project.inc",
+    "assets/generated/assets.inc"
   ],
   "ecs": {
     "x_format": "u8",

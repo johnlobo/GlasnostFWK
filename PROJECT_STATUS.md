@@ -1555,3 +1555,30 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   `docs/first-game.md` ni `docs/nave-walkthrough.md`, que citan su código
   literalmente.
 - [x] `make test`: 436 pruebas correctas.
+
+## Plantilla `ecs-welcome` con assets importados y guía reescrita (2026-11-09)
+
+- [x] `glasnost new` (plantilla `ecs-welcome`) ya no lleva sprites ni paleta en
+  `main.s`: crea `assets/` con `assets.json`, `palette.json`, `sprites.png`,
+  `tiles.png` y `level.tmx` (mapa 20x6, ZX7B) y `assets/generated/`. `_main`
+  descomprime el mapa y lo dibuja con `fwk_tilemap_render_view` pegado al borde
+  inferior (`GAME_MAP_SCREEN_Y`); los tamaños salen de `GAME_MAP_WIDTH/HEIGHT` y
+  `GAME_PALETTE_SIZE`.
+- [x] `tools/glasnost_project.py`: la plantilla `minimal` no lleva ECS, ni tilemap, ni
+  assets; `render_project` copia `templates/<t>/assets/**` byte a byte.
+- [x] Corregido el PNG de la nave de la plantilla (parte superior descentrada un
+  píxel respecto al arte de la guía).
+- [x] Error evitado: `game_map_desc` con geometría inválida (`x_size` 8 en vez de 4
+  bytes, `x_shift` 3 en vez de 2) hacía que `fwk_tilemap_render_view` devolviera
+  carry sin dibujar nada. Ahora `_main` comprueba el carry y el smoke exige el suelo
+  en la última línea de pantalla.
+- [x] Guía `docs/first-game.md`: el paso 1 pasa de «migra los sprites a PNG» a «cómo
+  funcionan los assets y cambia el mapa» (`step1/` solo lleva `level.tmx`). Los pasos
+  2 y 3 y `examples/nave` se reconstruyeron sobre la plantilla nueva.
+- [x] Pruebas: `tests/test_first_game_guide.py` (el test que aplica los pasos copia con
+  mtime nuevo, como un lector; `copytree` conservaba el mtime viejo y `make` enlazaba el
+  objeto antiguo), `tests/test_glasnost_project.py` (assets copiados, `minimal` sin ECS) y
+  `tests/first_game_smoke.py` (mapa dibujado, verificado con geometría rota: falla).
+- Pendiente: la plantilla ya no lleva las cabeceras In/Out/Clobbers de `ed697ba` ni el
+  macro `GAME_CHECK_OK` de `bae49f0`; usa `_game_expect_ok` como `nave` y la guía.
+

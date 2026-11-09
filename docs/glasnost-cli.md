@@ -112,12 +112,15 @@ producen exactamente los mismos ficheros (hay un test que lo comprueba).
 Las opciones pisan al manifiesto.
 
 **Primer juego.** [`docs/first-game.md`](first-game.md) parte de lo que crea `new` y
-añade, en tres pasos con el juego compilando en cada uno, sprites desde un PNG,
-animación y colisiones con marcador. Un test aplica los pasos y los compila.
+añade, en tres pasos con el juego compilando en cada uno, un mapa propio
+(PNG y TMX importados), animación y colisiones con marcador. Un test aplica los pasos y los compila.
 
 **Qué crea `new`** (plantilla `ecs-welcome`: una nave que se mueve con el
-cursor y tres drones que patrullan, sobre el ECS del framework):
+cursor y tres drones que patrullan, sobre un fondo de mapa, con el ECS del
+framework):
 `main.s` y `common.inc` (tu código, con la convención de `common.inc`),
+`assets/` (sprites y tileset en PNG, mapa en TMX comprimido con ZX7B y
+paleta; `assets/generated/` lo escribe la conversión al compilar, no lo edites),
 `example.json`, `generated/` (título y perfil ECS), `README.md` en el idioma
 elegido y `.gitignore`. Compila el proyecto antes de dar nada por bueno; si
 falla borra lo creado. Después hace `git init` y el primer commit (repositorio

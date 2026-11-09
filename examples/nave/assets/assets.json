@@ -13,6 +13,26 @@
         "game_drone_pixels",
         "game_drone_pixels2"
       ]
+    },
+    {
+      "source": "src/tiles.png",
+      "width": 8,
+      "height": 8,
+      "symbol": "game_tileset",
+      "tiles": [
+        "game_tile_empty",
+        "game_tile_ground",
+        "game_tile_wall",
+        "game_tile_platform"
+      ]
+    }
+  ],
+  "tilemaps": [
+    {
+      "source": "src/level.tmx",
+      "layer": "background",
+      "symbol": "game_map",
+      "compression": "zx7b"
     }
   ]
 }
