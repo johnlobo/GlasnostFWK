@@ -450,8 +450,8 @@ def install_bluepixel(root: Path = ROOT, system: str | None = None, machine: str
 
 # ------------------------------------------------------------------ launch
 
-def build_command(emulator: str, image: Path, build_root: Path, name: str, root: Path = ROOT) -> list[str]:
-    """The command line that opens `image` in `emulator`."""
+def build_command(emulator: str, image: Path, build_dir: Path, name: str, root: Path = ROOT) -> list[str]:
+    """The command line that opens `image` in `emulator`. `build_dir` holds the build's obj/ folder."""
     data = read_config(root) or {}
     same = saved_path(root, data) == Path(emulator)
     kind = data.get("kind") if same and data.get("kind") else kind_of(emulator)
@@ -460,7 +460,7 @@ def build_command(emulator: str, image: Path, build_root: Path, name: str, root:
         command = [emulator, str(image)]
         if image.suffix.lower() == ".dsk":
             command.append("/A")
-        noi = build_root / name / "obj" / f"{name}.noi"
+        noi = build_dir / "obj" / f"{name}.noi"
         if noi.is_file():
             command.append(f"/SYM:{noi}")
         return command

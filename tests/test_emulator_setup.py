@@ -338,9 +338,9 @@ class BluePixel(Temp):
         noi = self.tmp / "build" / "a" / "obj" / "a.noi"
         noi.parent.mkdir(parents=True)
         noi.write_text("x")
-        self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp / "build", "a", self.root),
+        self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp / "build" / "a", "a", self.root),
                          [str(exe), "/i/a.dsk", "/A", f"/SYM:{noi}"])
-        self.assertEqual(emu.build_command(str(exe), Path("/i/a.cdt"), self.tmp / "build", "zzz", self.root),
+        self.assertEqual(emu.build_command(str(exe), Path("/i/a.cdt"), self.tmp / "build" / "zzz", "zzz", self.root),
                          [str(exe), "/i/a.cdt"])
 
 
@@ -540,7 +540,7 @@ class LaunchCommand(Temp):
         noi = self.tmp / "build" / "a" / "obj" / "a.noi"
         noi.parent.mkdir(parents=True)
         noi.write_text("x")
-        command = emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp / "build", "a", self.root)
+        command = emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp / "build" / "a", "a", self.root)
         self.assertEqual(command, [str(exe), "/i/a.dsk", "/A", f"/SYM:{noi}"])
 
     def test_any_other_emulator_gets_just_the_image(self):
@@ -555,7 +555,7 @@ class LaunchCommand(Temp):
             for image, autorun in (("a.dsk", True), ("a.cdt", False)):
                 with self.subTest(name, image=image):
                     exe = make_executable(self.tmp / name)
-                    command = emu.build_command(str(exe), Path("/i/" + image), self.tmp / "build", "a", self.root)
+                    command = emu.build_command(str(exe), Path("/i/" + image), self.tmp / "build" / "a", "a", self.root)
                     self.assertIn(f"/SYM:{noi}", command)
                     self.assertEqual("/A" in command, autorun)
 
@@ -645,6 +645,60 @@ class Harness(unittest.TestCase):
                                  ask=ask, interactive=interactive)
         return code, out.getvalue(), err.getvalue(), asked
 
+
+
+class RunExampleFindsTheBuild(Temp):
+    """`glasnost run` opened nothing in a project: it looked for build/<name>/<name>.dsk, but a
+    glasnost project builds straight into build/ (commit acef7d5)."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(run_example, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def project(self, name="platform2") -> Path:
+        folder = self.tmp / name
+        (folder / "build" / "obj").mkdir(parents=True)
+        (folder / "example.json").write_text(json.dumps({"name": name}), encoding="utf-8")
+        return folder
+
+    def test_a_project_image_is_found_in_build_directly(self):
+        folder = self.project()
+        for suffix in ("cdt", "dsk"):
+            (folder / "build" / f"platform2.{suffix}").write_text("x")
+        self.assertEqual(run_example.select_image("platform2", None, folder / "build", project=True),
+                         folder / "build" / "platform2.cdt")
+        self.assertEqual(run_example.select_image("platform2", "dsk", folder / "build", project=True),
+                         folder / "build" / "platform2.dsk")
+
+    def test_an_sdk_example_image_is_still_found_under_build_name(self):
+        (self.root / "build" / "minimal").mkdir(parents=True)
+        (self.root / "build" / "minimal" / "minimal.dsk").write_text("x")
+        self.assertEqual(run_example.select_image("minimal", None), self.root / "build" / "minimal" / "minimal.dsk")
+
+    def test_a_missing_image_tells_a_project_to_run_glasnost_build(self):
+        folder = self.project()
+        with self.assertRaises(SystemExit) as raised:
+            run_example.select_image("platform2", None, folder / "build", project=True)
+        self.assertIn("glasnost build", str(raised.exception))
+        self.assertNotIn("examples/", str(raised.exception))
+        with self.assertRaises(SystemExit) as raised:
+            run_example.select_image("minimal", None)
+        self.assertIn("examples/minimal", str(raised.exception))
+
+    def test_running_a_project_launches_the_emulator_with_its_image_and_symbols(self):
+        folder = self.project()
+        (folder / "build" / "platform2.dsk").write_text("x")
+        noi = folder / "build" / "obj" / "platform2.noi"
+        noi.write_text("x")
+        emulator = make_executable(self.tmp / "BluePixel")
+        launched = []
+        with mock.patch.object(sys, "argv", ["run_example.py", "--project", str(folder), "--emulator", str(emulator)]), \
+                mock.patch.object(run_example.subprocess, "run", side_effect=lambda cmd: launched.append(cmd) or mock.Mock(returncode=0)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(run_example.main(), 0)
+        self.assertEqual(launched, [[str(emulator), str(folder / "build" / "platform2.dsk"), "/A", f"/SYM:{noi}"]])
 
 
 class RunAsksOnce(Harness):
