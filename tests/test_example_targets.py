@@ -6,9 +6,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = (
-    "# Standalone build entry point for this example; see cfg/example.mk.\n"
+    "# Standalone build entry point for this example; see framework/cfg/example.mk.\n"
     "GLASNOST_EXAMPLE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))\n"
-    "include $(GLASNOST_EXAMPLE_DIR)/../../cfg/example.mk\n"
+    "include $(GLASNOST_EXAMPLE_DIR)/../../framework/cfg/example.mk\n"
 )
 
 
@@ -59,7 +59,7 @@ class ExampleTargetTests(unittest.TestCase):
             self.assertIn(str(destination / f"minimal.{suffix}"), output)
 
     def test_run_target_reuses_the_build(self):
-        wrapper = (ROOT / "cfg" / "example.mk").read_text(encoding="utf-8")
+        wrapper = (ROOT / "framework" / "cfg" / "example.mk").read_text(encoding="utf-8")
         self.assertRegex(wrapper, r"(?m)^run: build$")
         self.assertIn("tools/run_example.py", wrapper)
 

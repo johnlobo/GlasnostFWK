@@ -39,7 +39,7 @@ class EcsAbiSpecificationTests(unittest.TestCase):
         # silently when the generated layout changes. ecs_render.s indexes its own
         # 8-byte work entries with numbers, which are not entity fields.
         offenders = []
-        for path in sorted((ROOT / "src" / "core").glob("ecs_*.s")):
+        for path in sorted((ROOT / "framework" / "src" / "core").glob("ecs_*.s")):
             for number, line in enumerate(path.read_text().splitlines(), 1):
                 code = line.split(";", 1)[0]
                 if re.search(r"(?<![\w+])\d+\(i[xy]\)", code):
@@ -52,7 +52,7 @@ class EcsAbiSpecificationTests(unittest.TestCase):
         # scene redrew each frame. Its only numeric 16-bit immediates may be 8,
         # the size of a work-array entry; entity distances come from the profile.
         code = "\n".join(
-            line.split(";", 1)[0] for line in (ROOT / "src/video/ecs_render.s").read_text().splitlines()
+            line.split(";", 1)[0] for line in (ROOT / "framework/src/video/ecs_render.s").read_text().splitlines()
         )
         numbers = {int(n, 0) for n in re.findall(r"ld (?:bc|de|hl), #(0x[0-9A-Fa-f]+|\d+)\b", code)}
         self.assertLessEqual(numbers, {0, 8})
@@ -61,7 +61,7 @@ class EcsAbiSpecificationTests(unittest.TestCase):
         # `ld bc, #0x0010` in ecs_platform.s kept working only until a component
         # bit moved. The adapters use ECS_C_* symbols.
         offenders = []
-        for path in sorted((ROOT / "src" / "core").glob("ecs_*.s")):
+        for path in sorted((ROOT / "framework" / "src" / "core").glob("ecs_*.s")):
             for number, line in enumerate(path.read_text().splitlines(), 1):
                 if re.search(r"ld bc, #(0x[0-9A-Fa-f]+|\d+)\b", line.split(";", 1)[0]):
                     offenders.append(f"{path.name}:{number}: {line.strip()}")

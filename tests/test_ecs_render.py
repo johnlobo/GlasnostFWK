@@ -108,7 +108,7 @@ class RenderBudgetTests(unittest.TestCase):
 
     def assemble(self, manifest: dict, transparency: bool = True):
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
-        profile = json.loads((ROOT / "profiles/standard-160x200.json").read_text())
+        profile = json.loads((ROOT / "framework/profiles/standard-160x200.json").read_text())
         include = generate(manifest, portfolio, profile).include
         stage = ROOT / "build" / "ecsrender" / "src"
         with tempfile.TemporaryDirectory() as directory:
@@ -122,9 +122,9 @@ class RenderBudgetTests(unittest.TestCase):
             text = config.read_text().replace(
                 "FWK_TRANSPARENCY_ENABLED = 0", f"FWK_TRANSPARENCY_ENABLED = {int(transparency)}")
             (work / "project_config.inc").write_text(text)
-            shutil.copy(ROOT / "src/core/ecs_manager.inc", work / "core")
+            shutil.copy(ROOT / "framework/src/core/ecs_manager.inc", work / "core")
             for name in ("ecs_render.inc", "ecs_render.s", "sprite.inc"):
-                shutil.copy(ROOT / "src/video" / name, work / "video" / name)
+                shutil.copy(ROOT / "framework/src/video" / name, work / "video" / name)
             result = subprocess.run(
                 [str(ASSEMBLER), "-l", "-o", "video/ecs_render.s"],
                 cwd=work, capture_output=True, text=True,
@@ -156,7 +156,7 @@ class RenderBudgetTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 work = Path(directory)
                 (work / "video").mkdir()
-                shutil.copy(ROOT / "src/video/ecs_render.inc", work / "video")
+                shutil.copy(ROOT / "framework/src/video/ecs_render.inc", work / "video")
                 (work / "t.s").write_text(
                     f'.module t\n.include "video/ecs_render.inc"\n.area _DATA\n'
                     f"FWK_ECS_RENDER_POOL pool, 4, {count}\n"
@@ -171,7 +171,7 @@ class RenderBudgetTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 work = Path(directory)
                 (work / "video").mkdir()
-                shutil.copy(ROOT / "src/video/ecs_render.inc", work / "video")
+                shutil.copy(ROOT / "framework/src/video/ecs_render.inc", work / "video")
                 (work / "t.s").write_text(
                     '.module t\n.include "video/ecs_render.inc"\n.area _DATA\n'
                     f"FWK_ECS_RENDER_SCENE scene, 0, 0, 0, 0, 0, {count}\n"

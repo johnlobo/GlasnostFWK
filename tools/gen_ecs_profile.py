@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PORTFOLIO = ROOT / "manifests" / "ecs-components.json"
+DEFAULT_PORTFOLIO = ROOT / "framework" / "manifests" / "ecs-components.json"
 NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 BYTES = re.compile(r"^bytes\[([1-9][0-9]*)\]$")
 FORMAT_IDS = {"u8": 1, "u16": 2, "fixed_8_8": 3}
@@ -381,7 +381,7 @@ def video_profile_for_manifest(manifest: dict) -> dict | None:
     name = manifest.get("profile")
     if not isinstance(name, str):
         return None
-    path = ROOT / "profiles" / name
+    path = ROOT / "framework" / "profiles" / name
     return _read_json(path) if path.is_file() else None
 
 

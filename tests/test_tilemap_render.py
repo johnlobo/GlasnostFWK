@@ -45,7 +45,7 @@ class TilemapRenderTests(unittest.TestCase):
         self.assertFalse(validate(base[0], base[1], 4, 6, *base[2:]))
 
     def test_renderer_dispatches_to_cpctelera_next_primitives(self):
-        source = (ROOT / "src/extensions/tilemap_render.s").read_text(encoding="ascii")
+        source = (ROOT / "framework/src/extensions/tilemap_render.s").read_text(encoding="ascii")
         for instruction in (
             "jp z, cpct_drawTileAligned2x4_f_asm",
             "jp cpct_drawTileAligned2x8_f_asm",
@@ -56,7 +56,7 @@ class TilemapRenderTests(unittest.TestCase):
         self.assertNotIn("ldir", source.lower())
 
     def test_masked_renderer_uses_project_transparency(self):
-        source = (ROOT / "src/extensions/tilemap_render_masked.s").read_text(encoding="ascii")
+        source = (ROOT / "framework/src/extensions/tilemap_render_masked.s").read_text(encoding="ascii")
         self.assertIn("call fwk_transparency_draw", source)
         self.assertNotIn("mask_tileset", source)
 

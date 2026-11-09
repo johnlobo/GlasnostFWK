@@ -358,7 +358,7 @@ def stage_example(
     if not example.is_dir():
         raise ValueError(f"unknown example: {name}")
     manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
-    profile_path = ROOT / "profiles" / manifest["profile"]
+    profile_path = ROOT / "framework" / "profiles" / manifest["profile"]
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
     modules = effective_modules(name, manifest["modules"], capabilities)
@@ -419,7 +419,7 @@ def stage_example(
     for item in assets:
         staged_managed.add(Path("src") / item)
     for relative in modules:
-        source = ROOT / "src" / relative
+        source = ROOT / "framework" / "src" / relative
         if not source.is_file():
             raise ValueError(f"{name}: missing module {relative}")
         destination = target / "src" / relative
@@ -475,9 +475,9 @@ def stage_example(
     profile_name = Path(manifest["profile"]).stem
     _copy_if_changed(generated / f"{profile_name}.inc", target / "src" / "video_config.inc")
     staged_managed.add(Path("src") / "video_config.inc")
-    makefile = (ROOT / "cfg" / "Makefile.template").read_text(encoding="utf-8")
+    makefile = (ROOT / "framework" / "cfg" / "Makefile.template").read_text(encoding="utf-8")
     _write_if_changed(target / "Makefile", makefile)
-    config_path = select_project_config(example, ROOT / "cfg" / "build_config.template.mk")
+    config_path = select_project_config(example, ROOT / "framework" / "cfg" / "build_config.template.mk")
     config = config_path.read_text(encoding="utf-8")
     media = manifest.get("media", ["cdt", "dsk"])
     if (
@@ -567,7 +567,7 @@ def build(
     example = example if example is not None else ROOT / "examples" / name
     target = stage_example(name, cpct_path, example, target)
     manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
-    profile = json.loads((ROOT / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
+    profile = json.loads((ROOT / "framework" / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
     env = os.environ.copy()
     env["CPCT_PATH"] = str(cpct_path)

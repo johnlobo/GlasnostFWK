@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = "ecs-welcome"
-TEMPLATE_DIR = ROOT / "templates" / TEMPLATE
+TEMPLATE_DIR = ROOT / "framework" / "templates" / TEMPLATE
 PROJECT_FILE = "glasnost.project.json"
 SCHEMA = 1
 # Project format: bumped when what glasnost generates or expects of a project changes in a
@@ -30,7 +30,7 @@ FORMAT = 1
 
 NAME_RE = re.compile(r"[a-z][a-z0-9_]{0,23}")
 TITLE_MAX = 30
-# What the default sprite font can draw (src/ui/text.s).
+# What the default sprite font can draw (framework/src/ui/text.s).
 TITLE_ALLOWED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !-/:>?@")
 # Video profiles this template can run. experimental-160x288 needs 16-bit Y coordinates
 # (u8 cannot address 288 lines) and this template uses u8, so it is not offered.
@@ -227,7 +227,7 @@ def ecs_profile_include(manifest: dict) -> str:
         from tools.gen_ecs_profile import DEFAULT_PORTFOLIO, generate
     try:
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
-        profile = json.loads((ROOT / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
+        profile = json.loads((ROOT / "framework" / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
         return generate(manifest, portfolio, profile).include
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise ProjectError(f"the ECS profile cannot be generated: {type(error).__name__}: {error}") from error
@@ -285,7 +285,7 @@ Step-by-step guide (sprites from a PNG, animation, collisions): `docs/first-game
 def render_project(spec: Spec, framework: str, lang: str = "es") -> dict[str, bytes]:
     """Every file of a new project, as relative path -> bytes. Deterministic."""
     spec = validate(spec)
-    template_dir = ROOT / "templates" / spec.template
+    template_dir = ROOT / "framework" / "templates" / spec.template
     main = (template_dir / "main.s").read_text(encoding="utf-8")
     if "@@" in main:
         raise ProjectError("unresolved placeholder in the template")

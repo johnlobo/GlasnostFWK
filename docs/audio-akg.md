@@ -1,6 +1,6 @@
 # Audio Arkos Tracker 3 AKG
 
-`src/audio/akg.s` adapta la ABI del framework al player AKG que ya distribuye
+`framework/src/audio/akg.s` adapta la ABI del framework al player AKG que ya distribuye
 la revisión fijada de CPCTelera Next. El player solo se incorpora cuando un
 manifiesto declara `cpct_modules`; el resto de ejemplos no lo enlaza.
 
@@ -32,7 +32,7 @@ El ZIP tiene SHA-256
 Las entradas fueron el recurso musical `A Harmless Grenade` y la tabla
 `SoundEffects` que el paquete distribuye junto al player bajo MIT. Los exports
 resultantes tienen SHA-256 `1778af7b…b0b1a7` y `8eb010d3…29ad0`.
-La licencia completa está en `licenses/Arkos-Tracker-MIT.txt`. El player
+La licencia completa está en `framework/licenses/Arkos-Tracker-MIT.txt`. El player
 convertido que aporta CPCTelera Next conserva su LGPL-3.0-or-later.
 
 ## Coste y límites

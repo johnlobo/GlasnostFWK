@@ -122,7 +122,7 @@ _game_hud_dirty: .db 1            ; the score must be redrawn
 ```
 
 `game_status` vale `0x5A` cuando el juego ya está en marcha, o el código de error del
-framework si algo falló (son los `FWK_ECS_ERR_*` de `src/core/ecs_manager.inc`: por ejemplo
+framework si algo falló (son los `FWK_ECS_ERR_*` de `framework/src/core/ecs_manager.inc`: por ejemplo
 `0x03` es «el manager está lleno»). Los tests y el emulador esperan a ese valor antes de
 hacer nada. `game_hits` es el marcador. Los símbolos con `::` son globales: se ven desde
 fuera.

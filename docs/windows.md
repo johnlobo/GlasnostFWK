@@ -1,6 +1,6 @@
 # Ventanas y mensajes reutilizables
 
-`src/ui/window.s` contiene únicamente la parte común observada en los cuatro
+`framework/src/ui/window.s` contiene únicamente la parte común observada en los cuatro
 proyectos de origen: validar una región, capturar su fondo, dibujar una caja y
 restaurar los bytes anteriores. No contiene texto, entrada, esperas, combate ni
 un buffer global.

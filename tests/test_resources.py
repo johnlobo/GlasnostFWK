@@ -14,7 +14,7 @@ spec.loader.exec_module(GEN)
 
 class ResourceTests(unittest.TestCase):
     def base(self):
-        return json.loads((ROOT / "manifests" / "resources128.json").read_text())
+        return json.loads((ROOT / "framework" / "manifests" / "resources128.json").read_text())
 
     def test_example_manifest_is_valid(self):
         self.assertEqual(len(GEN.validate(self.base())), 2)

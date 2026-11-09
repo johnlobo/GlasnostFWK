@@ -257,12 +257,12 @@ def run_example(
                 "aa0000aa00aa ffaaffaaffaa".replace(" ", "")
             )
             small = asm_hex_bytes_between(
-                ROOT / "src/ui/text.inc",
+                ROOT / "framework/src/ui/text.inc",
                 "_fwk_text_default_small_digits:",
                 None,
             )
             color_table = asm_hex_bytes_between(
-                ROOT / "src/ui/text.s", "_fwk_text_swap_colors:", '.include "ui/text.inc"'
+                ROOT / "framework/src/ui/text.s", "_fwk_text_swap_colors:", '.include "ui/text.inc"'
             )
             digit_8 = small[8 * 10 : 9 * 10]
             expected_colorized_8s = bytearray()

@@ -111,7 +111,7 @@ class CollisionTraversalTests(unittest.TestCase):
     def test_collide_walks_targets_with_run_any(self):
         # A target must never vanish because of its cadence: a contact would close
         # and reopen every other iteration and emit ENTER again each time.
-        source = (ROOT / "src/core/ecs_collision.s").read_text()
+        source = (ROOT / "framework/src/core/ecs_collision.s").read_text()
         code = "\n".join(line.split(";", 1)[0] for line in source.splitlines())
         self.assertIn("call fwk_ecs_system_run_any", code)
         self.assertNotRegex(code, r"(?m)\b(?:call|jp)\s+fwk_ecs_system_run\b(?!_)")
@@ -123,7 +123,7 @@ class CollisionBudgetTests(unittest.TestCase):
 
     def assemble(self, components: list[str], custom: int = 0) -> str:
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
-        profile = json.loads((ROOT / "profiles/standard-160x200.json").read_text())
+        profile = json.loads((ROOT / "framework/profiles/standard-160x200.json").read_text())
         manifest = {
             "ecs": {
                 "x_format": "u8",
@@ -140,7 +140,7 @@ class CollisionBudgetTests(unittest.TestCase):
             (work / "core").mkdir()
             (work / "ecs_profile.inc").write_text(include, encoding="ascii")
             for name in ("ecs_manager.inc", "ecs_collision.inc", "ecs_collision.s"):
-                shutil.copy(ROOT / "src/core" / name, work / "core" / name)
+                shutil.copy(ROOT / "framework/src/core" / name, work / "core" / name)
             result = subprocess.run(
                 [str(ASSEMBLER), "-l", "-o", "core/ecs_collision.s"],
                 cwd=work, capture_output=True, text=True,
@@ -169,7 +169,7 @@ class CollisionBudgetTests(unittest.TestCase):
     def test_build_stops_with_non_u8_coordinates(self):
         # The routine reads single-byte X/Y: u16 or fixed 8.8 must not assemble.
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
-        profile = json.loads((ROOT / "profiles/standard-160x200.json").read_text())
+        profile = json.loads((ROOT / "framework/profiles/standard-160x200.json").read_text())
         manifest = {"ecs": {"x_format": "u16", "y_format": "u8", "components": ["collision"]}}
         include = generate(manifest, portfolio, profile).include
         with tempfile.TemporaryDirectory() as directory:
@@ -177,7 +177,7 @@ class CollisionBudgetTests(unittest.TestCase):
             (work / "core").mkdir()
             (work / "ecs_profile.inc").write_text(include, encoding="ascii")
             for name in ("ecs_manager.inc", "ecs_collision.inc", "ecs_collision.s"):
-                shutil.copy(ROOT / "src/core" / name, work / "core" / name)
+                shutil.copy(ROOT / "framework/src/core" / name, work / "core" / name)
             result = subprocess.run(
                 [str(ASSEMBLER), "-l", "-o", "core/ecs_collision.s"],
                 cwd=work, capture_output=True, text=True,
