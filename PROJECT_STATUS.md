@@ -1640,3 +1640,11 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - [x] Pruebas de regresión en `tests/test_emulator_setup.py` (`RunExampleFindsTheBuild`);
   fallan con el código anterior.
 
+## Arreglo: BluePixel abría el CDT sin arrancar nada (2026-11-09)
+
+- [x] `run_example.py` elegía siempre el CDT primero; BluePixel recibía una cinta, sin `/A`, y
+  el emulador se abría sin cargar el DSK ni lanzar el programa. Ahora, con BluePixel, MacAPE y
+  RVM (que arrancan discos solos) se prefiere el DSK (`image /A /SYM:...`); con otros se
+  mantiene el CDT; `--image` fuerza el formato. `run` imprime la línea de comandos completa.
+- [x] Pruebas: `RunExampleChoosesTheImage` en `tests/test_emulator_setup.py`.
+

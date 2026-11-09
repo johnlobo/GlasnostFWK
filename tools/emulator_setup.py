@@ -450,12 +450,27 @@ def install_bluepixel(root: Path = ROOT, system: str | None = None, machine: str
 
 # ------------------------------------------------------------------ launch
 
+# Emulators that start a disc by themselves (/A or RUN"name typed for you): the DSK is the better image.
+DISC_AUTORUN_KINDS = ("bluepixel", "macape", "rvm")
+
+
+def kind_for(emulator: str, root: Path = ROOT) -> str:
+    """The saved kind when `emulator` is the saved one, otherwise guessed from its name."""
+    data = read_config(root) or {}
+    if saved_path(root, data) == Path(emulator) and data.get("kind"):
+        return data["kind"]
+    return kind_of(emulator)
+
+
+def preferred_image(emulator: str | None, root: Path = ROOT) -> str | None:
+    return "dsk" if emulator and kind_for(emulator, root) in DISC_AUTORUN_KINDS else None
+
+
 def build_command(emulator: str, image: Path, build_dir: Path, name: str, root: Path = ROOT) -> list[str]:
     """The command line that opens `image` in `emulator`. `build_dir` holds the build's obj/ folder."""
+    kind = kind_for(emulator, root)
     data = read_config(root) or {}
-    same = saved_path(root, data) == Path(emulator)
-    kind = data.get("kind") if same and data.get("kind") else kind_of(emulator)
-    args = data.get("args") if same else None
+    args = data.get("args") if saved_path(root, data) == Path(emulator) else None
     if kind in ("macape", "bluepixel"):   # both take `image [/A] [/SYM:file]`
         command = [emulator, str(image)]
         if image.suffix.lower() == ".dsk":
