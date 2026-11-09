@@ -301,7 +301,7 @@ def load_project(folder: Path) -> tuple[dict, dict]:
         raise ProjectError(f"cannot read the project files: {error}") from error
     if not isinstance(meta, dict) or meta.get("schema") != SCHEMA:
         raise ProjectError(f"{PROJECT_FILE}: schema must be {SCHEMA}")
-    if meta.get("template") != TEMPLATE:
+    if meta.get("template") not in ("ecs-welcome", "minimal"):
         raise ProjectError(f"{PROJECT_FILE}: unknown template {meta.get('template')!r}")
     if not isinstance(example, dict):
         raise ProjectError("example.json must be a JSON object")
