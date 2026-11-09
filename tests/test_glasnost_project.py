@@ -180,17 +180,39 @@ class Rendering(unittest.TestCase):
     def test_file_set(self):
         self.assertEqual(sorted(self.files), sorted([
             ".gitignore", "README.md", "common.inc", "example.json", "generated/ecs_profile.inc",
-            "generated/project.inc", "glasnost.project.json", "main.s"]))
+            "generated/project.inc", "glasnost.project.json", "main.s",
+            "assets/assets.json", "assets/palette.json", "assets/src/level.tmx",
+            "assets/src/sprites.png", "assets/src/tiles.png", "assets/generated/assets.inc",
+            "assets/generated/assets.s", "assets/generated/pipeline.json"]))
 
     def test_rendering_is_deterministic(self):
         again = gp.render_project(gp.Spec("demo", "hello"), "9.9.9", "en")
         self.assertEqual(self.files, again)
 
-    def test_no_placeholder_survives_and_the_art_is_in_main(self):
+    def test_no_placeholder_survives_and_the_art_is_imported_not_inline(self):
         main = self.files["main.s"].decode()
         self.assertNotIn("@@", main)
-        self.assertIn("_game_ship_pixels:", main)
-        self.assertIn("; ..cwwc..", main)
+        self.assertNotIn("_game_ship_pixels:", main)
+        self.assertIn("game_ship_pixels", main)
+        self.assertIn("game_ship_pixels:", self.files["assets/generated/assets.s"].decode())
+
+    def test_binary_assets_are_copied_byte_for_byte(self):
+        source = (ROOT / "templates" / "ecs-welcome" / "assets" / "src" / "sprites.png").read_bytes()
+        self.assertEqual(self.files["assets/src/sprites.png"], source)
+
+    def test_minimal_template_has_no_ecs_no_tilemap_and_no_assets(self):
+        files = gp.render_project(gp.validate(gp.Spec("demo", "hello", template="minimal")), "9.9.9", "en")
+        example = json.loads(files["example.json"])
+        self.assertNotIn("ecs", example)
+        self.assertNotIn("generated/ecs_profile.inc", files)
+        self.assertFalse([name for name in files if name.startswith("assets/")])
+        self.assertFalse([m for m in example["modules"] if "tilemap" in m or "ecs" in m])
+        self.assertNotIn("assets/generated/assets.inc", example["game_sources"])
+
+    def test_the_welcome_manifest_links_the_tilemap_and_the_assets_include(self):
+        example = json.loads(self.files["example.json"])
+        self.assertIn("extensions/tilemap_render.s", example["modules"])
+        self.assertIn("assets/generated/assets.inc", example["game_sources"])
 
     def test_metadata_files(self):
         meta = json.loads(self.files["glasnost.project.json"])

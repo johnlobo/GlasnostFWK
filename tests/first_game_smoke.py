@@ -7,7 +7,8 @@
 Creates the project with the real CLI, applies the three steps of the guide, builds it, runs it and
 checks through RAM (symbols from the .noi) that:
   1. the animation works: a drone's sprite pointer alternates between two different frames;
-  2. real play with the cursor keys leaves the score drawn on screen;
+  2. real play with the cursor keys leaves the score drawn on screen, and the imported map
+     (the solid ground row) fills the last scanline;
   3. a drone touching the player adds exactly one hit, not one per frame of the contact;
   4. leaving and touching again adds another hit.
 
@@ -67,7 +68,7 @@ def best_screenshot() -> bytes:
 
 def apply_steps(folder: Path) -> None:
     for step in ("step1", "step2", "step3"):
-        shutil.copytree(GUIDE / step, folder, dirs_exist_ok=True)
+        shutil.copytree(GUIDE / step, folder, dirs_exist_ok=True, copy_function=shutil.copy)
     code = glasnost.main(["--lang", "en", "config", "--project", str(folder)])
     if code != 0:
         raise SystemExit(code)
@@ -147,6 +148,11 @@ def main() -> int:
             box = b"".join(emu.ram(emu.standard_screen_address(HUD_X, y), HUD_W) for y in range(HUD_Y, HUD_Y + HUD_H))
             if not any(box):
                 raise RuntimeError("nothing is drawn where the score should be")
+            # The imported background: the ground row (a solid tile) fills the last scanline.
+            # Guards the failure where fwk_tilemap_render_view rejects its descriptor and draws nothing.
+            ground = emu.ram(emu.standard_screen_address(0, 199), 80)
+            if not all(ground):
+                raise RuntimeError("the background map is not drawn: the last scanline has empty bytes")
             if args.screenshot:
                 args.screenshot.write_bytes(best_screenshot())
 

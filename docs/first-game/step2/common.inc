@@ -7,6 +7,7 @@
 .include "core/ecs_animation.inc"
 .include "extensions/behavior.inc"
 .include "video/ecs_render.inc"
+
 .include "assets/generated/assets.inc"
 
 .globl fwk_project_init, fwk_system_wait_frame
@@ -14,9 +15,12 @@
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update, fwk_input_held
 .globl fwk_text_init, fwk_text_draw
 .globl fwk_ecs_system_input
+.globl fwk_tilemap_render_view
+.globl fwk_zx7b_unpack
 .globl cpct_setPalette_asm
 .globl game_palette, game_ship_pixels, game_ship_pixels2
 .globl game_drone_pixels, game_drone_pixels2
+.globl game_tileset, game_map, game_map_packed
 
 ;; Actions the keyboard bindings produce. The first three are understood by the
 ;; framework input system (fwk_ecs_system_input); UP and DOWN are handled by
@@ -38,6 +42,11 @@ GAME_X_MAX = 76
 GAME_Y_MIN = 44
 GAME_Y_MAX = 192
 GAME_SPEED_Y = 2
+
+;; The background map is a strip along the bottom of the 200-line screen. Operators of the
+;; assembler run left to right, hence the two steps.
+GAME_MAP_PIXELS_Y = GAME_MAP_HEIGHT * 8
+GAME_MAP_SCREEN_Y = 200 - GAME_MAP_PIXELS_Y
 
 ;; Text positions (byte column, scanline).
 GAME_TEXT_X = 4

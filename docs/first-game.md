@@ -1,8 +1,8 @@
-# Tu primer juego: sprites, animación y colisiones
+# Tu primer juego: mapa, sprites, animación y colisiones
 
 Este recorrido parte de lo que crea `glasnost new` y lo convierte, en tres pasos,
-en un juego pequeño con sus gráficos dibujados por ti en un PNG, animación y un
-marcador de golpes. En cada paso el juego compila y se puede ejecutar. Tardas
+en un juego pequeño con tu propio mapa y gráficos importados de PNG y TMX, animación
+y un marcador de golpes. En cada paso el juego compila y se puede ejecutar. Tardas
 unos 30 minutos.
 
 Necesitas el SDK instalado (`glasnost doctor` debe terminar con «Todo listo») y un
@@ -36,7 +36,7 @@ instalado; si no, `glasnost run -- --print-path` te dice dónde está la imagen
 para abrirla con el tuyo (en un CPC real o emulado: `RUN"NAVE`).
 
 Verás una nave que se mueve con las flechas del cursor y tres drones que
-patrullan. Tu código es `main.s` y `common.inc`; léelos, están comentados. Todo
+patrullan, sobre un fondo de plataformas. Tu código es `main.s` y `common.inc`; léelos, están comentados. Todo
 lo demás lo gestiona glasnost: no edites `generated/` (lo regenera `glasnost
 config`; se versiona en Git, así que tras un `config` aparecerá modificado y es normal) ni `example.json` más allá de lo que se indica abajo.
 
@@ -44,27 +44,30 @@ Antes de tocar nada, haz una copia de seguridad en Git (o confía en que el
 primer commit ya está hecho): `git status` debe salir limpio. Así puedes volver
 atrás con `git checkout .` si algo sale mal.
 
-## Paso 1: los sprites vienen de un PNG
+## Paso 1: tus gráficos y tu mapa vienen de ficheros
 
-Ahora mismo la nave y el dron son bytes escritos a mano en `main.s`. Un sprite
-del CPC en Mode 0 usa 2 píxeles por byte, así que un dibujo de 8x8 píxeles
-ocupa 4 bytes por 8 líneas. En vez de calcular esos bytes, los dibujas en un PNG y
-glasnost los convierte.
+La nave, los drones y el fondo no están escritos a mano en `main.s`: salen de
+ficheros de la carpeta `assets/`, que glasnost convierte al compilar. Un sprite del
+CPC en Mode 0 usa 2 píxeles por byte, así que un dibujo de 8x8 píxeles ocupa 4
+bytes por 8 líneas; en vez de calcular esos bytes, dibujas un PNG. Este paso mira
+cómo funciona y cambia el mapa por uno tuyo, sin tocar código.
 
 Ficheros de este paso: [`step1/`](first-game/step1/).
 
-1. Crea la carpeta `assets/` dentro del proyecto con esta estructura:
+1. Abre `assets/`. Esto es lo que ya trae el proyecto:
 
    ```
    assets/
-     assets.json
-     palette.json
-     src/sprites.png
+     assets.json        qué imágenes y mapas hay y qué etiqueta recibe cada uno
+     palette.json       los 16 colores del juego
+     src/sprites.png    la nave y el dron (tira de 16x8 píxeles)
+     src/tiles.png      el tileset del fondo (4 tiles de 8x8)
+     src/level.tmx      el mapa del fondo (Tiled, 20x6 tiles)
+     generated/         lo escribe la conversión al compilar: no lo edites
    ```
 
 2. `assets/src/sprites.png` es una tira de 16x8 píxeles: la nave a la izquierda y
-   el dron a la derecha. Cópiala de [`step1/assets/src/sprites.png`](first-game/step1/assets/src/sprites.png)
-   o dibújala tú con cualquier editor de píxeles. **Cada píxel debe tener
+   el dron a la derecha. `tiles.png` sigue la misma regla. **Cada píxel debe tener
    exactamente uno de estos colores RGB**, cada uno es una pluma del CPC:
 
    | Pluma | RGB en el PNG |
@@ -78,17 +81,15 @@ Ficheros de este paso: [`step1/`](first-game/step1/).
 
    El conversor asigna cada píxel a la pluma de la paleta más parecida con su
    propia tabla de colores, así que usa estos valores exactos (están medidos con
-   la herramienta real); en pantalla cada pluma se ve del color que le da la
-   paleta del paso siguiente, no del color del PNG.
+   la herramienta real); en pantalla cada pluma se ve del color que le da
+   `assets/palette.json`, no del color del PNG.
 
 3. `assets/palette.json` define los 16 colores del juego con los números de
-   tinta del firmware del CPC (0 a 26). Cópiala de
-   [`step1/assets/palette.json`](first-game/step1/assets/palette.json).
+   tinta del firmware del CPC (0 a 26).
 
-4. `assets/assets.json` dice qué imágenes hay y qué etiqueta recibe cada
-   sprite:
+4. `assets/assets.json` dice qué hay y qué etiqueta recibe cada cosa:
 
-<!-- guia: step1/assets/assets.json -->
+<!-- guia: ../../templates/ecs-welcome/assets/assets.json -->
 ```json
 {
   "version": 1,
@@ -103,54 +104,60 @@ Ficheros de este paso: [`step1/`](first-game/step1/).
         "game_ship_pixels",
         "game_drone_pixels"
       ]
+    },
+    {
+      "source": "src/tiles.png",
+      "width": 8,
+      "height": 8,
+      "symbol": "game_tileset",
+      "tiles": [
+        "game_tile_empty",
+        "game_tile_ground",
+        "game_tile_wall",
+        "game_tile_platform"
+      ]
+    }
+  ],
+  "tilemaps": [
+    {
+      "source": "src/level.tmx",
+      "layer": "background",
+      "symbol": "game_map",
+      "compression": "zx7b"
     }
   ]
 }
 ```
 
-   `width` y `height` son el tamaño de cada sprite en píxeles; `tiles` da el nombre
-   de cada uno, de izquierda a derecha. La conversión crea `assets/generated/assets.s`
-   (los bytes) y `assets.inc` (constantes como `GAME_PALETTE_SIZE`), y la compilación
-   los incluye sola.
+   `width` y `height` son el tamaño de cada tile o sprite en píxeles; `tiles` da el
+   nombre de cada uno, de izquierda a derecha y de arriba abajo. El mapa se lee de
+   la capa `background` del TMX y se guarda comprimido con ZX7B. La conversión crea
+   `assets/generated/assets.s` (los bytes) y `assets.inc` (constantes como
+   `GAME_PALETTE_SIZE`, `GAME_MAP_WIDTH` y `GAME_MAP_HEIGHT`), y la compilación los
+   incluye sola. En `main.s`, `_main` descomprime el mapa con `fwk_zx7b_unpack` y lo
+   dibuja con `fwk_tilemap_render_view`; el tamaño del mapa llega de esas constantes.
 
-5. Abre `common.inc`. Pon el `.include` justo después de la última línea
-   `.include` de la cabecera (`.include "video/ecs_render.inc"`) y la línea
-   `.globl` nueva al final del bloque de `.globl`, después de
-   `.globl cpct_setPalette_asm`:
+5. Cambia el mapa. **Sustituye** `assets/src/level.tmx` por
+   [`step1/assets/src/level.tmx`](first-game/step1/assets/src/level.tmx) o edítalo con
+   [Tiled](https://www.mapeditor.org/). Lo que importa es la capa `background`, de
+   20x6 (el ancho de la pantalla, en tiles de 4 bytes; el juego la dibuja pegada al borde inferior), cuyos números son tiles de `tiles.png` contados de izquierda a derecha y de
+   arriba abajo desde el 1; el 0 es vacío. Esta es la capa del fichero del paso:
 
-<!-- guia: step1/common.inc -->
-```asm
-.include "assets/generated/assets.inc"
-
-.globl game_palette, game_ship_pixels, game_drone_pixels
+<!-- guia: step1/assets/src/level.tmx -->
+```xml
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,4,4,4,0,0,0,0,0,0,0,0,0,0,4,4,4,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0,0,0,
+3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
 ```
 
-6. En `main.s` hay tres cambios:
-
-   - **Borra** los dos bloques que empiezan por `;; ---- Sprites` y
-     `;; ---- Palette`, con todo lo que contienen (`_game_ship_pixels:` y
-     `_game_drone_pixels:` con sus líneas `.db`, y `_game_palette:` con las suyas).
-   - En `_main`, las líneas `ld hl, #_game_palette` y `ld de, #16` pasan a ser las
-     dos primeras de abajo.
-   - En las cuatro filas `_game_row_*`, el nombre del sprite pierde el guion bajo:
-     `_game_ship_pixels` pasa a `game_ship_pixels` y `_game_drone_pixels` a
-     `game_drone_pixels`. Las filas quedan así:
-
-<!-- guia: step1/main.s -->
-```asm
-    ld hl, #game_palette
-    ld de, #GAME_PALETTE_SIZE
-
-_game_row_player: GAME_ROW GAME_PLAYER_COMPS, GAME_T_PLAYER, 38, 170, 4, 8, game_ship_pixels, 0
-_game_row_drone0: GAME_ROW GAME_DRONE_COMPS, GAME_T_DRONE, 30, 70, 4, 8, game_drone_pixels, _game_program_drone
-_game_row_drone1: GAME_ROW GAME_DRONE_COMPS, GAME_T_DRONE, 40, 100, 4, 8, game_drone_pixels, _game_program_drone
-_game_row_drone2: GAME_ROW GAME_DRONE_COMPS, GAME_T_DRONE, 30, 130, 4, 8, game_drone_pixels, _game_program_drone
-```
-
-Ejecuta `glasnost build` y `glasnost run`: se ve exactamente igual que antes. No es
-casualidad: los bytes que genera la conversión son idénticos a los que estaban
-escritos a mano, y un test lo comprueba. Para cambiar el aspecto del juego,
-edita el PNG y vuelve a ejecutar `glasnost build`: solo reconvierte lo que cambió.
+Ejecuta `glasnost build` y `glasnost run`: el fondo tiene las plataformas nuevas y
+todo lo demás se ve igual. La conversión solo se repite con lo que cambió, y un test
+comprueba que los bytes de los sprites son los que saldrían de dibujarlos a mano.
+Para cambiar la nave o el dron, edita `sprites.png` con las mismas reglas y vuelve a
+compilar.
 
 ## Paso 2: animación
 
@@ -163,8 +170,9 @@ Ficheros de este paso: [`step2/`](first-game/step2/).
 1. Dibuja los fotogramas nuevos: una tira de 32x8 con la nave, la nave con las
    llamas cambiadas, el dron y el dron con las patas cambiadas
    ([`step2/assets/src/sprites.png`](first-game/step2/assets/src/sprites.png)). **Sustituye** el PNG
-   del paso 1 por esta tira (mismo nombre, `assets/src/sprites.png`) y **sustituye** el array
-   `tiles` de `assets.json` por el siguiente, que declara los cuatro:
+   del proyecto por esta tira (mismo nombre, `assets/src/sprites.png`) y **sustituye** el array
+   `tiles` de la primera imagen de `assets.json` (la de `src/sprites.png`) por el siguiente,
+   que declara los cuatro:
 
 <!-- guia: step2/assets/assets.json -->
 ```json
@@ -211,7 +219,7 @@ Ficheros de este paso: [`step2/`](first-game/step2/).
    - añade `.include "core/ecs_animation.inc"` justo antes de
      `.include "extensions/behavior.inc"`;
    - las dos líneas `.globl` nuevas **sustituyen** a la línea `.globl game_palette, ...`
-     del paso 1;
+     del proyecto;
    - `GAME_ANIM_TICKS` va justo antes del comentario `;; Spawn row`;
    - la macro `GAME_ROW` se **sustituye** entera por la nueva, que gana el campo `anim`;
    - las dos líneas `GAME_PLAYER_COMPS` y `GAME_DRONE_COMPS` se **sustituyen** por las de

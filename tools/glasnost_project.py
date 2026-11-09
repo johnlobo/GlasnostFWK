@@ -54,8 +54,10 @@ MODULES = [
     "video/ecs_render.s",
     "ui/text.s",
     "resources/zx7b.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s",
 ]
-GAME_SOURCES = ["main.s", "common.inc", "generated/project.inc"]
+GAME_SOURCES = ["main.s", "common.inc", "generated/project.inc", "assets/generated/assets.inc"]
 ECS_CONFIG = {"x_format": "u8", "y_format": "u8", "components": ["behavior", "input"]}
 
 # Pen of each art character; the palette in main.s decides the colours.
@@ -176,17 +178,32 @@ def sprite_source(label: str, art: list[str]) -> str:
     return "\n".join(lines)
 
 
+MINIMAL_MODULES = [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s",
+    "ui/text.s",
+    "resources/zx7b.s",
+]
+
 def example_manifest(spec: Spec) -> dict:
-    return {
+    modules = MINIMAL_MODULES if spec.template == "minimal" else MODULES
+    game_sources = ["main.s", "common.inc", "generated/project.inc"]
+    if spec.template != "minimal":
+        game_sources = game_sources + ["assets/generated/assets.inc"]
+    ecs_config = None if spec.template == "minimal" else copy.deepcopy(ECS_CONFIG)
+    manifest = {
         "name": spec.name,
         "amsdos_name": spec.amsdos_name,
         "profile": spec.profile_file,
         "transparency": {"pen": 0},
         "extended_memory": spec.extended_memory,
-        "modules": list(MODULES),
-        "game_sources": list(GAME_SOURCES),
-        "ecs": copy.deepcopy(ECS_CONFIG),
+        "modules": list(modules),
+        "game_sources": list(game_sources),
     }
+    if ecs_config is not None:
+        manifest["ecs"] = ecs_config
+    return manifest
 
 
 def project_manifest(spec: Spec, framework: str) -> dict:
@@ -239,7 +256,7 @@ Tu código está en `main.s` y `common.inc`. Lo que escribe `glasnost`
 `extended_memory` de `example.json`) se regenera con `glasnost config`: no lo
 edites a mano. Para usar un sistema del framework añade su componente
 en `ecs.components` y su módulo en `modules` de `example.json`, y ejecuta
-`glasnost config` para regenerar lo generado. Guía paso a paso (sprites desde PNG,
+`glasnost config` para regenerar lo generado. Guía paso a paso (mapa y sprites importados de PNG y TMX,
 animación, colisiones): `docs/first-game.md` en el SDK.
 """,
     "en": """# {title}
@@ -270,8 +287,6 @@ def render_project(spec: Spec, framework: str, lang: str = "es") -> dict[str, by
     spec = validate(spec)
     template_dir = ROOT / "templates" / spec.template
     main = (template_dir / "main.s").read_text(encoding="utf-8")
-    main = main.replace("@@PLAYER_ART@@", sprite_source("_game_ship_pixels", SHIP_ART))
-    main = main.replace("@@DRONE_ART@@", sprite_source("_game_drone_pixels", DRONE_ART))
     if "@@" in main:
         raise ProjectError("unresolved placeholder in the template")
     manifest = example_manifest(spec)
@@ -281,12 +296,21 @@ def render_project(spec: Spec, framework: str, lang: str = "es") -> dict[str, by
         "main.s": main,
         "common.inc": (template_dir / "common.inc").read_text(encoding="utf-8"),
         "generated/project.inc": project_include(spec.title),
-        "generated/ecs_profile.inc": ecs_profile_include(manifest),
         ".gitignore": "build/\n",
         "README.md": README[lang].format(
             title=spec.title, name=spec.name, amsdos=spec.amsdos_name, framework=framework),
     }
-    return {path: content.encode("ascii" if path.endswith(".inc") else "utf-8")
+    if "ecs" in manifest:
+        files["generated/ecs_profile.inc"] = ecs_profile_include(manifest)
+    # Copy bundled assets (PNG, TMX, palette, generated outputs).
+    assets_root = template_dir / "assets"
+    if assets_root.is_dir():
+        for path in assets_root.rglob("*"):
+            if path.is_file():
+                relative = path.relative_to(assets_root).as_posix()
+                files[f"assets/{relative}"] = path.read_text(encoding="utf-8") if path.suffix in (".json", ".tmx", ".inc", ".s", ".md") else path.read_bytes()
+    return {path: (content.encode("ascii" if path.endswith(".inc") else "utf-8")
+                   if isinstance(content, str) else content)
             for path, content in files.items()}
 
 
@@ -340,10 +364,10 @@ def profile_key(profile_file: str) -> str:
 def owned_files(meta: dict, example: dict) -> dict[str, str]:
     """What glasnost generates for the current project state: relative path -> content."""
     title = normalize_title(meta.get("title"))
-    return {
-        "generated/project.inc": project_include(title),
-        "generated/ecs_profile.inc": ecs_profile_include(example),
-    }
+    files = {"generated/project.inc": project_include(title)}
+    if example.get("ecs") is not None:
+        files["generated/ecs_profile.inc"] = ecs_profile_include(example)
+    return files
 
 
 def check_project(folder: Path) -> list[str]:

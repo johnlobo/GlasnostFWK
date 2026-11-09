@@ -1,0 +1,14 @@
+{
+  "hash": "ad2fa4445c492fa7faa3ae4e461afa10a670e90d682eb94451f2a19f23549ca8",
+  "outputs": {
+    "generated/assets.inc": "a28145346dc497a7b64c509fc5d3d5cba90138e94e321e5694c1f4e54f867c18",
+    "generated/assets.s": "4fdf100a7e25845e2a8487115bee47901a54a420b14c4cfb481d204e761a2c24"
+  },
+  "sources": {
+    "palette.json": "f3c61ccf0203dddedbebdea707dd639bd4c6d56a309686072425a911399ac582",
+    "src/level.tmx": "da6f69a2a97a89e168fda1a41cd032afe7e6b8e0d36c94643f35d80ebcea123b",
+    "src/sprites.png": "e7015a4da38f880f4fc0d942b060c390000b016bec2b3336a569342204be4e9a",
+    "src/tiles.png": "485e53694041b672a4f34b58b89fc172bb1ffde7446b851ae8de38b5f75be2b5"
+  },
+  "version": 1
+}

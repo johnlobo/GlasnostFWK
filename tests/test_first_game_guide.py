@@ -153,10 +153,13 @@ class StepFiles(unittest.TestCase):
         self.assertEqual(make_art.SHIP, gp.SHIP_ART)    # the art of the template is the art of the guide
         self.assertEqual(make_art.DRONE, gp.DRONE_ART)
         allowed = set(make_art.PENS.values())
-        for step, tiles in (("step1", [make_art.SHIP, make_art.DRONE]),
-                            ("step2", [make_art.SHIP, make_art.SHIP2, make_art.DRONE, make_art.DRONE2])):
-            with self.subTest(step):
-                image = Image.open(STEPS / step / "assets" / "src" / "sprites.png").convert("RGB")
+        for label, path, tiles in (
+                ("template", ROOT / "templates" / "ecs-welcome" / "assets" / "src" / "sprites.png",
+                 [make_art.SHIP, make_art.DRONE]),
+                ("step2", STEPS / "step2" / "assets" / "src" / "sprites.png",
+                 [make_art.SHIP, make_art.SHIP2, make_art.DRONE, make_art.DRONE2])):
+            with self.subTest(label):
+                image = Image.open(path).convert("RGB")
                 self.assertEqual(image.size, (8 * len(tiles), 8))
                 expected = make_art.sheet(tiles)
                 for y in range(8):
@@ -164,8 +167,19 @@ class StepFiles(unittest.TestCase):
                         self.assertIn(image.getpixel((x, y)), allowed)
                         self.assertEqual(image.getpixel((x, y)), expected.getpixel((x, y)), (x, y))
 
+    def test_the_map_of_step1_is_a_valid_tmx_the_template_geometry_accepts(self):
+        import xml.etree.ElementTree as ET
+        for label, path in (("template", ROOT / "templates" / "ecs-welcome" / "assets" / "src" / "level.tmx"),
+                            ("step1", STEPS / "step1" / "assets" / "src" / "level.tmx")):
+            with self.subTest(label):
+                layer = ET.parse(path).getroot().find("layer")
+                self.assertEqual((layer.get("name"), layer.get("width"), layer.get("height")), ("background", "20", "6"))
+                ids = [int(v) for v in layer.find("data").text.replace("\n", "").split(",") if v.strip()]
+                self.assertEqual(len(ids), 120)
+                self.assertTrue(all(0 <= v <= 4 for v in ids))   # tiles.png has four tiles
+
     def test_the_palette_of_the_guide_is_the_one_the_art_assumes(self):
-        values = json.loads((STEPS / "step1" / "assets" / "palette.json").read_text())["values"]
+        values = json.loads((ROOT / "templates" / "ecs-welcome" / "assets" / "palette.json").read_text())["values"]
         # pens used by make_art: 0 black, 1 bright magenta, 3 red, 6 bright yellow, 10 bright cyan, 15 white
         self.assertEqual([values[p] for p in (0, 1, 3, 6, 10, 15)], [0, 8, 3, 24, 20, 26])
 
@@ -195,10 +209,20 @@ class ExampleMatchesGuide(unittest.TestCase):
         self.assertEqual((self.EXAMPLE / "generated" / "ecs_profile.inc").read_text(), gp.ecs_profile_include(example))
 
     def test_it_has_no_files_the_guide_does_not_explain(self):
-        expected = set(self.overlay()) | {"Makefile", "generated/project.inc", "generated/ecs_profile.inc", "README.md"}
+        brought_by_new = {path for path in gp.render_project(gp.Spec("nave", "x"), "t", "en")
+                          if path.startswith("assets/") and "generated" not in path}
+        expected = (set(self.overlay()) | brought_by_new
+                    | {"Makefile", "generated/project.inc", "generated/ecs_profile.inc", "README.md"})
         found = {str(p.relative_to(self.EXAMPLE)) for p in self.EXAMPLE.rglob("*")
                  if p.is_file() and "assets/generated" not in str(p)}
         self.assertEqual(found, expected)
+
+    def test_the_assets_that_new_brings_are_unchanged_in_the_example_unless_a_step_replaces_them(self):
+        replaced = set(self.overlay())
+        for path, content in gp.render_project(gp.Spec("nave", "x"), "t", "en").items():
+            if path.startswith("assets/") and "generated" not in path and path not in replaced:
+                with self.subTest(path):
+                    self.assertEqual((self.EXAMPLE / path).read_bytes(), content)
 
     def test_it_is_not_a_glasnost_project(self):
         """It is an example of the framework (built by make); it carries no project metadata."""
@@ -225,7 +249,9 @@ class StepsBuild(unittest.TestCase):
         cls.sizes: dict[str, int] = {}
         cls.states: dict[str, dict] = {}
         for step in STEP_NAMES:
-            shutil.copytree(STEPS / step, cls.folder, dirs_exist_ok=True)
+            # shutil.copy, not copy2: a reader copying a step gets fresh mtimes. Keeping the
+            # old ones makes make link the stale object that `glasnost new` already built.
+            shutil.copytree(STEPS / step, cls.folder, dirs_exist_ok=True, copy_function=shutil.copy)
             cls.states[step] = {"stale_before_config": gp.check_project(cls.folder)}
             code, out, err = run(["config"], cwd=cls.folder, env=cls.env)
             assert code == 0, out + err
@@ -256,15 +282,14 @@ class StepsBuild(unittest.TestCase):
     def test_each_step_grows_the_binary_by_a_sensible_amount(self):
         self.assertLess(self.sizes["step1"], self.sizes["step2"])
         self.assertLess(self.sizes["step2"], self.sizes["step3"])
-        self.assertLess(self.sizes["step3"], 9_000)   # a guide game must stay far from the 64 KB limit
+        self.assertLess(self.sizes["step3"], 12_000)   # with the tilemap and its tileset; far from the 64 KB limit
 
-    def test_step1_data_is_byte_identical_to_the_hand_written_art(self):
-        """The PNG conversion reproduces the bytes the template had written by hand."""
+    def test_the_template_art_converts_to_the_bytes_the_guide_art_encodes_to(self):
+        """The PNG conversion of what `glasnost new` ships reproduces the hand-encoded bytes."""
         folder = self.tmp / "step1check"
         code, out, err = run(["new", "nave", "--dir", str(folder), "--no-git", "--no-build"], env=self.env)
         self.assertEqual(code, 0, out + err)
         project = folder / "nave"
-        shutil.copytree(STEPS / "step1", project, dirs_exist_ok=True)
         code, out, err = run(["build"], cwd=project, env=self.env)
         self.assertEqual(code, 0, out + err)
         generated = (project / "assets" / "generated" / "assets.s").read_text()

@@ -1,12 +1,14 @@
 {
-  "hash": "f3e53a2ea9f50e67a623cc5ba8e1356213c1af054445862ee301d8686c03133e",
+  "hash": "c561b13072c7af4a2bf61fc158edbdb7987228e7a36eb6c6c8215686ebdfeb63",
   "outputs": {
-    "generated/assets.inc": "42e2bcd287cf15615c294136a94140e660b1c56d7d478327e27fb371caeb7e04",
-    "generated/assets.s": "e438e8168d7c25af5f0bf9c8ca010af4e7cdc9741e760784ff85bd0909522518"
+    "generated/assets.inc": "5f83e4a4ca91d1a0fab5bcb3f155a02f1f42eb70c98a392f79aa5806a13ba1b5",
+    "generated/assets.s": "4862f9d63f10b0e93f28be489b06e878515bdd828210dc4c32958cc8e88a7275"
   },
   "sources": {
-    "palette.json": "87539710d4ab22f7e32098dbbfbf47be1385c129223a9a25e07e4a832e1bd2e2",
-    "src/sprites.png": "81b5c38134e83f96a65163eec12d6f52f84c4fd6c4f25228d4485708af6cf885"
+    "palette.json": "f3c61ccf0203dddedbebdea707dd639bd4c6d56a309686072425a911399ac582",
+    "src/level.tmx": "115445a3638d347ba2e048921516320263f1e4a339f5ab0daa5ab64a0e4e583e",
+    "src/sprites.png": "81b5c38134e83f96a65163eec12d6f52f84c4fd6c4f25228d4485708af6cf885",
+    "src/tiles.png": "485e53694041b672a4f34b58b89fc172bb1ffde7446b851ae8de38b5f75be2b5"
   },
   "version": 1
 }

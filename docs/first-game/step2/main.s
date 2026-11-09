@@ -20,8 +20,20 @@ game_player::  .dw 0              ; address of the player entity
 _game_str_welcome: .asciz "WELCOME TO"
 _game_str_help:    .asciz "CURSOR KEYS MOVE"
 
-;; ---- Sprites and palette come from assets/ (assets/assets.json): generated
-;; ---- into assets/generated/assets.s, which the build assembles by itself.
+;; ---- Sprites come from assets/generated/assets.s (PNG -> Mode 0 bytes). ----
+
+;; ---- Palette comes from assets/generated/assets.s (assets/palette.json). ----
+
+;; ---- Tilemap: types table (id -> type) and render descriptors ----
+_game_types: .db 0, 0, 0, 0
+game_view:
+    .dw game_tileset
+    .db 0, 0, 0
+    .dw GAME_MAP_SCREEN_Y
+    .db GAME_MAP_WIDTH, GAME_MAP_HEIGHT, 4
+game_map_desc:
+    .dw game_map, _game_types
+    .db GAME_MAP_WIDTH, GAME_MAP_HEIGHT, 2, 3, 4, 8, 4
 
 ;; ---- Entity storage: ECS_ENTITY_SIZE-byte slots, filled in spawn order ----
 _game_tpl:      .ds ECS_ENTITY_SIZE    ; template built from a spawn row, copied into the manager
@@ -36,7 +48,7 @@ _game_managers: .dw game_manager
 _game_work:     .ds 8 * GAME_CAP
 FWK_ECS_RENDER_SCENE game_scene, _game_managers, 1, _game_work, GAME_CAP, _game_pools, 1
 
-;; ---- Keyboard: (key, action bit) pairs ended by a zero action ----
+;; ---- Keyboard: (key, action bit) pairs ended by a zero key ----
 game_bindings:
     .dw Key_CursorLeft
     .db GAME_INPUT_LEFT
@@ -178,8 +190,7 @@ _game_steer_set:
     ret
 
 ;; Keeps the player inside the play area, run after motion. Positions are
-;; unsigned bytes, but fwk_ecs_system_motion_u8 already saturates at 0, so with it the
-;; first test never fires: it only guards a position that wrapped to 254.
+;; unsigned bytes: going left past 0 wraps to 254, which the first test catches.
 _game_clamp:
     push ix
     push iy
@@ -224,6 +235,15 @@ _main::
     call fwk_input_set_bindings
     xor a
     call fwk_video_clear_visible
+
+    ;; Unpack and draw the background tilemap.
+    ld hl, #game_map_packed + GAME_MAP_PACKED_SIZE - 1
+    ld de, #game_map + GAME_MAP_SIZE - 1
+    call fwk_zx7b_unpack
+    ld ix, #game_map_desc
+    ld iy, #game_view
+    call fwk_tilemap_render_view
+    call _game_expect_ok
 
     ld b, #GAME_TEXT_Y_WELCOME
     ld hl, #_game_str_welcome
