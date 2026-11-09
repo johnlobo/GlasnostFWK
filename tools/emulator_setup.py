@@ -59,8 +59,8 @@ BLUEPIXEL_API = f"https://api.github.com/repos/{BLUEPIXEL_REPO}/releases/latest"
 
 # Command names looked up in the PATH, in the order they are offered.
 EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "RetroVirtualMachine", "retrovirtualmachine",
-                     "bluepixel", "macape", "cpct_macape")
-MAC_APPS = ("Retro Virtual Machine 2.app", "RetroVirtualMachine.app", "MacAPE.app", "BluePixel.app")
+                     "bluepixel")
+MAC_APPS = ("Retro Virtual Machine 2.app", "RetroVirtualMachine.app", "BluePixel.app")
 
 # Retro Virtual Machine is launched the way CPCtelera's tools/scripts/cpct_rvm does it:
 #   RVM -ns -b=<machine> (-i= FILE | -s FILE) [-p -w] [-c=<command>\n]
@@ -178,8 +178,6 @@ def kind_of(path: Path | str) -> str:
     name = Path(path).name.lower()
     if "retrovirtualmachine" in name or name == "rvm":
         return "rvm"
-    if "macape" in name:
-        return "macape"
     if "bluepixel" in name:
         return "bluepixel"
     return "generic"
@@ -451,7 +449,7 @@ def install_bluepixel(root: Path = ROOT, system: str | None = None, machine: str
 # ------------------------------------------------------------------ launch
 
 # Emulators that start a disc by themselves (/A or RUN"name typed for you): the DSK is the better image.
-DISC_AUTORUN_KINDS = ("bluepixel", "macape", "rvm")
+DISC_AUTORUN_KINDS = ("bluepixel", "rvm")
 
 
 def kind_for(emulator: str, root: Path = ROOT) -> str:
@@ -471,7 +469,7 @@ def build_command(emulator: str, image: Path, build_dir: Path, name: str, root: 
     kind = kind_for(emulator, root)
     data = read_config(root) or {}
     args = data.get("args") if saved_path(root, data) == Path(emulator) else None
-    if kind in ("macape", "bluepixel"):   # both take `image [/A] [/SYM:file]`
+    if kind == "bluepixel":   # `image [/A] [/SYM:file]`
         command = [emulator, str(image)]
         if image.suffix.lower() == ".dsk":
             command.append("/A")

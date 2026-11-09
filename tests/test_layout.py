@@ -64,6 +64,20 @@ class Layout(unittest.TestCase):
                     offenders.append(f"{name}:{number}: {line.strip()[:100]}")
         self.assertEqual(offenders, [])
 
+    def test_the_emulator_formerly_called_mac_ape_is_only_called_bluepixel(self):
+        needle = "mac" + "ape"   # built in two parts so this file does not match itself
+        offenders = []
+        for name in tracked():
+            if name.endswith((".pdf", ".png", ".dsk", ".cdt", ".bin")) or name.startswith("tools/img2cpc/"):
+                continue
+            try:
+                text = (ROOT / name).read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            if needle in text.lower() or needle in name.lower():
+                offenders.append(name)
+        self.assertEqual(offenders, [])
+
     def test_the_install_cli_entry_stays_at_bin(self):
         """`glasnost install-cli` links to bin/glasnost; moving it would break every installed link."""
         self.assertTrue((ROOT / "bin" / "glasnost").is_file())

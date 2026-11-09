@@ -155,7 +155,7 @@ class Discovery(Temp):
     def test_kind_of(self):
         self.assertEqual(emu.kind_of("/x/RetroVirtualMachine"), "rvm")
         self.assertEqual(emu.kind_of("C:/x/RetroVirtualMachine.exe"), "rvm")
-        self.assertEqual(emu.kind_of("/Applications/MacAPE.app/Contents/MacOS/MacAPE"), "macape")
+        self.assertEqual(emu.kind_of("/Applications/BluePixel.app/Contents/MacOS/BluePixel"), "bluepixel")
         self.assertEqual(emu.kind_of("/usr/bin/amspirit"), "generic")
 
     def test_normalize_accepts_an_executable_and_rejects_the_rest(self):
@@ -177,15 +177,15 @@ class Discovery(Temp):
 
     def test_candidates_find_path_commands_the_sibling_amspirit_and_downloaded_builds(self):
         sibling = make_executable(self.tmp / "tools" / "amspirit-lite" / "run.sh")
-        in_path = make_executable(self.tmp / "bin" / "macape")
+        in_path = make_executable(self.tmp / "bin" / "bluepixel")
         downloaded = make_executable(self.root / "tools" / "emulators" / "retro-virtual-machine-x" / "RetroVirtualMachine")
         found = emu.candidates(self.root, home=self.tmp / "home", path_env=str(self.tmp / "bin"))
         self.assertEqual(found, [sibling, in_path, downloaded])
 
     def test_candidates_have_no_duplicates_and_skip_non_executables(self):
         make_executable(self.tmp / "bin" / "amspirit")
-        (self.tmp / "bin" / "macape").write_text("x")
-        (self.tmp / "bin" / "macape").chmod(0o644)
+        (self.tmp / "bin" / "bluepixel").write_text("x")
+        (self.tmp / "bin" / "bluepixel").chmod(0o644)
         found = emu.candidates(self.root, home=self.tmp / "home", path_env=f"{self.tmp / 'bin'}{os.pathsep}{self.tmp / 'bin'}")
         self.assertEqual(found, [self.tmp / "bin" / "amspirit"])
 
@@ -333,7 +333,7 @@ class BluePixel(Temp):
             self.assertEqual(raised.exception.key, "emu.no_bluepixel_platform")
         self.assertTrue(emu.bluepixel_supported("Darwin", "arm64"))
 
-    def test_it_is_launched_like_macape_with_autorun_and_symbols(self):
+    def test_it_is_launched_with_autorun_and_symbols(self):
         exe = make_executable(self.root / "BluePixel.app" / "Contents" / "MacOS" / "BluePixel")
         noi = self.tmp / "build" / "a" / "obj" / "a.noi"
         noi.parent.mkdir(parents=True)
@@ -535,14 +535,6 @@ class LaunchCommand(Temp):
         self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp, "platformer", self.root),
                          [str(exe), "--b=cpc6128", "--i=/i/a.dsk", "--run=platform"])
 
-    def test_macape_keeps_its_special_arguments(self):
-        exe = make_executable(self.tmp / "MacAPE")
-        noi = self.tmp / "build" / "a" / "obj" / "a.noi"
-        noi.parent.mkdir(parents=True)
-        noi.write_text("x")
-        command = emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp / "build" / "a", "a", self.root)
-        self.assertEqual(command, [str(exe), "/i/a.dsk", "/A", f"/SYM:{noi}"])
-
     def test_any_other_emulator_gets_just_the_image(self):
         self.assertEqual(emu.build_command("/x/amspirit", Path("/i/a.cdt"), self.tmp, "a", self.root),
                          ["/x/amspirit", "/i/a.cdt"])
@@ -551,7 +543,7 @@ class LaunchCommand(Temp):
         noi = self.tmp / "build" / "a" / "obj" / "a.noi"
         noi.parent.mkdir(parents=True)
         noi.write_text("x")
-        for name in ("MacAPE", "BluePixel"):
+        for name in ("BluePixel",):
             for image, autorun in (("a.dsk", True), ("a.cdt", False)):
                 with self.subTest(name, image=image):
                     exe = make_executable(self.tmp / name)
@@ -578,7 +570,7 @@ class RunExampleFindsTheSavedEmulator(Temp):
         patcher = mock.patch.object(run_example, "EMULATOR_COMMANDS", ())
         patcher.start()
         self.addCleanup(patcher.stop)
-        patcher = mock.patch.object(run_example, "MACAPE_CANDIDATES", ())
+        patcher = mock.patch.object(run_example, "BLUEPIXEL_CANDIDATES", ())
         patcher.start()
         self.addCleanup(patcher.stop)
         patcher = mock.patch.dict(os.environ, {"GLASNOST_EMULATOR": ""})
@@ -726,8 +718,8 @@ class RunExampleChoosesTheImage(Temp):
             self.assertEqual(run_example.main(), 0)
         return launched[0], out.getvalue()
 
-    def test_bluepixel_and_macape_get_the_dsk_with_autorun_and_symbols(self):
-        for name in ("BluePixel", "MacAPE"):
+    def test_bluepixel_gets_the_dsk_with_autorun_and_symbols(self):
+        for name in ("BluePixel",):
             with self.subTest(name):
                 command, _ = self.launch(name)
                 self.assertEqual(command[1:], [str(self.folder / "build" / "game.dsk"), "/A",
