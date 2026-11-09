@@ -11,7 +11,8 @@ resolves, runs it, and checks through RAM (symbols from the project's .noi):
   1. game_status is 0x5A and the three drones move (their X changes);
   2. holding CURSOR RIGHT moves the player right until it stops at GAME_X_MAX;
   3. holding CURSOR LEFT stops at 0 (the u8 wrap never shows);
-  4. UP stops at GAME_Y_MIN and DOWN at GAME_Y_MAX.
+  4. UP stops at GAME_Y_MIN and DOWN at GAME_Y_MAX;
+  5. the imported background map is drawn (the ground row fills the last scanline).
 """
 
 from __future__ import annotations
@@ -93,6 +94,11 @@ def main() -> int:
             second = [entity(i)[0] for i in (1, 2, 3)]
             if any(a == b for a, b in zip(first, second)):
                 raise RuntimeError(f"a drone does not move: {first} -> {second}")
+
+            # The imported background: the solid ground row fills the last scanline. Catches a
+            # tilemap descriptor that fwk_tilemap_render_view rejects (it then draws nothing).
+            if not all(emu.ram(emu.standard_screen_address(0, 199), 80)):
+                raise RuntimeError("the background map is not drawn: the last scanline has empty bytes")
 
             held = emu.symbol(noi, "fwk_input_held")
 

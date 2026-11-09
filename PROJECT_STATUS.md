@@ -1579,6 +1579,9 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   mtime nuevo, como un lector; `copytree` conservaba el mtime viejo y `make` enlazaba el
   objeto antiguo), `tests/test_glasnost_project.py` (assets copiados, `minimal` sin ECS) y
   `tests/first_game_smoke.py` (mapa dibujado, verificado con geometría rota: falla).
-- Pendiente: la plantilla ya no lleva las cabeceras In/Out/Clobbers de `ed697ba` ni el
-  macro `GAME_CHECK_OK` de `bae49f0`; usa `_game_expect_ok` como `nave` y la guía.
+- [x] Restaurado en la plantilla lo anterior a #26 (macro `GAME_CHECK_OK` desactivado por
+  defecto, cabeceras de rutina `ed697ba`, pista de `game_status`), con los assets
+  importados encima. Los pasos 2 y 3 y `nave` siguen con `_game_expect_ok` (siempre
+  activo) porque la guía y el recorrido citan ese código; el paso 2 de la guía lo avisa.
+- [x] `tests/project_smoke.py` exige también el suelo del mapa en la última línea.
 

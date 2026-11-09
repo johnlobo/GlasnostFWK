@@ -167,6 +167,13 @@ componente y su módulo en `example.json`.
 
 Ficheros de este paso: [`step2/`](first-game/step2/).
 
+Los `main.s` y `common.inc` de `step2/` y `step3/` son completos, así que puedes copiarlos
+enteros en vez de editar. Una diferencia con la plantilla: ahí la comprobación del carry
+tras una llamada al framework es el macro `GAME_CHECK_OK`, desactivado por defecto; en
+estos ficheros es la rutina `_game_expect_ok`, que comprueba siempre y detiene el juego
+con el código de error en `game_status`. Si editas a mano, cambia cada
+`call _game_expect_ok` que veas más abajo por `GAME_CHECK_OK`.
+
 1. Dibuja los fotogramas nuevos: una tira de 32x8 con la nave, la nave con las
    llamas cambiadas, el dron y el dron con las patas cambiadas
    ([`step2/assets/src/sprites.png`](first-game/step2/assets/src/sprites.png)). **Sustituye** el PNG
