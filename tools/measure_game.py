@@ -87,7 +87,7 @@ def label_table(example: str) -> dict[str, int]:
     """Every label (global and local) with its final address, from the listings."""
     labels: dict[str, int] = {}
     pattern = re.compile(r"^\s+([0-9A-F]{8})\s+\d+\s+([A-Za-z_][\w$]*)::?\s*$")
-    for listing in sorted((ROOT / ".build" / example / "obj").rglob("*.rst")):
+    for listing in sorted((ROOT / "build" / example / "obj").rglob("*.rst")):
         for line in listing.read_text(errors="replace").splitlines():
             match = pattern.match(line)
             if match:
@@ -98,11 +98,11 @@ def label_table(example: str) -> dict[str, int]:
 class Session:
     def __init__(self, example: str, emulator: Path, model: str = "6128"):
         self.example, self.emulator, self.model = example, emulator, model
-        self.noi = ROOT / ".build" / example / "obj" / f"{example}.noi"
+        self.noi = ROOT / "build" / example / "obj" / f"{example}.noi"
         self.process = None
 
     def __enter__(self):
-        dsk = ROOT / ".build" / "tests" / "GlasnostFWK-tests.dsk"
+        dsk = ROOT / "build" / "tests" / "GlasnostFWK-tests.dsk"
         self.process = subprocess.Popen(
             [str(self.emulator), "--web-server", "--model", self.model, "--ram", "128", str(dsk)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,

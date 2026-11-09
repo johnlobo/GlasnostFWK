@@ -93,24 +93,24 @@ jobs:
         run: |
           set -euo pipefail
           for example in minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender nave; do
-            test -s ".build/$example/obj/$example.bin"
+            test -s "build/$example/obj/$example.bin"
           done
           for example in minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 audio window vertical tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender nave; do
-            test -s ".build/$example/$example.cdt"
+            test -s "build/$example/$example.cdt"
           done
-          test -s ".build/tests/GlasnostFWK-tests.dsk"
-          test -s ".build/tests/catalog.json"
-          test "$(find .build -mindepth 2 -maxdepth 2 -name '*.dsk' | wc -l)" -eq 1
+          test -s "build/tests/GlasnostFWK-tests.dsk"
+          test -s "build/tests/catalog.json"
+          test "$(find build -mindepth 2 -maxdepth 2 -name '*.dsk' | wc -l)" -eq 1
 
       - name: Upload CPC artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: glasnostfwk-${{ github.sha }}
           path: |
-            .build/*/obj/*.bin
-            .build/*/*.cdt
-            .build/tests/GlasnostFWK-tests.dsk
-            .build/tests/catalog.json
+            build/*/obj/*.bin
+            build/*/*.cdt
+            build/tests/GlasnostFWK-tests.dsk
+            build/tests/catalog.json
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7

@@ -208,8 +208,8 @@ def run_example(
     emulator: Path,
     model: str,
 ) -> None:
-    directory = ROOT / ".build" / name
-    dsk = ROOT / ".build" / "tests" / "GlasnostFWK-tests.dsk"
+    directory = ROOT / "build" / name
+    dsk = ROOT / "build" / "tests" / "GlasnostFWK-tests.dsk"
     noi = directory / "obj" / f"{name}.noi"
     frame = symbol(noi, "fwk_system_frame_count")
     process = subprocess.Popen(

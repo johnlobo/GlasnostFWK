@@ -41,12 +41,12 @@ class ExampleTargetTests(unittest.TestCase):
 
     def test_clean_target_removes_only_that_staging_directory(self):
         output = self.make_dry_run("minimal", "clean")
-        self.assertIn(str(ROOT / ".build" / "minimal"), output)
-        self.assertNotIn(str(ROOT / ".build" / "tests"), output)
+        self.assertIn(str(ROOT / "build" / "minimal"), output)
+        self.assertNotIn(str(ROOT / "build" / "tests"), output)
 
     def test_build_target_copies_artifacts_next_to_the_example(self):
         output = self.make_dry_run("minimal", "build")
-        staging = str(ROOT / ".build" / "minimal")
+        staging = str(ROOT / "build" / "minimal")
         destination = str(ROOT / "examples" / "minimal")
         self.assertIn(f'source="{staging}/obj/$file"', output)
         self.assertIn(f'cp -f "$source" "{destination}/$file"', output)

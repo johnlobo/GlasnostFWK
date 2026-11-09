@@ -21,7 +21,7 @@ assets/
 ```
 
 `tools/build_examples.py` copia esta carpeta en `src/assets` del proyecto
-generado (`.build/platformer/`). Allí:
+generado (`build/platformer/`). Allí:
 
 - los archivos `.s` se ensamblan automáticamente, sin tocar `example.json`;
 - los `.inc` se incluyen con `.include "assets/generated/assets.inc"`;
@@ -144,7 +144,7 @@ cpct_aks2c -gs -m 0x4000 -o song -od assets/music song.aks
 
 ## Reglas prácticas
 
-- No edite `.build/platformer/`: se regenera en cada `make`.
+- No edite `build/platformer/`: se regenera en cada `make`.
 - No edite `generated/assets.s` ni `generated/assets.inc` a mano: cambie los
   originales y ejecute `make assets`.
 - Mantenga los originales (PNG, TMX, paleta) junto a los generados.

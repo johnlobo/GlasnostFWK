@@ -110,7 +110,7 @@ class RenderBudgetTests(unittest.TestCase):
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
         profile = json.loads((ROOT / "profiles/standard-160x200.json").read_text())
         include = generate(manifest, portfolio, profile).include
-        stage = ROOT / ".build" / "ecsrender" / "src"
+        stage = ROOT / "build" / "ecsrender" / "src"
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             (work / "core").mkdir()

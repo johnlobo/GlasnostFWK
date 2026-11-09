@@ -153,7 +153,7 @@ def host_tests_pass() -> bool:
 
 
 def smoke_passes(emulator: Path) -> bool:
-    run(["rm", "-rf", ".build/platformer/obj"])
+    run(["rm", "-rf", "build/platformer/obj"])
     if run([sys.executable, "tools/build_examples.py", "platformer"]).returncode != 0:
         return False  # a mutation that does not build is reported, not counted as detected
     run([sys.executable, "tools/build_test_disk.py", "platformer"])
@@ -211,7 +211,7 @@ def main() -> int:
         print("sources were NOT restored", file=sys.stderr)
         return 2
     if not args.host_only:
-        run(["rm", "-rf", ".build/platformer/obj"])
+        run(["rm", "-rf", "build/platformer/obj"])
         run([sys.executable, "tools/build_examples.py", "platformer"])
     print(f"\n{len(survivors)} not detected" if survivors else "\nall detected")
     return 1 if survivors and not args.host_only else 0

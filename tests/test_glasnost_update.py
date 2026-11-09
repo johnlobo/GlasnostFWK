@@ -400,7 +400,7 @@ class Cycle(unittest.TestCase):
         self.assert_restored()
 
     def test_gitignored_generated_files_come_back_byte_for_byte(self):
-        (self.folder / ".gitignore").write_text(".build/\ngenerated/\n")
+        (self.folder / ".gitignore").write_text("build/\ngenerated/\n")
         git(self.folder, "rm", "-rq", "--cached", "generated")
         git(self.folder, "add", ".gitignore")
         git(self.folder, "commit", "-qm", "ignore generated")
@@ -619,7 +619,7 @@ class RealBuild(unittest.TestCase):
             code, out, err = run(["update"], ROOT, runner=quiet_runner, env=env, cwd=folder)
             self.assertEqual(code, 0, out + err)
             self.assertEqual(json.loads((folder / gp.PROJECT_FILE).read_text())["format"], 2)
-            self.assertTrue(any((folder / ".build" / "demo").rglob("demo.dsk")))
+            self.assertTrue(any((folder / "build" / "demo").rglob("demo.dsk")))
             code, out, err = run(["test"], ROOT, runner=quiet_runner, env=env, cwd=folder)
             self.assertEqual(code, 0, out + err)
             self.assertEqual(run(["rollback"], ROOT, env=env, cwd=folder)[0], 0)

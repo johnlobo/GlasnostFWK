@@ -57,4 +57,4 @@ test: generate
 	$(PYTHON) tools/build_test_disk.py $(EXAMPLES)
 
 clean:
-	rm -rf .build dist generated/*.inc generated/*.json generated/*.md
+	rm -rf build dist generated/*.inc generated/*.json generated/*.md

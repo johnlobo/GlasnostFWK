@@ -18,7 +18,7 @@ class ReleasePackageTests(unittest.TestCase):
     def test_archive_is_deterministic_and_complete(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            build = root / ".build"
+            build = root / "build"
             examples = root / "examples"
             for example in package_release.EXAMPLES:
                 (examples / example).mkdir(parents=True)

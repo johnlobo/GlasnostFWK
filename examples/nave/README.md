@@ -9,7 +9,7 @@ Es la copia acumulada de `docs/first-game/step1`, `step2` y `step3`; un test
 proyecto propio, sigue la guía desde `glasnost new`.
 
 ```sh
-make            # desde esta carpeta: compila nave.bin, nave.cdt y nave.dsk en .build/nave/
+make            # desde esta carpeta: compila nave.bin, nave.cdt y nave.dsk en build/nave/
 ```
 
 En un CPC: `RUN"NAVE`.

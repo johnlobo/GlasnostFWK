@@ -87,7 +87,7 @@ def main() -> int:
             code = glasnost.main(["--lang", "en", "build", "nave"])
             if code != 0:
                 return code
-            folder, built = ROOT / "examples" / "nave", ROOT / ".build" / "nave"
+            folder, built = ROOT / "examples" / "nave", ROOT / "build" / "nave"
         else:
             code = glasnost.main(["--lang", "en", "new", "nave", "--dir", tmp, "--no-git", "--no-build"])
             if code != 0:
@@ -97,7 +97,7 @@ def main() -> int:
             code = glasnost.main(["--lang", "en", "build", "--project", str(folder)])
             if code != 0:
                 return code
-            built = folder / ".build" / "nave"
+            built = folder / "build" / "nave"
         offsets = constants(folder, {"ECS_E_X", "ECS_E_Y", "ECS_E_RENDER_SPRITE", "ECS_E_RENDER_FLAGS", "ECS_ENTITY_SIZE"})
         x_off, y_off, sprite_off, flags_off, size = (
             offsets[k] for k in ("ECS_E_X", "ECS_E_Y", "ECS_E_RENDER_SPRITE", "ECS_E_RENDER_FLAGS", "ECS_ENTITY_SIZE"))

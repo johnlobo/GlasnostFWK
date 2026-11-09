@@ -70,9 +70,9 @@ def build_lines(run_build: bool) -> list[str]:
         )
         if completed.returncode:
             raise SystemExit(completed.stdout)
-    binary = ROOT / ".build" / "platformer" / "obj" / "platformer.bin"
-    cassette = ROOT / ".build" / "platformer" / "platformer.cdt"
-    selected = ROOT / ".build" / "platformer" / "selected-modules.json"
+    binary = ROOT / "build" / "platformer" / "obj" / "platformer.bin"
+    cassette = ROOT / "build" / "platformer" / "platformer.cdt"
+    selected = ROOT / "build" / "platformer" / "selected-modules.json"
     missing = [str(path.relative_to(ROOT)) for path in (binary, cassette, selected) if not path.is_file()]
     if missing:
         raise SystemExit("Faltan artefactos; ejecute sin --skip-build: " + ", ".join(missing))
@@ -81,12 +81,12 @@ def build_lines(run_build: bool) -> list[str]:
         "== building platformer ==",
         "Compilacion terminada sin errores.",
         "",
-        "$ stat -c '%n  %s bytes' .build/platformer/obj/platformer.bin \\",
-        "    .build/platformer/platformer.cdt",
-        f".build/platformer/obj/platformer.bin  {binary.stat().st_size} bytes",
-        f".build/platformer/platformer.cdt  {cassette.stat().st_size} bytes",
+        "$ stat -c '%n  %s bytes' build/platformer/obj/platformer.bin \\",
+        "    build/platformer/platformer.cdt",
+        f"build/platformer/obj/platformer.bin  {binary.stat().st_size} bytes",
+        f"build/platformer/platformer.cdt  {cassette.stat().st_size} bytes",
         "",
-        "$ test -f .build/platformer/selected-modules.json && echo manifiesto-ok",
+        "$ test -f build/platformer/selected-modules.json && echo manifiesto-ok",
         "manifiesto-ok",
     ]
 

@@ -157,7 +157,7 @@ se ha medido todavía.
 
 Los veintidós ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
 veintiuno generan además `.cdt`. Sus veintidós BIN y los dos payloads de
-`diskload` se reúnen en un único `.build/tests/GlasnostFWK-tests.dsk` con 24
+`diskload` se reúnen en un único `build/tests/GlasnostFWK-tests.dsk` con 24
 entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
 porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md` contiene
 tamaños enlazados.

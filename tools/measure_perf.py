@@ -61,7 +61,7 @@ def boot(emulator):
     except OSError:
         pass
     process = subprocess.Popen([str(emulator), "--web-server", "--model", "6128",
-                                "--ram", "128", str(ROOT / ".build" / "tests" / "GlasnostFWK-tests.dsk")],
+                                "--ram", "128", str(ROOT / "build" / "tests" / "GlasnostFWK-tests.dsk")],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                start_new_session=True)
     deadline = time.time() + 30
@@ -86,7 +86,7 @@ def main():
     parser.add_argument("--emulator", type=Path, default=DEFAULT_EMULATOR)
     args = parser.parse_args()
 
-    noi = ROOT / ".build" / "perf" / "obj" / "perf.noi"
+    noi = ROOT / "build" / "perf" / "obj" / "perf.noi"
     status_addr = symbol(noi, "perf_status")
     results_addr = symbol(noi, "perf_results")
 

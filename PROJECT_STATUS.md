@@ -30,7 +30,7 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
-  framework fuera de `.build/`.
+  framework fuera de `build/`.
 - `vertical` es la primera integración jugable. Está automatizada en CPC 6128
   y CPC 464 mediante AmSpiriT-Lite 1.15.3.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
@@ -230,11 +230,11 @@ python3 tests/emulator_smoke.py --model 464 window
 ## Fase completada: DSK de pruebas unificado
 
 - [x] `make examples` y `make test` generan un único
-  `.build/tests/GlasnostFWK-tests.dsk` como salida de disco pública.
+  `build/tests/GlasnostFWK-tests.dsk` como salida de disco pública.
 - [x] El catálogo contiene los diez BIN de ejemplo con nombres AMSDOS 8.3 y
   conserva las direcciones de carga y ejecución extraídas del build real.
 - [x] El mismo DSK incluye `RAWDATA.BIN` y `PACKDATA.ZX7`, requeridos por
-  `diskload`; su catálogo reproducible queda en `.build/tests/catalog.json`.
+  `diskload`; su catálogo reproducible queda en `build/tests/catalog.json`.
 - [x] Los DSK individuales de CPCTelera se tratan como intermedios y se eliminan
   después de construir el disco común.
 - [x] El smoke, CI y paquete de release consumen el DSK compartido; el ZIP pasa
@@ -797,7 +797,7 @@ Cambios aún sin commit/push.
   con el emulador indicado en `GLASNOST_EMULATOR` o, si no se indica, con
   AmSpiriT-Lite junto al repositorio o con `amspirit-lite`/`amspirit` en
   `PATH`. Sin emulador imprime la ruta de la imagen.
-- [x] `make clean` borra únicamente `.build/<nombre>/`; `.build/` sigue siendo
+- [x] `make clean` borra únicamente `build/<nombre>/`; `build/` sigue siendo
   el único destino de los artefactos y `examples/` no recibe copias del
   framework.
 - [x] `tests/test_example_targets.py` exige el envoltorio idéntico en los 22
@@ -857,7 +857,7 @@ Cambios aún sin commit/push.
 
 ## Fase implementada: compilación incremental y artefactos locales
 
-- [x] `tools/build_examples.py` ya no borra `.build/<nombre>/` en cada ejecución:
+- [x] `tools/build_examples.py` ya no borra `build/<nombre>/` en cada ejecución:
   conserva `obj/` y sincroniza solo las fuentes staging, de modo que CPCTelera
   decide qué recompilar según sus dependencias.
 - [x] Las fuentes, cabeceras generadas (`project_config.*`, `video_config.inc`,
@@ -867,7 +867,7 @@ Cambios aún sin commit/push.
   cambiado, y recompila únicamente los ficheros afectados cuando cambian.
 - [x] `cfg/example.mk` copia tras compilar `BIN`, `CDT` y `DSK` a la carpeta del
   ejemplo (ignorados por git) y `make clean` los elimina junto con
-  `.build/<nombre>/`.
+  `build/<nombre>/`.
 - [x] `tests/test_example_targets.py` cubre la copia y la limpieza de artefactos.
 - [x] `make test`: 102 pruebas y 22 construcciones correctas (2026-10-31).
 

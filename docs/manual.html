@@ -164,7 +164,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintitrés consumidores y crea el disco de pruebas en <code>.build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintitrés consumidores y crea el disco de pruebas en <code>build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -172,23 +172,23 @@ make test</code></pre>
     <pre><code>cd examples/minimal
 make        # compila este ejemplo y copia BIN, CDT y DSK a la carpeta
 make run    # compila y lo abre en el emulador
-make clean  # borra .build/minimal/ y las copias locales</code></pre>
-    <p><code>make</code> reutiliza <code>tools/build_examples.py</code> y deja el proyecto generado en <code>.build/&lt;nombre&gt;/</code>. Además copia junto a las fuentes <code>examples/&lt;nombre&gt;/&lt;nombre&gt;.bin</code>, <code>.cdt</code> y <code>.dsk</code> (los que existan), de modo que el ejecutable queda a mano en la carpeta del ejemplo; esas copias están ignoradas por git y <code>make clean</code> las elimina. El framework nunca se copia al repositorio. <code>make run</code> abre el CDT del ejemplo, que autorrancia, o su DSK, con el ejecutable indicado en <code>GLASNOST_EMULATOR</code> o, en su defecto, con AmSpiriT-Lite si está junto al repositorio y, si no, con MacAPE. Sin emulador disponible imprime la ruta de la imagen. El emulador también puede fijarse en la propia orden: <code>make run GLASNOST_EMULATOR=/ruta/al/emulador</code>.</p>
+make clean  # borra build/minimal/ y las copias locales</code></pre>
+    <p><code>make</code> reutiliza <code>tools/build_examples.py</code> y deja el proyecto generado en <code>build/&lt;nombre&gt;/</code>. Además copia junto a las fuentes <code>examples/&lt;nombre&gt;/&lt;nombre&gt;.bin</code>, <code>.cdt</code> y <code>.dsk</code> (los que existan), de modo que el ejecutable queda a mano en la carpeta del ejemplo; esas copias están ignoradas por git y <code>make clean</code> las elimina. El framework nunca se copia al repositorio. <code>make run</code> abre el CDT del ejemplo, que autorrancia, o su DSK, con el ejecutable indicado en <code>GLASNOST_EMULATOR</code> o, en su defecto, con AmSpiriT-Lite si está junto al repositorio y, si no, con MacAPE. Sin emulador disponible imprime la ruta de la imagen. El emulador también puede fijarse en la propia orden: <code>make run GLASNOST_EMULATOR=/ruta/al/emulador</code>.</p>
     <p>Para lotes o automatización sigue disponible la herramienta de bajo nivel:</p>
     <pre><code>python3 tools/build_examples.py minimal
 python3 tools/build_examples.py animation vertical</code></pre>
-    <p>Los resultados quedan en <code>.build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
+    <p>Los resultados quedan en <code>build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
     <ul>
       <li><code>obj/&lt;nombre&gt;.bin</code>: binario AMSDOS.</li>
       <li><code>&lt;nombre&gt;.cdt</code>: cinta, salvo ejemplos que declaren solo DSK.</li>
       <li><code>selected-modules.json</code>: prueba de qué módulos entraron realmente.</li>
     </ul>
-    <p><code>tools/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make examples</code> los sustituye por el único DSK común y deja su catálogo reproducible en <code>.build/tests/catalog.json</code>.</p>
+    <p><code>tools/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make examples</code> los sustituye por el único DSK común y deja su catálogo reproducible en <code>build/tests/catalog.json</code>.</p>
 
     <h3>3.3 Probar manualmente en un CPC o emulador</h3>
     <ol>
       <li>Ejecute <code>make examples</code>.</li>
-      <li>Inserte <code>.build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
+      <li>Inserte <code>build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
       <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"PLATGAME"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code>, <code>spritemask</code> es <code>SPRITEMA.BIN</code>. El ejemplo <code>platformer</code> declara el nombre <code>PLATGAME</code> en su manifiesto.</li>
       <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> no necesitan entrada: muestran automáticamente su resultado.</li>
     </ol>

@@ -30,7 +30,7 @@ glasnost run
 `glasnost new` crea el proyecto en `projects/nave`, dentro del SDK. Con `--dir CARPETA`
 el proyecto queda en `CARPETA/nave` (`CARPETA` es la carpeta padre). Lleva su propio
 repositorio Git y ya lo ha
-compilado. `glasnost build` deja en `.build/nave/` los ficheros `nave.bin`,
+compilado. `glasnost build` deja en `build/nave/` los ficheros `nave.bin`,
 `nave.cdt` y `nave.dsk`. `glasnost run` abre la imagen en un emulador si hay uno
 instalado; si no, `glasnost run -- --print-path` te dice dónde está la imagen
 para abrirla con el tuyo (en un CPC real o emulado: `RUN"NAVE`).

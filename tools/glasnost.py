@@ -808,7 +808,7 @@ def cmd_new(args, root: Path, lang: str, runner: Runner) -> int:
         if toolchain is not None:
             code = build_project(folder, toolchain, root, lang, runner)
             if code != 0:
-                raise CliError(say(lang, "new.build_failed", code=code))
+                raise CliError(say(lang, "newbuild_failed", code=code))
         if spec.git:
             git_first_commit(folder, lang, runner)
     except BaseException:
@@ -982,7 +982,7 @@ def cmd_update(args, root: Path, lang: str, runner: Runner) -> int:
                            + "\n".join(f"  - {p}" for p in problems))
         build_code = build_project(folder, toolchain, root, lang, runner)
         if build_code != 0 and not plan.tasks:
-            raise CliError(say(lang, "update.build_failed", code=build_code, base=base))
+            raise CliError(say(lang, "updatebuild_failed", code=build_code, base=base))
         message = (f"glasnost update: project format {plan.from_format} to {plan.to_format}\n\n"
                    + "\n".join(f"- {step.summary}" for step in plan.steps)
                    + ("\n\nManual tasks:\n" + "\n".join(f"- {task}" for task in plan.tasks)
@@ -1140,7 +1140,7 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     projects.add_argument("--dir", metavar="DIR", help=say(lang, "help.new_dir"))
     projects.set_defaults(func=cmd_projects)
 
-    build = sub.add_parser("build", help=say(lang, "help.build"))
+    build = sub.add_parser("build", help=say(lang, "helpbuild"))
     build.add_argument("examples", nargs="*", help=say(lang, "help.examples"))
     build.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
     build.set_defaults(func=cmd_build)

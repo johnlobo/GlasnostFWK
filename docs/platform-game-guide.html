@@ -64,7 +64,7 @@
   </nav>
 
   <h2 id="resultado">1. Resultado y requisitos</h2>
-  <p>El proyecto queda dividido en tres partes: <code>example.json</code> elige perfil, módulos y el bloque <code>ecs</code> con los componentes de las entidades; <code>main.s</code> implementa constantes, estado, inicialización y bucle; y <code>assets/</code> contiene los gráficos y mapas editables, que se convierten antes de compilar. El constructor genera <code>ecs_profile.inc</code> (los offsets de cada campo de entidad) a partir del bloque <code>ecs</code> y prepara un proyecto CPCTelera aislado bajo <code>.build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
+  <p>El proyecto queda dividido en tres partes: <code>example.json</code> elige perfil, módulos y el bloque <code>ecs</code> con los componentes de las entidades; <code>main.s</code> implementa constantes, estado, inicialización y bucle; y <code>assets/</code> contiene los gráficos y mapas editables, que se convierten antes de compilar. El constructor genera <code>ecs_profile.inc</code> (los offsets de cada campo de entidad) a partir del bloque <code>ecs</code> y prepara un proyecto CPCTelera aislado bajo <code>build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
   <p>Antes de empezar, desde la raíz de GlasnostFWK, compruebe:</p>
   <pre><code>test -f /config/workspace/cpctelera_next/cpctelera/cpctelera.lib
 python3 --version
@@ -379,11 +379,11 @@ bindings:
   <h2 id="construir" class="page-break"><span class="step">9</span> Construir y ejecutar</h2>
   <h3>9.1 Construcción aislada</h3>
   <pre><code>python3 tools/build_examples.py mi_plataformas</code></pre>
-  <p>El constructor valida las fuentes y módulos, genera la configuración de vídeo, prepara <code>.build/mi_plataformas</code> y ejecuta su Makefile CPCTelera. Los artefactos principales quedan en:</p>
-  <pre><code>.build/mi_plataformas/obj/mi_plataformas.bin
-.build/mi_plataformas/mi_plataformas.cdt
-.build/mi_plataformas/mi_plataformas.dsk
-.build/mi_plataformas/selected-modules.json</code></pre>
+  <p>El constructor valida las fuentes y módulos, genera la configuración de vídeo, prepara <code>build/mi_plataformas</code> y ejecuta su Makefile CPCTelera. Los artefactos principales quedan en:</p>
+  <pre><code>build/mi_plataformas/obj/mi_plataformas.bin
+build/mi_plataformas/mi_plataformas.cdt
+build/mi_plataformas/mi_plataformas.dsk
+build/mi_plataformas/selected-modules.json</code></pre>
   <p>El JSON generado permite auditar qué fuentes, módulos, medios y ruta de CPCTelera entraron realmente en la construcción.</p>
   <figure>
     <img src="images/platformer/03-construccion.png" alt="Captura de terminal de una construcción correcta del ejemplo platformer">
@@ -391,7 +391,7 @@ bindings:
   </figure>
 
   <h3>9.2 Cargar el resultado</h3>
-  <p>Para CDT, abra <code>.build/mi_plataformas/mi_plataformas.cdt</code> en un CPC o emulador y use los comandos normales de cinta de su entorno. Una construcción aislada también produce <code>mi_plataformas.dsk</code>; al ejecutar el flujo completo del repositorio, la política pública reúne los BIN en el DSK común descrito a continuación.</p>
+  <p>Para CDT, abra <code>build/mi_plataformas/mi_plataformas.cdt</code> en un CPC o emulador y use los comandos normales de cinta de su entorno. Una construcción aislada también produce <code>mi_plataformas.dsk</code>; al ejecutar el flujo completo del repositorio, la política pública reúne los BIN en el DSK común descrito a continuación.</p>
   <p class="meta">La compilación y los smokes automatizados no sustituyen una prueba visual en hardware real. Consulte <code>docs/validation.md</code> para conocer qué se ha verificado y qué sigue sin verificarse.</p>
 
   <h2 id="integrar"><span class="step">10</span> Integrar el proyecto en el DSK común</h2>
@@ -403,9 +403,9 @@ bindings:
     <li>Documente el ejemplo en el manual y añada pruebas host/smoke apropiadas.</li>
     <li>Ejecute <code>make examples</code>.</li>
   </ol>
-  <p>El DSK público de pruebas queda en <code>.build/tests/GlasnostFWK-tests.dsk</code> y su catálogo reproducible en <code>.build/tests/catalog.json</code>. El nombre visible del BIN procede de <code>amsdos_name</code>; no puede colisionar con otra entrada.</p>
+  <p>El DSK público de pruebas queda en <code>build/tests/GlasnostFWK-tests.dsk</code> y su catálogo reproducible en <code>build/tests/catalog.json</code>. El nombre visible del BIN procede de <code>amsdos_name</code>; no puede colisionar con otra entrada.</p>
   <pre><code>make examples
-python3 -m json.tool .build/tests/catalog.json | less</code></pre>
+python3 -m json.tool build/tests/catalog.json | less</code></pre>
 
   <h2 id="pruebas"><span class="step">11</span> Pruebas y diagnóstico</h2>
   <h3>11.1 Lista de comprobación jugable</h3>

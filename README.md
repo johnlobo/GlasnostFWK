@@ -12,7 +12,7 @@ AKG opcional y copia bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
 ejemplo declara sus módulos y fuentes de juego en `examples/*/example.json`;
-el constructor copia únicamente esos fuentes al árbol temporal `.build/`, de
+el constructor copia únicamente esos fuentes al árbol temporal `build/`, de
 modo que excluir una funcionalidad la excluye también del enlazado.
 
 ## Dependencia fijada
@@ -89,8 +89,8 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT se generan en `.build/<ejemplo>/`; los veintitrés BIN de prueba se
-reúnen en `.build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
+Los BIN y CDT se generan en `build/<ejemplo>/`; los veintitrés BIN de prueba se
+reúnen en `build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
 separado, `make` deja sus BIN, CDT y DSK también en la carpeta del ejemplo.
@@ -112,10 +112,10 @@ Cada consumidor se construye y ejecuta solo, como un proyecto CPCtelera:
 cd examples/minimal
 make        # compila este ejemplo y deja BIN, CDT y DSK en la carpeta
 make run    # compila y abre el CDT o el DSK en el emulador
-make clean  # borra .build/minimal/ y las copias locales
+make clean  # borra build/minimal/ y las copias locales
 ```
 
-`make` mantiene el proyecto generado en `.build/<ejemplo>/`, pero copia junto a
+`make` mantiene el proyecto generado en `build/<ejemplo>/`, pero copia junto a
 las fuentes `examples/<ejemplo>/<ejemplo>.bin`, `.cdt` y `.dsk` (los que existan)
 para que puedas cogerlos directamente. Esas copias están ignoradas por git;
 `make clean` las elimina junto con el árbol de compilación. El framework nunca

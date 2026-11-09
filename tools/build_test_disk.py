@@ -82,7 +82,7 @@ def collect_entries(root: Path, examples: tuple[str, ...]) -> list[dict[str, str
     entries: list[dict[str, str]] = []
     names: set[str] = set()
     for example in examples:
-        source = root / ".build" / example / "obj" / f"{example}.bin"
+        source = root / "build" / example / "obj" / f"{example}.bin"
         if not source.is_file() or source.stat().st_size == 0:
             raise FileNotFoundError(f"missing example binary: {source}")
         name = program_bin_name(root, example)
@@ -100,13 +100,13 @@ def collect_entries(root: Path, examples: tuple[str, ...]) -> list[dict[str, str
             }
         )
 
-        selected = root / ".build" / example / "selected-modules.json"
+        selected = root / "build" / example / "selected-modules.json"
         if not selected.is_file():
             raise FileNotFoundError(f"missing build manifest: {selected}")
         build_manifest = json.loads(selected.read_text(encoding="utf-8"))
         for payload in build_manifest.get("disk_files", []):
             payload_name = payload["name"]
-            payload_source = root / ".build" / example / "dsk" / payload_name
+            payload_source = root / "build" / example / "dsk" / payload_name
             if payload_name in names:
                 raise ValueError(f"duplicate AMSDOS filename: {payload_name}")
             if not payload_source.is_file() or payload_source.stat().st_size == 0:
@@ -129,7 +129,7 @@ def build_test_disk(
     if not idsk.is_file():
         raise FileNotFoundError(f"missing iDSK: {idsk}")
     entries = collect_entries(root, examples)
-    output = root / ".build" / "tests"
+    output = root / "build" / "tests"
     stage = output / "files"
     if output.exists():
         shutil.rmtree(output)
@@ -150,7 +150,7 @@ def build_test_disk(
     shutil.rmtree(stage)
     if remove_individual:
         for example in examples:
-            individual = root / ".build" / example / f"{example}.dsk"
+            individual = root / "build" / example / f"{example}.dsk"
             if individual.exists():
                 individual.unlink()
     return disk

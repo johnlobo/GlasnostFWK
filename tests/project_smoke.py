@@ -59,8 +59,8 @@ def main() -> int:
             return code
         folder = Path(tmp) / "smoke"
         x_off, y_off, size = profile_offsets(folder)
-        noi = folder / ".build" / "smoke" / "obj" / "smoke.noi"
-        dsk = folder / ".build" / "smoke" / "smoke.dsk"
+        noi = folder / "build" / "smoke" / "obj" / "smoke.noi"
+        dsk = folder / "build" / "smoke" / "smoke.dsk"
         status, storage = emu.symbol(noi, "game_status"), emu.symbol(noi, "game_storage")
         frame = emu.symbol(noi, "fwk_system_frame_count")
 

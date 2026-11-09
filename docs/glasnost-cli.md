@@ -191,7 +191,7 @@ Ctrl-C en cualquier punto) vuelve a la rama de origen exactamente como estaba
 y borra la rama de actualización; los ficheros que iba a escribir se restauran
 byte a byte aunque Git no los siga (un `generated/` en `.gitignore`) y las
 carpetas que tuvo que crear se quitan. Si ni siquiera eso es posible, lo dice
-con un aviso. Lo compilado en `.build/` no se restaura (es salida ignorada).
+con un aviso. Lo compilado en `build/` no se restaura (es salida ignorada).
 
 **Qué puede tocar una migración.** Es una función pura sobre
 `glasnost.project.json` y `example.json` (por ejemplo, renombrar un módulo del

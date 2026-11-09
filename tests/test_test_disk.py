@@ -40,7 +40,7 @@ class TestDiskTests(unittest.TestCase):
             idsk.parent.mkdir(parents=True)
             idsk.write_bytes(b"tool")
             for example in ("minimal", "diskload"):
-                base = root / ".build" / example
+                base = root / "build" / example
                 (base / "obj").mkdir(parents=True)
                 (base / "obj" / f"{example}.bin").write_bytes(example.encode())
                 (base / "obj" / "binaryAddresses.log").write_text(
@@ -77,14 +77,14 @@ class TestDiskTests(unittest.TestCase):
                 [entry["name"] for entry in catalog["entries"]],
                 ["MINIMAL.BIN", "DISKLOAD.BIN", "RAWDATA.BIN"],
             )
-            self.assertFalse((root / ".build" / "minimal" / "minimal.dsk").exists())
-            self.assertFalse((root / ".build" / "diskload" / "diskload.dsk").exists())
+            self.assertFalse((root / "build" / "minimal" / "minimal.dsk").exists())
+            self.assertFalse((root / "build" / "diskload" / "diskload.dsk").exists())
 
     def test_rejects_catalog_name_collisions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for example in ("abcdefgh1", "abcdefgh2"):
-                base = root / ".build" / example
+                base = root / "build" / example
                 (base / "obj").mkdir(parents=True)
                 (base / "obj" / f"{example}.bin").write_bytes(b"bin")
                 (base / "obj" / "binaryAddresses.log").write_text(

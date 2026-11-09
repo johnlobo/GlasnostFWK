@@ -2,19 +2,19 @@
 ##
 ## Included from examples/<name>/Makefile so every consumer can be built on
 ## its own, the way a standalone CPCtelera project is. The actual project tree
-## is still staged in .build/<name>/; after a successful build the BIN, CDT and
+## is still staged in build/<name>/; after a successful build the BIN, CDT and
 ## DSK are copied next to the example sources as a convenience. Those copies are
 ## git-ignored, and `make clean` removes them.
 ##
 ## Usage, from examples/<name>/:
 ##   make          build this example only
 ##   make run      build and open the resulting image in an emulator
-##   make clean    remove .build/<name>/ and the local artifact copies
+##   make clean    remove build/<name>/ and the local artifact copies
 ##   make help     list the targets
 
 GLASNOST_ROOT    ?= $(abspath $(GLASNOST_EXAMPLE_DIR)/../..)
 GLASNOST_EXAMPLE ?= $(notdir $(GLASNOST_EXAMPLE_DIR))
-GLASNOST_BUILD   := $(GLASNOST_ROOT)/.build/$(GLASNOST_EXAMPLE)
+GLASNOST_BUILD   := $(GLASNOST_ROOT)/build/$(GLASNOST_EXAMPLE)
 
 # Artifacts published next to the example sources. The BIN lives in obj/ inside
 # the staging tree; CDT and DSK (when the manifest requests them) live at its

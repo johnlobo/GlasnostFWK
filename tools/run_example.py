@@ -36,12 +36,12 @@ def project_name(example: str, folder: Path | None = None) -> str:
 
 
 def example_images(name: str, build_root: Path | None = None) -> list[Path]:
-    build = (build_root or ROOT / ".build") / name
+    build = (build_root or ROOT / "build") / name
     return [build / f"{name}.cdt", build / f"{name}.dsk"]
 
 
 def select_image(name: str, requested: str | None, build_root: Path | None = None) -> Path:
-    build_root = build_root or ROOT / ".build"
+    build_root = build_root or ROOT / "build"
     available = [path for path in example_images(name, build_root) if path.is_file()]
     if not available:
         raise SystemExit(
@@ -98,10 +98,10 @@ def main() -> int:
 
     if args.project:
         folder = args.project.resolve()
-        build_root = folder / ".build"
+        build_root = folder / "build"
         name = project_name(folder.name, folder)
     elif args.example:
-        folder, build_root = None, ROOT / ".build"
+        folder, build_root = None, ROOT / "build"
         name = project_name(args.example)
     else:
         parser.error("indique un ejemplo o --project")

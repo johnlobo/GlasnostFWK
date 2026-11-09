@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path
 
 if __package__:
-    from .build_test_disk import program_bin_name
+    from build_test_disk import program_bin_name
 else:
     from build_test_disk import program_bin_name
 
@@ -25,7 +25,7 @@ ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 def artifact_paths() -> list[tuple[str, Path]]:
     artifacts: list[tuple[str, Path]] = []
     for example in EXAMPLES:
-        base = ROOT / ".build" / example
+        base = ROOT / "build" / example
         manifest = json.loads(
             (ROOT / "examples" / example / "example.json").read_text(encoding="utf-8")
         )
@@ -41,7 +41,7 @@ def artifact_paths() -> list[tuple[str, Path]]:
             if not source.is_file() or source.stat().st_size == 0:
                 raise FileNotFoundError(f"missing artifact: {source}")
             artifacts.append((f"examples/{example}/{example}.{suffix}", source))
-    disk = ROOT / ".build" / "tests" / TEST_DISK
+    disk = ROOT / "build" / "tests" / TEST_DISK
     if not disk.is_file() or disk.stat().st_size == 0:
         raise FileNotFoundError(f"missing artifact: {disk}")
     artifacts.append((f"tests/{TEST_DISK}", disk))

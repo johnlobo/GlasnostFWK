@@ -111,11 +111,11 @@ class ExercisesBuild(unittest.TestCase):
         for step in (["config"], ["build"]):
             code, out, err = run(step, cwd=folder, env=env)
             self.assertEqual(code, 0, out + err)
-        return next((folder / ".build" / "nave").rglob("nave.bin")).stat().st_size
+        return next((folder / "build" / "nave").rglob("nave.bin")).stat().st_size
 
     def test_the_example_as_a_project_builds_to_the_example_binary(self):
         built = self.build(None)
-        reference = ROOT / ".build" / "nave" / "obj" / "nave.bin"
+        reference = ROOT / "build" / "nave" / "obj" / "nave.bin"
         if not reference.is_file():   # `make test` builds the examples only after the tests: a clean CI checkout has none yet
             subprocess.run([sys.executable, str(ROOT / "tools" / "build_examples.py"), "nave"], cwd=ROOT, check=True,
                            env=dict(os.environ, CPCT_NEXT_PATH=str(toolchain())), stdout=subprocess.DEVNULL)

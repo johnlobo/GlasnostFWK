@@ -4,7 +4,7 @@ La guía [Tu primer juego](first-game.md) construye este juego paso a paso. Este
 hace lo contrario: parte del juego terminado, [`examples/nave`](../examples/nave/), y lo
 explica rutina por rutina para que puedas leerlo, cambiarlo y saber qué rompe cada cambio.
 
-Necesitas haber ejecutado el juego una vez: construye el disco con `make` en `examples/nave` (lo deja en `.build/nave/nave.dsk`)
+Necesitas haber ejecutado el juego una vez: construye el disco con `make` en `examples/nave` (lo deja en `build/nave/nave.dsk`)
 y arráncalo con `RUN"NAVE` en un CPC o un emulador. No necesitas haber seguido la guía.
 
 Los fragmentos de código de este texto son copias literales de

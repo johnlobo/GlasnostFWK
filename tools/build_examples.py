@@ -350,8 +350,8 @@ def stage_example(
 ) -> Path:
     """Stage one example, or a project folder shaped like one, into its build tree.
 
-    ``example`` defaults to ``examples/<name>`` and ``target`` to ``.build/<name>``;
-    a glasnost project passes its own folder and ``<project>/.build/<name>``. The
+    ``example`` defaults to ``examples/<name>`` and ``target`` to ``build/<name>``;
+    a glasnost project passes its own folder and ``<project>/build/<name>``. The
     framework (modules, profiles, templates) always comes from this repository.
     """
     example = example if example is not None else ROOT / "examples" / name
@@ -363,7 +363,7 @@ def stage_example(
     capabilities = parse_capabilities(manifest, profile["mode"])
     modules = effective_modules(name, manifest["modules"], capabilities)
     _validate_ecs_systems(name, manifest, modules)
-    target = target if target is not None else ROOT / ".build" / name
+    target = target if target is not None else ROOT / "build" / name
     target.mkdir(parents=True, exist_ok=True)
     (target / "src").mkdir(parents=True, exist_ok=True)
     (target / "src" / "game").mkdir(parents=True, exist_ok=True)
@@ -579,7 +579,7 @@ def main() -> int:
         name = json.loads((folder / "example.json").read_text(encoding="utf-8"))["name"]
         print(f"== building {name} ==", flush=True)
         try:
-            build(name, args.cpct_path.resolve(), folder, folder / ".build" / name)
+            build(name, args.cpct_path.resolve(), folder, folder / "build" / name)
         except (ValueError, subprocess.CalledProcessError) as error:  # a project's own mistake: no traceback
             print(f"error: {name} did not build: {error}", file=sys.stderr)
             return 1

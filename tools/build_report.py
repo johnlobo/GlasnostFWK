@@ -18,7 +18,7 @@ def main() -> int:
     rows = []
     for manifest in sorted((ROOT / "examples").glob("*/example.json")):
         name = manifest.parent.name
-        obj = ROOT / ".build" / name / "obj"
+        obj = ROOT / "build" / name / "obj"
         map_path = obj / f"{name}.map"
         bin_path = obj / f"{name}.bin"
         if not map_path.is_file() or not bin_path.is_file():
