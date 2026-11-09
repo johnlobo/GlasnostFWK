@@ -295,10 +295,6 @@ def install_plan(root: Path, lock: Lock, lang: str, jobs: int) -> list[tuple[str
         (say(lang, "toolchain.step_fetch", url=lock.url, path=checkout), [FETCH]),
     ]
     for relative in MAKE_STEPS:
-        # On macOS, SDCC is provided by Homebrew instead of being built from
-        # source (its bundled binutils do not compile with clang).
-        if sys.platform == "darwin" and relative == "tools/sdcc-4.5.0":
-            continue
         target = cpct if relative == "." else cpct / relative
         label = "cpctelera.lib" if relative == "." else relative
         steps.append((say(lang, "toolchain.step_make", target=label),
@@ -353,47 +349,33 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
     if absent:
         raise CliError(say(lang, "toolchain.missing_prereq", names=", ".join(absent)))
 
-    # On macOS, use Homebrew's prebuilt SDCC instead of compiling from source.
-    if sys.platform == "darwin" and shutil.which("brew") and not shutil.which("sdcc"):
-        run_checked(runner, ["brew", "install", "sdcc"], "brew install sdcc", lang, checkout)
-
-    # macOS/Homebrew: expose headers and libraries to the legacy configure.
     if sys.platform == "darwin":
-        os.environ["CPATH"] = "/opt/homebrew/include:" + os.environ.get("CPATH", "")
-        os.environ["LIBRARY_PATH"] = "/opt/homebrew/lib:" + os.environ.get("LIBRARY_PATH", "")
-
-    # Make sure the SDCC configure step finds Boost (and other headers) on
-    # platforms where they are not in the default search path (e.g. macOS
-    # Homebrew installs them under /opt/homebrew/include).
-    include_dirs = []
-    for candidate in BOOST_HEADER_CANDIDATES:
-        parent = str(candidate.parent)
-        if candidate.is_file() and parent not in include_dirs:
-            include_dirs.append(parent)
-    # Common fallbacks.
-    for fallback in ("/usr/include", "/usr/local/include", "/opt/homebrew/include", "/opt/local/include"):
-        if fallback not in include_dirs and Path(fallback).is_dir():
-            include_dirs.append(fallback)
-    if include_dirs:
-        joined = os.pathsep.join(include_dirs)
-        os.environ["CPLUS_INCLUDE_PATH"] = joined + os.pathsep + os.environ.get("CPLUS_INCLUDE_PATH", "")
-        os.environ["C_INCLUDE_PATH"] = joined + os.pathsep + os.environ.get("C_INCLUDE_PATH", "")
-        os.environ["CPPFLAGS"] = " ".join(f"-I{d}" for d in include_dirs) + " " + os.environ.get("CPPFLAGS", "")
-
-    # SDCC's bundled binutils do not build cleanly against modern macOS/clang
-    # headers. Force the missing definitions so the compile can proceed.
-    if sys.platform == "darwin":
-        extra = "-DDEFAULT_AR_DETERMINISTIC=1 -include utime.h"
-        os.environ["CFLAGS"] = extra + " " + os.environ.get("CFLAGS", "")
-        os.environ["CXXFLAGS"] = extra + " " + os.environ.get("CXXFLAGS", "")
-        # Prefer Homebrew gcc if available: clang trips over more of the legacy code.
-        for gcc in ("gcc-14", "gcc-13", "gcc-12", "gcc"):
-            if shutil.which(gcc) and "clang" not in (shutil.which(gcc) or ""):
-                os.environ.setdefault("CC", gcc)
-                break
-
+        use_homebrew_paths(runner)
     with install_lock(checkout, lang):
         return run_install(args, lock, checkout, plan, lang, runner)
+
+
+def use_homebrew_paths(runner: Runner) -> None:
+    """Let SDCC's configure find Homebrew's Boost, bison and flex.
+
+    Homebrew does not put /opt/homebrew (Apple Silicon) or /usr/local (Intel)
+    on the compiler search path, and its bison and flex are keg-only: without
+    this, configure fails with "boost library not found".
+    """
+    try:
+        result = runner(["brew", "--prefix"], capture_output=True, check=False)
+    except OSError:
+        return
+    prefix = result.stdout.strip() if result.returncode == 0 else ""
+    if not prefix:
+        return
+    for variable, flag in (("CPPFLAGS", f"-I{prefix}/include"), ("LDFLAGS", f"-L{prefix}/lib")):
+        current = os.environ.get(variable, "")
+        if flag not in current.split():
+            os.environ[variable] = f"{flag} {current}".strip()
+    kegs = [f"{prefix}/opt/{name}/bin" for name in ("bison", "flex") if Path(f"{prefix}/opt/{name}/bin").is_dir()]
+    if kegs:
+        os.environ["PATH"] = os.pathsep.join([*kegs, os.environ.get("PATH", "")])
 
 
 @contextlib.contextmanager
@@ -417,59 +399,6 @@ def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runne
         print(say(lang, "toolchain.plan_step", n=number, total=len(plan), text=label), flush=True)
         if command == [FETCH]:
             fetch_pinned(runner, lock, checkout, label, lang)
-            if sys.platform == "darwin":
-                # Adapt GNU BFD for Apple Silicon (arm64), as per CPCtelera guide.
-                config_bfd = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "bfd" / "config.bfd"
-                if config_bfd.is_file():
-                    text = config_bfd.read_text()
-                    marker = "arm*-*-darwin*)"
-                    if marker not in text:
-                        # Insert before the Intel Darwin case.
-                        needle = "i[3-7]86-*-darwin*"
-                        case = ("arm*-*-darwin*)\n"
-                                "    targ_defvec=mach_o_le_vec\n"
-                                "    targ_selvecs=\"mach_o_le_vec mach_o_be_vec mach_o_fat_vec sym_vec\"\n"
-                                "    targ64_selvecs=x86_64_mach_o_vec\n"
-                                "    ;;\n")
-                        if needle in text:
-                            text = text.replace(needle, case + needle, 1)
-                            config_bfd.write_text(text)
-
-                # Make the Makefile respect the binutils configuration.
-                makefile_in = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "Makefile.in"
-                if makefile_in.is_file():
-                    text = makefile_in.read_text()
-                    text = text.replace("sdcc-libs: sdcc-sdbinutils", "sdcc-libs: $(SDCC_BINUTILS)")
-                    makefile_in.write_text(text)
-
-                # Clean partial builds.
-                obj_dir = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "obj"
-                if obj_dir.is_dir():
-                    import shutil as _sh
-                    _sh.rmtree(obj_dir, ignore_errors=True)
-                if sys.platform == "darwin":
-                    ar_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "ar.c"
-                    rename_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "rename.c"
-                    if ar_c.is_file():
-                        text = ar_c.read_text()
-                        if "#include <utime.h>" not in text:
-                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
-                        if "ifndef DEFAULT_AR_DETERMINISTIC" not in text:
-                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef DEFAULT_AR_DETERMINISTIC\n#define DEFAULT_AR_DETERMINISTIC 1\n#endif", 1)
-                        ar_c.write_text(text)
-                    if rename_c.is_file():
-                        text = rename_c.read_text()
-                        if "#include <utime.h>" not in text:
-                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
-                        rename_c.write_text(text)
-                    bucomm_c = checkout / "cpctelera" / "tools" / "sdcc-4.5.0" / "src" / "support" / "sdbinutils" / "binutils" / "bucomm.c"
-                    if bucomm_c.is_file():
-                        text = bucomm_c.read_text()
-                        if "#include <utime.h>" not in text:
-                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#include <utime.h>", 1)
-                        if "ifndef TARGET" not in text:
-                            text = text.replace("#include <stdio.h>", "#include <stdio.h>\n#ifndef TARGET\n#define TARGET \"unknown\"\n#endif", 1)
-                        bucomm_c.write_text(text)
         elif command == [VERIFY]:
             absent_files = missing_files(checkout / "cpctelera")
             if absent_files:

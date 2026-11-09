@@ -47,23 +47,13 @@ original, sí necesita las herramientas instaladas.
 
 ## Herramientas
 
-El pipeline usa las herramientas de la revisión fijada de CPCTelera Next:
+El pipeline usa `img2cpc` incluido en el framework (`tools/img2cpc`, sin
+FreeImage; `./setup.sh` ya lo compila) y `zx7b` de la revisión fijada de
+CPCTelera Next:
 
 ```sh
-export CPCT_NEXT_PATH=/ruta/a/cpctelera_next/cpctelera
-
-make -C "$CPCT_NEXT_PATH/tools/img2cpc"     # PNG -> datos Mode 0
+make -C tools/img2cpc                       # PNG -> datos Mode 0
 make -C "$CPCT_NEXT_PATH/tools/zx7b"        # compresión opcional
-```
-
-Si `img2cpc` falla al enlazar en macOS con
-`ld: library ':libfreeimagegnu.a' not found`, instale FreeImage con Homebrew y
-enlace los objetos ya compilados contra la biblioteca nativa:
-
-```sh
-brew install freeimage
-g++ -o "$CPCT_NEXT_PATH/tools/img2cpc/bin/img2cpc" \
-    "$CPCT_NEXT_PATH"/tools/img2cpc/obj/*.o -L/opt/homebrew/lib -lfreeimage
 ```
 
 También puede indicar binarios propios con `IMG2CPC=/ruta/img2cpc` y

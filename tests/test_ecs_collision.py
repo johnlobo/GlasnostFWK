@@ -117,6 +117,7 @@ class CollisionTraversalTests(unittest.TestCase):
         self.assertNotRegex(code, r"(?m)\b(?:call|jp)\s+fwk_ecs_system_run\b(?!_)")
 
 
+@unittest.skipUnless(ASSEMBLER.is_file(), "CPCtelera Next assembler is not installed")
 class CollisionBudgetTests(unittest.TestCase):
     """The size budget is part of the contract: a regression fails the build."""
 

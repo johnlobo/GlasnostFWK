@@ -450,8 +450,15 @@ def stage_example(
         shutil.copy2(source, destination)
         staged_managed.add(Path("src") / "cpctelera" / relative_path)
     disk_files = stage_disk_files(example, manifest, target, cpct_path, staged_paths=staged_managed)
-    _write_if_changed(target / "src" / "project_config.inc", generate_include(capabilities), encoding="ascii")
-    _write_if_changed(target / "src" / "project_config.s", generate_source(capabilities), encoding="ascii")
+    config_changed = _write_if_changed(
+        target / "src" / "project_config.inc", generate_include(capabilities), encoding="ascii"
+    )
+    config_changed |= _write_if_changed(
+        target / "src" / "project_config.s", generate_source(capabilities), encoding="ascii"
+    )
+    # Same reason as the ECS profile, plus make 3.81 (macOS) compares whole seconds: a
+    # `glasnost config` right after a build leaves the stale objects looking up to date.
+    _invalidate_objects_if_profile_changed(target, config_changed)
     staged_managed.add(Path("src") / "project_config.inc")
     staged_managed.add(Path("src") / "project_config.s")
     if disk_files:
