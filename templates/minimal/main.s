@@ -35,7 +35,7 @@ _main::
     call _minimal_text
 
     ld a, #0x5A
-    ld (game_status), a
+    ld (game_status), a             ; 0x5A = OK; any other value is an ABI error code.
 
 game_frame:
     call fwk_system_wait_frame
