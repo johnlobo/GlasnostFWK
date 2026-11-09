@@ -54,15 +54,20 @@ RVM_ASSETS = {
     },
 }
 
+BLUEPIXEL_REPO = "johnlobo/BluePixel"
+BLUEPIXEL_API = f"https://api.github.com/repos/{BLUEPIXEL_REPO}/releases/latest"
+
 # Command names looked up in the PATH, in the order they are offered.
 EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "RetroVirtualMachine", "retrovirtualmachine",
-                     "macape", "cpct_macape")
+                     "bluepixel", "macape", "cpct_macape")
 MAC_APPS = ("Retro Virtual Machine 2.app", "RetroVirtualMachine.app", "MacAPE.app", "BluePixel.app")
 
-# Arguments given to a kind of emulator after its executable; `{image}` is the CDT/DSK to open.
-# UNVERIFIED for rvm: the command line of Retro Virtual Machine is not documented on its site and
-# the binary could not be run when this was written. Override with "args" in emulator.json.
-DEFAULT_ARGS = {"rvm": ["{image}"]}
+# Retro Virtual Machine is launched the way CPCtelera's tools/scripts/cpct_rvm does it:
+#   RVM -ns -b=<machine> (-i= FILE | -s FILE) [-p -w] [-c=<command>\n]
+# That script targeted RVM 2.0 beta r7; it was not run against 2.1.20 here. RVM has no known
+# option for a symbols file, so none is passed. `"args"` in emulator.json overrides the whole
+# command line ({image} = the CDT/DSK/SNA, {name} = the 8-character program name).
+RVM_MACHINES = {".cdt": "cpc464", ".sna": "cpc464", ".dsk": "cpc6128"}   # 6128: the extended-memory examples
 
 Opener = Callable[..., object]
 Progress = Callable[[int, int], None]
@@ -175,6 +180,8 @@ def kind_of(path: Path | str) -> str:
         return "rvm"
     if "macape" in name:
         return "macape"
+    if "bluepixel" in name:
+        return "bluepixel"
     return "generic"
 
 
@@ -227,7 +234,7 @@ def candidates(root: Path = ROOT, home: Path | None = None, path_env: str | None
         for pattern in ("*/RetroVirtualMachine", "*/RetroVirtualMachine.exe"):
             for exe in sorted(downloaded.glob(pattern)):
                 add(exe)
-        for app in sorted(downloaded.glob("*/*.app")):
+        for app in sorted(downloaded.glob("*/*.app")) + sorted(downloaded.glob("*/*/BluePixel.app")):
             add(app_binary(app))
     return found
 
@@ -255,10 +262,18 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
+def default_opener(url: str):
+    headers = {"User-Agent": "glasnost-sdk"}   # GitHub's API refuses requests without one
+    if url.startswith("https://api.github.com/"):
+        headers["Accept"] = "application/vnd.github+json"   # any other Accept gets a 415
+    request = urllib.request.Request(url, headers=headers)
+    return urllib.request.urlopen(request, timeout=60)
+
+
 def download(url: str, destination: Path, size: int, sha256: str, opener: Opener | None = None,
              progress: Progress | None = None) -> None:
     """Fetch `url` to `destination`, verifying its SHA-256. A bad file is never left in place."""
-    opener = opener or (lambda target: urllib.request.urlopen(target, timeout=60))
+    opener = opener or default_opener
     destination.parent.mkdir(parents=True, exist_ok=True)
     part = destination.with_suffix(destination.suffix + ".part")
     digest, done = hashlib.sha256(), 0
@@ -286,10 +301,11 @@ def _safe_extract(archive: Path, target: Path) -> None:
     target.mkdir(parents=True, exist_ok=True)
     base = target.resolve()
     with zipfile.ZipFile(archive) as bundle:
-        for member in bundle.namelist():
+        members = [name for name in bundle.namelist() if not name.startswith("__MACOSX/")]   # Finder junk
+        for member in members:
             if not (base / member).resolve().is_relative_to(base):
                 raise SetupError("emu.unsafe_archive", name=member)
-        bundle.extractall(target)
+        bundle.extractall(target, members)
 
 
 def _extract_dmg(archive: Path, target: Path, run: Callable = subprocess.run) -> None:
@@ -326,6 +342,42 @@ def _find_executable(folder: Path, key: str) -> Path | None:
     return next((p for p in sorted(folder.rglob(name)) if p.is_file()), None)
 
 
+def _install_archive(root: Path, folder: Path, archive_name: str, url: str, size: int, sha256: str,
+                     extract: Callable[[Path, Path], None], find: Callable[[Path], Path | None],
+                     opener: Opener | None, progress: Progress | None,
+                     log: Callable[[str, dict], None] | None) -> Path:
+    """Download, verify, extract (staged, then renamed) and return the emulator executable."""
+    executable = find(folder) if folder.is_dir() else None
+    if executable is not None:
+        return executable
+    archive = emulators_dir(root) / "downloads" / archive_name
+    if not (archive.is_file() and sha256_of(archive) == sha256):
+        if log:
+            log("emu.downloading", {"url": url})
+        download(url, archive, size, sha256, opener, progress)
+    if log:
+        log("emu.verified", {})
+        log("emu.extracting", {"path": folder})
+    # Extract beside the final folder and rename on success: an interrupted extraction must
+    # never look like an installed emulator.
+    staging = folder.with_name(folder.name + ".part")
+    shutil.rmtree(staging, ignore_errors=True)
+    try:
+        extract(archive, staging)
+        if find(staging) is None:
+            raise SetupError("emu.no_exe", path=staging)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    shutil.rmtree(folder, ignore_errors=True)
+    staging.rename(folder)
+    executable = find(folder)
+    if os.name != "nt":
+        executable.chmod(executable.stat().st_mode | 0o111)   # zip extraction does not keep the mode
+    archive.unlink(missing_ok=True)   # the extracted copy is what is used; do not keep it twice
+    return executable
+
+
 def install_rvm(root: Path = ROOT, system: str | None = None, machine: str | None = None,
                 opener: Opener | None = None, progress: Progress | None = None,
                 run: Callable = subprocess.run, log: Callable[[str, dict], None] | None = None) -> Path:
@@ -336,37 +388,63 @@ def install_rvm(root: Path = ROOT, system: str | None = None, machine: str | Non
     asset = RVM_ASSETS[key]
     url = RVM_BASE + asset["file"]
     folder = emulators_dir(root) / f"retro-virtual-machine-{RVM_VERSION}-{key}"
-    executable = _find_executable(folder, key) if folder.is_dir() else None
-    if executable is None:
-        archive = emulators_dir(root) / "downloads" / asset["file"]
-        if not (archive.is_file() and sha256_of(archive) == asset["sha256"]):
-            if log:
-                log("emu.downloading", {"url": url})
-            download(url, archive, asset["size"], asset["sha256"], opener, progress)
-        if log:
-            log("emu.verified", {})
-            log("emu.extracting", {"path": folder})
-        # Extract beside the final folder and rename on success: an interrupted extraction must
-        # never look like an installed emulator.
-        staging = folder.with_name(folder.name + ".part")
-        shutil.rmtree(staging, ignore_errors=True)
-        try:
-            if key == "macos":
-                _extract_dmg(archive, staging, run)
-            else:
-                _safe_extract(archive, staging)
-            if _find_executable(staging, key) is None:
-                raise SetupError("emu.no_exe", path=staging)
-        except BaseException:
-            shutil.rmtree(staging, ignore_errors=True)
-            raise
-        shutil.rmtree(folder, ignore_errors=True)
-        staging.rename(folder)
-        executable = _find_executable(folder, key)
-        if os.name != "nt":
-            executable.chmod(executable.stat().st_mode | 0o111)
-        archive.unlink(missing_ok=True)   # the extracted copy is what is used; do not keep 90 MB twice
+    extract = (lambda archive, target: _extract_dmg(archive, target, run)) if key == "macos" else _safe_extract
+    executable = _install_archive(root, folder, asset["file"], url, asset["size"], asset["sha256"], extract,
+                                  lambda where: _find_executable(where, key), opener, progress, log)
     save_emulator(root, executable, "rvm", version=RVM_VERSION, source=url, sha256=asset["sha256"])
+    return executable
+
+
+# --------------------------------------------------------------- BluePixel
+
+def bluepixel_supported(system: str | None = None, machine: str | None = None) -> bool:
+    """BluePixel is a macOS app; its releases are built for Apple Silicon."""
+    return ((system or platform.system()).lower() == "darwin"
+            and (machine or platform.machine()).lower() in ("arm64", "aarch64"))
+
+
+def _find_bluepixel(folder: Path) -> Path | None:
+    for app in sorted(folder.glob("BluePixel.app")) + sorted(folder.glob("*/BluePixel.app")):
+        binary = app_binary(app)
+        if binary is not None:
+            return binary
+    return None
+
+
+def latest_bluepixel(opener: Opener | None = None) -> dict:
+    """The newest GitHub release's macOS arm64 zip: {tag, url, name, size, sha256}.
+
+    The SHA-256 is the digest GitHub publishes for the asset; a release without one is refused,
+    because there would be nothing to verify the download against.
+    """
+    opener = opener or default_opener
+    try:
+        with opener(BLUEPIXEL_API) as response:
+            release = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError, http.client.HTTPException) as error:
+        raise SetupError("emu.download_failed", url=BLUEPIXEL_API, reason=error) from error
+    for asset in release.get("assets", []) if isinstance(release, dict) else []:
+        name = str(asset.get("name", ""))
+        if name.endswith(".zip") and "macos" in name.lower() and ("arm64" in name.lower() or "universal" in name.lower()):
+            digest = str(asset.get("digest") or "")
+            if not digest.startswith("sha256:") or len(digest) != 71:
+                raise SetupError("emu.no_digest", name=name)
+            return {"tag": str(release.get("tag_name", "")), "name": name, "size": int(asset.get("size") or 0),
+                    "url": str(asset.get("browser_download_url", "")), "sha256": digest[7:]}
+    raise SetupError("emu.no_bluepixel_asset")
+
+
+def install_bluepixel(root: Path = ROOT, system: str | None = None, machine: str | None = None,
+                      opener: Opener | None = None, progress: Progress | None = None,
+                      log: Callable[[str, dict], None] | None = None) -> Path:
+    """Download the latest BluePixel release into tools/emulators/ and save it."""
+    if not bluepixel_supported(system, machine):
+        raise SetupError("emu.no_bluepixel_platform", platform=f"{system or platform.system()} {machine or platform.machine()}")
+    release = latest_bluepixel(opener)
+    folder = emulators_dir(root) / f"bluepixel-{release['tag']}-macos-arm64"
+    executable = _install_archive(root, folder, release["name"], release["url"], release["size"], release["sha256"],
+                                  _safe_extract, _find_bluepixel, opener, progress, log)
+    save_emulator(root, executable, "bluepixel", version=release["tag"], source=release["url"], sha256=release["sha256"])
     return executable
 
 
@@ -378,7 +456,7 @@ def build_command(emulator: str, image: Path, build_root: Path, name: str, root:
     same = saved_path(root, data) == Path(emulator)
     kind = data.get("kind") if same and data.get("kind") else kind_of(emulator)
     args = data.get("args") if same else None
-    if kind == "macape":
+    if kind in ("macape", "bluepixel"):   # both take `image [/A] [/SYM:file]`
         command = [emulator, str(image)]
         if image.suffix.lower() == ".dsk":
             command.append("/A")
@@ -386,5 +464,20 @@ def build_command(emulator: str, image: Path, build_root: Path, name: str, root:
         if noi.is_file():
             command.append(f"/SYM:{noi}")
         return command
-    template = args or DEFAULT_ARGS.get(kind) or ["{image}"]
-    return [emulator, *(token.replace("{image}", str(image)) for token in template)]
+    if args:
+        return [emulator, *(token.replace("{image}", str(image)).replace("{name}", name[:8]) for token in args)]
+    if kind == "rvm":
+        return _rvm_command(emulator, image, name[:8])
+    return [emulator, str(image)]
+
+
+def _rvm_command(emulator: str, image: Path, program: str) -> list[str]:
+    """RVM command line, copied from CPCtelera's cpct_rvm (note `-i=` and its value are two arguments)."""
+    suffix = image.suffix.lower()
+    command = [emulator, "-ns", f"-b={RVM_MACHINES.get(suffix, 'cpc6128')}"]
+    if suffix == ".sna":
+        return command + ["-s", str(image)]
+    command += ["-i=", str(image)]
+    if suffix == ".cdt":
+        return command + ["-p", "-w", '-c=RUN"\\n \\n']
+    return command + [f'-c=RUN"{program}"\\n']

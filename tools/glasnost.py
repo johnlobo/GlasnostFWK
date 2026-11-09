@@ -665,33 +665,41 @@ def emulator_menu(args, lang: str, root: Path, intro: str | None) -> bool:
     saved = emu.configured(root) is not None
     print(intro or (say(lang, "emu.stale", path=stale) if stale else say(lang, "emu.none")))
     key = emu.platform_key()
+    here = f"{platform_module.system()} {platform_module.machine()}"
+    entries: list[tuple[str, str]] = [("use", say(lang, "emu.menu_use"))]
+    if key:
+        entries.append(("rvm", say(lang, "emu.menu_download", version=emu.RVM_VERSION, platform=key,
+                                   size=round(emu.RVM_ASSETS[key]["size"] / 1e6))))
+    else:
+        entries.append(("unavailable", say(lang, "emu.menu_no_download", platform=here)))
+    if emu.bluepixel_supported():
+        entries.append(("bluepixel", say(lang, "emu.menu_bluepixel", repo=emu.BLUEPIXEL_REPO)))
+    entries.append(("skip", say(lang, "emu.menu_keep" if saved else "emu.menu_skip")))
+    if not saved:
+        entries.append(("never", say(lang, "emu.menu_never")))
+    default = str(1 + [action for action, _ in entries].index("skip"))
     for _ in range(5):
-        print(say(lang, "emu.menu_use"))
-        if key:
-            print(say(lang, "emu.menu_download", version=emu.RVM_VERSION, platform=key,
-                      size=round(emu.RVM_ASSETS[key]["size"] / 1e6)))
-        else:
-            print(say(lang, "emu.menu_no_download",
-                      platform=f"{platform_module.system()} {platform_module.machine()}"))
-        print(say(lang, "emu.menu_keep" if saved else "emu.menu_skip"))
-        if not saved:
-            print(say(lang, "emu.menu_never"))
+        for number, (_, label) in enumerate(entries, 1):
+            print(say(lang, "emu.menu_item", number=number, label=label))
         try:
-            answer = args.ask(say(lang, "emu.ask_choice")).strip() or "3"
+            answer = args.ask(say(lang, "emu.ask_choice", default=default)).strip() or default
         except EOFError:
             return False
-        if answer == "1" and choose_installed_emulator(args, lang, root):
+        action = entries[int(answer) - 1][0] if answer.isdigit() and 1 <= int(answer) <= len(entries) else None
+        if action == "use" and choose_installed_emulator(args, lang, root):
             return True
-        if answer == "2" and key and download_emulator(lang, root):
+        if action == "rvm" and download_emulator(lang, root, "rvm"):
             return True
-        if answer == "3":
+        if action == "bluepixel" and download_emulator(lang, root, "bluepixel"):
+            return True
+        if action == "skip":
             print(say(lang, "emu.unchanged" if saved else "emu.skipped"))
             return False
-        if answer == "4" and not saved:
+        if action == "never":
             emu.save_declined(root)
             print(say(lang, "emu.declined"))
             return False
-        if answer not in ("1", "2", "3", "4") or (answer == "2" and not key) or (answer == "4" and saved):
+        if action in (None, "unavailable"):
             print(say(lang, "emu.invalid", answer=answer), file=sys.stderr)
     return False
 
@@ -724,7 +732,7 @@ def choose_installed_emulator(args, lang: str, root: Path) -> bool:
     return False
 
 
-def download_emulator(lang: str, root: Path) -> bool:
+def download_emulator(lang: str, root: Path, which: str = "rvm") -> bool:
     last = [-1]
 
     def progress(done: int, total: int) -> None:
@@ -737,7 +745,8 @@ def download_emulator(lang: str, root: Path) -> bool:
         print(say(lang, key, **values), flush=True)
 
     try:
-        path = emu.install_rvm(root, progress=progress, log=log)
+        install = emu.install_bluepixel if which == "bluepixel" else emu.install_rvm
+        path = install(root, progress=progress, log=log)
     except emu.SetupError as error:
         print(say(lang, error.key, **error.values), file=sys.stderr)
         return False
@@ -756,9 +765,7 @@ def cmd_emulator(args, root: Path, lang: str, runner: Runner) -> int:
             emulator_saved(lang, root, path)
             return 0
         if args.download:
-            if not download_emulator(lang, root):
-                return 1
-            return 0
+            return 0 if download_emulator(lang, root, args.download) else 1
     except emu.SetupError as error:
         raise CliError(say(lang, error.key, **error.values)) from error
     saved = emu.configured(root)
@@ -1248,7 +1255,8 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
 
     emulator = sub.add_parser("emulator", help=say(lang, "help.emulator"))
     emulator.add_argument("--set", metavar="PATH", help=say(lang, "help.emulator_set"))
-    emulator.add_argument("--download", action="store_true", help=say(lang, "help.emulator_download"))
+    emulator.add_argument("--download", nargs="?", const="rvm", choices=("rvm", "bluepixel"), metavar="rvm|bluepixel",
+                          help=say(lang, "help.emulator_download"))
     emulator.add_argument("--reset", action="store_true", help=say(lang, "help.emulator_reset"))
     emulator.set_defaults(func=cmd_emulator)
 

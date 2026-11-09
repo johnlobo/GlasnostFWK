@@ -1610,6 +1610,22 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - [x] Pruebas: `tests/test_emulator_setup.py` (52, sin red ni emulador); descarga real
   verificada a mano (Linux x64, SHA correcto) y menú probado en un pseudo-terminal.
 - Pendiente: los argumentos con que se lanza RVM no están verificados (no se pudo ejecutar el
-  binario descargado); BluePixel no se ofrece porque no tiene releases en GitHub; el `.dmg` de
-  macOS y el zip de Windows solo están probados con archivos simulados.
+  binario descargado); el `.dmg` de macOS y el zip de Windows solo están probados con archivos
+  simulados.
+
+## BluePixel como emulador descargable en macOS (2026-11-09)
+
+- [x] Tras publicarse el release `v0.1.0` de `johnlobo/BluePixel` (zip macOS arm64),
+  `glasnost run` y `glasnost emulator --download bluepixel` lo bajan del último release (API de
+  GitHub), verifican el SHA-256 que GitHub publica, lo extraen sin `__MACOSX` y lo guardan.
+  El menú se numera dinámicamente (BluePixel solo en macOS arm64). Se lanza con
+  `imagen [/A] [/SYM:...]`, que BluePixel acepta (`LaunchOptions.swift`).
+- [x] Verificado a mano con el API y el zip reales (SHA coincide con el digest); el test con
+  fakes no detectó un 415 por una cabecera `Accept` incorrecta, corregido y con test.
+- Pendiente: probarlo en un Mac real (permisos de Gatekeeper tras la extracción, arranque con
+  `/A`); un Mac Intel no tiene build de BluePixel.
+- [x] Retro Virtual Machine se invoca como `tools/scripts/cpct_rvm` de CPCtelera
+  (`-ns -b=<máquina> -i= imagen -c=RUN"<nombre>"\n`, CDT con `-p -w`, SNA con `-s`;
+  `cpc6128` para DSK). Pendiente de probar con la 2.1.20; RVM no tiene opción conocida de
+  símbolos. BluePixel y MacAPE reciben `/A` y `/SYM:<nombre>.noi`; AmSpiriT no tiene opción.
 

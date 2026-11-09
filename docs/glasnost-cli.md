@@ -22,7 +22,7 @@ repositorio salvo lo que se indica en «Alcance».
 | `glasnost build [ejemplo...]` | Fuera de un proyecto: `make generate` y `tools/build_examples.py` con el toolchain resuelto (todos los ejemplos si no se nombra ninguno). Dentro de un proyecto: compila ese proyecto. |
 | `glasnost test` | Fuera de un proyecto: `make test`. Dentro: comprueba la coherencia del proyecto y que compila. |
 | `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/run_example.py`). Las opciones del emulador van tras `--`. Si no hay emulador configurado y estás en una terminal, te ofrece configurar uno (ver «Emulador»). |
-| `glasnost emulator [--set RUTA] [--download] [--reset]` | Muestra el emulador que usa `run` y, en una terminal, permite cambiarlo. `--set` guarda un ejecutable (o un `.app` de macOS), `--download` baja Retro Virtual Machine, `--reset` borra la configuración. |
+| `glasnost emulator [--set RUTA] [--download [rvm\|bluepixel]] [--reset]` | Muestra el emulador que usa `run` y, en una terminal, permite cambiarlo. `--set` guarda un ejecutable (o un `.app` de macOS), `--download` baja Retro Virtual Machine (o BluePixel, en macOS), `--reset` borra la configuración. |
 | `glasnost toolchains` | Lista los toolchains instalados (commit, completo o parcial, tamaño) y marca el que fija el lockfile. |
 | `glasnost clean-toolchains [--yes] [--keep REV]` | Sin `--yes` solo muestra qué borraría. Con `--yes` borra todos los toolchains salvo el del lockfile y los `--keep` (commit completo, repetible). |
 | `glasnost install-cli [--prefix DIR] [--dry-run] [--force]` | Crea el enlace simbólico `~/.local/bin/glasnost` hacia `bin/glasnost` de este SDK (sin `sudo`). Avisa si el directorio no está en el `PATH`. |
@@ -54,6 +54,9 @@ No hay ningún emulador configurado para `glasnost run`.
   4) No volver a preguntar
 ```
 
+En un Mac con Apple Silicon se añade, antes de «Ahora no», `Descargar la última versión de
+BluePixel (johnlobo/BluePixel en GitHub, Apple Silicon)`; las opciones se numeran solas.
+
 - **1** lista los emuladores que encuentra (AmSpiriT junto al repositorio, los del `PATH`,
   las `.app` de `/Applications` y `~/Applications`, lo ya descargado en `tools/emulators/`) y
   admite escribir otra ruta; un `.app` de macOS se resuelve a su ejecutable.
@@ -62,6 +65,10 @@ No hay ningún emulador configurado para `glasnost run`.
   `tools/emulator_setup.py` (una descarga distinta o corrupta no se instala), la deja en
   `tools/emulators/retro-virtual-machine-<versión>-<plataforma>/` y la guarda como emulador.
   En macOS monta el `.dmg` con `hdiutil`, copia el `.app` y lo desmonta.
+- **BluePixel** consulta el último release de `johnlobo/BluePixel` en la API de GitHub, baja su
+  zip de macOS arm64, comprueba el SHA-256 que publica GitHub para ese fichero (un release sin
+  digest se rechaza), lo extrae en `tools/emulators/bluepixel-<tag>-macos-arm64/` y lo guarda.
+  Se lanza como MacAPE: `imagen [/A] [/SYM:fichero.noi]`.
 - **3** no guarda nada; se volverá a preguntar. **4** (solo si no hay ninguno guardado) deja de
   preguntar: sin terminal, o tras elegirla, `run` sigue usando lo que encuentre y si no, imprime
   la ruta de la imagen, hasta que ejecutes `glasnost emulator`. Con un emulador ya guardado,
@@ -73,11 +80,20 @@ comportamiento anterior: se usa lo que se encuentre o se imprime la ruta de la i
 emulador guardado desaparece, se avisa y se vuelve a ofrecer. Las rutas dentro del SDK se
 guardan relativas, así que mover o copiar el SDK no las rompe.
 
-Cómo se lanza cada tipo: MacAPE lleva sus opciones propias (`/A`, `/SYM:`); cualquier otro
-recibe la imagen como único argumento. **Los argumentos de Retro Virtual Machine no están
-verificados** (su línea de comandos no está documentada en su web); se pueden fijar en
-`emulator.json` con `"args": ["--b=cpc6128", "--i={image}"]`, donde `{image}` es el CDT/DSK.
-BluePixel aún no se ofrece: no tiene releases en GitHub que descargar.
+Cómo se lanza cada tipo, siempre con el fichero de símbolos (`obj/<nombre>.noi`) cuando el
+emulador tiene opción para ello:
+
+| Emulador | Línea de comandos | Símbolos |
+|---|---|---|
+| BluePixel, MacAPE | `imagen [/A] [/SYM:<nombre>.noi]` (`/A` con DSK) | sí |
+| Retro Virtual Machine | como `cpct_rvm` de CPCtelera: `-ns -b=<máquina> -i= imagen -c=RUN"<nombre>"\n`; CDT con `-p -w`; SNA con `-s` | no hay opción conocida |
+| Otros (AmSpiriT...) | la imagen como único argumento | no |
+
+La máquina de Retro Virtual Machine es `cpc6128` para DSK (los ejemplos con memoria extendida la
+necesitan) y `cpc464` para CDT y SNA. **No se ha probado con la 2.1.20**: la invocación sale del
+script de CPCtelera, escrito para la 2.0 beta. Se puede fijar a mano en `emulator.json` con
+`"args": ["-ns", "-b=cpc6128", "-i=", "{image}", ...]`, donde `{image}` es el CDT/DSK y
+`{name}` el nombre del programa (8 caracteres).
 
 ## Lockfile
 
