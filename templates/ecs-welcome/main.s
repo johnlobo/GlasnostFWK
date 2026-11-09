@@ -80,11 +80,6 @@ _game_fail_loop:
     jr _game_fail_loop
 
 ;; Continues on success; on error stops the game.
-_game_expect_ok:
-    ret nc
-    pop hl
-    jp _game_fail
-
 ;; In: IX=manager, HL=spawn row. Out: IY=entity. Builds a template from the row.
 _game_spawn:
     push hl
@@ -203,29 +198,29 @@ _main::
 
     ld ix, #game_manager
     call fwk_ecs_manager_init
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_scene
     call fwk_ecs_render_reset
-    call _game_expect_ok
+    GAME_CHECK_OK
 
     ld ix, #game_manager
     ld hl, #_game_row_player
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld (game_player), iy
     ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT | GAME_INPUT_UP | GAME_INPUT_DOWN
     ld ix, #game_manager
     ld hl, #_game_row_drone0
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld hl, #_game_row_drone1
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld hl, #_game_row_drone2
     call _game_spawn
-    call _game_expect_ok
+    GAME_CHECK_OK
 
     ld a, #0x5A
     ld (game_status), a
@@ -234,27 +229,27 @@ game_frame:
     call fwk_input_update
     ld ix, #game_manager
     call fwk_ecs_system_behavior
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     call fwk_ecs_system_input        ; LEFT/RIGHT/UP/DOWN set the velocities (4 dir)
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     call fwk_ecs_system_motion_u8    ; velocity moves every entity
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_clamp
     call fwk_ecs_system_run
-    call _game_expect_ok
+    GAME_CHECK_OK
     ;; Selective render: find what changed before VSYNC, touch video RAM after it.
     ld ix, #game_scene
     call fwk_ecs_render_prepare
-    call _game_expect_ok
+    GAME_CHECK_OK
     call fwk_system_wait_frame
     ld ix, #game_scene
     call fwk_ecs_render_restore
-    call _game_expect_ok
+    GAME_CHECK_OK
     ld ix, #game_scene
     call fwk_ecs_render_draw
-    call _game_expect_ok
+    GAME_CHECK_OK
     jp game_frame
