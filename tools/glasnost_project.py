@@ -93,6 +93,7 @@ class Spec:
     profile: str = "standard"
     extended_memory: bool = False
     git: bool = True
+    template: str = "ecs-welcome"
 
     @property
     def amsdos_name(self) -> str:
@@ -126,7 +127,9 @@ def validate(spec: Spec) -> Spec:
         raise ProjectError(f"profile must be one of: {', '.join(PROFILES)}")
     if not isinstance(spec.extended_memory, bool) or not isinstance(spec.git, bool):
         raise ProjectError("extended_memory and git must be true or false")
-    return Spec(spec.name, normalize_title(spec.title), spec.profile, spec.extended_memory, spec.git)
+    if spec.template not in ("ecs-welcome", "minimal"):
+        raise ProjectError("template must be ecs-welcome or minimal")
+    return Spec(spec.name, normalize_title(spec.title), spec.profile, spec.extended_memory, spec.git, spec.template)
 
 
 def spec_from_manifest(data: object) -> Spec:
@@ -147,6 +150,7 @@ def spec_from_manifest(data: object) -> Spec:
         profile=data.get("profile", "standard"),
         extended_memory=data.get("extended_memory", False),
         git=data.get("git", True),
+        template=data.get("template", "ecs-welcome"),
     ))
 
 
@@ -186,7 +190,7 @@ def example_manifest(spec: Spec) -> dict:
 
 
 def project_manifest(spec: Spec, framework: str) -> dict:
-    return {"schema": SCHEMA, "template": TEMPLATE, "format": FORMAT, "framework": framework,
+    return {"schema": SCHEMA, "template": spec.template, "format": FORMAT, "framework": framework,
             "title": spec.title}
 
 
@@ -264,7 +268,8 @@ Step-by-step guide (sprites from a PNG, animation, collisions): `docs/first-game
 def render_project(spec: Spec, framework: str, lang: str = "es") -> dict[str, bytes]:
     """Every file of a new project, as relative path -> bytes. Deterministic."""
     spec = validate(spec)
-    main = (TEMPLATE_DIR / "main.s").read_text(encoding="utf-8")
+    template_dir = ROOT / "templates" / spec.template
+    main = (template_dir / "main.s").read_text(encoding="utf-8")
     main = main.replace("@@PLAYER_ART@@", sprite_source("_game_ship_pixels", SHIP_ART))
     main = main.replace("@@DRONE_ART@@", sprite_source("_game_drone_pixels", DRONE_ART))
     if "@@" in main:
@@ -274,7 +279,7 @@ def render_project(spec: Spec, framework: str, lang: str = "es") -> dict[str, by
         PROJECT_FILE: dump_json(project_manifest(spec, framework)),
         "example.json": dump_json(manifest),
         "main.s": main,
-        "common.inc": (TEMPLATE_DIR / "common.inc").read_text(encoding="utf-8"),
+        "common.inc": (template_dir / "common.inc").read_text(encoding="utf-8"),
         "generated/project.inc": project_include(spec.title),
         "generated/ecs_profile.inc": ecs_profile_include(manifest),
         ".gitignore": "build/\n",

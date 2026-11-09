@@ -668,7 +668,9 @@ def interactive_spec(args, lang: str) -> gp.Spec:
         profile = ask_until_valid(args, lang, "new.ask_video", "1", as_profile)
     extended = ask_until_valid(args, lang, "new.ask_extended", "n", as_yes)
     git = ask_until_valid(args, lang, "new.ask_git", "s" if lang == "es" else "y", as_yes)
-    return gp.Spec(name, title, profile, extended, git)
+    example = ask_until_valid(args, lang, "new.ask_example", "s" if lang == "es" else "y", as_yes)
+    template = "ecs-welcome" if example else "minimal"
+    return gp.Spec(name, title, profile, extended, git, template)
 
 
 def new_spec(args, lang: str) -> gp.Spec:
@@ -696,6 +698,10 @@ def new_spec(args, lang: str) -> gp.Spec:
         changes["extended_memory"] = args.extended_memory
     if args.no_git:
         changes["git"] = False
+    if getattr(args, "minimal", False):
+        changes["template"] = "minimal"
+    if getattr(args, "template", None) is not None:
+        changes["template"] = args.template
     return gp.validate(dataclasses.replace(spec, **changes))
 
 
@@ -1041,7 +1047,9 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     new.add_argument("--dir", metavar="DIR", help=say(lang, "help.new_dir"))
     new.add_argument("--no-git", action="store_true", help=say(lang, "help.no_git"))
     new.add_argument("--no-build", action="store_true", help=say(lang, "help.no_build"))
-    new.set_defaults(func=cmd_new)
+    new.add_argument("--minimal", action="store_true", help=say(lang, "help.new_minimal"))
+    new.add_argument("--template", choices=("ecs-welcome", "minimal"), help=say(lang, "help.new_template"))
+    new.set_defaults(func=cmd_new, minimal=False, template=None)
 
     config = sub.add_parser("config", help=say(lang, "help.config"))
     config.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))

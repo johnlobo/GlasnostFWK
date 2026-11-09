@@ -382,7 +382,7 @@ class NewCommand(unittest.TestCase):
         manifest = self.sdk.tmp / "m.json"
         manifest.write_text(json.dumps({"schema": 1, "name": "demo", "title": "hello world",
                                         "extended_memory": True, "git": False}))
-        answers = iter(["demo", "hello world", "y", "n"])
+        answers = iter(["demo", "hello world", "y", "n", "y"])
         self.assertEqual(self.new("--manifest", str(manifest), "--no-build", "--dir", str(self.base / "m"))[0], 0)
         self.assertEqual(self.new("demo", "--title", "hello world", "--extended-memory", "--no-git",
                                   "--no-build", "--dir", str(self.base / "f"))[0], 0)
@@ -401,7 +401,7 @@ class NewCommand(unittest.TestCase):
         self.assertEqual(json.loads((self.base / "demo" / gp.PROJECT_FILE).read_text())["title"], "TWO")
 
     def test_wizard_reasks_after_an_invalid_answer_and_defaults_the_title(self):
-        answers = iter(["Bad Name", "demo", "", "", ""])
+        answers = iter(["Bad Name", "demo", "", "", "", ""])
         code, out, err = self.new("--no-build", "--no-git", "--dir", str(self.base), interactive=True,
                                   ask=lambda prompt: next(answers))
         self.assertEqual(code, 0, err)
