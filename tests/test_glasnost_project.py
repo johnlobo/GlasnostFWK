@@ -20,7 +20,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 sys.path.insert(0, str(ROOT / "tests"))
 
 import build_examples  # noqa: E402
@@ -469,7 +469,7 @@ class NewCommand(unittest.TestCase):
         self.assertTrue((self.base / "demo").is_symlink())
 
     def test_a_failing_build_removes_what_was_created_and_the_new_base_folder(self):
-        recorder = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        recorder = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         code, _, err = self.new("demo", "--dir", str(self.base), runner=recorder)
         self.assertEqual(code, 1)
         self.assertIn("does not build", err)
@@ -478,7 +478,7 @@ class NewCommand(unittest.TestCase):
     def test_a_failing_build_keeps_a_base_folder_that_already_existed(self):
         self.base.mkdir()
         (self.base / "other.txt").write_text("x")
-        recorder = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        recorder = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         self.assertEqual(self.new("demo", "--dir", str(self.base), runner=recorder)[0], 1)
         self.assertEqual(sorted(p.name for p in self.base.iterdir()), ["other.txt"])
 
@@ -512,7 +512,7 @@ class NewCommand(unittest.TestCase):
     def test_only_the_folders_it_created_are_removed_on_failure(self):
         (self.base / "a").mkdir(parents=True)
         (self.base / "a" / "keep.txt").write_text("x")
-        recorder = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        recorder = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         self.assertEqual(self.new("demo", "--dir", str(self.base / "a" / "b" / "c"), runner=recorder)[0], 1)
         self.assertEqual(sorted(p.name for p in (self.base / "a").iterdir()), ["keep.txt"])
 
@@ -577,7 +577,7 @@ class ProjectCommands(unittest.TestCase):
         recorder = Recorder()
         code, _, _ = self.cmd("build", runner=recorder)
         self.assertEqual(code, 0)
-        self.assertEqual(recorder.calls, [[sys.executable, "tools/build_examples.py", "--project", str(self.folder)]])
+        self.assertEqual(recorder.calls, [[sys.executable, "tools/build/build_examples.py", "--project", str(self.folder)]])
 
     def test_build_works_from_a_subfolder_and_with_the_project_flag(self):
         sub = self.folder / "deep"
@@ -628,7 +628,7 @@ class ProjectCommands(unittest.TestCase):
     def test_run_inside_a_project_passes_the_folder_and_options(self):
         recorder = Recorder()
         self.assertEqual(self.cmd("run", "--", "--emulator", "x", runner=recorder)[0], 0)
-        self.assertEqual(recorder.calls[0][1:], ["tools/run_example.py", "--project", str(self.folder), "--emulator", "x"])
+        self.assertEqual(recorder.calls[0][1:], ["tools/glasnost/run_example.py", "--project", str(self.folder), "--emulator", "x"])
 
     def test_outside_a_project_commands_keep_working_and_run_needs_an_example(self):
         recorder = Recorder()

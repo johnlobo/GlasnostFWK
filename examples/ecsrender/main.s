@@ -1,5 +1,5 @@
 ;; Emulator harness for the ECS selective renderer.
-;; Replays the scenario generated from tools/ecs_render_model.py. After every
+;; Replays the scenario generated from tools/build/ecs_render_model.py. After every
 ;; frame it publishes the frame number in ecsrender_done and waits for the host
 ;; (tests/emulator_smoke.py) to read video RAM and set ecsrender_go; the host
 ;; compares the screen with the model's ideal image.

@@ -71,7 +71,7 @@ especiales, pero no instala capacidades del proyecto.
 
 Las entidades viven en managers ECS (`core/ecs_manager.s`): slots estables,
 máscara de componentes de 16 bits, plantillas, ciclo de vida diferido y
-recorrido por máscara. El layout lo genera `tools/gen_ecs_profile.py` desde el
+recorrido por máscara. El layout lo genera `tools/build/gen_ecs_profile.py` desde el
 manifiesto. El contrato completo está en `ecs-abi-2.0.md`; los sistemas
 (`core/ecs_behavior.s`, `ecs_motion.s`, `ecs_input.s`, `ecs_platform.s`,
 `ecs_collision.s`, `ecs_animation.s`) y el renderer (`video/ecs_render.s`) lo
@@ -351,4 +351,4 @@ La prueba `tests/test_example_comments.py` exige la cabecera, su orden
 registros son ciertos no lo puede decir una máquina: eso es trabajo de revisión.
 `examples/nave` también la cumple, y por tanto el paso 3 de `docs/first-game/` (son
 idénticos). Quedan fuera los pasos 1 y 2 de la guía y los ficheros generados. Las pruebas que leen el fuente de un ejemplo, como la tabla de
-mutaciones de `tools/mutate_platformer.py`, ignoran los comentarios.
+mutaciones de `tools/dev/mutate_platformer.py`, ignoran los comentarios.

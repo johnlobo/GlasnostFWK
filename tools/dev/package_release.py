@@ -15,7 +15,7 @@ if __package__:
 else:
     from build_test_disk import program_bin_name
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 EXAMPLES = ("minimal", "board", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "video", "resources128", "diskload", "audio", "window", "vertical", "perf", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "nave")
 TEST_DISK = "GlasnostFWK-tests.dsk"
 VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")

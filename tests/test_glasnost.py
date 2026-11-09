@@ -22,7 +22,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 
 import glasnost  # noqa: E402
 import glasnost_i18n  # noqa: E402
@@ -523,7 +523,7 @@ class Commands(unittest.TestCase):
         code, _, _ = self.sdk.cli("build", "minimal", runner=self.recorder)
         self.assertEqual(code, 0)
         self.assertEqual(self.calls[0][0][:3], ["make", "--no-print-directory", "generate"])
-        self.assertEqual(self.calls[1][0][1:], ["tools/build_examples.py", "minimal"])
+        self.assertEqual(self.calls[1][0][1:], ["tools/build/build_examples.py", "minimal"])
         for _, kwargs in self.calls:
             self.assertEqual(kwargs["env"]["CPCT_NEXT_PATH"], self.cpct)
             self.assertEqual(kwargs["cwd"], self.sdk.root)
@@ -553,13 +553,13 @@ class Commands(unittest.TestCase):
     def test_run_passes_the_example_and_emulator_options(self):
         code, _, _ = self.sdk.cli("run", "minimal", "--", "--emulator", "x", runner=self.recorder)
         self.assertEqual(code, 0)
-        self.assertEqual(self.calls[0][0][1:], ["tools/run_example.py", "minimal", "--emulator", "x"])
+        self.assertEqual(self.calls[0][0][1:], ["tools/glasnost/run_example.py", "minimal", "--emulator", "x"])
 
     def test_only_the_leading_double_dash_is_dropped_from_run_arguments(self):
         self.sdk.cli("run", "minimal", "--", "--", "--flag", runner=self.recorder)
-        self.assertEqual(self.calls[-1][0][1:], ["tools/run_example.py", "minimal", "--", "--flag"])
+        self.assertEqual(self.calls[-1][0][1:], ["tools/glasnost/run_example.py", "minimal", "--", "--flag"])
         self.sdk.cli("run", "minimal", runner=self.recorder)
-        self.assertEqual(self.calls[-1][0][1:], ["tools/run_example.py", "minimal"])
+        self.assertEqual(self.calls[-1][0][1:], ["tools/glasnost/run_example.py", "minimal"])
 
     def test_commands_exit_with_the_exit_code_of_the_underlying_tool(self):
         def failing(command, **kwargs):

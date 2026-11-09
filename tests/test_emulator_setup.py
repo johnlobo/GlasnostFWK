@@ -1,4 +1,4 @@
-"""`glasnost run` finds, offers, downloads and remembers a CPC emulator (tools/emulator_setup.py).
+"""`glasnost run` finds, offers, downloads and remembers a CPC emulator (tools/glasnost/emulator_setup.py).
 
 No network and no emulator are needed: downloads are served by fake openers and the pinned
 SHA-256 of each asset is patched to that of the fake archive.
@@ -22,7 +22,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 sys.path.insert(0, str(ROOT / "tests"))
 
 import emulator_setup as emu  # noqa: E402
@@ -762,7 +762,7 @@ class RunAsksOnce(Harness):
         self.assertIn("No emulator is configured", out)
         self.assertIn("Retro Virtual Machine", out)
         self.assertEqual(len(asked), 1)
-        self.assertEqual(self.calls[-1][1:], ["tools/run_example.py", "minimal"])
+        self.assertEqual(self.calls[-1][1:], ["tools/glasnost/run_example.py", "minimal"])
         self.assertIsNone(emu.read_config(self.sdk.root))
         _, _, _, asked_again = self.run_cli("run", "minimal", answers=["3"])
         self.assertEqual(len(asked_again), 1)
@@ -777,7 +777,7 @@ class RunAsksOnce(Harness):
         _, out2, _, asked2 = self.run_cli("run", "minimal", answers=[])
         self.assertEqual(asked2, [])
         self.assertNotIn("No emulator", out2)
-        self.assertEqual(self.calls[-1][1:], ["tools/run_example.py", "minimal"])
+        self.assertEqual(self.calls[-1][1:], ["tools/glasnost/run_example.py", "minimal"])
 
     def test_typing_a_path_and_a_macos_app_are_accepted(self):
         binary = make_executable(self.tmp_app() / "Contents" / "MacOS" / "BluePixel")
@@ -822,7 +822,7 @@ class RunAsksOnce(Harness):
         self.assertIn("Could not download https://u: offline", err)
         self.assertEqual(len(asked), 2)
         self.assertIsNone(emu.read_config(self.sdk.root))
-        self.assertEqual(self.calls[-1][1:], ["tools/run_example.py", "minimal"])
+        self.assertEqual(self.calls[-1][1:], ["tools/glasnost/run_example.py", "minimal"])
 
     def test_never_ask_again_is_remembered(self):
         _, out, _, _ = self.run_cli("run", "minimal", answers=["4"])
@@ -835,7 +835,7 @@ class RunAsksOnce(Harness):
         code, out, _, asked = self.run_cli("run", "minimal", interactive=False)
         self.assertEqual((code, asked), (0, []))
         self.assertNotIn("No emulator", out)
-        self.assertEqual(self.calls[-1][1:], ["tools/run_example.py", "minimal"])
+        self.assertEqual(self.calls[-1][1:], ["tools/glasnost/run_example.py", "minimal"])
 
     def test_nothing_is_asked_when_the_user_already_chose_one(self):
         self.run_cli("run", "minimal", "--", "--emulator", "x")
@@ -847,7 +847,7 @@ class RunAsksOnce(Harness):
     def test_closing_the_input_does_not_crash_and_the_run_proceeds(self):
         code, _, _, _ = self.run_cli("run", "minimal", answers=[])
         self.assertEqual(code, 0)
-        self.assertEqual(self.calls[-1][1:], ["tools/run_example.py", "minimal"])
+        self.assertEqual(self.calls[-1][1:], ["tools/glasnost/run_example.py", "minimal"])
 
     def test_an_invalid_menu_answer_asks_again(self):
         _, _, err, asked = self.run_cli("run", "minimal", answers=["9", "3"])

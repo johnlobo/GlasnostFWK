@@ -47,7 +47,7 @@ Y dos cosas del proyecto: `example.json` es su manifiesto (qué módulos del fra
 enlazan y qué componentes usan las entidades) y lo que hay en `generated/` se regenera a
 partir de él (y del título del proyecto) cuando cambian los componentes, los módulos o el título. Hay dos formas de trabajar con este
 código: ejecutar el ejemplo tal cual (`make` en `examples/nave`; `make` no regenera `generated/`:
-si cambias componentes o módulos, ejecuta desde la raíz del SDK `python3 tools/gen_ecs_profile.py
+si cambias componentes o módulos, ejecuta desde la raíz del SDK `python3 tools/build/gen_ecs_profile.py
 examples/nave/example.json --output examples/nave/generated/ecs_profile.inc`) o crear tu propio
 proyecto con `glasnost new` (lo cuenta la
 guía [Tu primer juego](first-game.md)) y usar `glasnost config` y `glasnost build`. Los dos

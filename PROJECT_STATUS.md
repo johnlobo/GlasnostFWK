@@ -1674,3 +1674,16 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - [x] Pruebas: `tests/test_glasnost_help.py` (todo comando en un grupo, toda opción con su texto, sin
   inglés mezclado, líneas dentro del ancho del terminal).
 
+## `tools/` separado por propósito (2026-11-09)
+
+- [x] `tools/glasnost/` (CLI: `glasnost`, `glasnost_i18n`, `glasnost_project`, `glasnost_update`,
+  `emulator_setup`, `run_example`), `tools/build/` (`build_examples`, `build_test_disk`,
+  `project_config`, `import_assets`, `gen_*`, modelos `*_model`, `img2cpc/`) y `tools/dev/`
+  (`build_manual`, `build_report`, `package_release`, `measure_*`, `mutate_platformer`).
+  `bin/glasnost` sigue siendo la entrada (ahora ejecuta `tools/glasnost/glasnost.py`).
+- [x] Actualizados Makefile, workflows, `framework/cfg/example.mk`, tests, docs y cabeceras de
+  los ficheros generados; regenerados hashes de `assets/generated/pipeline.json`, manual y guía
+  de plataformas (PDF y checksums). Las secciones anteriores de este registro citan las rutas de
+  su época (`tools/x.py` = `tools/<carpeta>/x.py`).
+- [x] `tests/test_layout.py` impide scripts sueltos en `tools/` y rutas viejas.
+

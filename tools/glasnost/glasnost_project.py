@@ -19,13 +19,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = "ecs-welcome"
 TEMPLATE_DIR = ROOT / "framework" / "templates" / TEMPLATE
 PROJECT_FILE = "glasnost.project.json"
 SCHEMA = 1
 # Project format: bumped when what glasnost generates or expects of a project changes in a
-# way that needs a migration (tools/glasnost_update.py). A project without the key is format 1.
+# way that needs a migration (tools/glasnost/glasnost_update.py). A project without the key is format 1.
 FORMAT = 1
 
 NAME_RE = re.compile(r"[a-z][a-z0-9_]{0,23}")
@@ -224,7 +224,7 @@ def ecs_profile_include(manifest: dict) -> str:
     try:
         from gen_ecs_profile import DEFAULT_PORTFOLIO, generate
     except ModuleNotFoundError:  # imported as tools.glasnost_project
-        from tools.gen_ecs_profile import DEFAULT_PORTFOLIO, generate
+        from tools.build.gen_ecs_profile import DEFAULT_PORTFOLIO, generate
     try:
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
         profile = json.loads((ROOT / "framework" / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))

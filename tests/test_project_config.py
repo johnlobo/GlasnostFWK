@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
 
-from tools.build_examples import effective_modules
-from tools.project_config import (
+from tools.build.build_examples import effective_modules
+from tools.build.project_config import (
     BANKED_CODE_START,
     BANK_PROBE,
     BANK_STUB_END,

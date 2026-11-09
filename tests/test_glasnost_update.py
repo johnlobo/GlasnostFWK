@@ -21,7 +21,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 sys.path.insert(0, str(ROOT / "tests"))
 
 import glasnost  # noqa: E402
@@ -200,7 +200,7 @@ class Engine(unittest.TestCase):
         self.assertEqual(self.plan(migrations(STEP1)).files, self.plan(migrations(STEP1)).files)
 
     def test_the_engine_does_not_use_the_network_or_git(self):
-        source = (ROOT / "tools" / "glasnost_update.py").read_text(encoding="utf-8")
+        source = (ROOT / "tools" / "glasnost" / "glasnost_update.py").read_text(encoding="utf-8")
         code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith(("#", '"""')))
         for forbidden in ("import socket", "urllib", "http.client", "requests", "subprocess", "import ssl"):
             self.assertNotIn(forbidden, code)
@@ -362,7 +362,7 @@ class Cycle(unittest.TestCase):
         self.assertEqual(git(self.folder, "status", "--porcelain"), "")
 
     def test_a_failing_build_restores_the_starting_branch_and_removes_the_update_branch(self):
-        failing = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        failing = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         code, _, err = self.cmd("update", runner=failing)
         self.assertEqual(code, 1)
         self.assertIn("does not build", err)
@@ -372,7 +372,7 @@ class Cycle(unittest.TestCase):
         (self.folder / "generated" / "project.inc").unlink()
         git(self.folder, "commit", "-qam", "lost a generated file")
         self.original = tree(self.folder)
-        failing = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        failing = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         code, _, _ = self.cmd("update", runner=failing)
         self.assertEqual(code, 1)
         self.assertFalse((self.folder / "generated" / "project.inc").exists())
@@ -405,7 +405,7 @@ class Cycle(unittest.TestCase):
         git(self.folder, "add", ".gitignore")
         git(self.folder, "commit", "-qm", "ignore generated")
         self.original = tree(self.folder)  # generated/ is on disk, untracked and ignored
-        failing = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        failing = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         self.assertEqual(self.cmd("update", runner=failing)[0], 1)
         self.assertEqual(git(self.folder, "branch", "--show-current"), self.main)
         self.assertEqual(tree(self.folder), self.original)
@@ -414,7 +414,7 @@ class Cycle(unittest.TestCase):
         git(self.folder, "rm", "-rq", "generated")
         git(self.folder, "commit", "-qm", "no generated at all")
         self.original = tree(self.folder)
-        failing = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        failing = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         self.assertEqual(self.cmd("update", runner=failing)[0], 1)
         self.assertFalse((self.folder / "generated").exists())
         self.assert_restored()
@@ -434,7 +434,7 @@ class Cycle(unittest.TestCase):
         def broken_restore(command, **kwargs):
             if command[0] == "git" and "-f" in command:
                 return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
-            return Recorder(fail=[(sys.executable, "tools/build_examples.py")])(command, **kwargs)
+            return Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])(command, **kwargs)
 
         code, _, err = self.cmd("update", runner=broken_restore)
         self.assertEqual(code, 1)
@@ -493,7 +493,7 @@ class Cycle(unittest.TestCase):
 
     def test_manual_tasks_keep_the_update_even_if_the_build_needs_them(self):
         step = gu.Migration(1, "needs your help", retitle("UPDATED", ["rename player sprite in main.s"]))
-        failing = Recorder(fail=[(sys.executable, "tools/build_examples.py")])
+        failing = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
         with mock.patch.object(gu, "MIGRATIONS", migrations(step)):
             code, out, _ = self.cmd("update", runner=failing)
         self.assertEqual(code, 3)

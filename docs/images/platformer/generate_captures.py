@@ -58,7 +58,7 @@ def manifest_lines() -> list[str]:
 
 
 def build_lines(run_build: bool) -> list[str]:
-    command = ["python3", "tools/build_examples.py", "platformer"]
+    command = ["python3", "tools/build/build_examples.py", "platformer"]
     if run_build:
         completed = subprocess.run(
             command,
@@ -77,7 +77,7 @@ def build_lines(run_build: bool) -> list[str]:
     if missing:
         raise SystemExit("Faltan artefactos; ejecute sin --skip-build: " + ", ".join(missing))
     return [
-        "$ python3 tools/build_examples.py platformer",
+        "$ python3 tools/build/build_examples.py platformer",
         "== building platformer ==",
         "Compilacion terminada sin errores.",
         "",

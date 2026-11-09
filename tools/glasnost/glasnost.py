@@ -28,13 +28,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# glasnost_project loads the generators of tools/build; every folder of tools/ is importable by name.
+sys.path[:0] = [str(Path(__file__).resolve().parents[1] / folder) for folder in ("glasnost", "build")]
 import emulator_setup as emu  # noqa: E402
 import glasnost_project as gp  # noqa: E402
 import glasnost_update as gu  # noqa: E402
 from glasnost_i18n import LANGS, pick_language, say  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 LOCKFILE = "toolchain.lock.json"
 COMPLETE_MARKER = ".glasnost-complete"
 MIN_PYTHON = (3, 10)
@@ -582,7 +583,7 @@ def require_project_ok(folder: Path, lang: str) -> None:
 
 def build_project(folder: Path, toolchain: Toolchain, root: Path, lang: str, runner: Runner) -> int:
     require_project_ok(folder, lang)
-    return runner([sys.executable, "tools/build_examples.py", "--project", str(folder)],
+    return runner([sys.executable, "tools/build/build_examples.py", "--project", str(folder)],
                   cwd=root, env=sdk_env(toolchain), check=False).returncode
 
 
@@ -600,7 +601,7 @@ def cmd_build(args, root: Path, lang: str, runner: Runner) -> int:
                        cwd=root, env=env, check=False)
     if generated.returncode != 0:
         return generated.returncode
-    return runner([python, "tools/build_examples.py", *args.examples],
+    return runner([python, "tools/build/build_examples.py", *args.examples],
                   cwd=root, env=env, check=False).returncode
 
 
@@ -626,13 +627,13 @@ def cmd_run(args, root: Path, lang: str, runner: Runner) -> int:
         if example:
             raise CliError(say(lang, "proj.no_examples", path=folder))
         ensure_emulator(args, root, lang, extra)
-        return runner([sys.executable, "tools/run_example.py", "--project", str(folder), *extra],
+        return runner([sys.executable, "tools/glasnost/run_example.py", "--project", str(folder), *extra],
                       cwd=root, env=sdk_env(toolchain), check=False).returncode
     if not example:
         raise CliError(say(lang, "cmd.run_needs_example"))
     check_examples(root, [example], lang)
     ensure_emulator(args, root, lang, extra)
-    return runner([sys.executable, "tools/run_example.py", example, *extra],
+    return runner([sys.executable, "tools/glasnost/run_example.py", example, *extra],
                   cwd=root, env=sdk_env(toolchain), check=False).returncode
 
 

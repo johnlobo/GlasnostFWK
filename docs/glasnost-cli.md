@@ -27,9 +27,9 @@ tabla de abajo es la referencia larga.
 | `glasnost update [--dry-run]` | Dentro de un proyecto: lo actualiza al formato de este glasnost con migraciones consecutivas, en una rama de Git (ver «Actualizar proyectos»). |
 | `glasnost rollback [--delete]` | Sale de una rama de actualización y vuelve a la rama de origen sin perder nada; `--delete` borra además la rama de actualización. |
 | `glasnost projects [--dir D]` | Lista los proyectos de `projects/` con su rama Git (`*` si tienen cambios) y si están al día. |
-| `glasnost build [ejemplo...]` | Fuera de un proyecto: `make generate` y `tools/build_examples.py` con el toolchain resuelto (todos los ejemplos si no se nombra ninguno). Dentro de un proyecto: compila ese proyecto. |
+| `glasnost build [ejemplo...]` | Fuera de un proyecto: `make generate` y `tools/build/build_examples.py` con el toolchain resuelto (todos los ejemplos si no se nombra ninguno). Dentro de un proyecto: compila ese proyecto. |
 | `glasnost test` | Fuera de un proyecto: `make test`. Dentro: comprueba la coherencia del proyecto y que compila. |
-| `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/run_example.py`). Las opciones del emulador van tras `--`. Si no hay emulador configurado y estás en una terminal, te ofrece configurar uno (ver «Emulador»). |
+| `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/glasnost/run_example.py`). Las opciones del emulador van tras `--`. Si no hay emulador configurado y estás en una terminal, te ofrece configurar uno (ver «Emulador»). |
 | `glasnost emulator [--set RUTA] [--download [rvm\|bluepixel]] [--reset]` | Muestra el emulador que usa `run` y, en una terminal, permite cambiarlo. `--set` guarda un ejecutable (o un `.app` de macOS), `--download` baja Retro Virtual Machine (o BluePixel, en macOS), `--reset` borra la configuración. |
 | `glasnost toolchains` | Lista los toolchains instalados (commit, completo o parcial, tamaño) y marca el que fija el lockfile. |
 | `glasnost clean-toolchains [--yes] [--keep REV]` | Sin `--yes` solo muestra qué borraría. Con `--yes` borra todos los toolchains salvo el del lockfile y los `--keep` (commit completo, repetible). |
@@ -71,7 +71,7 @@ BluePixel (johnlobo/BluePixel en GitHub, Apple Silicon)`; las opciones se numera
   admite escribir otra ruta; un `.app` de macOS se resuelve a su ejecutable.
 - **2** baja Retro Virtual Machine de su servidor oficial (`static.retrovm.org`) para tu
   sistema (Linux x86_64 o arm64, Windows x64, macOS), comprueba su SHA-256 contra el fijado en
-  `tools/emulator_setup.py` (una descarga distinta o corrupta no se instala), la deja en
+  `tools/glasnost/emulator_setup.py` (una descarga distinta o corrupta no se instala), la deja en
   `tools/emulators/retro-virtual-machine-<versión>-<plataforma>/` y la guarda como emulador.
   En macOS monta el `.dmg` con `hdiutil`, copia el `.app` y lo desmonta.
 - **BluePixel** consulta el último release de `johnlobo/BluePixel` en la API de GitHub, baja su
@@ -283,7 +283,7 @@ antes de escribir nada.
 
 **Añadir una migración** (cuando cambie lo que glasnost genera o espera): sube
 `FORMAT`, añade `MIGRATIONS[N] = Migration(N, "resumen", apply)` en
-`tools/glasnost_update.py` y su prueba, en el mismo commit; un test falla si
+`tools/glasnost/glasnost_update.py` y su prueba, en el mismo commit; un test falla si
 `FORMAT` sube sin migración.
 
 **`rollback`** solo actúa en una rama `glasnost-update-*` creada por glasnost,

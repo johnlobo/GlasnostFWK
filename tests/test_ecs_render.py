@@ -8,10 +8,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.gen_ecs_profile import DEFAULT_PORTFOLIO, generate
+from tools.build.gen_ecs_profile import DEFAULT_PORTFOLIO, generate
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 
 import ecs_render_model as model  # noqa: E402
 

@@ -16,11 +16,11 @@ Method (no change to the game):
   address (read from the stack) times every call, nested ones included. A routine
   entered with `jp` is timed until it returns to whoever called the jumper.
 
-    python3 tools/measure_game.py platformer --scenarios idle,right,jump
-    python3 tools/measure_game.py platformer --routines profile --json /tmp/o.json
+    python3 tools/dev/measure_game.py platformer --scenarios idle,right,jump
+    python3 tools/dev/measure_game.py platformer --routines profile --json /tmp/o.json
 
 Scenarios hold cursor keys through the keyboard matrix while the iterations are
-measured. Run `python3 tools/build_test_disk.py platformer` first.
+measured. Run `python3 tools/build/build_test_disk.py platformer` first.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tests"))
 import emulator_smoke as smoke  # noqa: E402  (shared emulator HTTP helpers)
 

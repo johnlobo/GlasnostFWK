@@ -31,6 +31,10 @@ OLD_PATH = re.compile(
     r"|templates/(?:ecs-welcome|minimal)"
     r"|cfg/(?:example\.mk|Makefile\.template|build_config\.template)"
     r"|generated/(?:standard|experimental|resources128)"
+    r"|tools/(?:glasnost|build_examples|build_test_disk|project_config|import_assets|gen_[a-z_]+|video_model"
+    r"|ecs_[a-z]+_model|build_manual|build_report|package_release|measure_[a-z]+|mutate_platformer"
+    r"|emulator_setup|run_example)\.py"
+    r"|tools/img2cpc"
     r")")
 
 
@@ -53,7 +57,7 @@ class Layout(unittest.TestCase):
     def test_no_file_points_at_the_old_locations(self):
         offenders = []
         for name in tracked():
-            if name in HISTORY or name.endswith((".pdf", ".png", ".dsk", ".cdt", ".bin")) or name.startswith("tools/img2cpc/"):
+            if name in HISTORY or name.endswith((".pdf", ".png", ".dsk", ".cdt", ".bin")) or name.startswith("tools/build/img2cpc/"):
                 continue
             try:
                 text = (ROOT / name).read_text(encoding="utf-8")
@@ -68,7 +72,7 @@ class Layout(unittest.TestCase):
         needle = "mac" + "ape"   # built in two parts so this file does not match itself
         offenders = []
         for name in tracked():
-            if name.endswith((".pdf", ".png", ".dsk", ".cdt", ".bin")) or name.startswith("tools/img2cpc/"):
+            if name.endswith((".pdf", ".png", ".dsk", ".cdt", ".bin")) or name.startswith("tools/build/img2cpc/"):
                 continue
             try:
                 text = (ROOT / name).read_text(encoding="utf-8")
@@ -77,6 +81,17 @@ class Layout(unittest.TestCase):
             if needle in text.lower() or needle in name.lower():
                 offenders.append(name)
         self.assertEqual(offenders, [])
+
+    def test_tools_are_split_by_purpose(self):
+        """glasnost/ is the CLI, build/ generates and builds, dev/ is for maintainers; no loose scripts."""
+        under = {path.split("/")[1] for path in tracked() if path.startswith("tools/")}
+        self.assertEqual(under, {"glasnost", "build", "dev"})
+        self.assertTrue((ROOT / "tools" / "glasnost" / "glasnost.py").is_file())
+        for path in tracked():
+            if path.startswith("tools/dev/") or path.startswith("tools/glasnost/"):
+                self.assertFalse(path.startswith("tools/dev/img2cpc"), path)
+        for script in sorted((ROOT / "tools" / "build").glob("*.py")):
+            self.assertEqual(script.resolve().parents[2], ROOT, script)
 
     def test_the_install_cli_entry_stays_at_bin(self):
         """`glasnost install-cli` links to bin/glasnost; moving it would break every installed link."""

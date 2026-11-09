@@ -6,9 +6,9 @@ tests (tests/test_ecs_manager.py) or the emulator smoke (tests/emulator_smoke.py
 platformer section) fail on it, and SURVIVES when both pass. The runner
 always restores both files byte for byte, whatever happens.
 
-    python3 tools/mutate_platformer.py --host-only          # seconds, no emulator
-    python3 tools/mutate_platformer.py                      # full run, ~1.5 min each
-    python3 tools/mutate_platformer.py --only flash         # name filter
+    python3 tools/dev/mutate_platformer.py --host-only          # seconds, no emulator
+    python3 tools/dev/mutate_platformer.py                      # full run, ~1.5 min each
+    python3 tools/dev/mutate_platformer.py --only flash         # name filter
 
 `tests/test_mutation_table.py` checks that every pattern below still matches exactly
 once across main.s and common.inc, so the table cannot rot silently. Patterns match the
@@ -25,7 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "examples/platformer/main.s"
 COMMON = ROOT / "examples/platformer/common.inc"
 SOURCES = (MAIN, COMMON)
@@ -154,9 +154,9 @@ def host_tests_pass() -> bool:
 
 def smoke_passes(emulator: Path) -> bool:
     run(["rm", "-rf", "build/platformer/obj"])
-    if run([sys.executable, "tools/build_examples.py", "platformer"]).returncode != 0:
+    if run([sys.executable, "tools/build/build_examples.py", "platformer"]).returncode != 0:
         return False  # a mutation that does not build is reported, not counted as detected
-    run([sys.executable, "tools/build_test_disk.py", "platformer"])
+    run([sys.executable, "tools/build/build_test_disk.py", "platformer"])
     with open(LOCK, "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         result = run(
@@ -186,7 +186,7 @@ def main() -> int:
                 continue
             target = locate(texts, old)
             if target is None:
-                print(f"{name}: PATTERN NOT FOUND exactly once, update tools/mutate_platformer.py")
+                print(f"{name}: PATTERN NOT FOUND exactly once, update tools/dev/mutate_platformer.py")
                 survivors.append(name)
                 continue
             for path, data in originals.items():
@@ -212,7 +212,7 @@ def main() -> int:
         return 2
     if not args.host_only:
         run(["rm", "-rf", "build/platformer/obj"])
-        run([sys.executable, "tools/build_examples.py", "platformer"])
+        run([sys.executable, "tools/build/build_examples.py", "platformer"])
     print(f"\n{len(survivors)} not detected" if survivors else "\nall detected")
     return 1 if survivors and not args.host_only else 0
 

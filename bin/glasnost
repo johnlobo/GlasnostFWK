@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Entry point of the GlasnostFWK SDK. All logic lives in tools/glasnost.py.
+# Entry point of the GlasnostFWK SDK. All logic lives in tools/glasnost/glasnost.py.
 set -euo pipefail
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
-exec python3 -I "$(dirname "$SELF")/../tools/glasnost.py" "$@"
+exec python3 -I "$(dirname "$SELF")/../tools/glasnost/glasnost.py" "$@"

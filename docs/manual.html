@@ -140,7 +140,7 @@
       <li>WeasyPrint 70.0 solo para regenerar este manual en PDF.</li>
     </ul>
     <pre><code>export CPCT_NEXT_PATH=/ruta/a/cpctelera
-python3 tools/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pre>
+python3 tools/build/build_examples.py --cpct-path "$CPCT_NEXT_PATH" minimal</code></pre>
     <p>La compatibilidad con instalaciones distintas de la revisión fijada no está confirmada. Si se cambia, hay que volver a compilar y ejecutar las pruebas.</p>
   </section>
 
@@ -173,17 +173,17 @@ make test</code></pre>
 make        # compila este ejemplo y copia BIN, CDT y DSK a la carpeta
 make run    # compila y lo abre en el emulador
 make clean  # borra build/minimal/ y las copias locales</code></pre>
-    <p><code>make</code> reutiliza <code>tools/build_examples.py</code> y deja el proyecto generado en <code>build/&lt;nombre&gt;/</code>. Además copia junto a las fuentes <code>examples/&lt;nombre&gt;/&lt;nombre&gt;.bin</code>, <code>.cdt</code> y <code>.dsk</code> (los que existan), de modo que el ejecutable queda a mano en la carpeta del ejemplo; esas copias están ignoradas por git y <code>make clean</code> las elimina. El framework nunca se copia al repositorio. <code>make run</code> abre el CDT del ejemplo, que autorrancia, o su DSK, con el ejecutable indicado en <code>GLASNOST_EMULATOR</code> o, en su defecto, con AmSpiriT-Lite si está junto al repositorio y, si no, con BluePixel. Sin emulador disponible imprime la ruta de la imagen. El emulador también puede fijarse en la propia orden: <code>make run GLASNOST_EMULATOR=/ruta/al/emulador</code>.</p>
+    <p><code>make</code> reutiliza <code>tools/build/build_examples.py</code> y deja el proyecto generado en <code>build/&lt;nombre&gt;/</code>. Además copia junto a las fuentes <code>examples/&lt;nombre&gt;/&lt;nombre&gt;.bin</code>, <code>.cdt</code> y <code>.dsk</code> (los que existan), de modo que el ejecutable queda a mano en la carpeta del ejemplo; esas copias están ignoradas por git y <code>make clean</code> las elimina. El framework nunca se copia al repositorio. <code>make run</code> abre el CDT del ejemplo, que autorrancia, o su DSK, con el ejecutable indicado en <code>GLASNOST_EMULATOR</code> o, en su defecto, con AmSpiriT-Lite si está junto al repositorio y, si no, con BluePixel. Sin emulador disponible imprime la ruta de la imagen. El emulador también puede fijarse en la propia orden: <code>make run GLASNOST_EMULATOR=/ruta/al/emulador</code>.</p>
     <p>Para lotes o automatización sigue disponible la herramienta de bajo nivel:</p>
-    <pre><code>python3 tools/build_examples.py minimal
-python3 tools/build_examples.py animation vertical</code></pre>
+    <pre><code>python3 tools/build/build_examples.py minimal
+python3 tools/build/build_examples.py animation vertical</code></pre>
     <p>Los resultados quedan en <code>build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
     <ul>
       <li><code>obj/&lt;nombre&gt;.bin</code>: binario AMSDOS.</li>
       <li><code>&lt;nombre&gt;.cdt</code>: cinta, salvo ejemplos que declaren solo DSK.</li>
       <li><code>selected-modules.json</code>: prueba de qué módulos entraron realmente.</li>
     </ul>
-    <p><code>tools/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make examples</code> los sustituye por el único DSK común y deja su catálogo reproducible en <code>build/tests/catalog.json</code>.</p>
+    <p><code>tools/build/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make examples</code> los sustituye por el único DSK común y deja su catálogo reproducible en <code>build/tests/catalog.json</code>.</p>
 
     <h3>3.3 Probar manualmente en un CPC o emulador</h3>
     <ol>
@@ -211,7 +211,9 @@ python3 tools/build_examples.py animation vertical</code></pre>
         <tr><td><code>framework/templates</code>, <code>framework/licenses</code></td><td>Plantillas de <code>glasnost new</code> y licencias de lo distribuido.</td></tr>
         <tr><td><code>projects</code></td><td>Proyectos creados con <code>glasnost new</code>; no se versionan.</td></tr>
         <tr><td><code>build/generated</code></td><td>Tablas producidas por herramientas; no son la fuente canónica.</td></tr>
-        <tr><td><code>tools</code>, <code>tests</code></td><td>Construcción, generación, paquetes y validación.</td></tr>
+        <tr><td><code>tools/glasnost</code></td><td>CLI <code>glasnost</code>, proyectos y emuladores.</td></tr>
+        <tr><td><code>tools/build</code></td><td>Construcción, generadores, importador de assets e <code>img2cpc</code>.</td></tr>
+        <tr><td><code>tools/dev</code>, <code>tests</code></td><td>Manual, paquetes, mediciones y validación.</td></tr>
       </tbody>
     </table>
     <p>La dirección de dependencias es <code>juego → extensión opcional → núcleo → CPCTelera/hardware</code>. Ningún archivo de <code>framework/src/</code> puede importar un ejemplo o símbolos de juego.</p>
@@ -257,7 +259,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
 
     <h3>5.3 Configuración CPCtelera y assets</h3>
     <p>Un ejemplo puede incluir su propia configuración de proyecto CPCtelera en <code>cfg/build_config.mk</code>. Si existe, el constructor la usa como base en lugar de <code>framework/cfg/build_config.template.mk</code>, de modo que los flags, herramientas y rutas que añada se conservan. Solo se reescriben los valores que gobierna el manifiesto: <code>CPCT_PATH</code>, <code>PROJNAME</code>, <code>TARGET</code>, <code>Z80CODELOC</code> y el <code>-I$(SRCDIR)</code> del ensamblador.</p>
-    <p>La carpeta <code>assets/</code> del ejemplo se copia a <code>src/assets</code> del proyecto generado. Sus <code>.s</code> se ensamblan sin declararlos en <code>game_sources</code>, los <code>.inc</code> se incluyen como <code>assets/&lt;archivo&gt;.inc</code> y los originales se copian para las herramientas. Además, si existe <code>assets/assets.json</code>, el constructor ejecuta <code>tools/import_assets.py</code> antes de compilar: convierte PNG Mode 0 con <code>img2cpc</code>, lee capas CSV de Tiled con la misma reindexación que <code>cpct_tmx2csv</code> y puede comprimir mapas con <code>zx7b</code>.</p>
+    <p>La carpeta <code>assets/</code> del ejemplo se copia a <code>src/assets</code> del proyecto generado. Sus <code>.s</code> se ensamblan sin declararlos en <code>game_sources</code>, los <code>.inc</code> se incluyen como <code>assets/&lt;archivo&gt;.inc</code> y los originales se copian para las herramientas. Además, si existe <code>assets/assets.json</code>, el constructor ejecuta <code>tools/build/import_assets.py</code> antes de compilar: convierte PNG Mode 0 con <code>img2cpc</code>, lee capas CSV de Tiled con la misma reindexación que <code>cpct_tmx2csv</code> y puede comprimir mapas con <code>zx7b</code>.</p>
     <p>La conversión es incremental como en CPCtelera. El pipeline guarda en <code>assets/generated/pipeline.json</code> un SHA-256 del manifiesto, la paleta y cada PNG/TMX, más el hash de las salidas. Si nada cambió, <code>make</code> no invoca ninguna herramienta; si se edita un original, regenera <code>assets.s</code> y <code>assets.inc</code>. <code>make assets</code> ejecuta solo esa comprobación:</p>
     <pre><code>cd examples/platformer
 make assets     # convierte PNG/TMX solo si cambiaron
@@ -301,7 +303,7 @@ loop:
     <p><code>RENDER</code> se inserta siempre como bit 0. El resto conserva el orden solicitado, insertando antes sus dependencias. Se rechazan nombres o tipos inválidos, duplicados, ciclos, componentes desconocidos, más de 16 componentes, coordenadas incapaces de representar el perfil de vídeo y entidades mayores de 128 bytes.</p>
     <div class="box warning"><strong>Portfolio actual.</strong> <code>RENDER</code>, <code>MOTION</code>, <code>BEHAVIOR</code>, <code>INPUT</code> y <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code> tienen layout normativo, y el renderer ECS dirty/multi-manager está en <code>video/ecs_render.s</code>.</div>
     <p>El include versionado está en <code>generated/ecs_profile.inc</code>. Antes de cambiarlo puede obtener una vista JSON de componentes resueltos, dependencias insertadas, campos, offsets, tamaños y diferencias sin escribir:</p>
-    <pre><code>python3 tools/gen_ecs_profile.py examples/ecsmanager/example.json \
+    <pre><code>python3 tools/build/gen_ecs_profile.py examples/ecsmanager/example.json \
   --output examples/ecsmanager/generated/ecs_profile.inc --preview
 make generate-ecs   # escribe el include después de revisar la vista previa
 make check CHECK_EXAMPLES=ecsmanager  # falla si el include vuelve a quedar obsoleto</code></pre>
@@ -630,8 +632,8 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
     <p><code>framework/profiles/experimental-160x288.json</code> usa coordenadas verticales de 16 bits y dos segmentos de vídeo. Se han comprobado 23.040 direcciones únicas y el cruce de memoria; la temporización CRTC no se ha validado visualmente en varios CRTC ni en hardware.</p>
 
     <h3>7.3 Generar tablas</h3>
-    <pre><code>python3 tools/gen_video.py framework/profiles/standard-160x200.json --out-dir build/generated
-python3 tools/gen_resources.py framework/manifests/resources128.json --output build/generated/resources128.inc</code></pre>
+    <pre><code>python3 tools/build/gen_video.py framework/profiles/standard-160x200.json --out-dir build/generated
+python3 tools/build/gen_resources.py framework/manifests/resources128.json --output build/generated/resources128.inc</code></pre>
     <p>Edite los JSON fuente y regenere. No edite las tablas de <code>build/generated/</code> a mano. El generador de recursos rechaza solapamientos, destinos reservados, bancos no disponibles y alineaciones incorrectas.</p>
 
     <h3>7.4 Archivos adicionales en DSK</h3>

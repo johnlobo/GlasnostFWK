@@ -22,7 +22,7 @@ modo que excluir una funcionalidad la excluye también del enlazado.
 - Ruta local predeterminada: `/config/workspace/cpctelera_next/cpctelera`.
 
 Puede elegirse otra instalación compatible con `CPCT_NEXT_PATH` o
-`tools/build_examples.py --cpct-path`.
+`tools/build/build_examples.py --cpct-path`.
 
 ### CLI `glasnost`
 
@@ -179,7 +179,7 @@ Primer nivel: `bin/` (entrada `glasnost`), `docs/`, `examples/`, `framework/`, `
 - `framework/src/extensions`: behavior, física y tilemaps optativos, sin entidad universal.
 - `framework/cfg`, `framework/profiles`, `framework/manifests`: plantillas de construcción y entradas declarativas.
 - `framework/templates`: plantillas de `glasnost new`. `framework/licenses`: licencias de lo que se distribuye.
-- `tools`: CLI `glasnost`, generación, validación, staging y medición.
+- `tools/glasnost` (CLI y emuladores), `tools/build` (generadores, importador de assets, `build_examples`, `img2cpc`) y `tools/dev` (manual, release, mediciones).
 - `projects`: tus proyectos (`glasnost new`); no se versiona.
 - `examples`: veintitrés consumidores pequeños, sin copias internas del framework (`examples/nave`
   es el juego terminado de la guía `docs/first-game.md`).

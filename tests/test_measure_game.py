@@ -1,6 +1,6 @@
 import unittest
 
-from tools.measure_game import FRAME_T, frames_between, label_table, summarize
+from tools.dev.measure_game import FRAME_T, frames_between, label_table, summarize
 
 
 class SummarizeTests(unittest.TestCase):
