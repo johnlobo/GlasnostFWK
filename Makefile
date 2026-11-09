@@ -1,4 +1,12 @@
 PYTHON ?= python3
+
+# Without an explicit CPCT_NEXT_PATH, use the toolchain installed by ./setup.sh.
+ifeq ($(origin CPCT_NEXT_PATH),undefined)
+CPCT_NEXT_PATH := $(shell bin/glasnost path 2>/dev/null)
+endif
+ifneq ($(CPCT_NEXT_PATH),)
+export CPCT_NEXT_PATH
+endif
 EXAMPLES := minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender nave
 CHECK_EXAMPLES ?= platformer
 

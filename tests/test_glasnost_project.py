@@ -757,7 +757,7 @@ class RealBuild(unittest.TestCase):
     """The generated project must compile with the real toolchain, in every configuration."""
 
     def build(self, *new_args):
-        tmp = Path(tempfile.mkdtemp(prefix="glasnost-real-"))
+        tmp = Path(tempfile.mkdtemp(prefix="glasnost-real-")).resolve()  # macOS: /var -> /private/var
         self.addCleanup(subprocess.run, ["rm", "-rf", str(tmp)])
         env = {"CPCT_NEXT_PATH": str(real_toolchain())}
         code, out, err = run(["new", "demo", "--dir", str(tmp), "--no-git", *new_args], ROOT,

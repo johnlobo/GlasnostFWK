@@ -88,7 +88,7 @@ class FakeSdk:
     """A temporary SDK root with its own lockfile pointing at a fake upstream."""
 
     def __init__(self, test: unittest.TestCase, broken: str | None = None, silent: str | None = None):
-        self.tmp = Path(tempfile.mkdtemp(prefix="glasnost-test-"))
+        self.tmp = Path(tempfile.mkdtemp(prefix="glasnost-test-")).resolve()  # macOS: /var -> /private/var
         test.addCleanup(subprocess.run, ["rm", "-rf", str(self.tmp)])
         self.upstream = self.tmp / "upstream"
         self.upstream.mkdir()
