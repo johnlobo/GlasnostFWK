@@ -1,4 +1,4 @@
-;; GlasnostFWK ECS 2.0 entity collision: public ABI (docs/ecs-abi-2.0.md, 9).
+;; GlasnostFWK ECS 2.0 entity collision: public ABI (docs/reference/ecs-abi-2.0.md, 9).
 
 ECS_COLLISION_TOUCHING = 0x01   ; default channel (bit 0 of ECS_E_COLLISION_CONTACT)
 

@@ -1,14 +1,14 @@
 # Recorrido por el código de `nave`
 
 La guía [Tu primer juego](first-game.md) construye este juego paso a paso. Este recorrido
-hace lo contrario: parte del juego terminado, [`examples/nave`](../examples/nave/), y lo
+hace lo contrario: parte del juego terminado, [`examples/nave`](../../examples/nave/), y lo
 explica rutina por rutina para que puedas leerlo, cambiarlo y saber qué rompe cada cambio.
 
 Necesitas haber ejecutado el juego una vez: construye el disco con `make` en `examples/nave` (lo deja en `build/nave/nave.dsk`)
 y arráncalo con `RUN"NAVE` en un CPC o un emulador. No necesitas haber seguido la guía.
 
 Los fragmentos de código de este texto son copias literales de
-[`main.s`](../examples/nave/main.s) y [`common.inc`](../examples/nave/common.inc) (salvo el
+[`main.s`](../../examples/nave/main.s) y [`common.inc`](../../examples/nave/common.inc) (salvo el
 esquema de cabecera de la sección 1 y los cambios de los ejercicios); una prueba
 (`tests/test_nave_walkthrough.py`) comprueba que no se han separado del código.
 
@@ -838,7 +838,7 @@ guarda si el sujeto ya tocaba (para distinguir
 
 Una nota honesta sobre el renderizador: borra y vuelve a dibujar justo después del VSYNC y
 el haz del monitor puede alcanzar esas líneas antes de que acabe, así que un sprite puede
-parpadear. Es un efecto conocido, aún sin medir, y [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)
+parpadear. Es un efecto conocido, aún sin medir, y [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md)
 deja abierto si lo corrige el renderizador o la plantilla.
 
 ## 6. Dos ejercicios
@@ -895,7 +895,7 @@ el acarreo puesto y el juego se para con `0x03` en `game_status` (`FWK_ECS_ERR_F
 
 - [Tu primer juego](first-game.md): cómo se construyó esto, paso a paso, desde
   `glasnost new`.
-- [`docs/ecs-abi-2.0.md`](ecs-abi-2.0.md): el contrato del ECS (`fwk_ecs_*`), y
-  [`docs/architecture-and-api.md`](architecture-and-api.md) para vídeo, texto, entrada y el resto.
+- [`docs/reference/ecs-abi-2.0.md`](../reference/ecs-abi-2.0.md): el contrato del ECS (`fwk_ecs_*`), y
+  [`docs/reference/architecture-and-api.md`](../reference/architecture-and-api.md) para vídeo, texto, entrada y el resto.
 - `examples/platformer`: un juego mayor con la misma estructura (dos niveles, enemigos,
   puerta, vidas).

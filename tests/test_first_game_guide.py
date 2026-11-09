@@ -1,4 +1,4 @@
-"""Keeps docs/first-game.md honest: what the guide shows is what builds and works.
+"""Keeps docs/guide/first-game.md honest: what the guide shows is what builds and works.
 
 Without a toolchain the structural tests still run. With one (CPCT_NEXT_PATH or a managed install,
 as `glasnost test` provides) every step is applied over a fresh project, in order, and built.
@@ -22,7 +22,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 sys.path.insert(0, str(ROOT / "tests"))
-sys.path.insert(0, str(ROOT / "docs" / "first-game"))
+sys.path.insert(0, str(ROOT / "docs" / "guide" / "first-game"))
 
 import build_examples  # noqa: E402
 import glasnost  # noqa: E402
@@ -31,8 +31,8 @@ import project_config  # noqa: E402
 from test_glasnost import quiet_runner  # noqa: E402
 from test_glasnost_project import real_toolchain  # noqa: E402
 
-GUIDE = ROOT / "docs" / "first-game.md"
-STEPS = ROOT / "docs" / "first-game"
+GUIDE = ROOT / "docs" / "guide" / "first-game.md"
+STEPS = ROOT / "docs" / "guide" / "first-game"
 STEP_NAMES = ("step1", "step2", "step3")
 SNIPPET = re.compile(r"<!-- guia: (?P<file>[\w./]+) -->\n```\w*\n(?P<body>.*?)\n```", re.S)
 
@@ -106,7 +106,7 @@ class GuideText(unittest.TestCase):
     def test_links_to_files_and_images_resolve(self):
         for target in re.findall(r"\]\((first-game/[^)#]+)\)", self.text):
             with self.subTest(target):
-                self.assertTrue((ROOT / "docs" / target).exists(), target)
+                self.assertTrue((ROOT / "docs" / "guide" / target).exists(), target)
 
     def test_the_commands_it_teaches_exist(self):
         parser = glasnost.build_parser("en")

@@ -110,7 +110,7 @@ PNG y el TMX originales y la salida generada. El pipeline es el mismo
 la fase 11 elimina `platformer`, y el ejemplo ECS debe quedarse con sus assets.
 
 (Histórico: así estaba en la fase 10; hoy es un solo manager con cadencia por
-entidad, ver `docs/validation.md`.) Cuatro managers: ítems (4 monedas y la puerta), rápido (jugador y el enemigo
+entidad, ver `docs/design/validation.md`.) Cuatro managers: ítems (4 monedas y la puerta), rápido (jugador y el enemigo
 vertical izquierdo, cada fotograma), y uno para el horizontal y otro para el
 vertical derecho, que se alternan un fotograma cada uno como en el original
 (la primera versión puso el vertical derecho en el rápido y iba al doble de
@@ -134,7 +134,7 @@ Resultados medidos:
 | Área | Original | ECS | Motivo |
 |---|---|---|---|
 | Hitbox de moneda | ventana de 8x8 | el sprite real de 4x8 | una sola anchura por entidad: la del sprite |
-| Contacto entre enemigos | un bit por enemigo | un canal por enemigo (V2, H y V en pasos separados); desde la cadencia por entidad, un solo canal compartido (ver `docs/validation.md`) | igual que el original; hoy difiere solo en el contacto simultáneo con un segundo enemigo |
+| Contacto entre enemigos | un bit por enemigo | un canal por enemigo (V2, H y V en pasos separados); desde la cadencia por entidad, un solo canal compartido (ver `docs/design/validation.md`) | igual que el original; hoy difiere solo en el contacto simultáneo con un segundo enemigo |
 | Parpadeo al perder vida | borde rojo 3 veces, bloqueante, antes de `prepare` y VSYNC | mismas constantes y espera; se ejecuta al final del fotograma, tras dibujar | el HUD se actualiza en ese punto; ver también la fila de varias pérdidas |
 | Varias vidas perdidas en un fotograma | un parpadeo por vida | un solo parpadeo (el bit de parpadeo es una marca, no un contador); las vidas y el HUD sí restan todas | caso raro, no cubierto por el smoke |
 | Puerta en el nivel 2 | se oculta y termina | igual: se oculta y `won` vuelve a 0, sin reiniciar | paridad |

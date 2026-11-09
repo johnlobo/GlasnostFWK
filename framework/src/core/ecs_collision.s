@@ -1,5 +1,5 @@
 ;; ECS 2.0 entity collision: one subject against the targets of a manager.
-;; Contract and budget (300 bytes of code, no tables): docs/ecs-abi-2.0.md, 9.
+;; Contract and budget (300 bytes of code, no tables): docs/reference/ecs-abi-2.0.md, 9.
 .module fwk_ecs_collision
 
 .include "ecs_profile.inc"

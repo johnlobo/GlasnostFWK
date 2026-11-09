@@ -392,7 +392,7 @@ build/mi_plataformas/selected-modules.json</code></pre>
 
   <h3>9.2 Cargar el resultado</h3>
   <p>Para CDT, abra <code>build/mi_plataformas/mi_plataformas.cdt</code> en un CPC o emulador y use los comandos normales de cinta de su entorno. Una construcción aislada también produce <code>mi_plataformas.dsk</code>; al ejecutar el flujo completo del repositorio, la política pública reúne los BIN en el DSK común descrito a continuación.</p>
-  <p class="meta">La compilación y los smokes automatizados no sustituyen una prueba visual en hardware real. Consulte <code>docs/validation.md</code> para conocer qué se ha verificado y qué sigue sin verificarse.</p>
+  <p class="meta">La compilación y los smokes automatizados no sustituyen una prueba visual en hardware real. Consulte <code>docs/design/validation.md</code> para conocer qué se ha verificado y qué sigue sin verificarse.</p>
 
   <h2 id="integrar"><span class="step">10</span> Integrar el proyecto en el DSK común</h2>
   <p>La construcción aislada no añade automáticamente un proyecto nuevo a <code>make examples</code>. Para convertirlo en ejemplo mantenido por el repositorio:</p>
@@ -449,24 +449,24 @@ python3 tests/emulator_smoke.py platformer --model 464</code></pre>
   <p>Las tres capturas de terminal no están editadas a mano: el script lee estructura y manifiesto, construye <code>platformer</code> y consulta los tamaños resultantes. Regénerelas desde la raíz:</p>
   <pre><code>make platform-guide PYTHON=.venv-docs/bin/python</code></pre>
   <p>Para regenerar imágenes sin recompilar, solo si ya existen artefactos actuales:</p>
-  <pre><code>.venv-docs/bin/python docs/images/platformer/generate_captures.py --skip-build
+  <pre><code>.venv-docs/bin/python docs/guide/images/platformer/generate_captures.py --skip-build
 .venv-docs/bin/python tools/dev/build_manual.py \
-  --html docs/platform-game-guide.html \
-  --pdf docs/platform-game-guide.pdf \
-  --checksum docs/platform-game-guide.sha256</code></pre>
+  --html docs/guide/platform-game-guide.html \
+  --pdf docs/guide/platform-game-guide.pdf \
+  --checksum docs/guide/platform-game-guide.sha256</code></pre>
   <p>Las dos capturas jugables se regeneran desde el endpoint PNG del emulador. El smoke las toma al terminar la inicialización y al alcanzar la victoria:</p>
   <pre><code>python3 tests/emulator_smoke.py platformer --model 6128 \
-  --screenshot-dir docs/images/platformer</code></pre>
+  --screenshot-dir docs/guide/images/platformer</code></pre>
   <div class="note"><strong>Evidencia reproducible.</strong> Una captura solo se escribe después de que el smoke haya observado el estado correspondiente. El comando requiere que el wrapper configurado en <code>--emulator</code> pueda iniciar AmSpiriT-Lite y su servidor local.</div>
 
   <h2>Referencias del repositorio</h2>
   <ul>
     <li><code>docs/manual.html</code>: API general y contratos.</li>
-    <li><code>docs/physics-profiles.md</code>: estado y configuración del perfil compacto.</li>
-    <li><code>docs/tilemap-collision.md</code>: consulta y resolución contra el mapa.</li>
-    <li><code>docs/tilemap-render.md</code>: descriptores y render completo/parcial.</li>
-    <li><code>docs/sprites.md</code>: descriptor, clipping, captura y restauración.</li>
-    <li><code>docs/ecs-abi-2.0.md</code>: layout de entidad, managers, renderer multi-manager, colisión, behavior y animación.</li>
+    <li><code>docs/reference/physics-profiles.md</code>: estado y configuración del perfil compacto.</li>
+    <li><code>docs/reference/tilemap-collision.md</code>: consulta y resolución contra el mapa.</li>
+    <li><code>docs/reference/tilemap-render.md</code>: descriptores y render completo/parcial.</li>
+    <li><code>docs/reference/sprites.md</code>: descriptor, clipping, captura y restauración.</li>
+    <li><code>docs/reference/ecs-abi-2.0.md</code>: layout de entidad, managers, renderer multi-manager, colisión, behavior y animación.</li>
     <li><code>examples/platformer</code>: aplicación completa sobre la que se valida esta guía.</li>
   </ul>
 </body>

@@ -1,4 +1,4 @@
-;; GlasnostFWK ECS 2.0 selective renderer: public ABI (docs/ecs-abi-2.0.md, 8).
+;; GlasnostFWK ECS 2.0 selective renderer: public ABI (docs/reference/ecs-abi-2.0.md, 8).
 
 ;; Scene descriptor (11 bytes, project-owned).
 FWK_ECS_RENDER_TABLE     = 0     ; pointer to a table of manager pointers

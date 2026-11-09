@@ -27,8 +27,8 @@ class GuideParser(HTMLParser):
 
 class PlatformGameGuideTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.html_path = ROOT / "docs/platform-game-guide.html"
-        self.pdf_path = ROOT / "docs/platform-game-guide.pdf"
+        self.html_path = ROOT / "docs/guide/platform-game-guide.html"
+        self.pdf_path = ROOT / "docs/guide/platform-game-guide.pdf"
         self.html = self.html_path.read_text(encoding="utf-8")
         self.parser = GuideParser()
         self.parser.feed(self.html)
@@ -42,12 +42,12 @@ class PlatformGameGuideTests(unittest.TestCase):
             self.assertTrue(image.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
             self.assertGreater(image.stat().st_size, 10_000)
         self.assertIn("generate_captures.py", self.html)
-        self.assertIn("--screenshot-dir docs/images/platformer", self.html)
+        self.assertIn("--screenshot-dir docs/guide/images/platformer", self.html)
 
     def test_pdf_matches_the_current_guide_shape(self) -> None:
         self.assertTrue(self.pdf_path.read_bytes().startswith(b"%PDF-"))
         self.assertGreater(self.pdf_path.stat().st_size, 100_000)
-        checksum = (ROOT / "docs/platform-game-guide.sha256").read_text(
+        checksum = (ROOT / "docs/guide/platform-game-guide.sha256").read_text(
             encoding="ascii"
         )
         match = re.fullmatch(
