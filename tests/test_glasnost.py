@@ -879,7 +879,7 @@ class Shim(unittest.TestCase):
 
     def test_usage_error_exits_two(self):
         self.assertEqual(self.run_shim("frobnicate").returncode, 2)
-        self.assertEqual(self.run_shim().returncode, 2)
+        self.assertEqual(self.run_shim().returncode, 0)   # a bare `glasnost` shows the help
 
     def test_help_is_translated(self):
         spanish = self.run_shim("--help").stdout

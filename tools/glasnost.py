@@ -23,6 +23,7 @@ import re
 import shutil
 import subprocess
 import sys
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
@@ -1161,10 +1162,167 @@ def cmd_version(args, root: Path, lang: str, runner: Runner) -> int:
 
 # ------------------------------------------------------------------- main
 
+# ------------------------------------------------------------------- help
+
+HELP_GROUPS = (
+    ("helptext.group_setup", ("doctor", "install-deps", "install-toolchain", "install-cli")),
+    ("helptext.group_projects", ("new", "config", "update", "rollback", "projects")),
+    ("helptext.group_build", ("build", "test", "run", "emulator")),
+    ("helptext.group_other", ("toolchains", "clean-toolchains", "uninstall-cli", "path", "version", "help")),
+)
+HELP_EXAMPLES = (
+    ("glasnost doctor", "helptext.ex_doctor"),
+    ("glasnost install-toolchain", "helptext.ex_toolchain"),
+    ("glasnost new nave", "helptext.ex_new"),
+    ("glasnost build", "helptext.ex_build"),
+    ("glasnost run", "helptext.ex_run"),
+)
+
+
+class CommandParser(argparse.ArgumentParser):
+    """Subcommand parser: no English default -h; the help comes from render_help (translated)."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("add_help", False)
+        super().__init__(*args, **kwargs)
+
+
+class HelpAction(argparse.Action):
+    def __init__(self, option_strings, dest=argparse.SUPPRESS, default=argparse.SUPPRESS, help=None):
+        super().__init__(option_strings, dest, default=default, nargs=0, help=help)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(render_help(parser.glasnost_root, parser.glasnost_lang, parser.glasnost_command))
+        parser.exit()
+
+
+def help_width() -> int:
+    return max(60, min(shutil.get_terminal_size((100, 24)).columns, 110))
+
+
+def option_label(action: argparse.Action) -> str:
+    """`--profile standard|experimental`, `-h, --help`, `[example]`: how an argument is written."""
+    if action.choices:
+        value = "|".join(str(choice) for choice in action.choices)
+    else:
+        value = action.metavar or action.dest.upper()
+    if not action.option_strings:
+        return f"[{value}]" if action.nargs in ("?", "*") else value
+    names = ", ".join(action.option_strings)
+    if action.nargs == 0:
+        return names
+    return f"{names} [{value}]" if action.nargs == "?" else f"{names} {value}"
+
+
+def sentence(text: str) -> str:
+    text = text.strip()
+    text = text[:1].upper() + text[1:]
+    return text if text[-1:] in ".!?:)" else text + "."
+
+
+def two_columns(label: str, text: str, indent: int, column: int, width: int) -> list[str]:
+    """`label` padded to `column`, `text` wrapped under it; a long label puts the text on the next line."""
+    pad = " " * indent
+    hanging = " " * (indent + column + 2)
+    body = textwrap.wrap(text, width=width, initial_indent=hanging, subsequent_indent=hanging,
+                         break_on_hyphens=False) or [hanging]
+    if len(label) <= column:
+        return [pad + label.ljust(column + 2) + body[0].lstrip(), *body[1:]]
+    return [pad + label, *body]
+
+
+def command_options(parser: argparse.ArgumentParser) -> list[tuple[str, str]]:
+    return [(option_label(action), action.help or "") for action in parser._actions
+            if not isinstance(action, (HelpAction, argparse._SubParsersAction)) and action.help is not argparse.SUPPRESS]
+
+
+def usage_token(action: argparse.Action) -> str:
+    """`--title TITLE` (long form, with its value) or the positional's label."""
+    if not action.option_strings:
+        return option_label(action)
+    flag = action.option_strings[-1]
+    if action.nargs == 0:
+        return flag
+    return f"{flag} {option_label(action)[len(', '.join(action.option_strings)) + 1:]}"
+
+
+def command_usage(name: str, parser: argparse.ArgumentParser, lang: str, width: int) -> str:
+    """`Uso: glasnost new [--title TITLE] [--extended-memory | --no-extended-memory] [nombre]`."""
+    in_group = {id(action): group for group in parser._mutually_exclusive_groups for action in group._group_actions}
+    parts, done = [f"glasnost {name}"], set()
+    for action in parser._actions:
+        if isinstance(action, HelpAction):
+            continue
+        group = in_group.get(id(action))
+        if group is not None:
+            if id(group) not in done:
+                done.add(id(group))
+                parts.append("[" + " | ".join(usage_token(member) for member in group._group_actions) + "]")
+        elif action.option_strings:
+            parts.append(f"[{usage_token(action)}]")
+        else:
+            parts.append(usage_token(action))
+    return textwrap.fill(f"{say(lang, 'helptext.usage')}: {' '.join(parts)}", width=width, subsequent_indent=" " * 6,
+                         break_on_hyphens=False)
+
+
+def render_help(root: argparse.ArgumentParser, lang: str, command: str | None = None) -> str:
+    """The help text, built from the parser itself so options and commands cannot drift from it."""
+    width = help_width()
+    sub = next(a for a in root._actions if isinstance(a, argparse._SubParsersAction))
+    summaries = {a.dest: a.help for a in sub._choices_actions}
+    if command and command in sub.choices:
+        parser = sub.choices[command]
+        options = command_options(parser)
+        column = min(max((len(label) for label, _ in options), default=0), 30)
+        lines = [command_usage(command, parser, lang, width), "", textwrap.fill(sentence(summaries[command]), width=width)]
+        if options:
+            lines += ["", say(lang, "helptext.options") + ":"]
+            for label, text in options:
+                lines += two_columns(label, sentence(text), 2, column, width)
+        return "\n".join(lines)
+
+    general = [("--lang es|en", root._option_string_actions["--lang"].help or ""),
+               ("-h, --help", say(lang, "helptext.help_option"))]
+    labels = [len(name) for _, names in HELP_GROUPS for name in names]
+    options_by_command = {name: command_options(parser) for name, parser in sub.choices.items()}
+    option_widths = [len(label) for options in options_by_command.values() for label, _ in options]
+    command_column = max(labels) + 2
+    option_column = min(max(option_widths + [len(label) for label, _ in general]), 31)
+    lines = [textwrap.fill(root.description or "", width=width), "",
+             textwrap.fill(f"{say(lang, 'helptext.usage')}: {say(lang, 'helptext.usage_general')}", width=width)]
+    for title_key, names in HELP_GROUPS:
+        lines += ["", say(lang, title_key) + ":"]
+        for name in names:
+            lines += two_columns(name, sentence(summaries[name]), 2, command_column, width)
+            for label, text in options_by_command[name]:
+                lines += two_columns(label, sentence(text), 4, option_column, width)
+    lines += ["", say(lang, "helptext.general") + ":"]
+    for label, text in general:
+        lines += two_columns(label, sentence(text), 2, option_column, width)
+    lines += ["", say(lang, "helptext.examples") + ":"]
+    example_column = max(len(command) for command, _ in HELP_EXAMPLES)
+    for command_line, key in HELP_EXAMPLES:
+        lines += two_columns(command_line, say(lang, key), 2, example_column, width)
+    lines += ["", say(lang, "helptext.footer")]
+    return "\n".join(lines)
+
+
+def cmd_help(args, root: Path, lang: str, runner: Runner) -> int:
+    parser = args.parser
+    sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    if args.topic and args.topic not in sub.choices:
+        raise CliError(say(lang, "helptext.unknown_topic", topic=args.topic))
+    print(render_help(parser, lang, args.topic))
+    return 0
+
+
 def build_parser(lang: str) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="glasnost", description=say(lang, "help.description"))
+    parser = argparse.ArgumentParser(prog="glasnost", description=say(lang, "help.description"),
+                                     usage=say(lang, "helptext.usage_general"), add_help=False)
     parser.add_argument("--lang", choices=LANGS, help=say(lang, "help.lang"))
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("-h", "--help", action=HelpAction, help=say(lang, "helptext.help_option"))
+    sub = parser.add_subparsers(dest="command", parser_class=CommandParser, metavar="<command>")
 
     doctor = sub.add_parser("doctor", help=say(lang, "help.doctor"))
     doctor.add_argument("--network", action="store_true", help=say(lang, "help.network"))
@@ -1196,7 +1354,7 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
         cli.set_defaults(func=func)
 
     new = sub.add_parser("new", help=say(lang, "help.new"))
-    new.add_argument("name", nargs="?", help=say(lang, "help.new_name"))
+    new.add_argument("name", nargs="?", metavar=say(lang, "help.meta_name"), help=say(lang, "help.new_name"))
     new.add_argument("--manifest", metavar="FILE", help=say(lang, "help.new_manifest"))
     new.add_argument("--title", help=say(lang, "help.title"))
     new.add_argument("--profile", choices=sorted(gp.PROFILES), help=say(lang, "help.profile"))
@@ -1239,7 +1397,7 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     projects.set_defaults(func=cmd_projects)
 
     build = sub.add_parser("build", help=say(lang, "helpbuild"))
-    build.add_argument("examples", nargs="*", help=say(lang, "help.examples"))
+    build.add_argument("examples", nargs="*", metavar=say(lang, "help.meta_example"), help=say(lang, "help.examples"))
     build.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
     build.set_defaults(func=cmd_build)
 
@@ -1249,7 +1407,7 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
 
     run = sub.add_parser("run", help=say(lang, "help.run"))
     run.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
-    run.add_argument("rest", nargs=argparse.REMAINDER, metavar="[example] [-- options]",
+    run.add_argument("rest", nargs=argparse.REMAINDER, metavar=say(lang, "help.meta_rest"),
                      help=say(lang, "help.rest"))
     run.set_defaults(func=cmd_run)
 
@@ -1262,6 +1420,16 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
 
     sub.add_parser("path", help=say(lang, "help.path")).set_defaults(func=cmd_path)
     sub.add_parser("version", help=say(lang, "help.version")).set_defaults(func=cmd_version)
+
+    helper = sub.add_parser("help", help=say(lang, "help.help"))
+    helper.add_argument("topic", nargs="?", metavar=say(lang, "help.meta_command"), help=say(lang, "help.topic"))
+    helper.set_defaults(func=cmd_help)
+
+    parser.glasnost_root, parser.glasnost_lang, parser.glasnost_command = parser, lang, None
+    for name, command in sub.choices.items():
+        command.add_argument("-h", "--help", action=HelpAction, help=say(lang, "helptext.help_option"))
+        command.glasnost_root, command.glasnost_lang, command.glasnost_command = parser, lang, name
+        command.prog = f"glasnost {name}"   # not derived from the root usage text
     return parser
 
 
@@ -1274,8 +1442,13 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT, runner: Runner = 
             flag = argv[index + 1]
         elif token.startswith("--lang="):
             flag = token.split("=", 1)[1]
-    args = build_parser(pick_language(flag)).parse_args(argv)
+    parser = build_parser(pick_language(flag))
+    args = parser.parse_args(argv)
     lang = pick_language(args.lang)
+    if args.command is None:   # a bare `glasnost` shows the help instead of a usage error
+        print(render_help(parser, lang))
+        return 0
+    args.parser = parser
     args.lang_resolved = lang
     args.ask = ask
     args.interactive = sys.stdin.isatty() if interactive is None else interactive
