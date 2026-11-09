@@ -85,9 +85,14 @@ emulador tiene opción para ello:
 
 | Emulador | Línea de comandos | Símbolos |
 |---|---|---|
-| BluePixel, MacAPE | `imagen [/A] [/SYM:<nombre>.noi]` (`/A` con DSK) | sí |
+| BluePixel, MacAPE | `imagen.dsk /A /SYM:<nombre>.noi` (`/A` teclea `RUN"<programa>` por ti) | sí |
 | Retro Virtual Machine | como `cpct_rvm` de CPCtelera: `-ns -b=<máquina> -i= imagen -c=RUN"<nombre>"\n`; CDT con `-p -w`; SNA con `-s` | no hay opción conocida |
 | Otros (AmSpiriT...) | la imagen como único argumento | no |
+
+Con BluePixel, MacAPE y Retro Virtual Machine, `run` abre el **DSK** (arranca solo); con cualquier otro
+emulador abre el CDT si existe. `-- --image cdt|dsk` fuerza el formato (un CDT en BluePixel no
+arranca solo: hay que escribir `RUN"` tras darle a reproducir). `run` imprime la línea de comandos
+completa que lanza.
 
 La máquina de Retro Virtual Machine es `cpc6128` para DSK (los ejemplos con memoria extendida la
 necesitan) y `cpc464` para CDT y SNA. **No se ha probado con la 2.1.20**: la invocación sale del

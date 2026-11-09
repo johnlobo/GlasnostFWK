@@ -701,6 +701,66 @@ class RunExampleFindsTheBuild(Temp):
         self.assertEqual(launched, [[str(emulator), str(folder / "build" / "platform2.dsk"), "/A", f"/SYM:{noi}"]])
 
 
+class RunExampleChoosesTheImage(Temp):
+    """BluePixel got the CDT (the default) with no /A: the emulator opened and loaded nothing useful."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(run_example, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.folder = self.tmp / "game"
+        (self.folder / "build" / "obj").mkdir(parents=True)
+        (self.folder / "example.json").write_text('{"name": "game"}', encoding="utf-8")
+        for suffix in ("cdt", "dsk"):
+            (self.folder / "build" / f"game.{suffix}").write_text("x")
+        (self.folder / "build" / "obj" / "game.noi").write_text("x")
+
+    def launch(self, emulator_name: str, *extra: str) -> tuple[list[str], str]:
+        emulator = make_executable(self.tmp / "bin" / emulator_name)
+        launched: list[list[str]] = []
+        out = io.StringIO()
+        argv = ["run_example.py", "--project", str(self.folder), "--emulator", str(emulator), *extra]
+        with mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(out), \
+                mock.patch.object(run_example.subprocess, "run", side_effect=lambda cmd: launched.append(cmd) or mock.Mock(returncode=0)):
+            self.assertEqual(run_example.main(), 0)
+        return launched[0], out.getvalue()
+
+    def test_bluepixel_and_macape_get_the_dsk_with_autorun_and_symbols(self):
+        for name in ("BluePixel", "MacAPE"):
+            with self.subTest(name):
+                command, _ = self.launch(name)
+                self.assertEqual(command[1:], [str(self.folder / "build" / "game.dsk"), "/A",
+                                               f"/SYM:{self.folder / 'build' / 'obj' / 'game.noi'}"])
+
+    def test_rvm_gets_the_dsk_and_runs_it(self):
+        command, _ = self.launch("RetroVirtualMachine")
+        self.assertIn(str(self.folder / "build" / "game.dsk"), command)
+        self.assertIn('-c=RUN"game"\\n', command)
+
+    def test_an_unknown_emulator_keeps_the_cdt_default(self):
+        command, _ = self.launch("amspirit")
+        self.assertEqual(command[1:], [str(self.folder / "build" / "game.cdt")])
+
+    def test_an_explicit_image_format_always_wins(self):
+        command, _ = self.launch("BluePixel", "--image", "cdt")
+        self.assertEqual(command[1], str(self.folder / "build" / "game.cdt"))
+        self.assertNotIn("/A", command)
+
+    def test_the_full_command_line_is_printed(self):
+        command, out = self.launch("BluePixel")
+        self.assertIn("/A", out)
+        self.assertIn("game.dsk", out)
+        self.assertIn("/SYM:", out)
+
+    def test_a_saved_kind_decides_even_if_the_file_name_does_not_say_it(self):
+        exe = make_executable(self.tmp / "bin" / "emu")
+        emu.save_emulator(self.root, exe, "bluepixel")
+        self.assertEqual(emu.preferred_image(str(exe), self.root), "dsk")
+        self.assertIsNone(emu.preferred_image(str(exe), self.tmp))   # another SDK knows nothing about it
+        self.assertIsNone(emu.preferred_image(None, self.root))
+
+
 class RunAsksOnce(Harness):
     """`glasnost run` in a terminal with no emulator: ask, remember, never ask again."""
 
