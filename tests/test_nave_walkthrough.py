@@ -111,7 +111,7 @@ class ExercisesBuild(unittest.TestCase):
         for step in (["config"], ["build"]):
             code, out, err = run(step, cwd=folder, env=env)
             self.assertEqual(code, 0, out + err)
-        return next((folder / "build" / "nave").rglob("nave.bin")).stat().st_size
+        return next((folder / "build").rglob("nave.bin")).stat().st_size
 
     def test_the_example_as_a_project_builds_to_the_example_binary(self):
         built = self.build(None)

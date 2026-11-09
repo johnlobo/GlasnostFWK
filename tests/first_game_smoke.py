@@ -97,7 +97,7 @@ def main() -> int:
             code = glasnost.main(["--lang", "en", "build", "--project", str(folder)])
             if code != 0:
                 return code
-            built = folder / "build" / "nave"
+            built = folder / "build"
         offsets = constants(folder, {"ECS_E_X", "ECS_E_Y", "ECS_E_RENDER_SPRITE", "ECS_E_RENDER_FLAGS", "ECS_ENTITY_SIZE"})
         x_off, y_off, sprite_off, flags_off, size = (
             offsets[k] for k in ("ECS_E_X", "ECS_E_Y", "ECS_E_RENDER_SPRITE", "ECS_E_RENDER_FLAGS", "ECS_ENTITY_SIZE"))

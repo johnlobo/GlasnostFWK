@@ -765,12 +765,12 @@ class RealBuild(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         folder = tmp / "demo"
         for name in ("demo.bin", "demo.cdt", "demo.dsk"):
-            self.assertTrue(any((folder / "build" / "demo").rglob(name)), name)
+            self.assertTrue(any((folder / "build").rglob(name)), name)
         return folder, env
 
     def test_standard_project_builds_and_is_small(self):
         folder, _ = self.build()
-        binary = next((folder / "build" / "demo").rglob("demo.bin"))
+        binary = next((folder / "build").rglob("demo.bin"))
         # 7.9 KB today: a template that grows or shrinks a lot should be a deliberate decision
         self.assertGreater(binary.stat().st_size, 5_000)
         self.assertLess(binary.stat().st_size, 9_500)
@@ -789,8 +789,8 @@ class RealBuild(unittest.TestCase):
     def test_two_creations_build_identical_binaries(self):
         first, _ = self.build()
         second, _ = self.build()
-        a = next((first / "build" / "demo").rglob("demo.bin")).read_bytes()
-        b = next((second / "build" / "demo").rglob("demo.bin")).read_bytes()
+        a = next((first / "build").rglob("demo.bin")).read_bytes()
+        b = next((second / "build").rglob("demo.bin")).read_bytes()
         self.assertEqual(a, b)
 
 

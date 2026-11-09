@@ -586,7 +586,7 @@ def main() -> int:
         name = json.loads((folder / "example.json").read_text(encoding="utf-8"))["name"]
         print(f"== building {name} ==", flush=True)
         try:
-            build(name, args.cpct_path.resolve(), folder, folder / "build" / name)
+            build(name, args.cpct_path.resolve(), folder, folder / "build")
         except (ValueError, subprocess.CalledProcessError) as error:  # a project's own mistake: no traceback
             print(f"error: {name} did not build: {error}", file=sys.stderr)
             return 1

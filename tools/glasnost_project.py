@@ -224,7 +224,7 @@ Un juego mínimo con el ECS de GlasnostFWK: una nave que se mueve con las flecha
 del cursor y tres drones que patrullan.
 
 ```sh
-glasnost build      # compila a build/{name}/ ({amsdos}.BIN, .CDT y .DSK)
+glasnost build      # compila a build/ ({amsdos}.BIN, .CDT y .DSK)
 glasnost run        # abre el .DSK en el emulador: RUN"{amsdos}
 glasnost test       # comprueba el proyecto y que compila
 glasnost config --title "OTRO TITULO"   # cambia título, vídeo o memoria extendida
@@ -245,7 +245,7 @@ A minimal GlasnostFWK ECS game: a ship you move with the cursor keys and three
 patrolling drones.
 
 ```sh
-glasnost build      # builds into build/{name}/ ({amsdos}.BIN, .CDT and .DSK)
+glasnost build      # builds into build/ ({amsdos}.BIN, .CDT and .DSK)
 glasnost run        # opens the .DSK in the emulator: RUN"{amsdos}
 glasnost test       # checks the project and that it builds
 glasnost config --title "ANOTHER TITLE"   # change title, video or extended memory

@@ -48,7 +48,7 @@ def build(tmp: Path, edit) -> tuple[Path, Path]:
         code, out, err = run(step, cwd=folder, env=env)
         if code != 0:
             raise RuntimeError(out + err)
-    return folder / "build" / "nave" / "nave.dsk", next((folder / "build" / "nave").rglob("nave.noi"))
+    return folder / "build" / "nave.dsk", next((folder / "build").rglob("nave.noi"))
 
 
 @contextlib.contextmanager

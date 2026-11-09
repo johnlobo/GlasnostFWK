@@ -231,7 +231,7 @@ class StepsBuild(unittest.TestCase):
             assert code == 0, out + err
             code, out, err = run(["build"], cwd=cls.folder, env=cls.env)
             assert code == 0, f"{step}: " + out + err
-            binary = next((cls.folder / "build" / "nave").rglob("nave.bin"))
+            binary = next((cls.folder / "build").rglob("nave.bin"))
             cls.sizes[step] = binary.stat().st_size
             cls.states[step]["after"] = gp.check_project(cls.folder)
 
@@ -244,7 +244,7 @@ class StepsBuild(unittest.TestCase):
             with self.subTest(step):
                 self.assertEqual(self.states[step]["after"], [])
                 for name in ("nave.bin", "nave.cdt", "nave.dsk"):
-                    self.assertTrue(any((self.folder / "build" / "nave").rglob(name)), name)
+                    self.assertTrue(any((self.folder / "build").rglob(name)), name)
 
     def test_changing_the_manifest_makes_the_profile_stale_until_config_runs(self):
         """What the guide tells the reader to do at steps 2 and 3 is needed, and works."""
@@ -282,7 +282,7 @@ class StepsBuild(unittest.TestCase):
         self.assertEqual(symbol_bytes("game_drone_pixels"), hand_written(gp.DRONE_ART))
 
     def test_the_guide_game_has_the_public_symbols_the_smoke_test_reads(self):
-        noi = next((self.folder / "build" / "nave").rglob("nave.noi")).read_text()
+        noi = next((self.folder / "build").rglob("nave.noi")).read_text()
         for symbol in ("game_status", "game_storage", "game_hits", "game_player"):
             self.assertRegex(noi, rf"DEF {symbol} 0x[0-9A-Fa-f]+")
 
