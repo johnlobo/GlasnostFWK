@@ -24,7 +24,7 @@ MODEL = load_module("video_model", ROOT / "tools" / "video_model.py")
 
 class VideoModelTests(unittest.TestCase):
     def profile(self, name: str) -> dict:
-        return json.loads((ROOT / "profiles" / name).read_text())
+        return json.loads((ROOT / "framework" / "profiles" / name).read_text())
 
     def test_standard_known_addresses(self):
         p = self.profile("standard-160x200.json")
@@ -57,7 +57,7 @@ class VideoModelTests(unittest.TestCase):
         self.assertEqual(MODEL.address(p, 79, 287), 0xFE3F)
 
     def test_generation_is_reproducible(self):
-        profile = ROOT / "profiles" / "standard-160x200.json"
+        profile = ROOT / "framework" / "profiles" / "standard-160x200.json"
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
             for directory in (a, b):
                 subprocess.run(

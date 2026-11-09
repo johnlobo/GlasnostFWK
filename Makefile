@@ -18,9 +18,9 @@ setup:
 	./setup.sh
 
 generate:
-	$(PYTHON) tools/gen_video.py profiles/standard-160x200.json --out-dir generated
-	$(PYTHON) tools/gen_video.py profiles/experimental-160x288.json --out-dir generated
-	$(PYTHON) tools/gen_resources.py manifests/resources128.json --output generated/resources128.inc
+	$(PYTHON) tools/gen_video.py framework/profiles/standard-160x200.json --out-dir build/generated
+	$(PYTHON) tools/gen_video.py framework/profiles/experimental-160x288.json --out-dir build/generated
+	$(PYTHON) tools/gen_resources.py framework/manifests/resources128.json --output build/generated/resources128.inc
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecsmanager/example.json --output examples/ecsmanager/generated/ecs_profile.inc --check
 	$(PYTHON) tools/gen_ecs_profile.py examples/platformer/example.json --output examples/platformer/generated/ecs_profile.inc --check
 	$(PYTHON) tools/gen_ecs_profile.py examples/ecscollision/example.json --output examples/ecscollision/generated/ecs_profile.inc --check
@@ -65,4 +65,4 @@ test: generate
 	$(PYTHON) tools/build_test_disk.py $(EXAMPLES)
 
 clean:
-	rm -rf build dist generated/*.inc generated/*.json generated/*.md
+	rm -rf build dist

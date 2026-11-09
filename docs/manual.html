@@ -200,19 +200,21 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <table>
       <thead><tr><th>Ruta</th><th>Responsabilidad</th></tr></thead>
       <tbody>
-        <tr><td><code>src/core</code></td><td>Sistema, entrada y sistemas ECS (manager, behavior, movimiento, entrada, plataforma, colisión y animación).</td></tr>
-        <tr><td><code>src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping, máscaras opcionales y orden explícito.</td></tr>
-        <tr><td><code>src/ui</code></td><td>Fuente sprite Mode 0, números pequeños y ventanas con fondo restaurable.</td></tr>
-        <tr><td><code>src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
-        <tr><td><code>src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
-        <tr><td><code>src/extensions</code></td><td>Behavior, física, tilemaps y render de tilemap opcionales.</td></tr>
+        <tr><td><code>framework/src/core</code></td><td>Sistema, entrada y sistemas ECS (manager, behavior, movimiento, entrada, plataforma, colisión y animación).</td></tr>
+        <tr><td><code>framework/src/video</code></td><td>Mode 0, CRTC, direcciones, limpieza y sprites con clipping, máscaras opcionales y orden explícito.</td></tr>
+        <tr><td><code>framework/src/ui</code></td><td>Fuente sprite Mode 0, números pequeños y ventanas con fondo restaurable.</td></tr>
+        <tr><td><code>framework/src/audio</code></td><td>Adaptador opcional Arkos Tracker 3 AKG.</td></tr>
+        <tr><td><code>framework/src/resources</code></td><td>Bancos 128 KB, AMSDOS y ZX7B.</td></tr>
+        <tr><td><code>framework/src/extensions</code></td><td>Behavior, física, tilemaps y render de tilemap opcionales.</td></tr>
         <tr><td><code>examples</code></td><td>Consumidores independientes y sus fuentes de juego.</td></tr>
-        <tr><td><code>profiles</code>, <code>manifests</code></td><td>Geometría y recursos declarativos.</td></tr>
-        <tr><td><code>generated</code></td><td>Tablas producidas por herramientas; no son la fuente canónica.</td></tr>
+        <tr><td><code>framework/profiles</code>, <code>framework/manifests</code>, <code>framework/cfg</code></td><td>Geometría, recursos declarativos y plantillas de construcción.</td></tr>
+        <tr><td><code>framework/templates</code>, <code>framework/licenses</code></td><td>Plantillas de <code>glasnost new</code> y licencias de lo distribuido.</td></tr>
+        <tr><td><code>projects</code></td><td>Proyectos creados con <code>glasnost new</code>; no se versionan.</td></tr>
+        <tr><td><code>build/generated</code></td><td>Tablas producidas por herramientas; no son la fuente canónica.</td></tr>
         <tr><td><code>tools</code>, <code>tests</code></td><td>Construcción, generación, paquetes y validación.</td></tr>
       </tbody>
     </table>
-    <p>La dirección de dependencias es <code>juego → extensión opcional → núcleo → CPCTelera/hardware</code>. Ningún archivo de <code>src/</code> puede importar un ejemplo o símbolos de juego.</p>
+    <p>La dirección de dependencias es <code>juego → extensión opcional → núcleo → CPCTelera/hardware</code>. Ningún archivo de <code>framework/src/</code> puede importar un ejemplo o símbolos de juego.</p>
   </section>
 
   <section aria-labelledby="proyecto">
@@ -241,7 +243,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
       <thead><tr><th>Campo</th><th>Uso</th></tr></thead>
       <tbody>
         <tr><td><code>name</code></td><td>Nombre del proyecto y de sus artefactos.</td></tr>
-        <tr><td><code>profile</code></td><td>JSON de vídeo situado en <code>profiles/</code>.</td></tr>
+        <tr><td><code>profile</code></td><td>JSON de vídeo situado en <code>framework/profiles/</code>.</td></tr>
         <tr><td><code>modules</code></td><td>Fuentes del framework relativos a <code>src/</code>.</td></tr>
         <tr><td><code>game_sources</code></td><td>Fuentes <code>.s</code>/<code>.inc</code> del consumidor. Debe incluir <code>main.s</code>.</td></tr>
         <tr><td><code>transparency</code></td><td>Opcional: <code>{"pen": 0..15}</code>. Genera la tabla Mode 0 en <code>0x0100</code> y habilita las APIs transparentes. Los assets de texto incorporados requieren pen 0.</td></tr>
@@ -254,7 +256,7 @@ python3 tools/build_examples.py animation vertical</code></pre>
     <p>Las rutas absolutas, recorridos <code>..</code>, ficheros inexistentes, nombres AMSDOS inválidos, símbolos duplicados y combinaciones de capacidades inválidas se rechazan antes de construir. Sin memoria extendida el código comienza en <code>0x0200</code>; con ella comienza en <code>0x0216</code>, justo después del scratch bancario. La detección usa temporalmente <code>0x4000</code>, restaura RAM normal y banco 0 y no reserva una dirección dentro de la ventana bancaria.</p>
 
     <h3>5.3 Configuración CPCtelera y assets</h3>
-    <p>Un ejemplo puede incluir su propia configuración de proyecto CPCtelera en <code>cfg/build_config.mk</code>. Si existe, el constructor la usa como base en lugar de <code>cfg/build_config.template.mk</code>, de modo que los flags, herramientas y rutas que añada se conservan. Solo se reescriben los valores que gobierna el manifiesto: <code>CPCT_PATH</code>, <code>PROJNAME</code>, <code>TARGET</code>, <code>Z80CODELOC</code> y el <code>-I$(SRCDIR)</code> del ensamblador.</p>
+    <p>Un ejemplo puede incluir su propia configuración de proyecto CPCtelera en <code>cfg/build_config.mk</code>. Si existe, el constructor la usa como base en lugar de <code>framework/cfg/build_config.template.mk</code>, de modo que los flags, herramientas y rutas que añada se conservan. Solo se reescriben los valores que gobierna el manifiesto: <code>CPCT_PATH</code>, <code>PROJNAME</code>, <code>TARGET</code>, <code>Z80CODELOC</code> y el <code>-I$(SRCDIR)</code> del ensamblador.</p>
     <p>La carpeta <code>assets/</code> del ejemplo se copia a <code>src/assets</code> del proyecto generado. Sus <code>.s</code> se ensamblan sin declararlos en <code>game_sources</code>, los <code>.inc</code> se incluyen como <code>assets/&lt;archivo&gt;.inc</code> y los originales se copian para las herramientas. Además, si existe <code>assets/assets.json</code>, el constructor ejecuta <code>tools/import_assets.py</code> antes de compilar: convierte PNG Mode 0 con <code>img2cpc</code>, lee capas CSV de Tiled con la misma reindexación que <code>cpct_tmx2csv</code> y puede comprimir mapas con <code>zx7b</code>.</p>
     <p>La conversión es incremental como en CPCtelera. El pipeline guarda en <code>assets/generated/pipeline.json</code> un SHA-256 del manifiesto, la paleta y cada PNG/TMX, más el hash de las salidas. Si nada cambió, <code>make</code> no invoca ninguna herramienta; si se edita un original, regenera <code>assets.s</code> y <code>assets.inc</code>. <code>make assets</code> ejecuta solo esa comprobación:</p>
     <pre><code>cd examples/platformer
@@ -622,15 +624,15 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
   <section aria-labelledby="recursos">
     <h2 id="recursos">7. Perfiles y recursos</h2>
     <h3>7.1 Perfil estándar 160×200</h3>
-    <p><code>profiles/standard-160x200.json</code> define Mode 0, 80 bytes por línea, 200 líneas, pantalla en <code>0xC000</code> y pila reservada en <code>0xB800..0xBFFF</code>. Es el perfil usado por los ejemplos.</p>
+    <p><code>framework/profiles/standard-160x200.json</code> define Mode 0, 80 bytes por línea, 200 líneas, pantalla en <code>0xC000</code> y pila reservada en <code>0xB800..0xBFFF</code>. Es el perfil usado por los ejemplos.</p>
 
     <h3>7.2 Perfil experimental 160×288</h3>
-    <p><code>profiles/experimental-160x288.json</code> usa coordenadas verticales de 16 bits y dos segmentos de vídeo. Se han comprobado 23.040 direcciones únicas y el cruce de memoria; la temporización CRTC no se ha validado visualmente en varios CRTC ni en hardware.</p>
+    <p><code>framework/profiles/experimental-160x288.json</code> usa coordenadas verticales de 16 bits y dos segmentos de vídeo. Se han comprobado 23.040 direcciones únicas y el cruce de memoria; la temporización CRTC no se ha validado visualmente en varios CRTC ni en hardware.</p>
 
     <h3>7.3 Generar tablas</h3>
-    <pre><code>python3 tools/gen_video.py profiles/standard-160x200.json --out-dir generated
-python3 tools/gen_resources.py manifests/resources128.json --output generated/resources128.inc</code></pre>
-    <p>Edite los JSON fuente y regenere. No edite las tablas de <code>generated/</code> a mano. El generador de recursos rechaza solapamientos, destinos reservados, bancos no disponibles y alineaciones incorrectas.</p>
+    <pre><code>python3 tools/gen_video.py framework/profiles/standard-160x200.json --out-dir build/generated
+python3 tools/gen_resources.py framework/manifests/resources128.json --output build/generated/resources128.inc</code></pre>
+    <p>Edite los JSON fuente y regenere. No edite las tablas de <code>build/generated/</code> a mano. El generador de recursos rechaza solapamientos, destinos reservados, bancos no disponibles y alineaciones incorrectas.</p>
 
     <h3>7.4 Archivos adicionales en DSK</h3>
     <pre><code>"disk_files": [{

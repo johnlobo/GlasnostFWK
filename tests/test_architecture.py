@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class ArchitectureTests(unittest.TestCase):
     def test_framework_never_imports_examples(self):
         offenders = []
-        for source in (ROOT / "src").rglob("*.s"):
+        for source in (ROOT / "framework" / "src").rglob("*.s"):
             if re.search(r"(?:examples/|game/)", source.read_text()):
                 offenders.append(str(source.relative_to(ROOT)))
         self.assertEqual(offenders, [])
@@ -19,7 +19,7 @@ class ArchitectureTests(unittest.TestCase):
         for manifest_path in (ROOT / "examples").glob("*/example.json"):
             manifest = json.loads(manifest_path.read_text())
             for module in manifest["modules"]:
-                self.assertTrue((ROOT / "src" / module).is_file(), f"{manifest_path}: {module}")
+                self.assertTrue((ROOT / "framework" / "src" / module).is_file(), f"{manifest_path}: {module}")
 
     def test_game_sources_are_local_and_exist(self):
         for manifest_path in (ROOT / "examples").glob("*/example.json"):
@@ -111,11 +111,11 @@ class ArchitectureTests(unittest.TestCase):
     def test_no_pre_ecs_module_survives(self):
         # Gate G4: the old entity model is gone from sources, manifests and tools.
         removed = (
-            "src/core/pool.s", "src/core/pool.inc",
-            "src/video/entity_render.s", "src/video/entity_render.inc",
-            "src/extensions/animation.s", "src/extensions/animation.inc",
-            "src/extensions/collision_bodies.s", "src/extensions/collision_bodies.inc",
-            "src/extensions/motion_u8.s", "src/extensions/motion_u8.inc",
+            "framework/src/core/pool.s", "framework/src/core/pool.inc",
+            "framework/src/video/entity_render.s", "framework/src/video/entity_render.inc",
+            "framework/src/extensions/animation.s", "framework/src/extensions/animation.inc",
+            "framework/src/extensions/collision_bodies.s", "framework/src/extensions/collision_bodies.inc",
+            "framework/src/extensions/motion_u8.s", "framework/src/extensions/motion_u8.inc",
         )
         for name in removed:
             self.assertFalse((ROOT / name).exists(), name)
@@ -127,7 +127,7 @@ class ArchitectureTests(unittest.TestCase):
             r"\bfwk_pool_|\bfwk_entity_render_|\bfwk_motion_u8_step\b|\bfwk_collision_body"
         )
         offenders = []
-        for base in ("src", "examples", "tools", "Makefile", ".github"):
+        for base in ("framework", "examples", "tools", "Makefile", ".github"):
             root = ROOT / base
             files = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file())
             for path in files:

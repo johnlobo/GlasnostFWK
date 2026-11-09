@@ -123,7 +123,7 @@ class AnimationBudgetTests(unittest.TestCase):
 
     def assemble(self, components: list[str], custom: int = 0) -> str:
         portfolio = json.loads(DEFAULT_PORTFOLIO.read_text(encoding="utf-8"))
-        profile = json.loads((ROOT / "profiles/standard-160x200.json").read_text())
+        profile = json.loads((ROOT / "framework/profiles/standard-160x200.json").read_text())
         manifest = {
             "ecs": {
                 "x_format": "u8",
@@ -140,7 +140,7 @@ class AnimationBudgetTests(unittest.TestCase):
             (work / "core").mkdir()
             (work / "ecs_profile.inc").write_text(include, encoding="ascii")
             for name in ("ecs_manager.inc", "ecs_animation.inc", "ecs_animation.s"):
-                shutil.copy(ROOT / "src/core" / name, work / "core" / name)
+                shutil.copy(ROOT / "framework/src/core" / name, work / "core" / name)
             result = subprocess.run(
                 [str(ASSEMBLER), "-l", "-o", "core/ecs_animation.s"],
                 cwd=work, capture_output=True, text=True,

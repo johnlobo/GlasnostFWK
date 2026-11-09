@@ -34,7 +34,7 @@ class ProjectConfigTests(unittest.TestCase):
         self.assertEqual(BANK_PROBE, 0x4000)
 
     def test_bank_probe_is_transient_and_not_an_absolute_area(self) -> None:
-        source = (ROOT / "src/resources/bank.s").read_text(encoding="ascii")
+        source = (ROOT / "framework/src/resources/bank.s").read_text(encoding="ascii")
         self.assertNotIn("_BANKTEST", source)
         self.assertNotIn(".org 0x7FF0", source)
         self.assertIn("FWK_BANK_PROBE = 0x4000", source)

@@ -90,7 +90,7 @@ class WalkthroughText(unittest.TestCase):
         for name in set(re.findall(r"`(fwk_\w+|_game_\w+)`", self.text)):
             with self.subTest(name):
                 known = name in main or any(name in p.read_text(errors="ignore")
-                                            for p in (ROOT / "src").rglob("*.s"))
+                                            for p in (ROOT / "framework" / "src").rglob("*.s"))
                 self.assertTrue(known, f"{name} is not defined anywhere")
 
     def test_the_header_example_matches_the_project_format(self):

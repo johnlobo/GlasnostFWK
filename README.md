@@ -169,14 +169,18 @@ posteriores.
 
 ## Mapa del repositorio
 
-- `src/core`: interrupción/sincronización, entrada y sistemas ECS (manager, behavior, movimiento, entrada, plataforma, colisión y animación).
-- `src/video`: direccionamiento, CRTC, limpieza, sprites con clipping y máscaras opcionales, y el renderer ECS selectivo.
-- `src/ui`: fuente sprite Mode 0 recoloreable, números pequeños y ventanas con fondo restaurable.
-- `src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
-- `src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
-- `src/extensions`: behavior, física y tilemaps optativos, sin entidad universal.
-- `profiles`, `manifests`: entradas declarativas.
-- `tools`: generación, validación, staging y medición.
+Primer nivel: `bin/` (entrada `glasnost`), `docs/`, `examples/`, `framework/`, `projects/`, `tests/` y `tools/`.
+
+- `framework/src/core`: interrupción/sincronización, entrada y sistemas ECS (manager, behavior, movimiento, entrada, plataforma, colisión y animación).
+- `framework/src/video`: direccionamiento, CRTC, limpieza, sprites con clipping y máscaras opcionales, y el renderer ECS selectivo.
+- `framework/src/ui`: fuente sprite Mode 0 recoloreable, números pequeños y ventanas con fondo restaurable.
+- `framework/src/audio`: adaptador opcional Arkos Tracker 3 AKG para el player de Next.
+- `framework/src/resources`: copia bancaria 128 KB, lectura AMSDOS y adaptador ZX7B.
+- `framework/src/extensions`: behavior, física y tilemaps optativos, sin entidad universal.
+- `framework/cfg`, `framework/profiles`, `framework/manifests`: plantillas de construcción y entradas declarativas.
+- `framework/templates`: plantillas de `glasnost new`. `framework/licenses`: licencias de lo que se distribuye.
+- `tools`: CLI `glasnost`, generación, validación, staging y medición.
+- `projects`: tus proyectos (`glasnost new`); no se versiona.
 - `examples`: veintitrés consumidores pequeños, sin copias internas del framework (`examples/nave`
   es el juego terminado de la guía `docs/first-game.md`).
 - `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.

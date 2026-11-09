@@ -16,7 +16,7 @@ def bytes_between(source: str, start: str, end: str | None) -> list[int]:
 
 class TextModuleTests(unittest.TestCase):
     def test_default_asset_geometry(self) -> None:
-        source = (ROOT / "src/ui/text.inc").read_text(encoding="ascii")
+        source = (ROOT / "framework/src/ui/text.inc").read_text(encoding="ascii")
         font = bytes_between(
             source, "_fwk_text_default_font:", "_fwk_text_default_small_digits:"
         )
@@ -37,7 +37,7 @@ class TextModuleTests(unittest.TestCase):
         )
 
     def test_public_api_and_original_character_mapping_are_present(self) -> None:
-        source = (ROOT / "src/ui/text.s").read_text(encoding="ascii")
+        source = (ROOT / "framework/src/ui/text.s").read_text(encoding="ascii")
         for symbol in (
             "fwk_text_init::",
             "fwk_text_set_assets::",

@@ -17,8 +17,8 @@ def number_in(text, name):
 
 class ECSManagerTests(unittest.TestCase):
     def test_public_api_and_descriptor_match_approved_abi(self):
-        include = (ROOT / "src/core/ecs_manager.inc").read_text()
-        source = (ROOT / "src/core/ecs_manager.s").read_text()
+        include = (ROOT / "framework/src/core/ecs_manager.inc").read_text()
+        source = (ROOT / "framework/src/core/ecs_manager.s").read_text()
         expected_offsets = {
             "FWK_ECS_MANAGER_STORAGE": 0,
             "FWK_ECS_MANAGER_CAPACITY": 2,
@@ -59,7 +59,7 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ld a, #0x5A", main)
 
     def test_manager_consumes_the_selected_profile(self):
-        source = (ROOT / "src/core/ecs_manager.s").read_text()
+        source = (ROOT / "framework/src/core/ecs_manager.s").read_text()
         profile = (ROOT / "examples/ecsmanager/generated/ecs_profile.inc").read_text()
         self.assertIn('.include "ecs_profile.inc"', source)
         self.assertIn("ECS_COMPONENT_VALID_MASK", source)
@@ -67,9 +67,9 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ECS_C_RENDER_BIT", profile)
 
     def test_behavior_and_motion_system_contract_is_exported(self):
-        manager_include = (ROOT / "src/core/ecs_manager.inc").read_text()
-        behavior = (ROOT / "src/core/ecs_behavior.s").read_text()
-        motion = (ROOT / "src/core/ecs_motion.s").read_text()
+        manager_include = (ROOT / "framework/src/core/ecs_manager.inc").read_text()
+        behavior = (ROOT / "framework/src/core/ecs_behavior.s").read_text()
+        motion = (ROOT / "framework/src/core/ecs_motion.s").read_text()
         self.assertIn("fwk_ecs_system_behavior", manager_include)
         self.assertIn("fwk_ecs_system_motion_u8", manager_include)
         self.assertIn("fwk_ecs_system_run", behavior)
@@ -78,7 +78,7 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ECS_E_MOTION_VELOCITY_X", motion)
 
     def test_motion_system_uses_carry_and_leaves_platform_entities_alone(self):
-        motion = (ROOT / "src/core/ecs_motion.s").read_text()
+        motion = (ROOT / "framework/src/core/ecs_motion.s").read_text()
         # Regression: `jp m` on the u8 sum zeroed every coordinate above 127.
         self.assertNotIn("jp m", motion)
         self.assertIn("_fwk_ecs_motion_axis", motion)
@@ -119,7 +119,7 @@ class ECSManagerTests(unittest.TestCase):
         # Regression: setting AIRBORNE on jump made gravity act before the first
         # move, so the jump rose 28 px instead of the original 36.
         code = "\n".join(
-            line for line in (ROOT / "src/core/ecs_input.s").read_text().splitlines()
+            line for line in (ROOT / "framework/src/core/ecs_input.s").read_text().splitlines()
             if not line.lstrip().startswith(";;")
         )
         self.assertNotIn("FWK_PLATFORM_AIRBORNE_BIT", code)

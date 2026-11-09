@@ -10,10 +10,10 @@ from tools.gen_ecs_profile import generate, layout_changes
 
 ROOT = Path(__file__).resolve().parents[1]
 PORTFOLIO = json.loads(
-    (ROOT / "manifests/ecs-components.json").read_text(encoding="utf-8")
+    (ROOT / "framework/manifests/ecs-components.json").read_text(encoding="utf-8")
 )
 STANDARD = json.loads(
-    (ROOT / "profiles/standard-160x200.json").read_text(encoding="utf-8")
+    (ROOT / "framework/profiles/standard-160x200.json").read_text(encoding="utf-8")
 )
 
 

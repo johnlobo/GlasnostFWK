@@ -20,7 +20,7 @@
 ## GLASNOSTFWK NOTE
 ##
 ## This is the real CPCtelera build configuration for the platformer example.
-## The build uses it as the base instead of cfg/build_config.template.mk, so
+## The build uses it as the base instead of framework/cfg/build_config.template.mk, so
 ## flags, tools and include paths added here reach the generated project.
 ## tools/build_examples.py still rewrites the manifest-owned values:
 ##   CPCT_PATH, PROJNAME, TARGET, Z80CODELOC and the -I$(SRCDIR) include path.

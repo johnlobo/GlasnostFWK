@@ -104,7 +104,7 @@ Con `"compression": "zx7b"` el mapa se comprime con `tools/zx7b` y se genera:
 - `PLATFORMER_MAP_SIZE` y `PLATFORMER_MAP_PACKED_SIZE` en `assets.inc`.
 
 `main.s` llama una vez a `fwk_zx7b_unpack` al inicializar
-(`src/resources/zx7b.s`, incluido en `example.json`). Los mapas son estáticos:
+(`framework/src/resources/zx7b.s`, incluido en `example.json`). Los mapas son estáticos:
 la descompresión no entra en el presupuesto de frame. Para dejar un mapa sin
 comprimir, use `"compression": "none"` y elimine su llamada de
 `_pf_decompress_levels`.

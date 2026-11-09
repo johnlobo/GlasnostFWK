@@ -46,8 +46,8 @@ def structure_lines() -> list[str]:
         "$ find examples/platformer -maxdepth 1 -type f -printf '%f\\n' | sort",
         *names,
         "",
-        "$ find src/extensions -maxdepth 1 -name '*platform*' -printf '%f\\n' | sort",
-        *sorted(path.name for path in (ROOT / "src" / "extensions").glob("*platform*")),
+        "$ find framework/src/extensions -maxdepth 1 -name '*platform*' -printf '%f\\n' | sort",
+        *sorted(path.name for path in (ROOT / "framework" / "src" / "extensions").glob("*platform*")),
     ]
 
 

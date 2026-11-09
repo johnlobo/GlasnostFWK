@@ -197,7 +197,7 @@ class Rendering(unittest.TestCase):
         self.assertIn("game_ship_pixels:", self.files["assets/generated/assets.s"].decode())
 
     def test_binary_assets_are_copied_byte_for_byte(self):
-        source = (ROOT / "templates" / "ecs-welcome" / "assets" / "src" / "sprites.png").read_bytes()
+        source = (ROOT / "framework" / "templates" / "ecs-welcome" / "assets" / "src" / "sprites.png").read_bytes()
         self.assertEqual(self.files["assets/src/sprites.png"], source)
 
     def test_minimal_template_has_no_ecs_no_tilemap_and_no_assets(self):
@@ -226,12 +226,12 @@ class Rendering(unittest.TestCase):
 
     def test_the_generated_manifest_is_accepted_by_the_build_validations(self):
         example = json.loads(self.files["example.json"])
-        profile = json.loads((ROOT / "profiles" / example["profile"]).read_text(encoding="utf-8"))
+        profile = json.loads((ROOT / "framework" / "profiles" / example["profile"]).read_text(encoding="utf-8"))
         capabilities = project_config.parse_capabilities(example, profile["mode"])
         modules = build_examples.effective_modules("demo", example["modules"], capabilities)
         build_examples._validate_ecs_systems("demo", example, modules)  # raises when inconsistent
         for module in modules:
-            self.assertTrue((ROOT / "src" / module).is_file(), module)
+            self.assertTrue((ROOT / "framework" / "src" / module).is_file(), module)
 
     def test_generated_ecs_profile_matches_the_generator_the_build_checks(self):
         example = json.loads(self.files["example.json"])

@@ -622,7 +622,7 @@ actualización) a uno, y los turnos de los enemigos salen de un byte de cadencia
 por entidad, sin perder rendimiento: trabajo en reposo ≤ 115.000 T y 2 frames por
 iteración (presupuesto fijado antes de implementar).
 
-- Framework (ABI 2.1, `manifests/ecs-components.json`): campo universal `ECS_E_CADENCE` tras `ECS_E_HEIGHT` (`(fase << 4) |
+- Framework (ABI 2.1, `framework/manifests/ecs-components.json`): campo universal `ECS_E_CADENCE` tras `ECS_E_HEIGHT` (`(fase << 4) |
   (cada - 1)`, `cada` potencia de dos), contador global `fwk_ecs_tick` que
   incrementa el juego una vez por iteración, y el test sin estado en
   `fwk_ecs_system_run`. `fwk_ecs_system_run_any` lo ignora y lo usa

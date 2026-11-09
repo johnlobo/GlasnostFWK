@@ -125,12 +125,12 @@ class StepFiles(unittest.TestCase):
         for step in ("step2", "step3"):
             example = json.loads((STEPS / step / "example.json").read_text())
             with self.subTest(step):
-                profile = json.loads((ROOT / "profiles" / example["profile"]).read_text())
+                profile = json.loads((ROOT / "framework" / "profiles" / example["profile"]).read_text())
                 capabilities = project_config.parse_capabilities(example, profile["mode"])
                 modules = build_examples.effective_modules("nave", example["modules"], capabilities)
                 build_examples._validate_ecs_systems("nave", example, modules)  # noqa: SLF001
                 for module in modules:
-                    self.assertTrue((ROOT / "src" / module).is_file(), module)
+                    self.assertTrue((ROOT / "framework" / "src" / module).is_file(), module)
 
     def test_each_step_only_adds_to_the_previous_manifest(self):
         base = json.loads(gp.render_project(gp.Spec("nave", "x"), "t", "en")["example.json"])
@@ -154,7 +154,7 @@ class StepFiles(unittest.TestCase):
         self.assertEqual(make_art.DRONE, gp.DRONE_ART)
         allowed = set(make_art.PENS.values())
         for label, path, tiles in (
-                ("template", ROOT / "templates" / "ecs-welcome" / "assets" / "src" / "sprites.png",
+                ("template", ROOT / "framework" / "templates" / "ecs-welcome" / "assets" / "src" / "sprites.png",
                  [make_art.SHIP, make_art.DRONE]),
                 ("step2", STEPS / "step2" / "assets" / "src" / "sprites.png",
                  [make_art.SHIP, make_art.SHIP2, make_art.DRONE, make_art.DRONE2])):
@@ -169,7 +169,7 @@ class StepFiles(unittest.TestCase):
 
     def test_the_map_of_step1_is_a_valid_tmx_the_template_geometry_accepts(self):
         import xml.etree.ElementTree as ET
-        for label, path in (("template", ROOT / "templates" / "ecs-welcome" / "assets" / "src" / "level.tmx"),
+        for label, path in (("template", ROOT / "framework" / "templates" / "ecs-welcome" / "assets" / "src" / "level.tmx"),
                             ("step1", STEPS / "step1" / "assets" / "src" / "level.tmx")):
             with self.subTest(label):
                 layer = ET.parse(path).getroot().find("layer")
@@ -179,7 +179,7 @@ class StepFiles(unittest.TestCase):
                 self.assertTrue(all(0 <= v <= 4 for v in ids))   # tiles.png has four tiles
 
     def test_the_palette_of_the_guide_is_the_one_the_art_assumes(self):
-        values = json.loads((ROOT / "templates" / "ecs-welcome" / "assets" / "palette.json").read_text())["values"]
+        values = json.loads((ROOT / "framework" / "templates" / "ecs-welcome" / "assets" / "palette.json").read_text())["values"]
         # pens used by make_art: 0 black, 1 bright magenta, 3 red, 6 bright yellow, 10 bright cyan, 15 white
         self.assertEqual([values[p] for p in (0, 1, 3, 6, 10, 15)], [0, 8, 3, 24, 20, 26])
 

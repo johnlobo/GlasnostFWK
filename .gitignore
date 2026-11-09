@@ -1,8 +1,5 @@
 build/
 dist/
-generated/*.inc
-generated/*.json
-generated/*.md
 examples/*/*.bin
 examples/*/*.cdt
 examples/*/*.dsk

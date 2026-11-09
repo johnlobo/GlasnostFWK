@@ -1648,3 +1648,20 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   mantiene el CDT; `--image` fuerza el formato. `run` imprime la línea de comandos completa.
 - [x] Pruebas: `RunExampleChoosesTheImage` en `tests/test_emulator_setup.py`.
 
+## Reorganización del repositorio: `framework/` (2026-11-09)
+
+- [x] `src/`, `cfg/`, `profiles/`, `manifests/`, `licenses/` y `templates/` pasan a
+  `framework/` (con `git mv`, historial intacto). `generated/` (tablas de inspección, no
+  versionadas) pasa a `build/generated/`. Primer nivel resultante: `bin/ docs/ examples/
+  framework/ projects/ tests/ tools/` y los ficheros de raíz.
+- [x] Actualizados constantes de `tools/*.py`, `Makefile`, los 23 `examples/*/Makefile`
+  (`../../framework/cfg/example.mk`), tests, README, CLAUDE.md, manual (HTML, PDF y checksum
+  regenerados) y el resto de docs. Las secciones anteriores de este registro conservan las
+  rutas de su época (`src/...` = `framework/src/...`).
+- [x] `bin/glasnost` se queda: `glasnost install-cli` enlaza a esa ruta.
+- [x] Comprobación: binarios de `nave` y `platformer` idénticos antes y después (SHA-256),
+  smokes en emulador de un proyecto nuevo y de la guía, y `tests/test_layout.py` (primer
+  nivel cerrado y ninguna ruta antigua en el repositorio).
+- Pendiente (no incluido a propósito): separar `tools/` en `glasnost/`, `build/` y `dev/`,
+  ordenar `docs/` en subcarpetas y mover `Dockerfile`/`setup.sh` fuera de la raíz.
+
