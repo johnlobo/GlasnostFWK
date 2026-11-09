@@ -7,11 +7,11 @@ unos 30 minutos.
 
 Necesitas el SDK instalado (`glasnost doctor` debe terminar con «Todo listo») y un
 emulador de CPC. Los ficheros completos de cada paso están en
-[`docs/first-game/`](first-game/), y un test los aplica uno tras otro y los
+[`docs/guide/first-game/`](first-game/), y un test los aplica uno tras otro y los
 compila, así que lo que lees aquí es lo que funciona. Al terminar, tu `main.s` y tu
 `common.inc` serán los de `step3/` salvo por los comentarios y por el sitio exacto de
 algún bloque. El juego completo, con todos sus ficheros juntos, está en
-[`examples/nave`](../examples/nave/) y se compila con `make` o con `glasnost build nave`.
+[`examples/nave`](../../examples/nave/) y se compila con `make` o con `glasnost build nave`.
 
 ![El juego terminado](first-game/images/step3.png)
 
@@ -323,7 +323,7 @@ _game_anim:     .dw 0                  ; descriptor of the row being spawned
 Compila y ejecuta: la nave y los drones ahora alternan dos fotogramas. Si el juego
 se queda parado nada más arrancar, mira `game_status` (variable pública de
 `main.s`): vale `0x5A` cuando todo va bien, y en caso contrario el código de error
-del ECS (`docs/ecs-abi-2.0.md`).
+del ECS (`docs/reference/ecs-abi-2.0.md`).
 
 ## Paso 3: colisiones y marcador
 
@@ -497,10 +497,10 @@ es el juego de la captura de arriba.
 - **Más sistemas del ECS**: el mismo patrón sirve para todos. Añade el componente y
   el módulo a `example.json`, ejecuta `glasnost config`, y declara las etiquetas y
   constantes en `common.inc`. Mira `examples/platformer` (física de plataformas,
-  mapas de tiles, HUD) y `docs/platform-game-guide.html`.
+  mapas de tiles, HUD) y `docs/guide/platform-game-guide.html`.
 - **Mapas de tiles**: `assets.json` también convierte mapas de Tiled (`tilemaps`); el
   ejemplo `platformer` tiene dos niveles.
-- **Sonido**: `docs/audio-akg.md`.
+- **Sonido**: `docs/reference/audio-akg.md`.
 - **Más memoria**: `glasnost config --extended-memory` (CPC 6128, 128 KB).
 - **Actualizar el SDK**: `glasnost projects` y `glasnost update` migran tus
   proyectos a la versión nueva en una rama de Git, con vuelta atrás con

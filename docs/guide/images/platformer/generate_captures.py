@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 HERE = Path(__file__).resolve().parent
 EXAMPLE = ROOT / "examples" / "platformer"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"

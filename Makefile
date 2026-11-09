@@ -50,10 +50,10 @@ manual:
 	$(PYTHON) tools/dev/build_manual.py
 
 platform-guide:
-	$(PYTHON) docs/images/platformer/generate_captures.py
-	$(PYTHON) tools/dev/build_manual.py --html docs/platform-game-guide.html \
-		--pdf docs/platform-game-guide.pdf \
-		--checksum docs/platform-game-guide.sha256
+	$(PYTHON) docs/guide/images/platformer/generate_captures.py
+	$(PYTHON) tools/dev/build_manual.py --html docs/guide/platform-game-guide.html \
+		--pdf docs/guide/platform-game-guide.pdf \
+		--checksum docs/guide/platform-game-guide.sha256
 
 release: examples
 	@test -n "$(VERSION)" || (echo "VERSION is required (for example: make release VERSION=0.1.0)" >&2; exit 2)

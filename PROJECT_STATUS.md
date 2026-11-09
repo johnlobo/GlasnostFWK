@@ -1687,3 +1687,16 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   su época (`tools/x.py` = `tools/<carpeta>/x.py`).
 - [x] `tests/test_layout.py` impide scripts sueltos en `tools/` y rutas viejas.
 
+## `docs/` ordenado en guide, reference y design (2026-11-09)
+
+- [x] `docs/guide/` (primer juego y sus pasos, recorrido de `nave`, guía de plataformas, imágenes,
+  instalación en Apple Silicon), `docs/reference/` (CLI, arquitectura, ABI del ECS, sprites,
+  tilemaps, física, audio, disco y ZX7B, ventanas, migración, vertical) y `docs/design/` (plan
+  del ECS 2.0, matriz comparativa, procedencia, paridad, validación, rendimiento, tamaños). El
+  manual (`manual.html`, PDF y checksum) sigue en la raíz de `docs/`, con un índice en
+  `docs/README.md`. `requirements-manual.txt` pasa a `tools/dev/`.
+- [x] Reescritos enlaces relativos, rutas en código, tests y Makefile (`platform-guide`), y
+  regenerados los PDF del manual y de la guía de plataformas. Las secciones anteriores de este
+  registro citan las rutas de su época (`docs/x.md` = `docs/<carpeta>/x.md`).
+- [x] `tests/test_layout.py` fija la forma de `docs/` y rechaza rutas viejas.
+

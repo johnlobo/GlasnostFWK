@@ -113,7 +113,7 @@ comprimir, use `"compression": "none"` y elimine su llamada de
 
 La música no se enlaza por defecto: el platformer ya está cerca de un frame de
 trabajo y el smoke de juego es sensible al tiempo. El ejemplo MIT ya generado
-está en `examples/audio/song.s` (procedencia en `docs/provenance.md`).
+está en `examples/audio/song.s` (procedencia en `docs/design/provenance.md`).
 
 Para activarla en una copia del ejemplo:
 

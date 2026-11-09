@@ -94,7 +94,7 @@ conservarse entre captura y restauración.
   rectángulos completos, no por píxeles opacos individuales.
 - No se valida la capacidad del buffer ni un puntero nulo; los datos deben
   permanecer visibles en el mapeo activo.
-- El coste publicado en `docs/performance.md` es histórico: la implementación
+- El coste publicado en `docs/design/performance.md` es histórico: la implementación
   transparente ha cambiado y debe volver a medirse antes de atribuirle esas cifras.
 
 `examples/spriteclip` prueba clipping y restauración. `examples/spritemask`

@@ -565,7 +565,7 @@ Requiere coordenadas `u8` (el build falla con `u16` o `fixed_8_8`).
     `fwk_ecs_anim_set` con el descriptor activo, el sprite no se restituye
     hasta el siguiente avance.
   - Presupuesto vinculante: **150 bytes de código y ningún dato** para
-    `core/ecs_animation.s`; el valor medido es el de `docs/validation.md`.
+    `core/ecs_animation.s`; el valor medido es el de `docs/design/validation.md`.
 - Los sistemas procesan una entidad compatible una vez por llamada explícita.
 - Ningún sistema conserva un puntero implícito a «la entidad actual» después
   de retornar.

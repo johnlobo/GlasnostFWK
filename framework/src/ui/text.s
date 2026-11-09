@@ -1,7 +1,7 @@
 ;; Sprite-font text renderer derived from the text systems used by model01,
 ;; DeckTower and PocketFever. The original text routines declare
 ;; LGPL-3.0-or-later; asset provenance and its separate licensing uncertainty
-;; are recorded in docs/provenance.md.
+;; are recorded in docs/design/provenance.md.
 .module fwk_text
 .include "cpctelera.h.s"
 .include "project_config.inc"

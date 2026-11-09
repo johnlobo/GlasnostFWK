@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emulator smoke of the finished game of docs/first-game (step 3). Optional, like project_smoke.py:
+"""Emulator smoke of the finished game of docs/guide/first-game (step 3). Optional, like project_smoke.py:
 
     flock /tmp/amspirit.lock python3 tests/first_game_smoke.py \\
         --emulator /config/workspace/tools/amspirit-lite/run.sh [--model 464] [--screenshot out.png] [--example]
@@ -34,7 +34,7 @@ sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 import emulator_smoke as emu  # noqa: E402
 import glasnost  # noqa: E402
 
-GUIDE = ROOT / "docs" / "first-game"
+GUIDE = ROOT / "docs" / "guide" / "first-game"
 HUD_X, HUD_Y, HUD_W, HUD_H = 60, 4, 16, 9
 
 

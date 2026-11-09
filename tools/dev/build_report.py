@@ -32,7 +32,7 @@ def main() -> int:
     ]
     out += [f"| {name} | {code} | {data} | {binary} |" for name, code, data, binary in rows]
     out += ["", "No cycle/frame-rate value is reported: no emulator timing run was completed.", ""]
-    destination = ROOT / "docs" / "build-sizes.md"
+    destination = ROOT / "docs" / "design" / "build-sizes.md"
     destination.write_text("\n".join(out), encoding="utf-8")
     print(destination)
     return 0

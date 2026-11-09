@@ -1,5 +1,5 @@
 ;; ECS 2.0 entity animation. Contract and budget (150 bytes of code, no data):
-;; docs/ecs-abi-2.0.md, 10.
+;; docs/reference/ecs-abi-2.0.md, 10.
 .module fwk_ecs_animation
 
 .include "ecs_profile.inc"

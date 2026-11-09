@@ -1,6 +1,6 @@
 ;; Default sprite-font assets: regular glyphs from PocketFever/DeckTower and
 ;; small digits from model01. Their generated source files identify Img2CPC but
-;; carry no separate licence declaration; see docs/provenance.md.
+;; carry no separate licence declaration; see docs/design/provenance.md.
 ;; Layout: 51 regular glyphs x 18 bytes, then 10 digits x 10 bytes.
 _fwk_text_default_font:
     .db 0x55,0x00,0x55,0x2a,0x55,0x2a,0x55,0x2a,0x55,0x2a,0x00,0x2a

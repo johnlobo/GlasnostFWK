@@ -279,7 +279,7 @@ _main::
     ld (game_status), a             ; 0x5A = OK; any other value is an ABI error code.
     ;; If the game stops at startup, read game_status in the emulator debugger:
     ;; 0x5A means everything started; otherwise the value is the error code of
-    ;; the failing fwk_* call. See docs/ecs-abi-2.0.md for the code list.
+    ;; the failing fwk_* call. See docs/reference/ecs-abi-2.0.md for the code list.
 
 ;; ----------------------------------------------------------------------------
 ;; game_frame

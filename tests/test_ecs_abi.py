@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class EcsAbiSpecificationTests(unittest.TestCase):
     def setUp(self):
-        self.path = ROOT / "docs" / "ecs-abi-2.0.md"
+        self.path = ROOT / "docs" / "reference" / "ecs-abi-2.0.md"
         self.source = self.path.read_text(encoding="utf-8")
 
     def test_universal_header_and_size_limit_are_normative(self):
@@ -124,14 +124,14 @@ class EcsAbiSpecificationTests(unittest.TestCase):
             self.assertIn(contract, self.source)
 
     def test_phase_gate_remains_explicit_in_all_state_documents(self):
-        master = (ROOT / "docs" / "ecs-2.0-master-plan.md").read_text(
+        master = (ROOT / "docs" / "design" / "ecs-2.0-master-plan.md").read_text(
             encoding="utf-8"
         )
         status = (ROOT / "PROJECT_STATUS.md").read_text(encoding="utf-8")
         manual = (ROOT / "docs" / "manual.html").read_text(encoding="utf-8")
-        self.assertIn("docs/ecs-abi-2.0.md", master)
-        self.assertIn("docs/ecs-abi-2.0.md", status)
-        self.assertIn('href="ecs-abi-2.0.md"', manual)
+        self.assertIn("docs/reference/ecs-abi-2.0.md", master)
+        self.assertIn("ecs-abi-2.0.md", status)   # the history keeps the path of its time
+        self.assertIn('href="reference/ecs-abi-2.0.md"', manual)
         self.assertIn("Puerta G1 aprobada", self.source)
         self.assertIn("Fase 1: completada, G1 aprobada", status)
         self.assertIn("Estado: normativa aprobada", self.source)

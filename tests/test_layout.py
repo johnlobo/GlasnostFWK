@@ -19,7 +19,7 @@ TOP_FILES = {"CLAUDE.md", "Dockerfile", ".dockerignore", ".gitignore", "LICENSE"
 FRAMEWORK_DIRS = {"src", "cfg", "profiles", "manifests", "licenses", "templates"}
 
 # Dated history written before the move keeps the paths of its time.
-HISTORY = {"PROJECT_STATUS.md", "docs/platformer-parity.md", "tests/test_layout.py"}
+HISTORY = {"PROJECT_STATUS.md", "docs/design/platformer-parity.md", "tests/test_layout.py"}
 
 # A path of the old layout: framework folders at the root, as opposed to assets/src, build/<name>/src,
 # examples/<name>/cfg or a user project's own folders (those have a path component before them).
@@ -35,6 +35,9 @@ OLD_PATH = re.compile(
     r"|ecs_[a-z]+_model|build_manual|build_report|package_release|measure_[a-z]+|mutate_platformer"
     r"|emulator_setup|run_example)\.py"
     r"|tools/img2cpc"
+    r"|docs/(?:first-game|images|nave-walkthrough|glasnost-cli|architecture-and-api|ecs-abi-2\.0|ecs-2\.0|platform-game-guide"
+    r"|sprites|validation|performance|provenance|migration|build-sizes|windows|audio-akg|disk-and-zx7b|physics-profiles"
+    r"|tilemap-|vertical-slice|comparison-matrix|platformer-parity|requirements-manual|instalacion)"
     r")")
 
 
@@ -92,6 +95,10 @@ class Layout(unittest.TestCase):
                 self.assertFalse(path.startswith("tools/dev/img2cpc"), path)
         for script in sorted((ROOT / "tools" / "build").glob("*.py")):
             self.assertEqual(script.resolve().parents[2], ROOT, script)
+
+    def test_docs_are_sorted_into_guide_reference_and_design(self):
+        under = {path.split("/")[1] for path in tracked() if path.startswith("docs/")}
+        self.assertEqual(under, {"guide", "reference", "design", "manual.html", "manual.pdf", "manual.sha256", "README.md"})
 
     def test_the_install_cli_entry_stays_at_bin(self):
         """`glasnost install-cli` links to bin/glasnost; moving it would break every installed link."""

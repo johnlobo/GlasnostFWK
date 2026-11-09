@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Draws the PNG sheets of docs/first-game from the ASCII art below.
+"""Draws the PNG sheets of docs/guide/first-game from the ASCII art below.
 
 You do not need to run this: the PNGs are committed. It exists so the art is
 readable and reproducible; any pixel editor works as well as long as every
 pixel uses one of the colours of PENS (the palette of assets/palette.json).
 
-    python3 docs/first-game/make_art.py        # needs Pillow
+    python3 docs/guide/first-game/make_art.py        # needs Pillow
 """
 
 from pathlib import Path

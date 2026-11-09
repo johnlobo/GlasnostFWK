@@ -1,4 +1,4 @@
-;; GlasnostFWK ECS 2.0 entity animation: public ABI (docs/ecs-abi-2.0.md, 10).
+;; GlasnostFWK ECS 2.0 entity animation: public ABI (docs/reference/ecs-abi-2.0.md, 10).
 ;; Descriptors are plain data in this layout:
 ;;   byte count (1..255), byte duration in system calls (1..255),
 ;;   word frame sprite pointers[count].

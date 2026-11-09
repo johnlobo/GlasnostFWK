@@ -1,4 +1,4 @@
-"""docs/nave-walkthrough.md cannot drift from the code it explains.
+"""docs/guide/nave-walkthrough.md cannot drift from the code it explains.
 
 Fast checks (no toolchain): every code block is a literal copy of examples/nave, every routine
 of main.s is explained, the links resolve, the exercises' text is the code in nave_exercises.py.
@@ -26,7 +26,7 @@ import glasnost  # noqa: E402
 import nave_exercises as ex  # noqa: E402
 from test_glasnost_project import real_toolchain as toolchain  # noqa: E402
 
-DOC = ROOT / "docs" / "nave-walkthrough.md"
+DOC = ROOT / "docs" / "guide" / "nave-walkthrough.md"
 NAVE = ROOT / "examples" / "nave"
 BLOCK = re.compile(r"<!-- codigo: (?P<file>[\w./]+) -->\n```\w*\n(?P<body>.*?)\n```", re.S)
 

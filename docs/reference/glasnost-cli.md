@@ -185,7 +185,7 @@ El asistente, el manifiesto y las opciones pasan por la misma validación y
 producen exactamente los mismos ficheros (hay un test que lo comprueba).
 Las opciones pisan al manifiesto.
 
-**Primer juego.** [`docs/first-game.md`](first-game.md) parte de lo que crea `new` y
+**Primer juego.** [`docs/guide/first-game.md`](../guide/first-game.md) parte de lo que crea `new` y
 añade, en tres pasos con el juego compilando en cada uno, un mapa propio
 (PNG y TMX importados), animación y colisiones con marcador. Un test aplica los pasos y los compila.
 

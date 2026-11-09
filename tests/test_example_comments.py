@@ -22,7 +22,7 @@ Loop and branch labels reached only by jr/jp/djnz are local and stay undocumente
 TRUE is not machine-checkable here; that is what review is for.
 
 examples/nave is covered: it is the guide's game, kept byte-identical to
-docs/first-game/step3 by test_first_game_guide.py, so the guide's final step carries the
+docs/guide/first-game/step3 by test_first_game_guide.py, so the guide's final step carries the
 headers too. Not covered on purpose: generated or third-party data files, and the
 intermediate steps step1 and step2 of the guide.
 """

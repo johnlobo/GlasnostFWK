@@ -1,4 +1,4 @@
-"""The two exercises of docs/nave-walkthrough.md as code, shared by the host test and the smoke.
+"""The two exercises of docs/guide/nave-walkthrough.md as code, shared by the host test and the smoke.
 
 The text of the walkthrough must contain exactly these edits (test_nave_walkthrough checks it),
 so what the reader types is what was built and run.

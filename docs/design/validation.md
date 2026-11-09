@@ -159,7 +159,7 @@ Los veintidós ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5
 veintiuno generan además `.cdt`. Sus veintidós BIN y los dos payloads de
 `diskload` se reúnen en un único `build/tests/GlasnostFWK-tests.dsk` con 24
 entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
-porque sus payloads auxiliares no están en cinta. `docs/build-sizes.md` contiene
+porque sus payloads auxiliares no están en cinta. `docs/design/build-sizes.md` contiene
 tamaños enlazados.
 
 ## Probado automáticamente
@@ -294,7 +294,7 @@ No verificado.
   ambas opciones combinadas; valida capacidades y solapamiento de buffers
   activos. Sigue trabajando con rectángulos completos, capacidad fija aportada
   por el juego y sin mezcla alfa ni asignación dinámica.
-- Ciclos del dibujo enmascarado medidos en `docs/performance.md` (6x8 ≈ 11022
+- Ciclos del dibujo enmascarado medidos en `docs/design/performance.md` (6x8 ≈ 11022
   T-estados). No se promete 50 Hz para una escena arbitraria.
 - Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
   `vertical` prueba entrada, movimiento y recogida de entidades y `resources128`
@@ -499,7 +499,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
 - `examples/platformer_ecs` usa una copia de los assets y del pipeline de
   `platformer` y reproduce su nivel con cuatro managers, cuatro monedas, tres
   enemigos con la misma cadencia (V2 cada fotograma; H y V alternados), puerta y
-  vidas. Detalle, divergencias y lo que falta en `docs/platformer-parity.md`.
+  vidas. Detalle, divergencias y lo que falta en `docs/design/platformer-parity.md`.
 - Smoke (`tests/emulator_smoke.py`, sección `platformer_ecs`): recorrido de las
   cuatro monedas y cinco plataformas, victoria solo con cuatro monedas, huecos de
   moneda liberados, límites de patrulla y animación, enemigos inofensivos tras
@@ -518,7 +518,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
 ## Fase 10: paridad y rendimiento de `platformer_ecs` (rebanada 2)
 
 - HUD y parpadeo del borde en `examples/platformer_ecs` con `ui/text.s`. Detalle
-  y divergencias en `docs/platformer-parity.md`.
+  y divergencias en `docs/design/platformer-parity.md`.
 - Referencia de píxeles: el SHA-256 de cada campo de HUD (puntuación, pista,
   vidas 0..10) capturado de `platformer` en el emulador. El HUD inicial de ambos
   juegos es idéntico byte a byte. El smoke compara al inicio, con dos monedas,
@@ -547,7 +547,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
 ## Fase 10: paridad y rendimiento de `platformer_ecs` (parte 3)
 
 - Segundo nivel y reinicio por puerta en `examples/platformer_ecs`. Detalle en
-  `docs/platformer-parity.md`.
+  `docs/design/platformer-parity.md`.
 - Smoke: píxeles de cuatro bandas de pantalla de ambos niveles contra el original
   (SHA-256 capturados en el emulador), mapa 2 en RAM contra el TMX, reinicio,
   física del mapa 2 y victoria del nivel 2. Tres corridas seguidas en CPC 6128 y
@@ -573,7 +573,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
 - `tools/dev/measure_game.py`: fotogramas por iteración y T-states por rutina con
   puntos de ruptura del emulador (sin tocar los juegos); `tests/test_measure_game.py`
   cubre el cálculo (resumen, fotogramas enteros, totales por rutina, lectura de
-  etiquetas locales de los listados). Cifras en `docs/platformer-parity.md`.
+  etiquetas locales de los listados). Cifras en `docs/design/platformer-parity.md`.
 - Defecto del original hallado y corregido: `fwk_motion_u8_step` trataba las
   posiciones `y >= 128` como negativas. La prueba del smoke de `platformer` falla
   con el código anterior (y 0..126) y pasa ahora. Afecta también a `vertical` y
@@ -612,7 +612,7 @@ pasa en verde. Lo eliminado en esta rama:
 - Herramientas: `tools/mutate_platformer_ecs.py` pasó a `tools/dev/mutate_platformer.py`;
   `tools/dev/measure_game.py` solo admite `platformer`.
 - Documentación: `docs/render-order.md` y `docs/animation.md` se eliminaron (su
-  contenido vigente está en las secciones 8 y 10 de `docs/ecs-abi-2.0.md`); el
+  contenido vigente está en las secciones 8 y 10 de `docs/reference/ecs-abi-2.0.md`); el
   manual y la guía de plataformas describen el juego ECS.
 
 ## Cadencia por entidad y un solo manager en `platformer` (2026-11-06)
@@ -628,7 +628,7 @@ iteración (presupuesto fijado antes de implementar).
   `fwk_ecs_system_run`. `fwk_ecs_system_run_any` lo ignora y lo usa
   `fwk_ecs_collide`. Crear una plantilla con un byte inválido devuelve
   `FWK_ECS_ERR_TEMPLATE` (también si la fase supera `cada - 1`). Contrato en
-  `docs/ecs-abi-2.0.md`, 6.2.1. Coste por entidad, contado por instrucciones y sin
+  `docs/reference/ecs-abi-2.0.md`, 6.2.1. Coste por entidad, contado por instrucciones y sin
   medir en el emulador: unos 35 T con cadencia 0 y unos 110 T con otra.
 - `platformer`: un manager de 9 slots (monedas 0 a 3, puerta 4, jugador 5,
   enemigo vertical izquierdo 6, horizontal 7, vertical derecho 8). El horizontal y
@@ -701,7 +701,7 @@ reposo de `platformer` ≤ 112.000 T con 2 frames por iteración, binario de
 - Presupuestos: el del renderer sube de 1.150 a **1.400 B de código** (decisión
   explícita, en `tests/test_ecs_render.py` y en el ABI, sección 8); el del binario de
   `platformer` **no se cumple**: 11.991 B frente a 11.780 B en una build limpia de
-  `main` (+211 B, no +100 B; la tabla de `docs/build-sizes.md` de `main` decía 11.766,
+  `main` (+211 B, no +100 B; la tabla de `docs/design/build-sizes.md` de `main` decía 11.766,
   anterior a la cadencia, y daría +225 B).
 - Rendimiento (`tools/dev/measure_game.py platformer`, CPC 6128): reposo 109.839 T (109.040
   antes de los pools; presupuesto 112.000 T), derecha 113.068 T (entre ejecuciones

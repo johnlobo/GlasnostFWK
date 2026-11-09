@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emulator smoke of the two exercises of docs/nave-walkthrough.md. Optional, like project_smoke.py:
+"""Emulator smoke of the two exercises of docs/guide/nave-walkthrough.md. Optional, like project_smoke.py:
 
     flock /tmp/amspirit.lock python3 tests/nave_walkthrough_smoke.py \\
         --emulator /config/workspace/tools/amspirit-lite/run.sh

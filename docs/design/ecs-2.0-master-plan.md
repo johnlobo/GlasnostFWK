@@ -6,7 +6,7 @@ Este documento es la referencia estable de alcance y decisiones. El punto
 operativo exacto para retomar una sesión se mantiene en `PROJECT_STATUS.md`,
 sección **Migración ECS 2.0: estado operativo**.
 
-La especificación normativa de la fase 1 está en `docs/ecs-abi-2.0.md`. La
+La especificación normativa de la fase 1 está en `docs/reference/ecs-abi-2.0.md`. La
 puerta G1 fue aprobada el 2026-11-03; las implementaciones posteriores deben
 registrar cualquier aclaración de ABI antes de cambiar el contrato.
 
@@ -175,7 +175,7 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
     `2.0.0-beta.2`. Parte A (`vertical` y `perf` en ECS) completada. **Parte B
     completada en la rama `ecs-remove-legacy`:** no queda ningún módulo, ejemplo
     ni API anterior al ECS y `make test` pasa en verde (detalle en
-    `docs/validation.md`).
+    `docs/design/validation.md`).
 
 ### P3: SDK autocontenido
 

@@ -34,7 +34,7 @@ bin/glasnost build platformer     # compila ejemplos con ese toolchain
 bin/glasnost test                 # make test
 bin/glasnost run platformer       # abre el ejemplo en el emulador
 bin/glasnost new minave           # proyecto nuevo en projects/minave (asistente si no das nombre)
-                                  # guía paso a paso: docs/first-game.md (y el recorrido del código: docs/nave-walkthrough.md)
+                                  # guía paso a paso: docs/guide/first-game.md (y el recorrido del código: docs/guide/nave-walkthrough.md)
 bin/glasnost projects              # proyectos y si están al día; glasnost update los actualiza
 bin/glasnost install-cli          # enlace ~/.local/bin/glasnost (sin sudo)
 bin/glasnost toolchains           # toolchains instalados; clean-toolchains los limpia
@@ -42,7 +42,7 @@ bin/glasnost toolchains           # toolchains instalados; clean-toolchains los 
 
 Mensajes en castellano; `--lang en` o `GLASNOST_LANG=en` para inglés. El
 toolchain vive en `.toolchain/` (fuera de Git, sin `sudo`). Detalle en
-`docs/glasnost-cli.md`.
+`docs/reference/glasnost-cli.md`.
 
 ## Configuración con Docker (recomendado en Windows)
 
@@ -89,7 +89,7 @@ make check      # pruebas host + platformer; bucle rápido durante desarrollo
 make check CHECK_EXAMPLES="spritemask ecsrender"  # solo ejemplos afectados
 make examples   # veintitrés ejemplos, incluidas tres escenas jugables
 make test       # pruebas host + construcción y DSK completos; cierre/commit
-make report     # actualiza docs/build-sizes.md desde los mapas SDCC
+make report     # actualiza docs/design/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
 make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
@@ -157,11 +157,11 @@ Cada funcionalidad nueva debe documentarse allí y regenerar el PDF con
 `make manual`; la suite comprueba cobertura y sincronización. La dependencia
 de render se instala de forma aislada con
 `python3 -m venv .venv-docs` y
-`.venv-docs/bin/python -m pip install -r docs/requirements-manual.txt`.
+`.venv-docs/bin/python -m pip install -r tools/dev/requirements-manual.txt`.
 
 La migración de la rama `ecs-v2` se gobierna por
-[`docs/ecs-2.0-master-plan.md`](docs/ecs-2.0-master-plan.md). La propuesta de
-ABI aprobada en G1 está en [`docs/ecs-abi-2.0.md`](docs/ecs-abi-2.0.md). La
+[`docs/design/ecs-2.0-master-plan.md`](docs/design/ecs-2.0-master-plan.md). La propuesta de
+ABI aprobada en G1 está en [`docs/reference/ecs-abi-2.0.md`](docs/reference/ecs-abi-2.0.md). La
 fase 2 implementa el entity manager, la fase 3 genera su layout desde el
 manifiesto y la fase 4 incorpora los sistemas ECS iniciales de behavior y
 movimiento. La paridad completa con el juego de referencia queda para fases
@@ -182,11 +182,11 @@ Primer nivel: `bin/` (entrada `glasnost`), `docs/`, `examples/`, `framework/`, `
 - `tools/glasnost` (CLI y emuladores), `tools/build` (generadores, importador de assets, `build_examples`, `img2cpc`) y `tools/dev` (manual, release, mediciones).
 - `projects`: tus proyectos (`glasnost new`); no se versiona.
 - `examples`: veintitrés consumidores pequeños, sin copias internas del framework (`examples/nave`
-  es el juego terminado de la guía `docs/first-game.md`).
-- `docs`: procedencia, auditoría, arquitectura, APIs, migración y validación.
+  es el juego terminado de la guía `docs/guide/first-game.md`).
+- `docs`: `guide/` (empezar y aprender), `reference/` (contratos y uso) y `design/` (decisiones, procedencia, validación); índice en `docs/README.md`.
 
 La aplicación didáctica de plataformas dispone de una guía paso a paso con
-capturas reproducibles en `docs/platform-game-guide.html` y PDF equivalente.
+capturas reproducibles en `docs/guide/platform-game-guide.html` y PDF equivalente.
 
 ## Vertical jugable
 
@@ -197,7 +197,7 @@ el manifiesto los selecciona mediante `game_sources`.
 
 El smoke de AmSpiriT mantiene CursorRight en la matriz real del CPC y verifica
 en RAM que el manager pasa de cuatro entidades a una, el marcador llega a tres y
-el estado de victoria se activa. Más detalles en `docs/vertical-slice.md`.
+el estado de victoria se activa. Más detalles en `docs/reference/vertical-slice.md`.
 
 ## Física especializada
 
@@ -207,7 +207,7 @@ velocidad byte, gravedad, caída máxima, dimensiones, límites y suelo.
 fricción sobre el vector y rebote por eje. Los ejemplos `gravity` y `physics88`
 comprueban recorridos deterministas sin compartir estructura de entidad y fijan
 paletas propias para que sus trazas no dependan de los colores heredados de
-BASIC. Los contratos y límites están en `docs/physics-profiles.md`.
+BASIC. Los contratos y límites están en `docs/reference/physics-profiles.md`.
 
 ## Tilemaps y colisión de escenario
 
@@ -216,14 +216,14 @@ traduce cada id mediante una tabla de tipos. `extensions/platform_tilemap`
 resuelve sólidos y plataformas de una dirección sobre el estado producido por
 `physics_platform`, sin importar entidades, salas ni render. `tilecoll` muestra
 automáticamente techo, pared y suelo; contratos y límites están en
-`docs/tilemap-collision.md`.
+`docs/reference/tilemap-collision.md`.
 
 `extensions/tilemap_render` dibuja un viewport desde un tileset Mode 0 mediante
 las primitivas alineadas 2x4, 2x8, 4x4 y 4x8 de CPCTelera Next, con cámara y
 destino propiedad del consumidor. Prevalida el render completo y permite
 redibujar una celda explícita. La variante transparente usa el mismo tileset
 con color clave y la tabla generada para el proyecto. `tilerender` demuestra cambio de cámara y
-actualización parcial; véase `docs/tilemap-render.md`.
+actualización parcial; véase `docs/reference/tilemap-render.md`.
 
 ## Sprites con clipping y máscaras
 
@@ -239,7 +239,7 @@ el dibujo sin modificar el asset y conserva el mismo clipping.
 `spriteclip` comprueba los cuatro bordes y una restauración recortada;
 `spritemask` demuestra composición, recoloreado, clipping y rechazo de pens y
 spans inválidos. Véase
-`docs/sprites.md`.
+`docs/reference/sprites.md`.
 
 ## Configuración inicial del proyecto
 
@@ -259,13 +259,13 @@ opaco, enmascarado y recoloreado. La ruta sincronizada separa
 `fwk_ecs_render_prepare` (antes del VSYNC, sin tocar VRAM) de
 `fwk_ecs_render_restore`/`fwk_ecs_render_draw`, que se ejecutan seguidos tras
 VSYNC. `ecsrender` comprueba el ciclo completo contra un modelo Python; el
-contrato está en la sección 8 de `docs/ecs-abi-2.0.md`.
+contrato está en la sección 8 de `docs/reference/ecs-abi-2.0.md`.
 
 La aplicación `platformer` es el juego completo sobre ECS 2.0: un manager
 con cadencia por entidad, jugador, cuatro monedas, tres enemigos con behavior, puerta, dos
 niveles y renderer selectivo. El HUD usa un panel interior y solo restaura el
 dígito o tramo de estado que cambia. La construcción paso a paso está en
-`docs/platform-game-guide.html`.
+`docs/guide/platform-game-guide.html`.
 
 ## Carga desde DSK y ZX7B
 
@@ -280,14 +280,14 @@ se ejecuta desde el DSK: sus archivos auxiliares no forman parte de una cinta CD
 CPCTelera Next y datos de demostración de Arkos Tracker con licencia MIT.
 Reproduce música a 50 Hz mediante el callback de IRQ, admite SFX y expone
 comandos de parada/reanudación para la prueba. El smoke comprueba ticks y
-registros PSG reales en CPC 6128 y CPC 464; véase `docs/audio-akg.md`.
+registros PSG reales en CPC 6128 y CPC 464; véase `docs/reference/audio-akg.md`.
 
 ## Animación ECS
 
 `core/ecs_animation` es el sistema de animación: cada entidad con el componente
 `ANIMATION` lleva descriptor, frame y temporizador; el juego decide cuándo
 llamar al sistema y cambia de animación con `fwk_ecs_anim_set`. El contrato
-está en la sección 10 de `docs/ecs-abi-2.0.md` y `ecsanimation` lo comprueba
+está en la sección 10 de `docs/reference/ecs-abi-2.0.md` y `ecsanimation` lo comprueba
 contra un modelo Python.
 
 ## Ventanas restaurables
@@ -296,7 +296,7 @@ contra un modelo Python.
 con borde y relleno, compone texto y restaura exactamente la región anterior.
 El módulo valida la geometría contra el perfil de vídeo y no contiene espera de
 tecla, menús ni temporización. El smoke prueba cierre y reapertura en CPC 6128
-y CPC 464; véase `docs/windows.md`.
+y CPC 464; véase `docs/reference/windows.md`.
 
 ## Estado del perfil 160x288
 
