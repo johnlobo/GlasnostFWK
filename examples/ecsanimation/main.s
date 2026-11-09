@@ -1,5 +1,5 @@
 ;; Emulator harness for the ECS animation system.
-;; Replays the command table generated from tools/ecs_animation_model.py and
+;; Replays the command table generated from tools/build/ecs_animation_model.py and
 ;; records, after every system call, each entity's frame, timer, sprite pointer
 ;; and render flags in ecsanimation_log; tests/emulator_smoke.py compares it
 ;; with the model.

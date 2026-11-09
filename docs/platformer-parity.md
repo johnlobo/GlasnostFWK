@@ -61,7 +61,7 @@ izquierda (x=8) se colaba en la zona del HUD. Eso explica los restos de `COINS:`
 una comprobación en el smoke de `platformer` (los enemigos verticales recorren
 y=56..140 o más) que falla con el código anterior (y 0..126).
 
-**Medición** (`tools/measure_game.py`). Un punto de ruptura en la entrada de
+**Medición** (`tools/dev/measure_game.py`). Un punto de ruptura en la entrada de
 `cpct_waitVSYNC_asm` y otro en su `ret` fijan, con el emulador pausado, el
 fotograma y la posición del haz: T = fotogramas x 79.872 + (línea - 25) x 256 +
 columna / 4 (error de unos 4 T). La salida de la espera cae en el VSYNC, así que
@@ -105,7 +105,7 @@ rápido que el original en conjunto y el presupuesto se cumple; el máximo de 15
 `platformer_ecs` usaba los **mismos assets** que el `platformer` original. La carpeta
 `examples/platformer/assets/` (hoy la del juego ECS) conserva la copia con el manifiesto, la paleta, los
 PNG y el TMX originales y la salida generada. El pipeline es el mismo
-(`tools/import_assets.py`, conversión incremental por SHA-256, mapas ZX7B), y
+(`tools/build/import_assets.py`, conversión incremental por SHA-256, mapas ZX7B), y
 `make` en el ejemplo convierte solo si cambió un asset. La copia es deliberada:
 la fase 11 elimina `platformer`, y el ejemplo ECS debe quedarse con sus assets.
 

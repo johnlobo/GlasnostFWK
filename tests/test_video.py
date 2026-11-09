@@ -19,7 +19,7 @@ def load_module(name: str, path: Path):
     return module
 
 
-MODEL = load_module("video_model", ROOT / "tools" / "video_model.py")
+MODEL = load_module("video_model", ROOT / "tools" / "build" / "video_model.py")
 
 
 class VideoModelTests(unittest.TestCase):
@@ -61,7 +61,7 @@ class VideoModelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
             for directory in (a, b):
                 subprocess.run(
-                    ["python3", str(ROOT / "tools" / "gen_video.py"), str(profile), "--out-dir", directory],
+                    ["python3", str(ROOT / "tools" / "build" / "gen_video.py"), str(profile), "--out-dir", directory],
                     check=True,
                 )
             for suffix in ("inc", "json", "md"):

@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
-from tools import package_release
+from tools.dev import package_release
 
 
 class ReleasePackageTests(unittest.TestCase):

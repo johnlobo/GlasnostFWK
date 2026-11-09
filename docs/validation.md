@@ -402,7 +402,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   comparar: AABB no ECS anterior unos 330 bytes; primer diseño fiel al ABI
   original unos 980; versión optimizada para 255+255 entidades unos 5.300.
 - `examples/ecscollision`: escenario de 26 pasos generado desde
-  `tools/ecs_collision_model.py`; el smoke compara el registro del emulador con
+  `tools/build/ecs_collision_model.py`; el smoke compara el registro del emulador con
   el modelo byte a byte (ENTER, STAY, EXIT sin objetivo, máscara de componentes,
   contacto por borde, destrucción desde el callback, aborto del callback, EXIT
   fallido, manager bloqueado, callback nulo, dos canales independientes). CPC 6128 y CPC 464 correctos.
@@ -432,7 +432,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   frame). Tamaño medido en el `.rel`: 109 bytes de código y 0 de datos;
   presupuesto vinculante 150 y 0, comprobado por `tests/test_ecs_animation.py`.
 - `examples/ecsanimation`: 14 pasos y cinco entidades generados desde
-  `tools/ecs_animation_model.py`: cuenta atrás, avance y vuelta, duración 1,
+  `tools/build/ecs_animation_model.py`: cuenta atrás, avance y vuelta, duración 1,
   entidad sin descriptor, cambio de descriptor, descriptor ya activo a mitad de
   ciclo, parada con 0, un descriptor de 130 frames que cruza el frame 128 y una
   entidad copiada de una plantilla que ya trae el descriptor con temporizador 0,
@@ -471,7 +471,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   cajas envolventes por entidad (el cierre de solapes pasa de cuatro
   comparaciones de rectángulos por par a una) y descriptores de sprite
   construidos con `ldi`.
-- Oráculo independiente (`tools/ecs_render_model.py`): la imagen ideal de cada
+- Oráculo independiente (`tools/build/ecs_render_model.py`): la imagen ideal de cada
   frame es el fondo con todas las entidades `ACTIVE` y `VISIBLE` dibujadas en
   orden estable por `Y + SORT_OFFSET_Y`. `examples/ecsrender` ejecuta 36 frames
   con 9 entidades en dos managers (movimientos, saltos, solapes con orden de Y
@@ -570,7 +570,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
 
 ## Fase 10: paridad y rendimiento de `platformer_ecs` (parte 4)
 
-- `tools/measure_game.py`: fotogramas por iteración y T-states por rutina con
+- `tools/dev/measure_game.py`: fotogramas por iteración y T-states por rutina con
   puntos de ruptura del emulador (sin tocar los juegos); `tests/test_measure_game.py`
   cubre el cálculo (resumen, fotogramas enteros, totales por rutina, lectura de
   etiquetas locales de los listados). Cifras en `docs/platformer-parity.md`.
@@ -609,8 +609,8 @@ pasa en verde. Lo eliminado en esta rama:
   `extensions/collision_bodies` y `extensions/motion_u8`. Sus equivalentes ECS son
   `core/ecs_manager.s`, `video/ecs_render.s`, `core/ecs_animation.s`,
   `core/ecs_collision.s` y `core/ecs_motion.s` (`fwk_ecs_system_motion_u8`).
-- Herramientas: `tools/mutate_platformer_ecs.py` pasó a `tools/mutate_platformer.py`;
-  `tools/measure_game.py` solo admite `platformer`.
+- Herramientas: `tools/mutate_platformer_ecs.py` pasó a `tools/dev/mutate_platformer.py`;
+  `tools/dev/measure_game.py` solo admite `platformer`.
 - Documentación: `docs/render-order.md` y `docs/animation.md` se eliminaron (su
   contenido vigente está en las secciones 8 y 10 de `docs/ecs-abi-2.0.md`); el
   manual y la guía de plataformas describen el juego ECS.
@@ -643,7 +643,7 @@ iteración (presupuesto fijado antes de implementar).
   primero, el segundo llega como `STAY` y no cuesta otra vida (con tres canales
   costaba una por enemigo). Un contacto simultáneo que empieza en la misma pasada
   sí cuesta una vida por enemigo.
-- Resultado (`tools/measure_game.py platformer`, CPC 6128, 200 iteraciones):
+- Resultado (`tools/dev/measure_game.py platformer`, CPC 6128, 200 iteraciones):
   reposo 109.040 T (antes 111.447), derecha 109.602 T (antes 114.364), salto
   105.212 T; 2 frames por iteración en los tres. Entre ejecuciones la cifra de
   "derecha" varió de 105.808 a 109.602 T, así que la mejora respecto a antes es
@@ -674,7 +674,7 @@ TEMPLATE de FULL; la validación de máscara y de fase tiene 3 mutaciones, las 3
 detectadas), `test_collide_walks_targets_with_run_any`, comprobación de ritmo del smoke de `platformer` (cambios de
 posición del horizontal y el vertical derecho frente al izquierdo, entre 0,3 y
 0,7) y de fase (pasos de muestreo en que ambos se mueven a la vez: 0,0 con fases
-opuestas y 0,8 con la misma fase; umbral 0,3), 5 mutaciones nuevas y 3 renombradas en `tools/mutate_platformer.py` (32 en total, las 8 afectadas detectadas) y 6
+opuestas y 0,8 con la misma fase; umbral 0,3), 5 mutaciones nuevas y 3 renombradas en `tools/dev/mutate_platformer.py` (32 en total, las 8 afectadas detectadas) y 6
 mutaciones manuales del test de cadencia (5 detectadas; la que sobrevive,
 saltarse el camino rápido de cadencia 0, es equivalente).
 
@@ -703,7 +703,7 @@ reposo de `platformer` ≤ 112.000 T con 2 frames por iteración, binario de
   `platformer` **no se cumple**: 11.991 B frente a 11.780 B en una build limpia de
   `main` (+211 B, no +100 B; la tabla de `docs/build-sizes.md` de `main` decía 11.766,
   anterior a la cadencia, y daría +225 B).
-- Rendimiento (`tools/measure_game.py platformer`, CPC 6128): reposo 109.839 T (109.040
+- Rendimiento (`tools/dev/measure_game.py platformer`, CPC 6128): reposo 109.839 T (109.040
   antes de los pools; presupuesto 112.000 T), derecha 113.068 T (entre ejecuciones
   varió de 106.500 a 113.000 T), salto 106.366 T; 2 frames por iteración en los tres.
   La escena del lote de `perf` pasa de 172.524 a 173.801 T. El coste fijo por frame es

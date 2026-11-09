@@ -6,7 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("gen_resources", ROOT / "tools" / "gen_resources.py")
+spec = importlib.util.spec_from_file_location("gen_resources", ROOT / "tools" / "build" / "gen_resources.py")
 GEN = importlib.util.module_from_spec(spec)
 assert spec.loader
 spec.loader.exec_module(GEN)

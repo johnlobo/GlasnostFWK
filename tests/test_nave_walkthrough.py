@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
 
 import glasnost  # noqa: E402
 import nave_exercises as ex  # noqa: E402
@@ -117,7 +117,7 @@ class ExercisesBuild(unittest.TestCase):
         built = self.build(None)
         reference = ROOT / "build" / "nave" / "obj" / "nave.bin"
         if not reference.is_file():   # `make test` builds the examples only after the tests: a clean CI checkout has none yet
-            subprocess.run([sys.executable, str(ROOT / "tools" / "build_examples.py"), "nave"], cwd=ROOT, check=True,
+            subprocess.run([sys.executable, str(ROOT / "tools" / "build" / "build_examples.py"), "nave"], cwd=ROOT, check=True,
                            env=dict(os.environ, CPCT_NEXT_PATH=str(toolchain())), stdout=subprocess.DEVNULL)
         self.assertEqual(built, reference.stat().st_size)
 

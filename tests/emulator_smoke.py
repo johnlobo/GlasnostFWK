@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tools.build_test_disk import program_bin_name
+from tools.build.build_test_disk import program_bin_name
 DEFAULT_EMULATOR = ROOT.parent / "tools" / "amspirit-lite" / "run.sh"
 API = "http://127.0.0.1:6128"
 
@@ -328,7 +328,7 @@ def run_example(
             if not slots[stride + flags_offset] & 0x02:
                 raise RuntimeError("ECS enable did not mark render dirty")
         if name == "ecscollision":
-            sys.path.insert(0, str(ROOT / "tools"))
+            sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
             import ecs_collision_model as collision_model
 
             status = symbol(noi, "ecscollision_status")
@@ -356,7 +356,7 @@ def run_example(
                 )
                 raise RuntimeError(f"ECS collision log differs from the model:\n{diff}")
         if name == "ecsanimation":
-            sys.path.insert(0, str(ROOT / "tools"))
+            sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
             import ecs_animation_model as animation_model
 
             status = symbol(noi, "ecsanimation_status")
@@ -384,7 +384,7 @@ def run_example(
                 )
                 raise RuntimeError(f"ECS animation log differs from the model:\n{diff}")
         if name == "ecsrender":
-            sys.path.insert(0, str(ROOT / "tools"))
+            sys.path[:0] = [str(ROOT / "tools" / d) for d in ("glasnost", "build", "dev")]
             import ecs_render_model as render_model
 
             status = symbol(noi, "ecsrender_status")

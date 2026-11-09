@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.gen_ecs_profile import generate, layout_changes
+from tools.build.gen_ecs_profile import generate, layout_changes
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,7 +152,7 @@ class ECSProfileTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     "python3",
-                    str(ROOT / "tools/gen_ecs_profile.py"),
+                    str(ROOT / "tools/build/gen_ecs_profile.py"),
                     str(example),
                     "--output",
                     str(output),
@@ -184,7 +184,7 @@ class ECSProfileTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     "python3",
-                    str(ROOT / "tools/gen_ecs_profile.py"),
+                    str(ROOT / "tools/build/gen_ecs_profile.py"),
                     str(example),
                     "--output",
                     str(output),

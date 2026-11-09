@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools import build_examples
+from tools.build import build_examples
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -197,7 +197,7 @@ class DiskStagingTests(unittest.TestCase):
 
 class EcsSystemValidationTests(unittest.TestCase):
     def test_motion_with_platform_component_requires_platform_system(self):
-        from tools.build_examples import _validate_ecs_systems
+        from tools.build.build_examples import _validate_ecs_systems
 
         manifest = {
             "ecs": {

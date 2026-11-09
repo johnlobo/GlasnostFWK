@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.build_examples import _invalidate_objects_if_profile_changed
-from tools.mutate_platformer import code_only
+from tools.build.build_examples import _invalidate_objects_if_profile_changed
+from tools.dev.mutate_platformer import code_only
 
 
 ROOT = Path(__file__).resolve().parents[1]

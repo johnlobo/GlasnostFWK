@@ -1,6 +1,6 @@
 """Find, download and remember the CPC emulator that `glasnost run` opens.
 
-Pure logic, no printing and no prompts (those live in tools/glasnost.py), so it is easy to test.
+Pure logic, no printing and no prompts (those live in tools/glasnost/glasnost.py), so it is easy to test.
 
 The choice is kept in `tools/emulators/emulator.json` inside the SDK (gitignored, like
 `.toolchain/`): nothing outside the checkout is touched, and the next `glasnost run` (or
@@ -25,7 +25,7 @@ import zipfile
 from pathlib import Path
 from typing import Callable
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 CONFIG_NAME = "emulator.json"
 CONFIG_VERSION = 1
 
@@ -74,7 +74,7 @@ Progress = Callable[[int, int], None]
 
 
 class SetupError(Exception):
-    """An error with a message key and values; tools/glasnost.py translates it."""
+    """An error with a message key and values; tools/glasnost/glasnost.py translates it."""
 
     def __init__(self, key: str, **values: object) -> None:
         super().__init__(key)

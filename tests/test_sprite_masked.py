@@ -1,7 +1,7 @@
 import unittest
 
 from tests.test_sprite import clipped_rectangle, source_rows
-from tools.project_config import mode0_mask_table
+from tools.build.project_config import mode0_mask_table
 
 
 def transparent_byte(background, source, table):

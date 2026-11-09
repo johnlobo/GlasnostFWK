@@ -61,7 +61,7 @@ class ExampleTargetTests(unittest.TestCase):
     def test_run_target_reuses_the_build(self):
         wrapper = (ROOT / "framework" / "cfg" / "example.mk").read_text(encoding="utf-8")
         self.assertRegex(wrapper, r"(?m)^run: build$")
-        self.assertIn("tools/run_example.py", wrapper)
+        self.assertIn("tools/glasnost/run_example.py", wrapper)
 
     def test_ambient_cpct_path_cannot_replace_the_pinned_revision(self):
         ambient = dict(os.environ, CPCT_PATH="/opt/unpinned/cpctelera")

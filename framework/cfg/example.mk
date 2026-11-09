@@ -24,7 +24,7 @@ GLASNOST_ARTIFACTS := $(GLASNOST_EXAMPLE).bin $(GLASNOST_EXAMPLE).cdt $(GLASNOST
 PYTHON ?= python3
 
 # The pinned CPCTelera Next revision is selected with CPCT_NEXT_PATH (or the
-# default path inside tools/build_examples.py), exactly like `make examples`
+# default path inside tools/build/build_examples.py), exactly like `make examples`
 # does. An explicit `make CPCT_PATH=/path` is also honoured; a CPCT_PATH that
 # merely comes from the ambient environment is ignored so it cannot silently
 # replace the pinned revision.
@@ -39,7 +39,7 @@ GLASNOST_EMULATOR ?=
 all: build
 
 build:
-	$(PYTHON) $(GLASNOST_ROOT)/tools/build_examples.py $(GLASNOST_EXAMPLE) $(GLASNOST_CPCT_ARGS)
+	$(PYTHON) $(GLASNOST_ROOT)/tools/build/build_examples.py $(GLASNOST_EXAMPLE) $(GLASNOST_CPCT_ARGS)
 	@for file in $(GLASNOST_ARTIFACTS); do \
 		source="$(GLASNOST_BUILD)/obj/$$file"; \
 		[ -f "$$source" ] || source="$(GLASNOST_BUILD)/$$file"; \
@@ -50,11 +50,11 @@ build:
 	done
 
 assets:
-	$(PYTHON) $(GLASNOST_ROOT)/tools/import_assets.py $(GLASNOST_EXAMPLE) $(GLASNOST_CPCT_ARGS)
+	$(PYTHON) $(GLASNOST_ROOT)/tools/build/import_assets.py $(GLASNOST_EXAMPLE) $(GLASNOST_CPCT_ARGS)
 
 run: build
 	@GLASNOST_EMULATOR="$(GLASNOST_EMULATOR)" \
-		$(PYTHON) $(GLASNOST_ROOT)/tools/run_example.py $(GLASNOST_EXAMPLE)
+		$(PYTHON) $(GLASNOST_ROOT)/tools/glasnost/run_example.py $(GLASNOST_EXAMPLE)
 
 clean:
 	rm -rf $(GLASNOST_BUILD)

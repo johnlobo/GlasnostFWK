@@ -1,8 +1,8 @@
 {
   "hash": "c561b13072c7af4a2bf61fc158edbdb7987228e7a36eb6c6c8215686ebdfeb63",
   "outputs": {
-    "generated/assets.inc": "5f83e4a4ca91d1a0fab5bcb3f155a02f1f42eb70c98a392f79aa5806a13ba1b5",
-    "generated/assets.s": "4862f9d63f10b0e93f28be489b06e878515bdd828210dc4c32958cc8e88a7275"
+    "generated/assets.inc": "198e5e23386cd69d7ea5deb306e7b3b36f8461a63f2d63688f8e14498da74349",
+    "generated/assets.s": "9e6b68965f460aa9ee372859268327293da9152ef35093fa358d8128e4dd846b"
   },
   "sources": {
     "palette.json": "f3c61ccf0203dddedbebdea707dd639bd4c6d56a309686072425a911399ac582",

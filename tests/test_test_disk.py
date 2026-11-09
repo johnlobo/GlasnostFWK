@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools import build_test_disk
+from tools.build import build_test_disk
 
 
 class TestDiskTests(unittest.TestCase):

@@ -17,7 +17,7 @@
 
 ## Resultados (CPC 6128, perfil estándar 160x200)
 
-> **Medido el 2026-11-06** con `tools/measure_perf.py` sobre el código actual
+> **Medido el 2026-11-06** con `tools/dev/measure_perf.py` sobre el código actual
 > (CPC 6128). Sustituye a la serie histórica anterior al render CPCTelera Next:
 > el tilemap usa las rutas `cpct_drawTileAligned*_f_asm`, el enmascarado usa la
 > transparencia configurable de color clave y el lote usa `ecs_render`.
@@ -69,7 +69,7 @@ Un frame a 50 Hz son `79872` T-estados. Referencias útiles:
 Pregunta: ¿puede `ecs_render` dejar de guardar un buffer de fondo por entidad y
 repintar en su lugar los tiles que tocó cada sprite que se movió (cola de tiles
 sucios con deduplicación, `fwk_tilemap_render_cell` por tile)? Medido el
-2026-11-06 con `tools/measure_perf.py` (CPC 6128, 500 llamadas por escena), con
+2026-11-06 con `tools/dev/measure_perf.py` (CPC 6128, 500 llamadas por escena), con
 los cuatro sprites móviles de `platformer` (uno de 8x8 y tres de 4x8) sobre un
 mapa de tiles de 4 bytes x 8 líneas. El parche del spike no está en el
 repositorio; se conserva fuera de él como `spike-tile-repaint.patch`.

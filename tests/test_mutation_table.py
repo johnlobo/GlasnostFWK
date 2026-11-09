@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from tools.mutate_platformer import MUTATIONS, code_only, spans, strip_comment
+from tools.dev.mutate_platformer import MUTATIONS, code_only, spans, strip_comment
 
 ROOT = Path(__file__).resolve().parents[1]
 

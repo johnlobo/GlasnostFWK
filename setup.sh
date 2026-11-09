@@ -19,10 +19,10 @@ echo "==> [1/5] Dependencias del sistema"
 "$GLASNOST" install-deps --yes
 
 # 2. Toolchain (CPCTelera Next + SDCC, compilado desde fuente) e img2cpc
-# (incluido en tools/img2cpc, sin dependencia de FreeImage).
+# (incluido en tools/build/img2cpc, sin dependencia de FreeImage).
 echo "==> [2/5] Toolchain"
 "$GLASNOST" install-toolchain
-make -C "$ROOT/tools/img2cpc" -j4
+make -C "$ROOT/tools/build/img2cpc" -j4
 
 # 3. Verificación
 echo "==> [3/5] Verificación"

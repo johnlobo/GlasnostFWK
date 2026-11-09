@@ -5,7 +5,7 @@ import unittest
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
-from tools import import_assets
+from tools.build import import_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORMER = ROOT / "examples" / "platformer"

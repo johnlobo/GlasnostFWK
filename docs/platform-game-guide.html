@@ -133,7 +133,7 @@ cp -r examples/platformer/assets examples/mi_plataformas/assets</code></pre>
   }
 }</code></pre>
   <p>El bloque <code>ecs</code> fija el formato de las coordenadas y los componentes de las entidades. <code>RENDER</code> está siempre presente y <code>MOTION</code> se inserta como dependencia de <code>input</code>, <code>platform</code> y <code>behavior</code>. Los sistemas de movimiento y behavior exigen coordenadas <code>u8</code>, y el componente <code>platform</code> necesita <code>core/ecs_platform.s</code> cuando <code>core/ecs_motion.s</code> está seleccionado; el constructor rechaza las combinaciones incoherentes. Para ver el layout resuelto (componentes, campos y offsets) antes de compilar:</p>
-  <pre><code>python3 tools/gen_ecs_profile.py examples/mi_plataformas/example.json \
+  <pre><code>python3 tools/build/gen_ecs_profile.py examples/mi_plataformas/example.json \
   --output examples/mi_plataformas/generated/ecs_profile.inc --preview</code></pre>
   <p><code>game_sources</code> debe incluir <code>main.s</code>. <code>transparency.pen=0</code> habilita el renderer transparente y coincide con el fondo de la fuente incorporada. Las rutas son relativas al directorio del ejemplo y el constructor rechaza rutas que escapen de él. <code>amsdos_name</code> se usa al integrar el BIN en el DSK común: debe contener entre uno y ocho caracteres AMSDOS válidos.</p>
   <figure>
@@ -169,7 +169,7 @@ WIN_SCORE     = 4</code></pre>
   <p>El campo <code>type</code> de cada entidad es un byte libre del juego: las reglas lo usan para distinguir una moneda de la puerta dentro de un mismo callback de colisión. El ejemplo distribuido mantiene una actualización de lógica por frame de vídeo (dos en el peor caso medido), pero eso no es una garantía general de rendimiento: mida de nuevo si cambia el número, tamaño o tipo de entidades.</p>
 
   <h2 id="datos" class="page-break"><span class="step">4</span> Preparar mapa, tiles y sprites</h2>
-  <div class="note"><strong>En el ejemplo distribuido.</strong> Los tiles, sprites y mapas de <code>examples/platformer</code> no se escriben a mano: viven en <code>assets/src/*.png</code> y <code>assets/src/level.tmx</code>. <code>make</code> ejecuta <code>tools/import_assets.py</code> y solo convierte cuando cambian los originales; el resultado se ensambla desde <code>assets/generated/assets.s</code>. Los fragmentos de esta sección muestran el formato que produce el pipeline y sirven para entender los datos, pero no hace falta copiarlos.</div>
+  <div class="note"><strong>En el ejemplo distribuido.</strong> Los tiles, sprites y mapas de <code>examples/platformer</code> no se escriben a mano: viven en <code>assets/src/*.png</code> y <code>assets/src/level.tmx</code>. <code>make</code> ejecuta <code>tools/build/import_assets.py</code> y solo convierte cuando cambian los originales; el resultado se ensambla desde <code>assets/generated/assets.s</code>. Los fragmentos de esta sección muestran el formato que produce el pipeline y sirven para entender los datos, pero no hace falta copiarlos.</div>
   <h3>4.1 Mapa y tipos de colisión</h3>
   <p>El mapa contiene identificadores de tile en orden de filas. Otra tabla traduce cada identificador a <code>FWK_TILE_PASSABLE</code>, <code>FWK_TILE_SOLID</code> o <code>FWK_TILE_ONE_WAY</code>. El ejemplo usa las rutinas nativas de CPCTelera Next con tiles de 4 bytes por 8 scanlines: 8x8 píxeles en Mode 0 y 20 columnas para cubrir la pantalla.</p>
   <pre><code>.include "cpctelera.h.s"
@@ -378,7 +378,7 @@ bindings:
 
   <h2 id="construir" class="page-break"><span class="step">9</span> Construir y ejecutar</h2>
   <h3>9.1 Construcción aislada</h3>
-  <pre><code>python3 tools/build_examples.py mi_plataformas</code></pre>
+  <pre><code>python3 tools/build/build_examples.py mi_plataformas</code></pre>
   <p>El constructor valida las fuentes y módulos, genera la configuración de vídeo, prepara <code>build/mi_plataformas</code> y ejecuta su Makefile CPCTelera. Los artefactos principales quedan en:</p>
   <pre><code>build/mi_plataformas/obj/mi_plataformas.bin
 build/mi_plataformas/mi_plataformas.cdt
@@ -398,8 +398,8 @@ build/mi_plataformas/selected-modules.json</code></pre>
   <p>La construcción aislada no añade automáticamente un proyecto nuevo a <code>make examples</code>. Para convertirlo en ejemplo mantenido por el repositorio:</p>
   <ol>
     <li>Añada <code>mi_plataformas</code> a <code>EXAMPLES</code> en el Makefile raíz.</li>
-    <li>Añádalo a la lista predeterminada de <code>tools/build_test_disk.py</code>.</li>
-    <li>Si debe distribuirse en releases, añádalo a la lista correspondiente de <code>tools/package_release.py</code>.</li>
+    <li>Añádalo a la lista predeterminada de <code>tools/build/build_test_disk.py</code>.</li>
+    <li>Si debe distribuirse en releases, añádalo a la lista correspondiente de <code>tools/dev/package_release.py</code>.</li>
     <li>Documente el ejemplo en el manual y añada pruebas host/smoke apropiadas.</li>
     <li>Ejecute <code>make examples</code>.</li>
   </ol>
@@ -440,7 +440,7 @@ python3 -m json.tool build/tests/catalog.json | less</code></pre>
 
   <h3>11.3 Validación proporcionada por el repositorio</h3>
   <pre><code>python3 -m unittest discover -s tests -v
-python3 tools/build_examples.py platformer
+python3 tools/build/build_examples.py platformer
 python3 tests/emulator_smoke.py platformer --model 6128
 python3 tests/emulator_smoke.py platformer --model 464</code></pre>
   <p>La última pareja depende de que el entorno tenga configurado el emulador empleado por el smoke. Un resultado correcto confirma el recorrido automatizado que codifique la prueba; no demuestra todas las rutas jugables posibles.</p>
@@ -450,7 +450,7 @@ python3 tests/emulator_smoke.py platformer --model 464</code></pre>
   <pre><code>make platform-guide PYTHON=.venv-docs/bin/python</code></pre>
   <p>Para regenerar imágenes sin recompilar, solo si ya existen artefactos actuales:</p>
   <pre><code>.venv-docs/bin/python docs/images/platformer/generate_captures.py --skip-build
-.venv-docs/bin/python tools/build_manual.py \
+.venv-docs/bin/python tools/dev/build_manual.py \
   --html docs/platform-game-guide.html \
   --pdf docs/platform-game-guide.pdf \
   --checksum docs/platform-game-guide.sha256</code></pre>

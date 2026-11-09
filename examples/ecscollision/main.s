@@ -1,5 +1,5 @@
 ;; Emulator harness for fwk_ecs_collide.
-;; Replays the scenario generated from tools/ecs_collision_model.py and records
+;; Replays the scenario generated from tools/build/ecs_collision_model.py and records
 ;; what the routine did (result, CONTACT byte, callback arguments) in
 ;; ecscollision_log; tests/emulator_smoke.py compares it with the model.
 .module example_ecscollision

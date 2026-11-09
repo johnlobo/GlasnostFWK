@@ -20,7 +20,7 @@ assets/
     └── pipeline.json    hashes de fuentes y salidas
 ```
 
-`tools/build_examples.py` copia esta carpeta en `src/assets` del proyecto
+`tools/build/build_examples.py` copia esta carpeta en `src/assets` del proyecto
 generado (`build/platformer/`). Allí:
 
 - los archivos `.s` se ensamblan automáticamente, sin tocar `example.json`;
@@ -29,7 +29,7 @@ generado (`build/platformer/`). Allí:
 
 ## Conversión incremental
 
-`make` ejecuta `tools/import_assets.py` antes de compilar. El pipeline calcula
+`make` ejecuta `tools/build/import_assets.py` antes de compilar. El pipeline calcula
 un SHA-256 del manifiesto, de la paleta y de cada PNG/TMX. Si coincide con
 `generated/pipeline.json` y las salidas siguen intactas, **no ejecuta ninguna
 herramienta**:
@@ -47,12 +47,12 @@ original, sí necesita las herramientas instaladas.
 
 ## Herramientas
 
-El pipeline usa `img2cpc` incluido en el framework (`tools/img2cpc`, sin
+El pipeline usa `img2cpc` incluido en el framework (`tools/build/img2cpc`, sin
 FreeImage; `./setup.sh` ya lo compila) y `zx7b` de la revisión fijada de
 CPCTelera Next:
 
 ```sh
-make -C tools/img2cpc                       # PNG -> datos Mode 0
+make -C tools/build/img2cpc                       # PNG -> datos Mode 0
 make -C "$CPCT_NEXT_PATH/tools/zx7b"        # compresión opcional
 ```
 
