@@ -18,6 +18,7 @@ import dataclasses
 import fcntl
 import json
 import os
+import platform as platform_module
 import re
 import shutil
 import subprocess
@@ -27,6 +28,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import emulator_setup as emu  # noqa: E402
 import glasnost_project as gp  # noqa: E402
 import glasnost_update as gu  # noqa: E402
 from glasnost_i18n import LANGS, pick_language, say  # noqa: E402
@@ -622,13 +624,155 @@ def cmd_run(args, root: Path, lang: str, runner: Runner) -> int:
     if folder:
         if example:
             raise CliError(say(lang, "proj.no_examples", path=folder))
+        ensure_emulator(args, root, lang, extra)
         return runner([sys.executable, "tools/run_example.py", "--project", str(folder), *extra],
                       cwd=root, env=sdk_env(toolchain), check=False).returncode
     if not example:
         raise CliError(say(lang, "cmd.run_needs_example"))
     check_examples(root, [example], lang)
+    ensure_emulator(args, root, lang, extra)
     return runner([sys.executable, "tools/run_example.py", example, *extra],
                   cwd=root, env=sdk_env(toolchain), check=False).returncode
+
+
+# ------------------------------------------------------------- emulator
+
+def emulator_given(extra: Sequence[str]) -> bool:
+    """True when the user already chose an emulator for this run (flag or environment)."""
+    return (any(token == "--emulator" or token.startswith("--emulator=") for token in extra)
+            or bool(os.environ.get("GLASNOST_EMULATOR", "").strip()))
+
+
+def ensure_emulator(args, root: Path, lang: str, extra: Sequence[str]) -> None:
+    """`glasnost run` in a terminal with no emulator configured: offer to set one up, once.
+
+    Without a terminal nothing is asked: run_example.py keeps its old unattended behaviour.
+    """
+    if emulator_given(extra) or emu.configured(root) or emu.declined(root) or not args.interactive:
+        return
+    emulator_menu(args, lang, root, intro=None)
+
+
+def emulator_saved(lang: str, root: Path, path: Path) -> None:
+    print(say(lang, "emu.saved", path=path))
+    if emu.kind_of(path) == "rvm":
+        print(say(lang, "emu.rvm_args_note"))
+
+
+def emulator_menu(args, lang: str, root: Path, intro: str | None) -> bool:
+    """Ask which emulator to use and save the answer. True when one was saved."""
+    stale = emu.stale_path(root)
+    saved = emu.configured(root) is not None
+    print(intro or (say(lang, "emu.stale", path=stale) if stale else say(lang, "emu.none")))
+    key = emu.platform_key()
+    for _ in range(5):
+        print(say(lang, "emu.menu_use"))
+        if key:
+            print(say(lang, "emu.menu_download", version=emu.RVM_VERSION, platform=key,
+                      size=round(emu.RVM_ASSETS[key]["size"] / 1e6)))
+        else:
+            print(say(lang, "emu.menu_no_download",
+                      platform=f"{platform_module.system()} {platform_module.machine()}"))
+        print(say(lang, "emu.menu_keep" if saved else "emu.menu_skip"))
+        if not saved:
+            print(say(lang, "emu.menu_never"))
+        try:
+            answer = args.ask(say(lang, "emu.ask_choice")).strip() or "3"
+        except EOFError:
+            return False
+        if answer == "1" and choose_installed_emulator(args, lang, root):
+            return True
+        if answer == "2" and key and download_emulator(lang, root):
+            return True
+        if answer == "3":
+            print(say(lang, "emu.unchanged" if saved else "emu.skipped"))
+            return False
+        if answer == "4" and not saved:
+            emu.save_declined(root)
+            print(say(lang, "emu.declined"))
+            return False
+        if answer not in ("1", "2", "3", "4") or (answer == "2" and not key) or (answer == "4" and saved):
+            print(say(lang, "emu.invalid", answer=answer), file=sys.stderr)
+    return False
+
+
+def choose_installed_emulator(args, lang: str, root: Path) -> bool:
+    found = emu.candidates(root)
+    if found:
+        print(say(lang, "emu.cands_title"))
+        for number, path in enumerate(found, 1):
+            print(say(lang, "emu.cand_line", number=number, path=path))
+    prompt = say(lang, "emu.ask_cand" if found else "emu.ask_path")
+    for _ in range(5):
+        try:
+            answer = args.ask(prompt).strip()
+        except EOFError:
+            return False
+        if not answer:
+            return False
+        try:
+            if answer.isdigit() and 1 <= int(answer) <= len(found):
+                path = found[int(answer) - 1]
+            else:
+                path = emu.normalize(answer)
+        except emu.SetupError as error:
+            print(say(lang, error.key, **error.values), file=sys.stderr)
+            continue
+        emu.save_emulator(root, path)
+        emulator_saved(lang, root, path)
+        return True
+    return False
+
+
+def download_emulator(lang: str, root: Path) -> bool:
+    last = [-1]
+
+    def progress(done: int, total: int) -> None:
+        percent = min(100, done * 100 // max(total, 1)) // 10 * 10
+        if percent != last[0]:
+            last[0] = percent
+            print(say(lang, "emu.progress", percent=percent), flush=True)
+
+    def log(key: str, values: dict) -> None:
+        print(say(lang, key, **values), flush=True)
+
+    try:
+        path = emu.install_rvm(root, progress=progress, log=log)
+    except emu.SetupError as error:
+        print(say(lang, error.key, **error.values), file=sys.stderr)
+        return False
+    emulator_saved(lang, root, path)
+    return True
+
+
+def cmd_emulator(args, root: Path, lang: str, runner: Runner) -> int:
+    if args.reset:
+        print(say(lang, "emu.reset_done" if emu.reset(root) else "emu.reset_none"))
+        return 0
+    try:
+        if args.set:
+            path = emu.normalize(args.set)
+            emu.save_emulator(root, path)
+            emulator_saved(lang, root, path)
+            return 0
+        if args.download:
+            if not download_emulator(lang, root):
+                return 1
+            return 0
+    except emu.SetupError as error:
+        raise CliError(say(lang, error.key, **error.values)) from error
+    saved = emu.configured(root)
+    if saved:
+        status = say(lang, "emu.status", path=saved, kind=emu.kind_of(saved))
+    elif emu.declined(root):
+        status = say(lang, "emu.status_declined")
+    else:
+        status = say(lang, "emu.status_none")
+    if not args.interactive:
+        print(status)
+        return 0
+    emulator_menu(args, lang, root, intro=status)
+    return 0
 
 
 # --------------------------------------------------------- new / config
@@ -1101,6 +1245,12 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     run.add_argument("rest", nargs=argparse.REMAINDER, metavar="[example] [-- options]",
                      help=say(lang, "help.rest"))
     run.set_defaults(func=cmd_run)
+
+    emulator = sub.add_parser("emulator", help=say(lang, "help.emulator"))
+    emulator.add_argument("--set", metavar="PATH", help=say(lang, "help.emulator_set"))
+    emulator.add_argument("--download", action="store_true", help=say(lang, "help.emulator_download"))
+    emulator.add_argument("--reset", action="store_true", help=say(lang, "help.emulator_reset"))
+    emulator.set_defaults(func=cmd_emulator)
 
     sub.add_parser("path", help=say(lang, "help.path")).set_defaults(func=cmd_path)
     sub.add_parser("version", help=say(lang, "help.version")).set_defaults(func=cmd_version)

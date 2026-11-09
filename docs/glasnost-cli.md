@@ -21,7 +21,8 @@ repositorio salvo lo que se indica en «Alcance».
 | `glasnost projects [--dir D]` | Lista los proyectos de `projects/` con su rama Git (`*` si tienen cambios) y si están al día. |
 | `glasnost build [ejemplo...]` | Fuera de un proyecto: `make generate` y `tools/build_examples.py` con el toolchain resuelto (todos los ejemplos si no se nombra ninguno). Dentro de un proyecto: compila ese proyecto. |
 | `glasnost test` | Fuera de un proyecto: `make test`. Dentro: comprueba la coherencia del proyecto y que compila. |
-| `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/run_example.py`). Las opciones del emulador van tras `--`. |
+| `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/run_example.py`). Las opciones del emulador van tras `--`. Si no hay emulador configurado y estás en una terminal, te ofrece configurar uno (ver «Emulador»). |
+| `glasnost emulator [--set RUTA] [--download] [--reset]` | Muestra el emulador que usa `run` y, en una terminal, permite cambiarlo. `--set` guarda un ejecutable (o un `.app` de macOS), `--download` baja Retro Virtual Machine, `--reset` borra la configuración. |
 | `glasnost toolchains` | Lista los toolchains instalados (commit, completo o parcial, tamaño) y marca el que fija el lockfile. |
 | `glasnost clean-toolchains [--yes] [--keep REV]` | Sin `--yes` solo muestra qué borraría. Con `--yes` borra todos los toolchains salvo el del lockfile y los `--keep` (commit completo, repetible). |
 | `glasnost install-cli [--prefix DIR] [--dry-run] [--force]` | Crea el enlace simbólico `~/.local/bin/glasnost` hacia `bin/glasnost` de este SDK (sin `sudo`). Avisa si el directorio no está en el `PATH`. |
@@ -34,6 +35,49 @@ incorrecto, 130 interrumpido con Ctrl-C. Un error del sistema (carpeta no
 escribible, `git` o `make` ausentes) sale con 1 y mensaje traducido, sin
 traza. `build`, `test` y `run` devuelven el código de la herramienta que
 ejecutan.
+
+## Emulador
+
+`glasnost run` necesita un emulador de CPC. El orden con que se elige:
+
+1. `--emulator RUTA` tras `--` (solo esa ejecución).
+2. La variable `GLASNOST_EMULATOR`.
+3. El emulador guardado en `tools/emulators/emulator.json` (ignorado por git, dentro del
+   SDK: no toca tu `HOME` ni tu shell).
+4. Sin nada de lo anterior y en una terminal: `glasnost run` pregunta una vez.
+
+```
+No hay ningún emulador configurado para `glasnost run`.
+  1) Usar uno que ya tengo en este equipo
+  2) Descargar Retro Virtual Machine 2.1.20 para linux-x86_64 (~93 MB) en tools/emulators/
+  3) Ahora no: solo mostrar la ruta de la imagen
+  4) No volver a preguntar
+```
+
+- **1** lista los emuladores que encuentra (AmSpiriT junto al repositorio, los del `PATH`,
+  las `.app` de `/Applications` y `~/Applications`, lo ya descargado en `tools/emulators/`) y
+  admite escribir otra ruta; un `.app` de macOS se resuelve a su ejecutable.
+- **2** baja Retro Virtual Machine de su servidor oficial (`static.retrovm.org`) para tu
+  sistema (Linux x86_64 o arm64, Windows x64, macOS), comprueba su SHA-256 contra el fijado en
+  `tools/emulator_setup.py` (una descarga distinta o corrupta no se instala), la deja en
+  `tools/emulators/retro-virtual-machine-<versión>-<plataforma>/` y la guarda como emulador.
+  En macOS monta el `.dmg` con `hdiutil`, copia el `.app` y lo desmonta.
+- **3** no guarda nada; se volverá a preguntar. **4** (solo si no hay ninguno guardado) deja de
+  preguntar: sin terminal, o tras elegirla, `run` sigue usando lo que encuentre y si no, imprime
+  la ruta de la imagen, hasta que ejecutes `glasnost emulator`. Con un emulador ya guardado,
+  `glasnost emulator` no ofrece olvidarlo (para eso, `--reset`).
+
+La siguiente vez `glasnost run` (y `make run`) usa el emulador guardado sin preguntar nada. Sin
+terminal (CI, `make run` con la entrada redirigida) no se pregunta y se mantiene el
+comportamiento anterior: se usa lo que se encuentre o se imprime la ruta de la imagen. Si el
+emulador guardado desaparece, se avisa y se vuelve a ofrecer. Las rutas dentro del SDK se
+guardan relativas, así que mover o copiar el SDK no las rompe.
+
+Cómo se lanza cada tipo: MacAPE lleva sus opciones propias (`/A`, `/SYM:`); cualquier otro
+recibe la imagen como único argumento. **Los argumentos de Retro Virtual Machine no están
+verificados** (su línea de comandos no está documentada en su web); se pueden fijar en
+`emulator.json` con `"args": ["--b=cpc6128", "--i={image}"]`, donde `{image}` es el CDT/DSK.
+BluePixel aún no se ofrece: no tiene releases en GitHub que descargar.
 
 ## Lockfile
 

@@ -13,3 +13,4 @@ __pycache__/
 projects/
 tools/img2cpc/bin/
 tools/img2cpc/obj/
+tools/emulators/
