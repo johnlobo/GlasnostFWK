@@ -93,12 +93,6 @@ _game_fail_loop:
     call fwk_system_wait_frame
     jr _game_fail_loop
 
-;; Continues on success; on error stops the game.
-_game_expect_ok:
-    ret nc
-    pop hl
-    jp _game_fail
-
 ;; In: IX=manager, HL=spawn row. Out: IY=entity. Builds a template from the row.
 _game_spawn:
     push hl
@@ -243,7 +237,7 @@ _main::
     ld ix, #game_map_desc
     ld iy, #game_view
     call fwk_tilemap_render_view
-    call _game_expect_ok
+    GAME_CHECK_OK                   ; carry = invalid map geometry: nothing was drawn
 
     ld b, #GAME_TEXT_Y_WELCOME
     ld hl, #_game_str_welcome
@@ -257,66 +251,54 @@ _main::
 
     ld ix, #game_manager
     call fwk_ecs_manager_init
-    call _game_expect_ok
     ld ix, #game_scene
     call fwk_ecs_render_reset
-    call _game_expect_ok
 
     ld ix, #game_manager
     ld hl, #_game_row_player
     call _game_spawn
-    call _game_expect_ok
     ld (game_player), iy
     ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT
     ld ix, #game_manager
     ld hl, #_game_row_drone0
     call _game_spawn
-    call _game_expect_ok
     ld ix, #game_manager
     ld hl, #_game_row_drone1
     call _game_spawn
-    call _game_expect_ok
     ld ix, #game_manager
     ld hl, #_game_row_drone2
     call _game_spawn
-    call _game_expect_ok
 
     ld a, #0x5A
     ld (game_status), a
 
+    ;; The carry of the ECS and renderer calls below is not checked. To catch errors while
+    ;; developing, set GAME_DEBUG_CHECKS = 1 in common.inc and put GAME_CHECK_OK right after
+    ;; the calls you want to guard; on error the game stops and game_status holds the code.
 game_frame:
     call fwk_input_update
     ld ix, #game_manager
     call fwk_ecs_system_behavior
-    call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_input        ; LEFT and RIGHT set the horizontal velocity
-    call _game_expect_ok
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_steer              ; UP and DOWN set the vertical velocity
     call fwk_ecs_system_run
-    call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_motion_u8    ; velocity moves every entity
-    call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_animation    ; every animation counts down and changes frame
-    call _game_expect_ok
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_clamp
     call fwk_ecs_system_run
-    call _game_expect_ok
     ;; Selective render: find what changed before VSYNC, touch video RAM after it.
     ld ix, #game_scene
     call fwk_ecs_render_prepare
-    call _game_expect_ok
     call fwk_system_wait_frame
     ld ix, #game_scene
     call fwk_ecs_render_restore
-    call _game_expect_ok
     ld ix, #game_scene
     call fwk_ecs_render_draw
-    call _game_expect_ok
     jp game_frame

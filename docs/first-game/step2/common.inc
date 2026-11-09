@@ -22,6 +22,17 @@
 .globl game_drone_pixels, game_drone_pixels2
 .globl game_tileset, game_map, game_map_packed
 
+;; Comprobacion defensiva de carry tras una llamada al framework.
+;; Desactivada por defecto (cero ciclos). Para activarla en desarrollo:
+;;   1. Pon GAME_DEBUG_CHECKS = 1
+;;   2. Anade GAME_CHECK_OK justo despues de cada llamada a fwk_* que quieras comprobar.
+GAME_DEBUG_CHECKS = 0
+.macro GAME_CHECK_OK
+.if GAME_DEBUG_CHECKS
+    jp c, _game_fail
+.endif
+.endm
+
 ;; Actions the keyboard bindings produce. The first three are understood by the
 ;; framework input system (fwk_ecs_system_input); UP and DOWN are handled by
 ;; the steering system in main.s.

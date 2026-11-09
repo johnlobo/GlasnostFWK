@@ -302,14 +302,14 @@ más a `_game_spawn`, como en el ejercicio 2).
 
 ## 4. Las rutinas, en orden de lectura
 
-### `_game_fail` y `_game_expect_ok`: parar si algo falla
+### `_game_fail` y `GAME_CHECK_OK`: parar si algo falla
 
 <!-- codigo: main.s -->
 ```asm
 ;; ----------------------------------------------------------------------------
 ;; _game_fail
 ;;   Stops the game: stores the error code and waits frames forever.
-;;   In : A=ABI error code (from _game_expect_ok).
+;;   In : A=ABI error code (from GAME_CHECK_OK).
 ;;   Out: game_status=A. Never returns.
 ;;   Clobbers: all (never returns)
 ;;   Notes: Entered by jp only, so the stack of the failing caller is abandoned. It keeps
@@ -323,34 +323,30 @@ _game_fail_loop:
     jr _game_fail_loop
 ```
 
-<!-- codigo: main.s -->
+<!-- codigo: common.inc -->
 ```asm
-;; ----------------------------------------------------------------------------
-;; _game_expect_ok
-;;   Error guard used after each framework call that reports errors through the carry
-;;   (ECS, renderer): continues on success, stops the game on error.
-;;   In : carry from the call just made (clear = ok, set = error); A=error code when set.
-;;   Out: success: returns with carry clear and A untouched. Error: does not return.
-;;   Clobbers: none (on the error path HL is overwritten, but that path never returns)
-;;   Notes: On error it drops its own return address (pop hl) and jumps to _game_fail.
-;;          Call it right after the framework call: anything in between may change the carry.
-;; ----------------------------------------------------------------------------
-_game_expect_ok:
-    ret nc
-    pop hl
-    jp _game_fail
+;; Comprobacion defensiva de carry tras una llamada al framework.
+;; Desactivada por defecto (cero ciclos). Para activarla en desarrollo:
+;;   1. Pon GAME_DEBUG_CHECKS = 1
+;;   2. Anade GAME_CHECK_OK justo despues de cada llamada a fwk_* que quieras comprobar.
+GAME_DEBUG_CHECKS = 0
+.macro GAME_CHECK_OK
+.if GAME_DEBUG_CHECKS
+    jp c, _game_fail
+.endif
+.endm
 ```
 
 Las rutinas de ECS y del renderizador devuelven un resultado en el flag de acarreo: acarreo
-limpio es éxito; acarreo puesto es error y `A` trae el código. `_game_expect_ok` se
-llama justo después de cada una: si el acarreo está limpio, vuelve sin tocar nada. Si está
-puesto, descarta su dirección de retorno (`pop hl`) y salta a `_game_fail`, que guarda el
-código en `game_status` y se queda esperando fotogramas para siempre. No hay manejo de
-errores más fino a propósito: en un juego de ejemplo, un error es un fallo de programación
-y lo útil es que se vea el código.
-
-La consecuencia en el contrato: `_game_expect_ok` no toca ningún registro en el camino de
-éxito, así que puedes llamarla con `A`, `IX` o `IY` vivos.
+limpio es éxito; acarreo puesto es error y `A` trae el código. El juego **no** lo comprueba:
+`GAME_DEBUG_CHECKS` vale 0 y `GAME_CHECK_OK` no genera ni un byte, así que no cuesta ciclos
+ni memoria. Para depurar, pon `GAME_DEBUG_CHECKS = 1` en `common.inc` y escribe
+`GAME_CHECK_OK` justo después de la llamada que quieras vigilar (antes de tocar nada que
+cambie el acarreo). Con la comprobación activa, un acarreo puesto salta (`jp c`) a
+`_game_fail`, que guarda el código en `game_status` y se queda esperando fotogramas para
+siempre. No hay manejo de errores más fino a propósito: en un juego de ejemplo, un error es
+un fallo de programación y lo útil es que se vea el código. Como es un salto y no una
+llamada, no toca ningún registro en el camino de éxito.
 
 ### `_game_spawn`: de una fila a una entidad
 
@@ -737,29 +733,23 @@ _main::
     ;; Empty manager and renderer, then spawn the player and the three drones.
     ld ix, #game_manager
     call fwk_ecs_manager_init
-    call _game_expect_ok
     ld ix, #game_scene
     call fwk_ecs_render_reset
-    call _game_expect_ok
 
     ld ix, #game_manager
     ld hl, #_game_row_player
     call _game_spawn
-    call _game_expect_ok
     ld (game_player), iy            ; the collision pass needs the player's address
     ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT   ; LEFT/RIGHT steer it
     ld ix, #game_manager
     ld hl, #_game_row_drone0
     call _game_spawn
-    call _game_expect_ok
     ld ix, #game_manager
     ld hl, #_game_row_drone1
     call _game_spawn
-    call _game_expect_ok
     ld ix, #game_manager
     ld hl, #_game_row_drone2
     call _game_spawn
-    call _game_expect_ok
 
     ld a, #0x5A
     ld (game_status), a             ; running: tests and the emulator wait for this
@@ -776,9 +766,10 @@ mano tras crear la entidad.
 
 `_main` hace todo el arranque una vez: sistema, vídeo, texto, paleta, teclado, pantalla
 negra, los tres textos, el *manager* y el renderizador vacíos, y las cuatro entidades.
-Después de cada llamada del framework que puede fallar (las de ECS y las del renderizador) va
-`_game_expect_ok`; las de arranque (`fwk_video_init`, `fwk_text_init`...) y `fwk_input_update` no
-devuelven error y no la llevan. Cuando termina, escribe `0x5A`
+Las llamadas del framework que pueden fallar (las de ECS y las del renderizador) no se
+comprueban por defecto; si quieres vigilarlas, pon `GAME_CHECK_OK` tras ellas (sección 4).
+Las de arranque (`fwk_video_init`, `fwk_text_init`...) y `fwk_input_update` no
+devuelven error. Cuando termina, escribe `0x5A`
 en `game_status`. Lo que sigue (el bucle) está en la sección 5.
 
 ## 5. Una pasada del bucle
@@ -790,44 +781,34 @@ game_frame:
     call fwk_input_update           ; read the keys once per frame
     ld ix, #game_manager
     call fwk_ecs_system_behavior
-    call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_input        ; LEFT and RIGHT set the horizontal velocity
-    call _game_expect_ok
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_steer              ; UP and DOWN set the vertical velocity
     call fwk_ecs_system_run
-    call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_motion_u8    ; velocity moves every entity
-    call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_animation    ; every animation counts down and changes frame
-    call _game_expect_ok
     ld ix, #game_manager
     ld bc, #ECS_C_INPUT
     ld hl, #_game_clamp
     call fwk_ecs_system_run
-    call _game_expect_ok
     ld ix, #game_manager             ; the player against every drone (collision + behavior)
     ld iy, (game_player)
     ld bc, #ECS_C_COLLISION | ECS_C_BEHAVIOR
     ld hl, #_game_drone_cb
     ld e, #GAME_CH_DRONE
     call fwk_ecs_collide
-    call _game_expect_ok
     ;; Selective render: find what changed before VSYNC, touch video RAM after it.
     ld ix, #game_scene
     call fwk_ecs_render_prepare
-    call _game_expect_ok
     call fwk_system_wait_frame
     ld ix, #game_scene
     call fwk_ecs_render_restore
-    call _game_expect_ok
     ld ix, #game_scene
     call fwk_ecs_render_draw
-    call _game_expect_ok
     call _game_hud_update            ; after the render: text goes over what it left
     jp game_frame
 ```
@@ -902,7 +883,6 @@ _game_row_drone3: GAME_ROW GAME_DRONE_COMPS, GAME_T_DRONE, 40, 160, 4, 8, game_d
     ld ix, #game_manager
     ld hl, #_game_row_drone3
     call _game_spawn
-    call _game_expect_ok
 ```
 
 Los comentarios de `main.s` y `common.inc` que hablan de «cuatro entidades» o «tres drones»
