@@ -234,6 +234,135 @@ class Download(Temp):
         self.assertIn("no route", str(raised.exception.values["reason"]))
 
 
+def release_json(assets, tag="v0.1.0") -> bytes:
+    return json.dumps({"tag_name": tag, "assets": assets}).encode()
+
+
+def asset_entry(name="BluePixel-0.1.0-macos-arm64.zip", size=10, sha="a" * 64, url="https://github.com/x/releases/download/v0.1.0/BluePixel-0.1.0-macos-arm64.zip"):
+    return {"name": name, "size": size, "digest": f"sha256:{sha}", "browser_download_url": url}
+
+
+class BluePixel(Temp):
+    def bluepixel_zip(self) -> bytes:
+        return zip_bytes({
+            "BluePixel.app/Contents/MacOS/BluePixel": b"\xcf\xfa",
+            "BluePixel.app/Contents/Resources/AppIcon.icns": b"i",
+            "__MACOSX/BluePixel.app/Contents/MacOS/._BluePixel": b"junk",
+        })
+
+    def opener_for(self, data: bytes, assets=None):
+        entry = asset_entry(size=len(data), sha=hashlib.sha256(data).hexdigest())
+
+        def opener(url):
+            if url == emu.BLUEPIXEL_API:
+                return FakeResponse(release_json(assets if assets is not None else [entry]))
+            if url == entry["browser_download_url"]:
+                return FakeResponse(data)
+            raise AssertionError(f"unexpected url {url}")
+
+        return opener
+
+    def test_the_latest_release_asset_for_apple_silicon_is_picked_with_its_digest(self):
+        other = asset_entry(name="BluePixel-0.1.0-linux.tar.gz")
+        info = emu.latest_bluepixel(lambda url: FakeResponse(release_json([other, asset_entry(sha="b" * 64)], "v0.2.0")))
+        self.assertEqual((info["tag"], info["sha256"], info["name"]), ("v0.2.0", "b" * 64, "BluePixel-0.1.0-macos-arm64.zip"))
+
+    def test_a_release_without_a_digest_is_refused(self):
+        entry = asset_entry()
+        del entry["digest"]
+        with self.assertRaises(emu.SetupError) as raised:
+            emu.latest_bluepixel(lambda url: FakeResponse(release_json([entry])))
+        self.assertEqual(raised.exception.key, "emu.no_digest")
+
+    def test_a_release_with_no_macos_zip_is_an_error(self):
+        with self.assertRaises(emu.SetupError) as raised:
+            emu.latest_bluepixel(lambda url: FakeResponse(release_json([asset_entry(name="notes.txt")])))
+        self.assertEqual(raised.exception.key, "emu.no_bluepixel_asset")
+
+    def test_api_failures_and_garbage_are_setup_errors(self):
+        def offline(url):
+            raise OSError("offline")
+
+        for opener in (offline, lambda url: FakeResponse(b"<html>rate limited</html>")):
+            with self.subTest(), self.assertRaises(emu.SetupError) as raised:
+                emu.latest_bluepixel(opener)
+            self.assertEqual(raised.exception.key, "emu.download_failed")
+
+    def test_install_extracts_the_app_ignores_finder_junk_and_saves_it(self):
+        data = self.bluepixel_zip()
+        exe = emu.install_bluepixel(self.root, "Darwin", "arm64", opener=self.opener_for(data))
+        self.assertEqual(exe.name, "BluePixel")
+        self.assertIn("BluePixel.app/Contents/MacOS", str(exe))
+        self.assertTrue(exe.stat().st_mode & stat.S_IXUSR)
+        self.assertFalse(list(self.root.rglob("__MACOSX")))
+        config = json.loads(emu.config_path(self.root).read_text())
+        self.assertEqual((config["kind"], config["version"]), ("bluepixel", "v0.1.0"))
+        self.assertEqual(emu.configured(self.root), exe)
+        self.assertEqual(emu.kind_of(exe), "bluepixel")
+
+    def test_a_tampered_zip_is_rejected(self):
+        data = self.bluepixel_zip()
+        entry = asset_entry(size=len(data), sha="0" * 64)
+
+        def opener(url):
+            return FakeResponse(release_json([entry]) if url == emu.BLUEPIXEL_API else data)
+
+        with self.assertRaises(emu.SetupError) as raised:
+            emu.install_bluepixel(self.root, "Darwin", "arm64", opener=opener)
+        self.assertEqual(raised.exception.key, "emu.sha_mismatch")
+        self.assertIsNone(emu.configured(self.root))
+        self.assertFalse(list((self.root / "tools" / "emulators").rglob("BluePixel")))
+
+    def test_a_second_install_does_not_download_the_zip_again(self):
+        data = self.bluepixel_zip()
+        first = emu.install_bluepixel(self.root, "Darwin", "arm64", opener=self.opener_for(data))
+        entry_url = asset_entry()["browser_download_url"]
+        api_only = self.opener_for(data)
+
+        def opener(url):
+            if url == entry_url:
+                raise AssertionError("downloaded again")
+            return api_only(url)
+
+        self.assertEqual(emu.install_bluepixel(self.root, "Darwin", "arm64", opener=opener), first)
+
+    def test_only_apple_silicon_macs_can_download_it(self):
+        for system, machine in (("Linux", "x86_64"), ("Darwin", "x86_64"), ("Windows", "AMD64")):
+            with self.subTest(system, machine=machine), self.assertRaises(emu.SetupError) as raised:
+                emu.install_bluepixel(self.root, system, machine)
+            self.assertEqual(raised.exception.key, "emu.no_bluepixel_platform")
+        self.assertTrue(emu.bluepixel_supported("Darwin", "arm64"))
+
+    def test_it_is_launched_like_macape_with_autorun_and_symbols(self):
+        exe = make_executable(self.root / "BluePixel.app" / "Contents" / "MacOS" / "BluePixel")
+        noi = self.tmp / "build" / "a" / "obj" / "a.noi"
+        noi.parent.mkdir(parents=True)
+        noi.write_text("x")
+        self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp / "build", "a", self.root),
+                         [str(exe), "/i/a.dsk", "/A", f"/SYM:{noi}"])
+        self.assertEqual(emu.build_command(str(exe), Path("/i/a.cdt"), self.tmp / "build", "zzz", self.root),
+                         [str(exe), "/i/a.cdt"])
+
+
+class DefaultOpener(unittest.TestCase):
+    """The real urlopen is patched: we check what would be sent, not the network."""
+
+    def sent(self, url: str):
+        with mock.patch.object(emu.urllib.request, "urlopen") as urlopen:
+            emu.default_opener(url)
+        return urlopen.call_args.args[0]
+
+    def test_the_github_api_gets_its_accept_header_and_a_user_agent(self):
+        request = self.sent(emu.BLUEPIXEL_API)
+        self.assertEqual(request.get_header("Accept"), "application/vnd.github+json")
+        self.assertTrue(request.get_header("User-agent"))
+
+    def test_downloads_send_no_accept_header(self):
+        request = self.sent("https://static.retrovm.org/release/x.zip")
+        self.assertIsNone(request.get_header("Accept"))
+        self.assertTrue(request.get_header("User-agent"))
+
+
 class DownloadFailures(Temp):
     def test_a_dropped_connection_is_a_setup_error_and_leaves_no_part_file(self):
         class Dropping(FakeResponse):
@@ -374,17 +503,37 @@ class InstallRvm(Temp):
 
 
 class LaunchCommand(Temp):
-    def test_rvm_defaults_to_the_image_as_its_only_argument(self):
+    def rvm(self, image: str, name: str = "nave") -> list[str]:
         exe = make_executable(self.root / "RetroVirtualMachine")
         emu.save_emulator(self.root, exe, "rvm")
-        self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp, "a", self.root),
-                         [str(exe), "/i/a.dsk"])
+        return emu.build_command(str(exe), Path(image), self.tmp, name, self.root)[1:]
+
+    def test_rvm_gets_a_dsk_the_way_cpct_rvm_launches_it(self):
+        # tools/scripts/cpct_rvm: RVM -ns -b=<machine> -i= FILE -c=RUN"NAME"\n  (backslash-n is literal)
+        self.assertEqual(self.rvm("/i/nave.dsk"),
+                         ["-ns", "-b=cpc6128", "-i=", "/i/nave.dsk", '-c=RUN"nave"\\n'])
+
+    def test_rvm_gets_a_cdt_with_autoplay_and_warp(self):
+        self.assertEqual(self.rvm("/i/nave.cdt"),
+                         ["-ns", "-b=cpc464", "-i=", "/i/nave.cdt", "-p", "-w", '-c=RUN"\\n \\n'])
+
+    def test_rvm_gets_a_snapshot_with_no_command(self):
+        self.assertEqual(self.rvm("/i/nave.sna"), ["-ns", "-b=cpc464", "-s", "/i/nave.sna"])
+
+    def test_the_run_command_uses_the_first_eight_characters_of_the_name(self):
+        self.assertEqual(self.rvm("/i/platformer.dsk", "platformer")[-1], '-c=RUN"platform"\\n')
+
+    def test_rvm_is_not_given_a_symbols_file_because_none_is_known(self):
+        noi = self.tmp / "nave" / "obj" / "nave.noi"
+        noi.parent.mkdir(parents=True)
+        noi.write_text("x")
+        self.assertFalse([a for a in self.rvm("/i/nave.dsk") if "noi" in a.lower() or "sym" in a.lower()])
 
     def test_arguments_can_be_overridden_in_the_config(self):
         exe = make_executable(self.root / "RetroVirtualMachine")
-        emu.save_emulator(self.root, exe, "rvm", args=["--b=cpc6128", "--i={image}"])
-        self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp, "a", self.root),
-                         [str(exe), "--b=cpc6128", "--i=/i/a.dsk"])
+        emu.save_emulator(self.root, exe, "rvm", args=["--b=cpc6128", "--i={image}", "--run={name}"])
+        self.assertEqual(emu.build_command(str(exe), Path("/i/a.dsk"), self.tmp, "platformer", self.root),
+                         [str(exe), "--b=cpc6128", "--i=/i/a.dsk", "--run=platform"])
 
     def test_macape_keeps_its_special_arguments(self):
         exe = make_executable(self.tmp / "MacAPE")
@@ -397,6 +546,18 @@ class LaunchCommand(Temp):
     def test_any_other_emulator_gets_just_the_image(self):
         self.assertEqual(emu.build_command("/x/amspirit", Path("/i/a.cdt"), self.tmp, "a", self.root),
                          ["/x/amspirit", "/i/a.cdt"])
+
+    def test_symbols_are_passed_to_every_emulator_that_has_an_option_for_them(self):
+        noi = self.tmp / "build" / "a" / "obj" / "a.noi"
+        noi.parent.mkdir(parents=True)
+        noi.write_text("x")
+        for name in ("MacAPE", "BluePixel"):
+            for image, autorun in (("a.dsk", True), ("a.cdt", False)):
+                with self.subTest(name, image=image):
+                    exe = make_executable(self.tmp / name)
+                    command = emu.build_command(str(exe), Path("/i/" + image), self.tmp / "build", "a", self.root)
+                    self.assertIn(f"/SYM:{noi}", command)
+                    self.assertEqual("/A" in command, autorun)
 
     def test_the_config_of_another_emulator_does_not_leak_its_arguments(self):
         saved = make_executable(self.tmp / "saved")
@@ -543,7 +704,7 @@ class RunAsksOnce(Harness):
         self.assertEqual(code, 0)
         self.assertIn("Downloading https://u", out)
         self.assertIn("50%", out)
-        self.assertIn("unverified", out)   # the launch arguments of RVM are not verified
+        self.assertIn("cpct_rvm", out)   # RVM is launched like CPCtelera does; the note says it is unverified
         self.assertEqual(emu.configured(self.sdk.root), fake)
 
     def test_a_failed_download_goes_back_to_the_menu_and_run_still_proceeds(self):
@@ -604,6 +765,54 @@ class RunAsksOnce(Harness):
         _, out, _, asked = self.run_cli("run", "--project", str(project), answers=["3"])
         self.assertIn("No emulator is configured", out)
         self.assertEqual(len(asked), 1)
+
+
+class RunOffersBluePixelOnApple(Harness):
+    def test_the_menu_adds_bluepixel_before_skip_and_renumbers(self):
+        with mock.patch.object(emu, "bluepixel_supported", return_value=True):
+            _, out, _, asked = self.run_cli("run", "minimal", answers=["4"])
+        self.assertIn("  3) Download the latest BluePixel (johnlobo/BluePixel on GitHub, Apple Silicon)", out)
+        self.assertIn("  4) Not now", out)
+        self.assertIn("  5) Do not ask again", out)
+        self.assertIn("(default 4)", asked[0])
+
+    def test_choosing_it_installs_and_saves_it(self):
+        fake = make_executable(self.sdk.root / "tools" / "emulators" / "b" / "BluePixel.app" / "Contents" / "MacOS" / "BluePixel")
+
+        def install(root, **kwargs):
+            emu.save_emulator(root, fake, "bluepixel")
+            return fake
+
+        with mock.patch.object(emu, "bluepixel_supported", return_value=True), \
+                mock.patch.object(emu, "install_bluepixel", side_effect=install) as installer:
+            code, out, _, _ = self.run_cli("run", "minimal", answers=["3"])
+        self.assertEqual(code, 0)
+        installer.assert_called_once()
+        self.assertEqual(emu.configured(self.sdk.root), fake)
+        self.assertNotIn("cpct_rvm", out)   # only RVM carries that note
+
+    def test_other_platforms_do_not_see_it(self):
+        with mock.patch.object(emu, "bluepixel_supported", return_value=False):
+            _, out, _, _ = self.run_cli("run", "minimal", answers=["3"])
+        self.assertNotIn("BluePixel", out)
+        self.assertIn("  3) Not now", out)
+
+    def test_the_command_downloads_either_one(self):
+        fake = make_executable(self.sdk.root / "tools" / "emulators" / "b" / "BluePixel")
+        for which, target in (("bluepixel", "install_bluepixel"), ("rvm", "install_rvm")):
+            with self.subTest(which), mock.patch.object(emu, target, return_value=fake) as installer:
+                code, _, _, _ = self.run_cli("emulator", "--download", which, interactive=False)
+            self.assertEqual(code, 0)
+            installer.assert_called_once()
+
+    def test_a_bare_download_flag_means_rvm_and_unknown_names_are_rejected(self):
+        fake = make_executable(self.sdk.root / "tools" / "emulators" / "b" / "RetroVirtualMachine")
+        with mock.patch.object(emu, "install_rvm", return_value=fake) as installer:
+            self.run_cli("emulator", "--download", interactive=False)
+        installer.assert_called_once()
+        with self.assertRaises(SystemExit) as raised:
+            self.run_cli("emulator", "--download", "winape", interactive=False)
+        self.assertEqual(raised.exception.code, 2)
 
 
 class EmulatorCommand(Harness):
