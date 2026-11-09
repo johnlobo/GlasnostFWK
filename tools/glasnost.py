@@ -728,6 +728,16 @@ def git_first_commit(folder: Path, lang: str, runner: Runner) -> None:
 
 
 def cmd_new(args, root: Path, lang: str, runner: Runner) -> int:
+    # In an interactive terminal, ask whether to include the example game even
+    # when a name was given on the command line.
+    if (args.name and not args.manifest and args.template is None and not args.minimal
+            and sys.stdin.isatty()):
+        try:
+            answer = input(say(lang, "new.ask_example", default="s" if lang == "es" else "y")).strip()
+        except EOFError:
+            answer = ""
+        if answer.strip().lower() not in ("", "s", "si", "sí", "y", "yes"):
+            args.minimal = True
     spec = new_spec(args, lang)
     base = Path(args.dir).resolve() if args.dir else root / "projects"
     folder = base / spec.name
