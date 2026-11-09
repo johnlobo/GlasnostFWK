@@ -142,27 +142,6 @@ _game_text:
     pop iy
     jp fwk_text_draw
 
-;; Steering system, run before motion: UP and DOWN set the vertical velocity.
-;; Callbacks of fwk_ecs_system_run get IX=manager, IY=entity and must keep both.
-_game_steer:
-    push ix
-    push iy
-    ld a, (fwk_input_held)
-    ld c, a
-    xor a
-    bit 3, c                         ; GAME_INPUT_UP
-    jr z, _game_steer_down
-    ld a, #-GAME_SPEED_Y
-_game_steer_down:
-    bit 4, c                         ; GAME_INPUT_DOWN
-    jr z, _game_steer_set
-    ld a, #GAME_SPEED_Y
-_game_steer_set:
-    ld ECS_E_MOTION_VELOCITY_Y(iy), a
-    pop iy
-    pop ix
-    xor a
-    ret
 
 ;; Keeps the player inside the play area, run after motion. Positions are
 ;; unsigned bytes, but fwk_ecs_system_motion_u8 already saturates at 0, so with it the
@@ -234,7 +213,7 @@ _main::
     call _game_spawn
     call _game_expect_ok
     ld (game_player), iy
-    ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT
+    ld ECS_E_INPUT_ACTION_MASK(iy), #GAME_INPUT_LEFT | GAME_INPUT_RIGHT | GAME_INPUT_UP | GAME_INPUT_DOWN
     ld ix, #game_manager
     ld hl, #_game_row_drone0
     call _game_spawn
@@ -257,12 +236,7 @@ game_frame:
     call fwk_ecs_system_behavior
     call _game_expect_ok
     ld ix, #game_manager
-    call fwk_ecs_system_input        ; LEFT and RIGHT set the horizontal velocity
-    call _game_expect_ok
-    ld ix, #game_manager
-    ld bc, #ECS_C_INPUT
-    ld hl, #_game_steer              ; UP and DOWN set the vertical velocity
-    call fwk_ecs_system_run
+    call fwk_ecs_system_input        ; LEFT/RIGHT/UP/DOWN set the velocities (4 dir)
     call _game_expect_ok
     ld ix, #game_manager
     call fwk_ecs_system_motion_u8    ; velocity moves every entity
