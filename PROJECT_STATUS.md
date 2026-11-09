@@ -1629,3 +1629,14 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   `cpc6128` para DSK). Pendiente de probar con la 2.1.20; RVM no tiene opción conocida de
   símbolos. BluePixel y MacAPE reciben `/A` y `/SYM:<nombre>.noi`; AmSpiriT no tiene opción.
 
+## Arreglo: `glasnost run` no encontraba la imagen de un proyecto (2026-11-09)
+
+- [x] `tools/run_example.py` buscaba `build/<nombre>/<nombre>.dsk` también en proyectos, pero
+  desde `acef7d5` un proyecto construye directamente en `build/` (`build/<nombre>.cdt|dsk`,
+  `build/obj/<nombre>.noi`). Resultado: «No hay imagen construida... ejecute `make` en
+  examples/<nombre>» aunque `glasnost build` dijera que no había nada que construir.
+  Ahora se pasa la carpeta de la build (`build_dir`), el aviso de un proyecto dice
+  `glasnost build` y los símbolos se buscan en `build/obj/`.
+- [x] Pruebas de regresión en `tests/test_emulator_setup.py` (`RunExampleFindsTheBuild`);
+  fallan con el código anterior.
+
