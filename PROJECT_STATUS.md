@@ -15,11 +15,14 @@ abierta en ese historial no implica una tarea pendiente hoy.
   20 CDT y DSK de 24 entradas. CI del commit combinado `6bc425c`:
   [42866267161](https://github.com/johnlobo/GlasnostFWK/actions/runs/42866267161),
   correcta, incluido smoke determinista de `nave` con BluePixel.
-- Rama actual: `refactor/program-manifest`, creada desde `0f92023`.
+- Rama de implementación: `refactor/program-manifest`, creada desde `0f92023`.
   Implementación: `e71e9572406e13fc9e4ac22358f538823b92319a`,
   «Renombra el manifiesto y migra proyectos al formato 2», subida y verificada
   con `git ls-remote`. PR [#44](https://github.com/johnlobo/GlasnostFWK/pull/44);
-  CI pendiente sobre la integración con el último pin BluePixel de `main`.
+  Integración con `b8e50e5` registrada en `7fad0e1696ada8d37f0d922af49626cf52a79c51`.
+  CI [42868247527](https://github.com/johnlobo/GlasnostFWK/actions/runs/42868247527)
+  correcta sobre ese SHA, incluido smoke determinista de `nave` con BluePixel
+  API 1.4. La PR identifica el commit squash de entrega en `main`.
 - Validación del cambio de manifiesto: `make test` correcto, 602 pruebas host
   en 105,677 s, 22 BIN, 20 CDT y DSK con 24 entradas. Las 61 pruebas de
   actualización incluyen la migración real, conservación de bytes, fallo y rollback.
@@ -64,19 +67,19 @@ abierta en ese historial no implica una tarea pendiente hoy.
   determinista de `nave` y ejecución en CI. El código y la documentación se conservan
   al resolver los conflictos con la reorganización; validación local y CI correctas.
   El CI compila BluePixel fijado en `c5e2437b4db4eb543a47b90fa8fccb90c448664f` (API 1.4),
-  incorporado desde `b8e50e5` de `main`; se comprobará ese pin con esta entrega.
+  incorporado desde `b8e50e5` de `main` y comprobado con esta entrega en CI.
 - CLI con toolchain fijada, creación/configuración de proyectos, repositorio y remoto
   propios, actualización con migraciones y rollback. Formato de proyecto actual: 2.
 - Toolchain fijada: CPCTelera Next `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
   Los fuentes Z80 del framework viven en `framework/src/`, las herramientas en
   `tools/{glasnost,build,dev}` y la documentación en `docs/{guide,reference,design}`.
 
-## Próximos pasos autorizados, por orden
+## Entrega autorizada, por orden
 
 1. Separar estado e historial: completado y fusionado en la PR #42.
 2. PR/CI de reorganización: completadas y fusionadas en `0f92023`.
-3. Cambio a `glasnost.manifest.json`: implementado en la rama actual, pendiente
-   de cerrar PR/CI; pruebas y documentación correctas. Migración de formato 1 a 2 con
+3. Cambio a `glasnost.manifest.json`: implementado y validado localmente y en
+   CI; entrega mediante PR #44. Migración de formato 1 a 2 con
    conservación byte a byte del manifiesto; elimina el nombre antiguo solo en la
    rama de actualización, recuperable ante fallo o con rollback. No se han
    modificado automáticamente los proyectos de usuario en `projects/`.
