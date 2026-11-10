@@ -316,7 +316,7 @@ entities: .ds ECS_ENTITY_SIZE * 16
 FWK_ECS_MANAGER_DESCRIPTOR game_manager, entities, 16</code></pre>
     <article class="api" data-module="core/ecs_behavior.s">
       <h4>Sistema ECS de behavior — <code>core/ecs_behavior.s</code></h4>
-      <p>Requiere los componentes <code>behavior</code> y <code>motion</code>, coordenadas <code>u8</code> y el módulo <code>extensions/behavior.s</code>. <code>fwk_ecs_system_behavior</code> recibe <code>IX=manager</code>, ejecuta una vez cada entidad activa con <code>BEHAVIOR</code> y copia de vuelta las velocidades, el puntero de programa y el temporizador. El programa puede ser compartido; el adaptador usa un registro temporal privado y no es reentrante.</p>
+      <p>Requiere los componentes <code>behavior</code> y <code>motion</code> y coordenadas <code>u8</code>. <code>fwk_ecs_system_behavior</code> recibe <code>IX=manager</code>, ejecuta una vez cada entidad activa con <code>BEHAVIOR</code> y devuelve carry limpio. El intérprete trabaja directamente sobre <code>IY</code> con los offsets <code>ECS_E_BEHAVIOR_*</code> y <code>ECS_E_MOTION_*</code>: no hay registro temporal ni copia de campos. Cambia las velocidades, el puntero de programa y el temporizador; la posición la aplica después <code>fwk_ecs_system_motion_u8</code>. El programa puede ser compartido; el sistema no es reentrante.</p>
     </article>
     <article class="api" data-module="core/ecs_motion.s">
       <h4>Sistema ECS de movimiento — <code>core/ecs_motion.s</code></h4>
@@ -525,9 +525,9 @@ window_buffer: .ds 20 * 16</code></pre>
       <p>Carry indica geometría inválida. El módulo usa las dimensiones y tabla de líneas del perfil; no contiene texto, entrada, espera ni un buffer global. El llamador debe reservar suficiente memoria y conservar la geometría entre captura y restauración. El contrato detallado está en <code>docs/reference/windows.md</code>.</p>
     </article>
 
-    <article class="api" data-module="extensions/behavior.s">
-      <h3>6.7 Comportamiento — <code>extensions/behavior.s</code></h3>
-      <p>Intérprete de programas enlazados para comportamientos. <code>fwk_behavior_run</code> recibe en <code>IX</code> un registro de 8 bytes: <code>x,y,vx,vy,flags</code>, puntero de programa de 16 bits y temporizador. El intérprete cambia estado y velocidades, no la posición. En un juego ECS no se llama directamente: <code>fwk_ecs_system_behavior</code> (<code>core/ecs_behavior.s</code>) copia los campos de cada entidad con <code>BEHAVIOR</code> a un registro privado, ejecuta el intérprete y los devuelve; después <code>fwk_ecs_system_motion_u8</code> aplica las velocidades y activa <code>DIRTY</code>.</p>
+    <article class="api" data-module="core/ecs_behavior.s">
+      <h3>6.7 Comportamiento — <code>core/ecs_behavior.s</code></h3>
+      <p>Intérprete de programas enlazados para comportamientos, integrado en el sistema ECS. <code>fwk_ecs_system_behavior</code> recorre las entidades con el componente <code>BEHAVIOR</code> y ejecuta su programa directamente sobre <code>IY</code>: lee y escribe <code>ECS_E_BEHAVIOR_PROGRAM</code>, <code>ECS_E_BEHAVIOR_TIMER</code>, <code>ECS_E_MOTION_VELOCITY_X</code> y <code>ECS_E_MOTION_VELOCITY_Y</code>. No hay registro intermedio ni copia de ida y vuelta. El intérprete cambia estado y velocidades, no la posición; después <code>fwk_ecs_system_motion_u8</code> aplica las velocidades y activa <code>DIRTY</code>.</p>
       <pre><code>enemy_program:
     FWK_BEHAVIOR_SET_VY 2
     FWK_BEHAVIOR_WAIT 49, enemy_turn
@@ -536,12 +536,10 @@ enemy_turn:
     FWK_BEHAVIOR_WAIT 49, enemy_program
 
     ; cada turno, con IX=manager que contiene al enemigo
-    push ix
     call fwk_ecs_system_behavior
-    pop ix
     call fwk_ecs_system_motion_u8</code></pre>
       <p><code>FWK_BEHAVIOR_WAIT</code> fija el temporizador, ejecuta una espera no bloqueante y termina internamente su tabla de condiciones. Los ticks válidos son 1–255; cero desborda a 255 en el primer decremento. Las acciones instantáneas pueden encadenarse en el mismo frame, con un máximo de 16 despachos. Las tablas escritas a mano deben acabar con <code>FWK_BEHAVIOR_CONDITIONS_END</code>.</p>
-      <p>Acciones: <code>idle</code>, <code>wait</code>, <code>set_timer</code>, <code>set_vx</code>, <code>set_vy</code> y <code>drive_vx</code>. Condiciones incorporadas: <code>true</code> y <code>timeout</code>. Una condición personalizada recibe <code>IX=registro</code>, debe preservar <code>IX/DE</code> y devuelve verdadero con Z activo. Puntero de programa cero desactiva el comportamiento. El contador de despachos es global: no llame al intérprete de forma anidada ni desde una interrupción.</p>
+      <p>Acciones: <code>idle</code>, <code>wait</code>, <code>set_timer</code>, <code>set_vx</code>, <code>set_vy</code> y <code>drive_vx</code>. Condiciones incorporadas: <code>true</code> y <code>timeout</code>. Una condición personalizada recibe <code>IY=entidad</code>, debe preservar <code>IX/IY/DE</code> y devuelve verdadero con Z activo. Puntero de programa cero desactiva el comportamiento. El contador de despachos es global: no llame al sistema de forma anidada ni desde una interrupción.</p>
       <p>Los tres enemigos de <code>platformer</code> son el ejemplo ejecutable: cada entidad enemiga lleva los componentes <code>MOTION</code>, <code>BEHAVIOR</code>, <code>COLLISION</code> y <code>ANIMATION</code>. El horizontal usa tramos temporizados para recorrer X=32..54; los dos verticales reutilizan el mismo programa inmutable de 49 ticks, pero cada entidad conserva su propio cursor y temporizador. Los tres viven en el mismo manager que el jugador, las monedas y la puerta; el horizontal y el vertical derecho se turnan, una iteración cada uno, mediante su byte de cadencia (<code>ECS_E_CADENCE</code>), y el vertical izquierdo se actualiza en cada iteración.</p>
     </article>
 

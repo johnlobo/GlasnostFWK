@@ -97,10 +97,10 @@ termina con `ECS_ENTITY_SIZE`. Reordenar componentes o campos es un cambio de
 layout que debe revisarse antes de regenerar.
 
 El componente describe el layout de la entidad, no el código que lo ejecuta.
-Por eso un sistema necesita las dos cosas: la entrada en `ecs.components` y los
+Por eso un sistema necesita las dos cosas: la entrada en `ecs.components` y sus
 módulos en `modules`. Por ejemplo, `behavior` son los campos `program`, `timer`
-y `state` del componente, más `core/ecs_behavior.s` (adaptador ECS) y
-`extensions/behavior.s` (intérprete de bytecode). Que el nombre coincida no
+y `state` del componente, más el módulo `core/ecs_behavior.s`, que contiene a la
+vez el sistema ECS y el intérprete de bytecode. Que el nombre coincida no
 duplica el componente: son capas distintas (datos y código).
 
 ### 3.2 Máscara de componentes
@@ -524,8 +524,9 @@ Requiere coordenadas `u8` (el build falla con `u16` o `fixed_8_8`).
   `0..ECS_Y_MAX` y activa `ECS_RENDER_DIRTY` si cambia una coordenada.
 - `BEHAVIOR` almacena por entidad cursor, timer y estado; el programa es un
   puntero inmutable y puede compartirse. En la fase 4 depende de `MOTION` y el
-  adaptador copia de vuelta las velocidades, el puntero y el temporizador tras
-  ejecutar el intérprete de bytecode; `state` queda disponible para el juego.
+  sistema ejecuta el intérprete de bytecode directamente sobre `IY`, leyendo y
+  escribiendo los offsets `ECS_E_BEHAVIOR_*` y `ECS_E_MOTION_*`; no hay registro
+  intermedio ni copia de campos. `state` queda disponible para el juego.
 - `fwk_ecs_system_behavior` y `fwk_ecs_system_motion_u8` reciben
   `IX=manager`, filtran mediante `fwk_ecs_system_run` y respetan su orden,
   lock y convención de carry. El orden recomendado por frame es behavior y

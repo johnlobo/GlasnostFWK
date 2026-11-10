@@ -14,7 +14,6 @@
     "core/ecs_input.s",
     "core/ecs_animation.s",
     "core/ecs_collision.s",
-    "extensions/behavior.s",
     "extensions/physics_platform.s",
     "core/input.s",
     "video/video.s",

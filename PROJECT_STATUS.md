@@ -1725,9 +1725,35 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - [x] `docs/reference/ecs-abi-2.0.md` y `docs/guide/first-game.md` aclaran que
   `ecs.components` declara el layout de datos y `modules` enlaza el código que lo
   ejecuta. `behavior` no está duplicado: el componente aporta `program`, `timer` y
-  `state`; `core/ecs_behavior.s` es el adaptador ECS y `extensions/behavior.s` el
-  intérprete de bytecode que llama.
+  `state`, y `core/ecs_behavior.s` contiene el sistema ECS y el intérprete de
+  bytecode. `extensions/behavior.s` se fusionó después en ese mismo módulo.
 - [x] `projects/platformone` nació con una plantilla anterior a los assets y al tilemap;
   conserva `extensions/physics_platform.s` en `modules` aunque no declare el componente
   `platform`. Es código heredado de la plantilla: no participa en el layout ECS ni se
   ejecuta, y no se toca porque es un proyecto de usuario.
+
+## Fusión del intérprete de behavior en el sistema ECS (2026-11-10)
+
+- [x] `extensions/behavior.s` y `core/ecs_behavior.s` son ahora un solo módulo,
+  `core/ecs_behavior.s`, que expone el componente/sistema `fwk_ecs_system_behavior`.
+  El intérprete ejecuta el programa enlazado directamente sobre `IY` (la entidad) con
+  los offsets generados `ECS_E_BEHAVIOR_*` y `ECS_E_MOTION_*`.
+- [x] Desaparecen el registro de compatibilidad de 8 bytes, la copia de campos de ida y
+  vuelta y las rutinas públicas `fwk_behavior_init`, `fwk_behavior_run` y
+  `fwk_behavior_call_hl`. Se conservan las macros de autoría `FWK_BEHAVIOR_*` y los
+  símbolos `fwk_behavior_action_*` / `fwk_behavior_cond_*` que usan los programas.
+- [x] El header de autoría pasa a `core/ecs_behavior.inc`, junto al módulo, para que el
+  constructor lo copie automáticamente. Una condición personalizada recibe ahora
+  `IY=entidad` en lugar de `IX=registro`; debe preservar `IX/IY/DE`.
+- [x] Manifiestos y guías actualizados: `core/ecs_behavior.s` es el único módulo de
+  behavior en `platformer`, `nave`, `ecsmanager`, la plantilla `ecs-welcome`, los pasos
+  de `first-game` y `platformone`. El catálogo del CLI ya no añade
+  `extensions/behavior.s`.
+- [x] Medido en `platformer` (AmSpiriT-Lite, escenario `idle`, 100 iteraciones,
+  `tools/dev/measure_game.py`): `fwk_ecs_system_behavior` baja de 5.027 a 3.860
+  T/call (−1.167, −23,2 %) y de 5.077 a 3.860 T/iteración. El trabajo total por
+  iteración baja de 109.400 a 108.531 T.
+- [x] Tamaños enlazados antes → después: `platformer` 12.026 → 11.927 B
+  (código 9.695 → 9.604, datos 2.331 → 2.323); `nave` 9.521 → 9.422 B;
+  `ecsmanager` 2.639 → 2.540 B. El ahorro es de 99 B por consumidor (91 de código
+  y 8 de RAM).

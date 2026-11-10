@@ -5,8 +5,7 @@
     "core/system.s",
     "core/ecs_manager.s",
     "core/ecs_behavior.s",
-    "core/ecs_motion.s",
-    "extensions/behavior.s"
+    "core/ecs_motion.s"
   ],
   "game_sources": ["main.s"],
   "ecs": {

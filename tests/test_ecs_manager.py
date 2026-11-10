@@ -75,7 +75,14 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("fwk_ecs_system_run", behavior)
         self.assertIn("fwk_ecs_system_run", motion)
         self.assertIn("ECS_E_BEHAVIOR_PROGRAM", behavior)
+        self.assertIn("ECS_E_MOTION_VELOCITY_X", behavior)
         self.assertIn("ECS_E_MOTION_VELOCITY_X", motion)
+        # The interpreter lives in the system: no scratch record, no field copy.
+        self.assertNotIn("_fwk_ecs_behavior_scratch", behavior)
+        self.assertNotIn("fwk_behavior_run", behavior)
+        self.assertFalse(
+            (ROOT / "framework/src/extensions/behavior.s").exists()
+        )
 
     def test_motion_system_uses_carry_and_leaves_platform_entities_alone(self):
         motion = (ROOT / "framework/src/core/ecs_motion.s").read_text()

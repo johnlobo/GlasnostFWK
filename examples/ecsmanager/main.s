@@ -1,7 +1,7 @@
 .module example_ecsmanager
 .include "ecs_profile.inc"
 .include "core/ecs_manager.inc"
-.include "extensions/behavior.inc"
+.include "core/ecs_behavior.inc"
 
 .globl fwk_project_init, fwk_system_wait_frame
 

@@ -1,14 +1,8 @@
-;; Optional behavior interpreter for GlasnostFWK.
-;; The record embeds the 5-byte motion_u8 record followed by behavior state.
-FWK_BEHAVIOR_MOTION_X = 0
-FWK_BEHAVIOR_MOTION_Y = 1
-FWK_BEHAVIOR_MOTION_VX = 2
-FWK_BEHAVIOR_MOTION_VY = 3
-FWK_BEHAVIOR_MOTION_FLAGS = 4
-FWK_BEHAVIOR_PROGRAM = 5
-FWK_BEHAVIOR_TIMER = 7
-FWK_BEHAVIOR_RECORD_SIZE = 8
-
+;; Behavior component system for GlasnostFWK.
+;; The runtime lives next to this header in core/ecs_behavior.s: it executes
+;; the bytecode directly on the ECS entity (IY), using the generated
+;; ECS_E_BEHAVIOR_* and ECS_E_MOTION_* offsets. This header only provides the
+;; authoring macros for behavior programs.
 BEH_MAX_ACTIONS_PER_TICK = 16
 DESTROY_BEHAVIOR = 0
 
@@ -64,7 +58,6 @@ DESTROY_BEHAVIOR = 0
     .db _vx, _stride
 .endm
 
-.globl fwk_behavior_init, fwk_behavior_run
 .globl fwk_behavior_action_idle, fwk_behavior_action_wait
 .globl fwk_behavior_action_set_timer, fwk_behavior_action_set_vx
 .globl fwk_behavior_action_set_vy, fwk_behavior_action_drive_vx
