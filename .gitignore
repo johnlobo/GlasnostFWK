@@ -11,3 +11,4 @@ projects/
 tools/build/img2cpc/bin/
 tools/build/img2cpc/obj/
 tools/emulators/
+.claude/
