@@ -18,13 +18,13 @@ class ArchitectureTests(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def test_manifests_select_existing_modules(self):
-        for manifest_path in (folder / "example.json" for folder in program_folders(ROOT)):
+        for manifest_path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)):
             manifest = json.loads(manifest_path.read_text())
             for module in manifest["modules"]:
                 self.assertTrue((ROOT / "framework" / "src" / module).is_file(), f"{manifest_path}: {module}")
 
     def test_game_sources_are_local_and_exist(self):
-        for manifest_path in (folder / "example.json" for folder in program_folders(ROOT)):
+        for manifest_path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)):
             manifest = json.loads(manifest_path.read_text())
             sources = manifest.get("game_sources", ["main.s"])
             self.assertIn("main.s", sources)
@@ -35,7 +35,7 @@ class ArchitectureTests(unittest.TestCase):
                 self.assertTrue((manifest_path.parent / relative).is_file(), f"{manifest_path}: {source}")
 
     def test_disk_files_are_local_unique_and_dsk_only(self):
-        for manifest_path in (folder / "example.json" for folder in program_folders(ROOT)):
+        for manifest_path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)):
             manifest = json.loads(manifest_path.read_text())
             entries = manifest.get("disk_files", [])
             names = [entry["name"] for entry in entries]
@@ -53,11 +53,11 @@ class ArchitectureTests(unittest.TestCase):
     def test_optional_modules_are_not_universally_selected(self):
         selections = {
             path.parent.name: set(json.loads(path.read_text())["modules"])
-            for path in (folder / "example.json" for folder in program_folders(ROOT))
+            for path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT))
         }
         self.assertNotIn("resources/bank.s", selections["minimal"])
         resources_manifest = json.loads(
-            (ROOT / "examples/resources128/example.json").read_text()
+            (ROOT / "examples/resources128/glasnost.manifest.json").read_text()
         )
         self.assertTrue(resources_manifest["extended_memory"])
         self.assertNotIn("resources/bank.s", selections["resources128"])
@@ -86,7 +86,7 @@ class ArchitectureTests(unittest.TestCase):
 
     def test_transparency_consumers_declare_the_project_capability(self):
         consumers = {"ui/text.s", "extensions/tilemap_render_masked.s"}
-        for path in (folder / "example.json" for folder in program_folders(ROOT)):
+        for path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)):
             manifest = json.loads(path.read_text())
             if consumers & set(manifest["modules"]):
                 self.assertIn("transparency", manifest, str(path))
@@ -97,7 +97,7 @@ class ArchitectureTests(unittest.TestCase):
         project = ROOT / "examples/platformer"
         common = (project / "common.inc").read_text()
         self.assertIn(".globl", common)
-        manifest = json.loads((project / "example.json").read_text())
+        manifest = json.loads((project / "glasnost.manifest.json").read_text())
         self.assertIn("common.inc", manifest["game_sources"])
         for name in manifest["game_sources"]:
             if not name.endswith(".s"):

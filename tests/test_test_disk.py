@@ -26,7 +26,7 @@ class TestDiskTests(unittest.TestCase):
     def test_rejects_invalid_manifest_amsdos_name(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            manifest = root / "examples" / "sample" / "example.json"
+            manifest = root / "examples" / "sample" / "glasnost.manifest.json"
             manifest.parent.mkdir(parents=True)
             manifest.write_text('{"amsdos_name": "TOO-LONG-NAME"}\n', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "invalid amsdos_name"):

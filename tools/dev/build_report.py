@@ -9,11 +9,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 try:
-    from tools.build.program_catalog import program_folder, program_folders, program_names
+    from tools.build.program_catalog import manifest_path, program_folder, program_folders, program_names
 except ModuleNotFoundError:
     import sys
     sys.path.insert(0, str(ROOT / "tools" / "build"))
-    from program_catalog import program_folder, program_folders, program_names
+    from program_catalog import manifest_path, program_folder, program_folders, program_names
 
 
 def area_size(map_text: str, area: str) -> int:
@@ -23,7 +23,7 @@ def area_size(map_text: str, area: str) -> int:
 
 def main() -> int:
     rows = []
-    for manifest in [folder / "example.json" for folder in program_folders(ROOT)]:
+    for manifest in [manifest_path(folder) for folder in program_folders(ROOT)]:
         name = manifest.parent.name
         obj = ROOT / "build" / name / "obj"
         map_path = obj / f"{name}.map"

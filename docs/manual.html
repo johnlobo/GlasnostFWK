@@ -224,7 +224,7 @@ python3 tools/build/build_examples.py ecsanimation text</code></pre>
     <h2 id="proyecto">5. Crear un proyecto o ejemplo</h2>
     <h3>5.1 Directorio mínimo</h3>
     <pre><code>examples/mi_juego/
-├── example.json
+├── glasnost.manifest.json
 └── main.s</code></pre>
     <p>El manifiesto mínimo selecciona un perfil, módulos y fuentes propias:</p>
     <pre><code>{
@@ -241,6 +241,7 @@ python3 tools/build/build_examples.py ecsanimation text</code></pre>
 }</code></pre>
     <p>Después añada el nombre a <code>EXAMPLES</code> en el <code>Makefile</code> si debe formar parte de la construcción completa y del paquete oficial.</p>
 
+    <div class="box"><strong>Nombre y compatibilidad.</strong> El manifiesto de módulos y capacidades se llama <code>glasnost.manifest.json</code>; <code>glasnost.project.json</code> conserva los metadatos de los proyectos del CLI. Los proyectos nuevos usan formato 2. Un proyecto de formato 1 puede seguir compilando y configurándose con <code>example.json</code>: esas operaciones no lo renombran. Para migrarlo, ejecute <code>glasnost update --dry-run</code> y después <code>glasnost update</code>. La migración conserva los bytes del manifiesto, incluidas sus claves personalizadas, y retira el nombre antiguo en la rama de actualización. Si falla, o con <code>glasnost rollback</code>, se recupera el estado anterior. No modifica el código ni el README del usuario. Si existen ambos nombres se rechaza la ambigüedad; formato 2 requiere el nombre nuevo. Sin metadatos de proyecto, puede renombrarse el archivo directamente.</div>
     <h3>5.2 Campos del manifiesto</h3>
     <table>
       <thead><tr><th>Campo</th><th>Uso</th></tr></thead>
@@ -304,7 +305,7 @@ loop:
     <p><code>RENDER</code> se inserta siempre como bit 0. El resto conserva el orden solicitado, insertando antes sus dependencias. Se rechazan nombres o tipos inválidos, duplicados, ciclos, componentes desconocidos, más de 16 componentes, coordenadas incapaces de representar el perfil de vídeo y entidades mayores de 128 bytes.</p>
     <div class="box warning"><strong>Portfolio actual.</strong> <code>RENDER</code>, <code>MOTION</code>, <code>BEHAVIOR</code>, <code>INPUT</code> y <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code> tienen layout normativo, y el renderer ECS dirty/multi-manager está en <code>video/ecs_render.s</code>.</div>
     <p>El include versionado está en <code>generated/ecs_profile.inc</code>. Antes de cambiarlo puede obtener una vista JSON de componentes resueltos, dependencias insertadas, campos, offsets, tamaños y diferencias sin escribir:</p>
-    <pre><code>python3 tools/build/gen_ecs_profile.py framework/validations/ecsmanager/example.json \
+    <pre><code>python3 tools/build/gen_ecs_profile.py framework/validations/ecsmanager/glasnost.manifest.json \
   --output framework/validations/ecsmanager/generated/ecs_profile.inc --preview
 make generate-ecs   # escribe el include después de revisar la vista previa
 make check CHECK_EXAMPLES=ecsmanager  # falla si el include vuelve a quedar obsoleto</code></pre>
@@ -686,7 +687,7 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
         <tr data-validation="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
       </tbody>
     </table>
-    <p><code>perf</code> se mide con <code>tools/dev/measure_perf.py</code>. <code>experimental</code> conserva el límite de temporización CRTC sin validar en hardware. El antiguo ejemplo <code>vertical</code> y su smoke específico de recogida/victoria se han eliminado; no se atribuye esa cobertura a otro juego. El catálogo común <code>tools/build/program_catalog.py</code> descubre ambas colecciones a partir de <code>example.json</code> y alimenta construcción, CI, disco y distribución.</p>
+    <p><code>perf</code> se mide con <code>tools/dev/measure_perf.py</code>. <code>experimental</code> conserva el límite de temporización CRTC sin validar en hardware. El antiguo ejemplo <code>vertical</code> y su smoke específico de recogida/victoria se han eliminado; no se atribuye esa cobertura a otro juego. El catálogo común <code>tools/build/program_catalog.py</code> descubre ambas colecciones a partir de <code>glasnost.manifest.json</code> y alimenta construcción, CI, disco y distribución.</p>
     <h3>8.2 Juego de plataformas</h3>
     <p><code>platformer</code> usa un único manager ECS de nueve slots (cuatro monedas, puerta, jugador y tres enemigos) y el renderer selectivo <code>video/ecs_render.s</code> sobre él. Al mover el jugador o retirar una moneda se activa <code>DIRTY</code>; el renderer restaura en orden inverso y redibuja por Y. Los enemigos comparten un canal de contacto: se descuenta una vida al comenzar un contacto, no durante todos los frames del solapamiento, y un segundo enemigo que empieza a tocar al jugador sin que el primero lo haya soltado no cuesta otra vida. La puerta permanece oculta hasta reunir las cuatro monedas y permite pasar al segundo nivel.</p>
     <p>El HUD ocupa una línea negra interior. Antes de redibujar texto restaura las celdas de tile que realmente cubre cada tramo: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para sustituir el contador completo y columnas 6–14 para retirar todo el mensaje de ayuda. Así no quedan restos de glifos anteriores ni se altera el borde.</p>

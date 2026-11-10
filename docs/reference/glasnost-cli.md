@@ -170,7 +170,7 @@ escribe la última.
 
 ## Proyectos
 
-Un proyecto es una carpeta con la forma de un ejemplo (tiene `example.json`)
+Un proyecto es una carpeta con la forma de un ejemplo (tiene `glasnost.manifest.json`)
 más `glasnost.project.json` (esquema, plantilla, versión del framework con la
 que se creó y título). Se reconoce desde cualquier subcarpeta, o con
 `--project DIR`.
@@ -196,7 +196,7 @@ framework):
 `main.s` y `common.inc` (tu código, con la convención de `common.inc`),
 `assets/` (sprites y tileset en PNG, mapa en TMX comprimido con ZX7B y
 paleta; `assets/generated/` lo escribe la conversión al compilar, no lo edites),
-`example.json`, `generated/` (título y perfil ECS), `README.md` en el idioma
+`glasnost.manifest.json`, `generated/` (título y perfil ECS), `README.md` en el idioma
 elegido y `.gitignore`. Compila el proyecto antes de dar nada por bueno; si
 falla borra lo creado. Después hace `git init` y el primer commit (repositorio
 independiente del framework; si el commit falla por falta de identidad Git,
@@ -219,26 +219,26 @@ avisa y deja el proyecto). `new` nunca escribe en una carpeta existente.
 - Ni `remote`, ni `new --remote`, ni `update` usan la red.
 
 **Quién es dueño de qué.** Tuyo: `main.s`, `common.inc`, README, y en
-`example.json` las claves `modules`, `game_sources`, `ecs` y cualquier otra
-que añadas. De glasnost: `generated/*` y en `example.json` las claves `name`,
+`glasnost.manifest.json` las claves `modules`, `game_sources`, `ecs` y cualquier otra
+que añadas. De glasnost: `generated/*` y en `glasnost.manifest.json` las claves `name`,
 `amsdos_name`, `profile`, `transparency` y `extended_memory`. `config` solo
 reescribe lo de glasnost y calcula todo antes de escribir (un valor no válido
 no toca nada). Escribe cada fichero con otro temporal y reemplazo, de modo que
 cada fichero es atómico pero el conjunto no: si el proceso muere a mitad,
 `glasnost test` y `build` lo detectan (ficheros generados desactualizados) y
-`glasnost config` lo repara. `--dry-run` lista lo que cambiaría. `example.json` se reescribe con sangría de 2
+`glasnost config` lo repara. `--dry-run` lista lo que cambiaría. `glasnost.manifest.json` se reescribe con sangría de 2
 espacios.
 
 **Usar un sistema del framework (colisión, animación, ...).** Añade su
-componente en `ecs.components` y su módulo en `modules` de `example.json`, y
+componente en `ecs.components` y su módulo en `modules` de `glasnost.manifest.json`, y
 ejecuta `glasnost config` sin opciones: regenera `generated/ecs_profile.inc` (y
-`project.inc`) y no toca nada más, ni siquiera el formato de tu `example.json`.
+`project.inc`) y no toca nada más, ni siquiera el formato de tu `glasnost.manifest.json`.
 Es lo que pide `glasnost build` cuando dice que el perfil ECS está
 desactualizado. `--dry-run` muestra qué regeneraría. Si el componente o la
 combinación no es válido, `config` lo dice y no escribe nada.
 
 **Límites actuales.**
-- La carpeta del proyecto debe llamarse como su `name` (`example.json`): si la
+- La carpeta del proyecto debe llamarse como su `name` (`glasnost.manifest.json`): si la
   renombras, `build` y `test` lo rechazan. `config` no cambia el nombre.
 - `--project DIR` debe apuntar a un proyecto; si no, falla (no cae a los
   ejemplos del framework).
@@ -257,7 +257,7 @@ combinación no es válido, `config` lo dice y no escribe nada.
 
 El **formato** de un proyecto (`format` en `glasnost.project.json`; sin la clave
 es 1) dice qué espera de glasnost. Este glasnost conoce hasta
-`glasnost_project.FORMAT` (hoy 1, el primero). Subir de formato es una cadena de
+`glasnost_project.FORMAT` (hoy 2). Subir de formato es una cadena de
 migraciones de un paso, N a N+1: no se salta ninguna y un hueco es un error.
 `framework` (la versión de glasnost con la que se hizo o actualizó) es
 informativo; lo único que decide es el formato.
@@ -269,6 +269,22 @@ glasnost update                   # rama glasnost-update-N-to-M, migra, regenera
 git merge glasnost-update-1-to-2  # si todo va bien (desde la rama de origen)
 glasnost rollback [--delete]      # si no: vuelve a la rama de origen
 ```
+
+**Migración real 1 → 2: nombre del manifiesto.** Los proyectos nuevos usan
+`glasnost.manifest.json`. Los proyectos de formato 1 siguen admitiendo
+`example.json` para compilar y configurar; esas operaciones no renombran el
+archivo ni actualizan el formato por su cuenta. `glasnost update --dry-run`
+muestra la creación del nombre nuevo y la retirada del antiguo. `glasnost update`
+conserva los bytes del manifiesto (incluidos formato y claves personalizadas),
+regenera los archivos propios y confirma el cambio en su rama de actualización.
+Si falla o se ejecuta `glasnost rollback`, se recupera el nombre y contenido
+anteriores. No se modifican `main.s`, `common.inc` ni el README del usuario.
+
+Si existen ambos nombres en una carpeta, se rechaza la ambigüedad antes de
+escribir: hay que revisar cuál conservar. Un proyecto de formato 2 requiere
+`glasnost.manifest.json`. `glasnost.project.json` sigue siendo un archivo distinto:
+contiene formato, plantilla y metadatos del proyecto; no es el manifiesto de módulos.
+Los consumidores sin `glasnost.project.json` pueden renombrar el archivo directamente.
 
 **Qué exige `update`** (y si algo falta, no toca nada): el repositorio Git
 propio del proyecto (el que crea `new`; uno ajeno que lo contenga no vale),
@@ -288,7 +304,7 @@ carpetas que tuvo que crear se quitan. Si ni siquiera eso es posible, lo dice
 con un aviso. Lo compilado en `build/` no se restaura (es salida ignorada).
 
 **Qué puede tocar una migración.** Es una función pura sobre
-`glasnost.project.json` y `example.json` (por ejemplo, renombrar un módulo del
+`glasnost.project.json` y `glasnost.manifest.json` (por ejemplo, renombrar un módulo del
 framework en `modules`): nunca ve `main.s` ni `common.inc`, así que no puede
 editar tu código. Si un formato exige cambiar tu código, la migración lo
 devuelve como **tarea manual**: aparece en la vista previa, en el informe y en

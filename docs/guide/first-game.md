@@ -38,7 +38,7 @@ para abrirla con el tuyo (en un CPC real o emulado: `RUN"NAVE`).
 Verás una nave que se mueve con las flechas del cursor y tres drones que
 patrullan, sobre un fondo de plataformas. Tu código es `main.s` y `common.inc`; léelos, están comentados. Todo
 lo demás lo gestiona glasnost: no edites `generated/` (lo regenera `glasnost
-config`; se versiona en Git, así que tras un `config` aparecerá modificado y es normal) ni `example.json` más allá de lo que se indica abajo.
+config`; se versiona en Git, así que tras un `config` aparecerá modificado y es normal) ni `glasnost.manifest.json` más allá de lo que se indica abajo.
 
 Antes de tocar nada, haz una copia de seguridad en Git (o confía en que el
 primer commit ya está hecho): `git status` debe salir limpio. Así puedes volver
@@ -163,7 +163,7 @@ compilar.
 
 El ECS anima las entidades con el componente `animation`: cada una tiene un
 descriptor con sus fotogramas y cuántas llamadas dura cada uno. Hay que activar el
-componente (los campos de la entidad) y los módulos que lo ejecutan en `example.json`.
+componente (los campos de la entidad) y los módulos que lo ejecutan en `glasnost.manifest.json`.
 
 Ficheros de este paso: [`step2/`](first-game/step2/).
 
@@ -191,15 +191,15 @@ detiene y `game_status` guarda el código de error.
       ]
 ```
 
-2. En `example.json`, añade el componente en `ecs.components` y el módulo en
+2. En `glasnost.manifest.json`, añade el componente en `ecs.components` y el módulo en
    `modules` (antes de `extensions/physics_platform.s`):
 
-<!-- guia: step2/example.json -->
+<!-- guia: step2/glasnost.manifest.json -->
 ```json
     "core/ecs_animation.s",
 ```
 
-<!-- guia: step2/example.json -->
+<!-- guia: step2/glasnost.manifest.json -->
 ```json
     "components": [
       "behavior",
@@ -334,15 +334,15 @@ drones, que son las que tienen `behavior`).
 
 Ficheros de este paso: [`step3/`](first-game/step3/).
 
-1. En `example.json`, otro componente y otro módulo; después ejecuta `glasnost
+1. En `glasnost.manifest.json`, otro componente y otro módulo; después ejecuta `glasnost
    config` (antes de compilar, como en el paso 2):
 
-<!-- guia: step3/example.json -->
+<!-- guia: step3/glasnost.manifest.json -->
 ```json
     "core/ecs_collision.s",
 ```
 
-<!-- guia: step3/example.json -->
+<!-- guia: step3/glasnost.manifest.json -->
 ```json
     "components": [
       "behavior",
@@ -495,7 +495,7 @@ es el juego de la captura de arriba.
 - **Entender el código terminado**: [`nave-walkthrough.md`](nave-walkthrough.md) recorre
   `examples/nave` rutina por rutina, con el contrato de cada una y dos ejercicios.
 - **Más sistemas del ECS**: el mismo patrón sirve para todos. Añade el componente y
-  el módulo a `example.json`, ejecuta `glasnost config`, y declara las etiquetas y
+  el módulo a `glasnost.manifest.json`, ejecuta `glasnost config`, y declara las etiquetas y
   constantes en `common.inc`. Mira `examples/platformer` (física de plataformas,
   mapas de tiles, HUD) y `docs/guide/platform-game-guide.html`.
 - **Mapas de tiles**: `assets.json` también convierte mapas de Tiled (`tilemaps`); el
@@ -508,7 +508,7 @@ es el juego de la captura de arriba.
 
 ## Si algo falla
 
-- **«generated/ecs_profile.inc is stale»**: has cambiado `example.json`. Ejecuta
+- **«generated/ecs_profile.inc is stale»**: has cambiado `glasnost.manifest.json`. Ejecuta
   `glasnost config`.
 - **La conversión del PNG falla**: algún píxel usa un color que no está en la paleta.
 - **Un símbolo no definido al enlazar**: falta su `.globl` en `common.inc` o su

@@ -51,7 +51,7 @@ def project_from_example(parent: Path, run) -> Path:
     code, out, err = run(["new", "nave", "--dir", str(parent), "--no-git", "--no-build", "--title", "mi primer juego"])
     assert code == 0, out + err
     folder = parent / "nave"
-    for name in ("main.s", "common.inc", "example.json"):
+    for name in ("main.s", "common.inc", "glasnost.manifest.json"):
         shutil.copy2(NAVE / name, folder / name)
     shutil.copytree(NAVE / "assets", folder / "assets", dirs_exist_ok=True)
     return folder

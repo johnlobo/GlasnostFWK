@@ -16,7 +16,7 @@ WRAPPER = (
 
 class ExampleTargetTests(unittest.TestCase):
     def examples(self):
-        return sorted(path.parent for path in (folder / "example.json" for folder in program_folders(ROOT)))
+        return sorted(path.parent for path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)))
 
     def make_dry_run(self, example: str, target: str, *, env=None, extra=()) -> str:
         result = subprocess.run(

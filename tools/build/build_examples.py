@@ -36,9 +36,9 @@ except ModuleNotFoundError:  # Direct execution: python3 tools/build/build_examp
 ROOT = Path(__file__).resolve().parents[2]
 
 try:
-    from tools.build.program_catalog import program_folder, program_folders, program_names
+    from tools.build.program_catalog import manifest_path, program_folder, program_folders, program_names
 except ModuleNotFoundError:
-    from program_catalog import program_folder, program_folders, program_names
+    from program_catalog import manifest_path, program_folder, program_folders, program_names
 DEFAULT_CPCT = Path("/config/workspace/cpctelera_next/cpctelera")
 AMSDOS_NAME = re.compile(r"^[A-Z0-9][A-Z0-9_]{0,7}\.[A-Z0-9]{1,3}$")
 SYMBOL_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -362,7 +362,7 @@ def stage_example(
     example = example if example is not None else program_folder(ROOT, name)
     if not example.is_dir():
         raise ValueError(f"unknown example: {name}")
-    manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path(example).read_text(encoding="utf-8"))
     profile_path = ROOT / "framework" / "profiles" / manifest["profile"]
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
@@ -411,7 +411,7 @@ def stage_example(
         ):
             raise ValueError(
                 f"{name}: stale ECS profile; run python3 tools/build/gen_ecs_profile.py "
-                f"{_config_label(example / 'example.json')} --output "
+                f"{_config_label(manifest_path(example))} --output "
                 f"{_config_label(example / 'generated' / 'ecs_profile.inc')}"
             )
         profile_changed = _write_if_changed(
@@ -571,7 +571,7 @@ def build(
         raise ValueError(f"invalid CPCT_PATH: {cpct_path}")
     example = example if example is not None else program_folder(ROOT, name)
     target = stage_example(name, cpct_path, example, target)
-    manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path(example).read_text(encoding="utf-8"))
     profile = json.loads((ROOT / "framework" / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
     capabilities = parse_capabilities(manifest, profile["mode"])
     env = os.environ.copy()
@@ -588,7 +588,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.project:
         folder = args.project.resolve()
-        name = json.loads((folder / "example.json").read_text(encoding="utf-8"))["name"]
+        name = json.loads(manifest_path(folder).read_text(encoding="utf-8"))["name"]
         print(f"== building {name} ==", flush=True)
         try:
             build(name, args.cpct_path.resolve(), folder, folder / "build")

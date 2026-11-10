@@ -39,7 +39,7 @@ class ManualTests(unittest.TestCase):
         examples = {folder.name for folder in program_folders(ROOT, "examples")}
         validations = {folder.name for folder in program_folders(ROOT, "validations")}
         modules = set()
-        for path in (folder / "example.json" for folder in program_folders(ROOT)):
+        for path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)):
             manifest = json.loads(path.read_text(encoding="utf-8"))
             modules.update(manifest["modules"])
             if "transparency" in manifest:

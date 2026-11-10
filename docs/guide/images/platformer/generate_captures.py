@@ -52,9 +52,9 @@ def structure_lines() -> list[str]:
 
 
 def manifest_lines() -> list[str]:
-    manifest = json.loads((EXAMPLE / "example.json").read_text(encoding="utf-8"))
+    manifest = json.loads((EXAMPLE / "glasnost.manifest.json").read_text(encoding="utf-8"))
     text = json.dumps(manifest, ensure_ascii=False, indent=2)
-    return ["$ sed -n '1,120p' examples/platformer/example.json", *text.splitlines()]
+    return ["$ sed -n '1,120p' examples/platformer/glasnost.manifest.json", *text.splitlines()]
 
 
 def build_lines(run_build: bool) -> list[str]:

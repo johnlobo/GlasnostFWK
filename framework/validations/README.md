@@ -28,4 +28,4 @@ python3 tests/emulator_smoke.py ecsmanager ecscollision ecsanimation ecsrender v
 La compilación, las pruebas host, la ejecución emulada y las mediciones son
 comprobaciones distintas. `perf` tiene su herramienta de medición específica;
 el smoke general de `experimental` solo comprueba el avance de frames.
-Los manifiestos conservan el nombre `example.json`.
+Los manifiestos se llaman `glasnost.manifest.json`.

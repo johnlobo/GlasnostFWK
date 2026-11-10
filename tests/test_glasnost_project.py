@@ -179,7 +179,7 @@ class Rendering(unittest.TestCase):
 
     def test_file_set(self):
         self.assertEqual(sorted(self.files), sorted([
-            ".gitignore", "README.md", "common.inc", "example.json", "generated/ecs_profile.inc",
+            ".gitignore", "README.md", "common.inc", "glasnost.manifest.json", "generated/ecs_profile.inc",
             "generated/project.inc", "glasnost.project.json", "main.s",
             "assets/assets.json", "assets/palette.json", "assets/src/level.tmx",
             "assets/src/sprites.png", "assets/src/tiles.png", "assets/generated/assets.inc",
@@ -202,7 +202,7 @@ class Rendering(unittest.TestCase):
 
     def test_minimal_template_has_no_ecs_no_tilemap_and_no_assets(self):
         files = gp.render_project(gp.validate(gp.Spec("demo", "hello", template="minimal")), "9.9.9", "en")
-        example = json.loads(files["example.json"])
+        example = json.loads(files["glasnost.manifest.json"])
         self.assertNotIn("ecs", example)
         self.assertNotIn("generated/ecs_profile.inc", files)
         self.assertFalse([name for name in files if name.startswith("assets/")])
@@ -210,22 +210,22 @@ class Rendering(unittest.TestCase):
         self.assertNotIn("assets/generated/assets.inc", example["game_sources"])
 
     def test_the_welcome_manifest_links_the_tilemap_and_the_assets_include(self):
-        example = json.loads(self.files["example.json"])
+        example = json.loads(self.files["glasnost.manifest.json"])
         self.assertIn("extensions/tilemap_render.s", example["modules"])
         self.assertIn("assets/generated/assets.inc", example["game_sources"])
 
     def test_metadata_files(self):
         meta = json.loads(self.files["glasnost.project.json"])
-        self.assertEqual(meta, {"schema": 1, "template": "ecs-welcome", "format": 1, "framework": "9.9.9",
+        self.assertEqual(meta, {"schema": 1, "template": "ecs-welcome", "format": 2, "framework": "9.9.9",
                                 "title": "HELLO"})
-        example = json.loads(self.files["example.json"])
+        example = json.loads(self.files["glasnost.manifest.json"])
         self.assertEqual((example["name"], example["amsdos_name"], example["extended_memory"]),
                          ("demo", "DEMO", False))
         self.assertIn("generated/project.inc", example["game_sources"])
         self.assertEqual(self.files["generated/project.inc"].decode().splitlines()[-1], 'game_title: .asciz "HELLO"')
 
     def test_the_generated_manifest_is_accepted_by_the_build_validations(self):
-        example = json.loads(self.files["example.json"])
+        example = json.loads(self.files["glasnost.manifest.json"])
         profile = json.loads((ROOT / "framework" / "profiles" / example["profile"]).read_text(encoding="utf-8"))
         capabilities = project_config.parse_capabilities(example, profile["mode"])
         modules = build_examples.effective_modules("demo", example["modules"], capabilities)
@@ -234,7 +234,7 @@ class Rendering(unittest.TestCase):
             self.assertTrue((ROOT / "framework" / "src" / module).is_file(), module)
 
     def test_generated_ecs_profile_matches_the_generator_the_build_checks(self):
-        example = json.loads(self.files["example.json"])
+        example = json.loads(self.files["glasnost.manifest.json"])
         self.assertEqual(self.files["generated/ecs_profile.inc"].decode(), gp.ecs_profile_include(example))
 
     def test_readme_exists_in_both_languages(self):
@@ -244,7 +244,7 @@ class Rendering(unittest.TestCase):
 
     def test_extended_memory_and_title_change_the_files(self):
         other = gp.render_project(gp.Spec("demo", "bye", extended_memory=True), "9.9.9", "en")
-        self.assertNotEqual(other["example.json"], self.files["example.json"])
+        self.assertNotEqual(other["glasnost.manifest.json"], self.files["glasnost.manifest.json"])
         self.assertIn(b"BYE", other["generated/project.inc"])
         self.assertEqual(other["main.s"], self.files["main.s"])  # code does not depend on either
 
@@ -277,10 +277,10 @@ class Checks(unittest.TestCase):
     def test_detects_missing_user_files_name_mismatch_and_bad_amsdos(self):
         (self.folder / "main.s").unlink()
         self.assertIn("missing main.s", self.problems())
-        example = json.loads((self.folder / "example.json").read_text())
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
         example["name"] = "other"
         example["amsdos_name"] = "toolongname"
-        (self.folder / "example.json").write_text(json.dumps(example))
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
         found = " | ".join(self.problems())
         self.assertIn("differs from the folder", found)
         self.assertIn("amsdos_name", found)
@@ -309,34 +309,34 @@ class ConfigRules(unittest.TestCase):
 
     def test_title_change_rewrites_only_glasnost_owned_files(self):
         out = gp.apply_config(self.folder, title="new title")
-        self.assertEqual(sorted(out), ["example.json", "generated/ecs_profile.inc",
-                                       "generated/project.inc", "glasnost.project.json"])
+        self.assertEqual(sorted(out), ["generated/ecs_profile.inc", "generated/project.inc",
+                                      "glasnost.manifest.json", "glasnost.project.json"])
         self.assertNotIn("main.s", out)
         self.assertNotIn("common.inc", out)
         self.assertIn(b"NEW TITLE", out["generated/project.inc"])
-        self.assertEqual(out["example.json"], (self.folder / "example.json").read_bytes())
+        self.assertEqual(out["glasnost.manifest.json"], (self.folder / "glasnost.manifest.json").read_bytes())
 
     def test_extended_memory_changes_example_json_only_in_its_key(self):
-        before = json.loads((self.folder / "example.json").read_text())
-        after = json.loads(gp.apply_config(self.folder, extended_memory=True)["example.json"])
+        before = json.loads((self.folder / "glasnost.manifest.json").read_text())
+        after = json.loads(gp.apply_config(self.folder, extended_memory=True)["glasnost.manifest.json"])
         changed = {key for key in before if before[key] != after[key]}
         self.assertEqual(changed, {"extended_memory"})
 
     def test_user_edits_to_example_json_survive_a_config(self):
-        example = json.loads((self.folder / "example.json").read_text())
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
         example["modules"].append("video/sprite_masked.s")
         example["my_extra"] = {"keep": [1, 2]}
         example["ecs"]["components"].append("collision")
-        (self.folder / "example.json").write_text(json.dumps(example))
-        out = json.loads(gp.apply_config(self.folder, extended_memory=True)["example.json"])
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
+        out = json.loads(gp.apply_config(self.folder, extended_memory=True)["glasnost.manifest.json"])
         self.assertIn("video/sprite_masked.s", out["modules"])
         self.assertEqual(out["my_extra"], {"keep": [1, 2]})
         self.assertIn("collision", out["ecs"]["components"])
 
     def test_the_regenerated_ecs_profile_follows_user_edited_components(self):
-        example = json.loads((self.folder / "example.json").read_text())
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
         example["ecs"]["components"].append("collision")
-        (self.folder / "example.json").write_text(json.dumps(example))
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
         out = gp.apply_config(self.folder, title="x")
         self.assertEqual(out["generated/ecs_profile.inc"].decode(), gp.ecs_profile_include(example))
 
@@ -346,16 +346,16 @@ class ConfigRules(unittest.TestCase):
                 gp.apply_config(self.folder, **kwargs)
 
     def test_a_project_pointing_at_a_missing_profile_is_a_project_error(self):
-        example = json.loads((self.folder / "example.json").read_text())
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
         example["profile"] = "bogus.json"
-        (self.folder / "example.json").write_text(json.dumps(example))
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
         with self.assertRaises(gp.ProjectError):
             gp.apply_config(self.folder, title="x")
 
     def test_a_project_with_an_unconfigurable_profile_is_rejected(self):
-        example = json.loads((self.folder / "example.json").read_text())
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
         example["profile"] = "experimental-160x288.json"
-        (self.folder / "example.json").write_text(json.dumps(example))
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
         with self.assertRaises(gp.ProjectError):
             gp.apply_config(self.folder, title="x")
 
@@ -650,21 +650,21 @@ class ProjectCommands(unittest.TestCase):
         self.assertEqual(code, 0, out)
         after = tree(self.folder)
         changed = {path for path in after if after[path] != before.get(path)}
-        self.assertEqual(changed, {"example.json", "generated/project.inc", "glasnost.project.json"})
+        self.assertEqual(changed, {"glasnost.manifest.json", "generated/project.inc", "glasnost.project.json"})
         self.assertEqual(gp.check_project(self.folder), [])
         self.assertEqual(sorted(p.name for p in self.folder.rglob("*.glasnost-tmp")), [])
-        self.assertEqual(json.loads((self.folder / "example.json").read_text())["extended_memory"], True)
+        self.assertEqual(json.loads((self.folder / "glasnost.manifest.json").read_text())["extended_memory"], True)
         self.cmd("config", "--no-extended-memory")
-        self.assertEqual(json.loads((self.folder / "example.json").read_text())["extended_memory"], False)
+        self.assertEqual(json.loads((self.folder / "glasnost.manifest.json").read_text())["extended_memory"], False)
 
     def add_collision(self):
-        """What a game developer does to use a framework system: edit example.json."""
-        text = (self.folder / "example.json").read_text()
+        """What a game developer does to use a framework system: edit glasnost.manifest.json."""
+        text = (self.folder / "glasnost.manifest.json").read_text()
         example = json.loads(text)
         example["ecs"]["components"].append("collision")
         example["modules"].append("core/ecs_collision.s")
         edited = json.dumps(example)  # deliberately not the 2-space layout glasnost writes
-        (self.folder / "example.json").write_text(edited)
+        (self.folder / "glasnost.manifest.json").write_text(edited)
         return edited
 
     def test_config_without_options_regenerates_a_stale_ecs_profile(self):
@@ -676,7 +676,7 @@ class ProjectCommands(unittest.TestCase):
         self.assertIn("regenerating generated/ecs_profile.inc", out)
         self.assertEqual(gp.check_project(self.folder), [], "build asked for `glasnost config`: it must fix it")
         self.assertIn("ECS_C_COLLISION", (self.folder / "generated" / "ecs_profile.inc").read_text())
-        self.assertEqual((self.folder / "example.json").read_text(), edited, "the user's file is untouched")
+        self.assertEqual((self.folder / "glasnost.manifest.json").read_text(), edited, "the user's file is untouched")
         recorder = Recorder()
         self.assertEqual(self.cmd("build", runner=recorder)[0], 0)
         self.assertEqual(len(recorder.calls), 1)
@@ -724,9 +724,9 @@ class ProjectCommands(unittest.TestCase):
                 self.assertEqual(tree(self.folder), before)
 
     def test_config_without_options_explains_why_it_cannot_regenerate(self):
-        example = json.loads((self.folder / "example.json").read_text())
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
         example["ecs"]["components"].append("no_such_component")
-        (self.folder / "example.json").write_text(json.dumps(example))
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
         before = tree(self.folder)
         code, _, err = self.cmd("config")
         self.assertEqual(code, 1)

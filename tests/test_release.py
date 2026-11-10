@@ -27,7 +27,7 @@ class ReleasePackageTests(unittest.TestCase):
                 example_manifest = {"media": media}
                 if example == "platformer":
                     example_manifest["amsdos_name"] = "PLATGAME"
-                (source_root / example / "example.json").write_text(
+                (source_root / example / "glasnost.manifest.json").write_text(
                     json.dumps(example_manifest) + "\n",
                     encoding="utf-8",
                 )

@@ -227,7 +227,7 @@ _perf_sprite_opaque:
 ;;   Out: Carry set if the descriptor is invalid, clear otherwise.
 ;;   Clobbers: AF, BC, DE, HL, IX.
 ;;   Notes: Always assembles, but links only when the project enables transparency (fwk_sprite_draw_masked
-;;          is defined under that flag; perf/example.json sets transparency pen 0). IY is preserved.
+;;          is defined under that flag; perf/glasnost.manifest.json sets transparency pen 0). IY is preserved.
 ;; ----------------------------------------------------------------------------
 _perf_sprite_masked:
     ld ix, #perf_sprite

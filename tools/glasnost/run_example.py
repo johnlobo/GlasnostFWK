@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import emulator_setup  # noqa: E402
 sys.path.insert(0, str(ROOT / "tools" / "build"))
-from program_catalog import program_folder  # noqa: E402
+from program_catalog import manifest_path, program_folder  # noqa: E402
 DEFAULT_EMULATOR = ROOT.parent / "tools" / "amspirit-lite" / "run.sh"
 EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "bluepixel")
 BLUEPIXEL_CANDIDATES = (
@@ -34,7 +34,7 @@ BLUEPIXEL_CANDIDATES = (
 
 
 def project_name(example: str, folder: Path | None = None) -> str:
-    manifest = (folder or program_folder(ROOT, example)) / "example.json"
+    manifest = manifest_path(folder or program_folder(ROOT, example))
     if not manifest.is_file():
         raise SystemExit(f"No existe el ejemplo {example}: falta {manifest}")
     return json.loads(manifest.read_text(encoding="utf-8"))["name"]

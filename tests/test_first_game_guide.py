@@ -121,9 +121,9 @@ class StepFiles(unittest.TestCase):
     """Structure that needs no toolchain."""
 
     def test_every_step_manifest_is_accepted_by_the_build_validations(self):
-        example = json.loads(gp.render_project(gp.Spec("nave", "x"), "t", "en")["example.json"])
+        example = json.loads(gp.render_project(gp.Spec("nave", "x"), "t", "en")["glasnost.manifest.json"])
         for step in ("step2", "step3"):
-            example = json.loads((STEPS / step / "example.json").read_text())
+            example = json.loads((STEPS / step / "glasnost.manifest.json").read_text())
             with self.subTest(step):
                 profile = json.loads((ROOT / "framework" / "profiles" / example["profile"]).read_text())
                 capabilities = project_config.parse_capabilities(example, profile["mode"])
@@ -133,9 +133,9 @@ class StepFiles(unittest.TestCase):
                     self.assertTrue((ROOT / "framework" / "src" / module).is_file(), module)
 
     def test_each_step_only_adds_to_the_previous_manifest(self):
-        base = json.loads(gp.render_project(gp.Spec("nave", "x"), "t", "en")["example.json"])
-        two = json.loads((STEPS / "step2" / "example.json").read_text())
-        three = json.loads((STEPS / "step3" / "example.json").read_text())
+        base = json.loads(gp.render_project(gp.Spec("nave", "x"), "t", "en")["glasnost.manifest.json"])
+        two = json.loads((STEPS / "step2" / "glasnost.manifest.json").read_text())
+        three = json.loads((STEPS / "step3" / "glasnost.manifest.json").read_text())
         self.assertEqual(set(two["modules"]) - set(base["modules"]), {"core/ecs_animation.s"})
         self.assertEqual(set(three["modules"]) - set(two["modules"]), {"core/ecs_collision.s"})
         self.assertEqual(two["ecs"]["components"], base["ecs"]["components"] + ["animation"])
@@ -205,7 +205,7 @@ class ExampleMatchesGuide(unittest.TestCase):
     def test_the_generated_files_are_what_glasnost_generates(self):
         title = json.loads(gp.render_project(gp.Spec("nave", "mi primer juego"), "x", "es")["glasnost.project.json"])["title"]
         self.assertEqual((self.EXAMPLE / "generated" / "project.inc").read_text(), gp.project_include(title))
-        example = json.loads((self.EXAMPLE / "example.json").read_text())
+        example = json.loads((self.EXAMPLE / "glasnost.manifest.json").read_text())
         self.assertEqual((self.EXAMPLE / "generated" / "ecs_profile.inc").read_text(), gp.ecs_profile_include(example))
 
     def test_it_has_no_files_the_guide_does_not_explain(self):
