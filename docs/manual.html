@@ -695,7 +695,15 @@ make report</code></pre>
 
     <h3>9.2 Smoke completo en CPC 6128</h3>
     <pre><code>python3 tests/emulator_smoke.py</code></pre>
-    <h3>9.3 Casos específicos en CPC 464</h3>
+    <h3>9.3 Nave sin ventana con BluePixel</h3>
+    <p>El adaptador <code>tools/glasnost/bluepixel_adapter.py</code> controla un proceso privado de BluePixel headless mediante JSON-RPC por stdio: ejecución por fotogramas virtuales, RAM y símbolos, teclado, captura RGBA y estado exacto. Requiere CPCApi 1.x, estado canónico 1 y las tres ROMs CPC 6128 con <code>roms.json</code>. Cada petición tiene un tiempo límite y el contexto cierra el proceso incluso ante errores. No necesita servidor gráfico ni puertos.</p>
+    <pre><code>python3 tests/bluepixel_smoke.py \
+  --emulator /ruta/BluePixel/build/bluepixel-headless \
+  --rom-dir /ruta/BluePixel/web/roms \
+  --json build/bluepixel-nave.json</code></pre>
+    <p>Ejecute antes <code>make test</code> para construir el DSK común y los símbolos actuales. La prueba arranca <code>nave</code> tres veces, comprueba reloj, drone, cuatro límites, suelo, HUD, captura y restauración con continuación idéntica; todos los arranques deben coincidir. La espera de arranque consulta <code>game_status</code> dentro de un límite de fotogramas virtuales. El JSON guarda hashes de binario, disco, símbolos y manifiesto, revisión del SDK y tiempos por método, de arranque y totales. La aceleración usa 50 Hz e incluye control por API y comprobaciones; no se equipara al benchmark histórico de BluePixel.</p>
+    <p>CI compila una revisión fijada de BluePixel (<code>BLUEPIXEL_REV</code> en el workflow), ejecuta esta prueba sobre el SDK recién compilado y publica el informe <code>bluepixel-nave-*</code>. Esta comprobación en Linux complementa los smoke de AmSpiriT; no sustituye las pruebas de otros ejemplos o CPC 464.</p>
+    <h3>9.4 Casos específicos en CPC 464</h3>
     <pre><code>python3 tests/emulator_smoke.py --model 464 resources128
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py --model 464 audio

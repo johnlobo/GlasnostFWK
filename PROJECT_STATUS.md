@@ -18,6 +18,17 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 > `extensions/motion_u8` son módulos ya eliminados. Los hechos y mediciones no se
 > reescriben.
 
+## Integración headless BluePixel (paso 19, 2026-11-10)
+
+- Adaptador stdio en `tools/glasnost/bluepixel_adapter.py`: capacidades run/headless/capture/memory/input/state/stop, negociación CPCApi 1.x/estado 1, ROMs obligatorias, plazo por petición y recogida del proceso al cerrar o fallar.
+- `tests/bluepixel_smoke.py` ejecuta el `nave` compilado actualmente, con su DSK y `.noi` correspondientes; tres arranques independientes verifican reloj/drone, límites, suelo/HUD, captura, restauración y continuación exactas. No necesita X ni pausas de reloj real.
+- CI compila BluePixel fijado en `28f5e45dd34efb11f0684a2b68823e3d20b60d22`, usa el DSK común recién construido y publica JSON con identidades y tiempos. Las pruebas de AmSpiriT siguen disponibles.
+- Se aíslan las pruebas existentes del selector de emulador de las aplicaciones instaladas en macOS y de la numeración específica de Apple Silicon. Se comprueba también el plazo cuando el hijo bloquea la escritura de stdio.
+- La comprobación de suelo lee la línea completa antes de mover la nave al límite inferior, donde su sprite de ocho líneas se superpone al suelo. Los artefactos CPC, incluidos los `.noi` correspondientes a los BIN, se publican antes del smoke para conservarlos si éste falla.
+- `make test` completo en worktree aislado: 590 pruebas host (5 omitidas), 23 ejemplos y DSK común construidos. Siete pruebas del adaptador y 91 del selector de emulador pasan.
+- Validación Linux x86_64: [CI 42848022356](https://github.com/johnlobo/GlasnostFWK/actions/runs/42848022356), commit `b76d7a5`, pasa suite y smoke. Tres arranques de 1.120 fotogramas con hash `4e0b802db1e40b35`; mediana 47,85x (0,468 s de pared por recorrido) en el runner de GitHub. Incluye API, lectura de memoria, captura y restauración; no es la VPS Haswell ni el fixture congelado de BluePixel. Los artefactos `bluepixel-nave-*` conservan todas las muestras e identidades.
+- Verificación local macOS arm64 con el DSK común recién compilado: tres arranques idénticos, 1.120 fotogramas ejecutados por arranque, hash `6f1e775d95274e99`; la aceleración de cada recorrido queda en el JSON. Es una medición de este recorrido con API y validaciones, no la carga congelada de BluePixel ni una medición Linux/VPS.
+
 ## Estado confirmado
 
 - Las nueve fases del encargo inicial están implementadas como primera versión

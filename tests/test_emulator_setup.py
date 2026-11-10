@@ -152,6 +152,13 @@ class ConfigRobustness(Temp):
 
 
 class Discovery(Temp):
+    def setUp(self):
+        super().setUp()
+        # Discovery fixtures must not include applications installed on the host Mac.
+        patcher = mock.patch.object(emu, "MAC_APPS", ())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_kind_of(self):
         self.assertEqual(emu.kind_of("/x/RetroVirtualMachine"), "rvm")
         self.assertEqual(emu.kind_of("C:/x/RetroVirtualMachine.exe"), "rvm")
@@ -602,6 +609,11 @@ class Harness(unittest.TestCase):
     """A fake SDK and a way to drive main() with scripted answers."""
 
     def setUp(self):
+        # Generic menu scripts use Linux numbering; Apple-specific tests opt in explicitly.
+        for patcher in (mock.patch.object(emu, "bluepixel_supported", return_value=False),
+                        mock.patch.object(emu, "MAC_APPS", ())):
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.sdk = FakeSdk(self)
         self.assertEqual(self.sdk.cli("install-toolchain")[0], 0)
         self.calls: list[list[str]] = []
