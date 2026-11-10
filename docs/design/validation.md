@@ -8,7 +8,7 @@
 > `extensions/collision_bodies` y `extensions/motion_u8` también están
 > eliminados; las medidas y resultados se conservan como historia.
 
-Fecha: 2026-11-04 UTC.
+Fecha: 2026-11-10 UTC.
 
 ## Implementado
 
@@ -37,7 +37,7 @@ Fecha: 2026-11-04 UTC.
   opaco y no integra todavía la máscara.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y veintidós ejemplos, incluidas dos escenas jugables.
+- Generadores de vídeo/recursos y veintitrés ejemplos, incluidas tres escenas jugables.
 - Entity manager ECS con slots estables, copia de plantillas, lifecycle diferido,
   máscaras de 16 bits, locks, recorrido por máscara y recolección.
 - Frontera de dependencias y exclusión física de módulos.
@@ -155,9 +155,9 @@ se ha medido todavía.
 
 ## Compilado
 
-Los veintidós ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-veintiuno generan además `.cdt`. Sus veintidós BIN y los dos payloads de
-`diskload` se reúnen en un único `build/tests/GlasnostFWK-tests.dsk` con 24
+Los veintitrés ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
+veintidós generan además `.cdt`. Sus veintitrés BIN y los dos payloads de
+`diskload` se reúnen en un único `build/tests/GlasnostFWK-tests.dsk` con 25
 entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
 porque sus payloads auxiliares no están en cinta. `docs/design/build-sizes.md` contiene
 tamaños enlazados.
@@ -178,7 +178,7 @@ tamaños enlazados.
   bajo bits preservados.
 - Validación de ventanas: geometría válida, ajuste exacto, límites exteriores y
   rechazo de `y+height` con desbordamiento de 16 bits.
-- 58 pruebas host en total. Las pruebas específicas de texto verifican los 918
+- 583 pruebas host en total. Las pruebas específicas de texto verifican los 918
   bytes de los 51 glifos, los 100 bytes de los diez dígitos, la tabla de máscara
   de 256 bytes y la presencia de la API y el mapeo original. El manual cubre
   todos los ejemplos y módulos seleccionados; su checksum corresponde al HTML

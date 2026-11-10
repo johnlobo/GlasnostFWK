@@ -96,6 +96,13 @@ El generador publica los campos de componente como
 termina con `ECS_ENTITY_SIZE`. Reordenar componentes o campos es un cambio de
 layout que debe revisarse antes de regenerar.
 
+El componente describe el layout de la entidad, no el código que lo ejecuta.
+Por eso un sistema necesita las dos cosas: la entrada en `ecs.components` y los
+módulos en `modules`. Por ejemplo, `behavior` son los campos `program`, `timer`
+y `state` del componente, más `core/ecs_behavior.s` (adaptador ECS) y
+`extensions/behavior.s` (intérprete de bytecode). Que el nombre coincida no
+duplica el componente: son capas distintas (datos y código).
+
 ### 3.2 Máscara de componentes
 
 - La máscara es `u16` little-endian.
