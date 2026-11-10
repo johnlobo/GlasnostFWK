@@ -41,8 +41,13 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 ## Reorganización de ejemplos y validaciones (2026-11-10)
 
 - Rama de trabajo: `refactor/examples-validations`, creada sobre `846047ffe0e7c7052b8cd41004d9762a06eacb7f`
-  (HEAD y referencia local `origin/main` coincidían al empezar). Sin nuevo commit,
-  push ni CI remota ejecutada para estos cambios.
+  (HEAD y referencia local `origin/main` coincidían al empezar).
+  Commit funcional: `c2b4bb91d3e32287f25717291db5f7ef42542667`,
+  «Reorganiza ejemplos públicos y validaciones internas», subido a
+  `origin/refactor/examples-validations`; SHA remoto comprobado con `git ls-remote`.
+  Este registro se completa en un commit documental posterior al funcional.
+  No hay PR ni CI remota ejecutada para estos cambios; el workflow de CI solo
+  se activa en push a `main`, pull request o ejecución manual.
 - `board` pasa a `examples/text`, incluidos manifiesto, símbolos del smoke y título.
   Se elimina `examples/vertical`, su smoke y `docs/reference/vertical-slice.md`.
   Sus comprobaciones específicas de recogida y victoria no se trasladan ni se
