@@ -18,6 +18,15 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 > `extensions/motion_u8` son módulos ya eliminados. Los hechos y mediciones no se
 > reescriben.
 
+## Integración headless BluePixel (paso 19, 2026-11-10)
+
+- Adaptador stdio en `tools/glasnost/bluepixel_adapter.py`: capacidades run/headless/capture/memory/input/state/stop, negociación CPCApi 1.x/estado 1, ROMs obligatorias, plazo por petición y recogida del proceso al cerrar o fallar.
+- `tests/bluepixel_smoke.py` ejecuta el `nave` compilado actualmente, con su DSK y `.noi` correspondientes; tres arranques independientes verifican reloj/drone, límites, suelo/HUD, captura, restauración y continuación exactas. No necesita X ni pausas de reloj real.
+- CI compila BluePixel fijado en `28f5e45dd34efb11f0684a2b68823e3d20b60d22`, usa el DSK común recién construido y publica JSON con identidades y tiempos. Las pruebas de AmSpiriT siguen disponibles.
+- Se aíslan las pruebas existentes del selector de emulador de las aplicaciones instaladas en macOS y de la numeración específica de Apple Silicon. Se comprueba también el plazo cuando el hijo bloquea la escritura de stdio.
+- `make test` completo en worktree aislado: 590 pruebas host (5 omitidas), 23 ejemplos y DSK común construidos. Siete pruebas del adaptador y 91 del selector de emulador pasan.
+- Verificación local macOS arm64: tres arranques idénticos, 1.100 fotogramas ejecutados por arranque, hash `d042db561a3a845b`, medición de cada recorrido en el JSON. Es una medición de este recorrido con API y validaciones, no la carga congelada de BluePixel ni una medición Linux/VPS.
+
 ## Estado confirmado
 
 - Las nueve fases del encargo inicial están implementadas como primera versión

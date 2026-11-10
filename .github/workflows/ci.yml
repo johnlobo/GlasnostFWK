@@ -14,6 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  BLUEPIXEL_REV: 28f5e45dd34efb11f0684a2b68823e3d20b60d22
   CPCTELERA_REV: 11e61fe30175ad7b328de9bcd859c46fd61b26a5
   CPCTELERA_ROOT: ${{ github.workspace }}/.deps/cpctelera-next
   CPCT_NEXT_PATH: ${{ github.workspace }}/.deps/cpctelera-next/cpctelera
@@ -44,7 +45,8 @@ jobs:
             bison \
             build-essential \
             flex \
-            libboost-dev
+            libboost-dev \
+            zlib1g-dev
 
       - name: Build pinned CPCTelera tools and library
         if: steps.cpct-cache.outputs.cache-hit != 'true'
@@ -87,6 +89,29 @@ jobs:
 
       - name: Run tests and build examples
         run: make test
+
+      - name: Check out pinned BluePixel headless
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: johnlobo/BluePixel
+          ref: ${{ env.BLUEPIXEL_REV }}
+          path: .deps/bluepixel
+
+      - name: Build BluePixel and test the freshly built nave
+        run: |
+          .deps/bluepixel/tools/build-headless.sh
+          python3 tests/bluepixel_smoke.py \
+            --emulator .deps/bluepixel/build/bluepixel-headless \
+            --rom-dir .deps/bluepixel/web/roms \
+            --json build/bluepixel-nave.json
+
+      - name: Upload deterministic nave checks and timings
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bluepixel-nave-${{ github.sha }}
+          path: build/bluepixel-nave.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Verify distributable artifacts
         shell: bash
