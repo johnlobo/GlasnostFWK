@@ -6,7 +6,7 @@
 .include "core/ecs_manager.inc"
 .include "core/ecs_animation.inc"
 .include "core/ecs_collision.inc"
-.include "extensions/behavior.inc"
+.include "core/ecs_behavior.inc"
 .include "video/ecs_render.inc"
 
 .include "assets/generated/assets.inc"

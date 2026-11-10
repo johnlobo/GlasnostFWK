@@ -75,7 +75,9 @@ recorrido por máscara. El layout lo genera `tools/build/gen_ecs_profile.py` des
 manifiesto. El contrato completo está en `ecs-abi-2.0.md`; los sistemas
 (`core/ecs_behavior.s`, `ecs_motion.s`, `ecs_input.s`, `ecs_platform.s`,
 `ecs_collision.s`, `ecs_animation.s`) y el renderer (`video/ecs_render.s`) lo
-comparten. No existe ningún contenedor de registros anterior al ECS.
+comparten. `core/ecs_behavior.s` reúne el sistema ECS y el intérprete de
+bytecode, que trabaja sobre la propia entidad; sus macros de autoría están en
+`core/ecs_behavior.inc`. No existe ningún contenedor de registros anterior al ECS.
 
 ### Física de plataforma opcional
 

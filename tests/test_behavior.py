@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class BehaviorTests(unittest.TestCase):
     def test_wait_macro_terminates_its_condition_table(self):
-        include = (ROOT / "framework/src/extensions/behavior.inc").read_text()
+        include = (ROOT / "framework/src/core/ecs_behavior.inc").read_text()
         wait_macro = include.split(".macro FWK_BEHAVIOR_WAIT", 1)[1].split(
             ".endm", 1
         )[0]

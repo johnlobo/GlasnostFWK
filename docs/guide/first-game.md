@@ -192,7 +192,7 @@ detiene y `game_status` guarda el código de error.
 ```
 
 2. En `example.json`, añade el componente en `ecs.components` y el módulo en
-   `modules` (antes de `extensions/behavior.s`):
+   `modules` (antes de `extensions/physics_platform.s`):
 
 <!-- guia: step2/example.json -->
 ```json
@@ -224,7 +224,7 @@ detiene y `game_status` guarda el código de error.
    orden, separados por líneas en blanco):
 
    - añade `.include "core/ecs_animation.inc"` justo antes de
-     `.include "extensions/behavior.inc"`;
+     `.include "core/ecs_behavior.inc"`;
    - las dos líneas `.globl` nuevas **sustituyen** a la línea `.globl game_palette, ...`
      del proyecto;
    - `GAME_ANIM_TICKS` va justo antes del comentario `;; Spawn row`;

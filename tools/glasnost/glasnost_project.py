@@ -46,7 +46,6 @@ MODULES = [
     "core/ecs_behavior.s",
     "core/ecs_motion.s",
     "core/ecs_input.s",
-    "extensions/behavior.s",
     "extensions/physics_platform.s",
     "core/input.s",
     "video/video.s",

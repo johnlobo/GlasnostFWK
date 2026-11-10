@@ -12,7 +12,6 @@
     "core/ecs_platform.s",
     "core/ecs_collision.s",
     "core/ecs_animation.s",
-    "extensions/behavior.s",
     "extensions/physics_platform.s",
     "extensions/tilemap.s",
     "extensions/platform_tilemap.s",
