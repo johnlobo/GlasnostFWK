@@ -20,7 +20,7 @@ abierta en ese historial no implica una tarea pendiente hoy.
 - Smoke AmSpiriT-Lite CPC 6128: `text` y `ecsanimation` correctos; el primero
   comprueba texto/números en VRAM y el segundo el registro frente al modelo Python.
 - Manual HTML/PDF y checksum regenerados; informe de tamaños actualizado.
-- PR/CI de esta rama: pendiente de apertura y ejecución. No hay nueva release.
+- PR de esta rama: [#42](https://github.com/johnlobo/GlasnostFWK/pull/42), CI en curso. No hay nueva release.
   Última versión publicada registrada: `v0.2.0` (histórica; no revisada en remoto aquí).
 
 ## Funcionalidad vigente
@@ -43,6 +43,9 @@ abierta en ese historial no implica una tarea pendiente hoy.
 - `make examples` construye ejemplos públicos; `make validations`, los internos;
   `make test` y `make release` construyen ambos y el DSK común. `diskload` y `perf`
   declaran solo DSK. El ZIP separa ejemplos y validaciones.
+- BluePixel headless integrado desde `07dc833` de `main`: adaptador stdio, smoke
+  determinista de `nave` y ejecución en CI. El código y la documentación se conservan
+  al resolver los conflictos con esta reorganización; validación combinada pendiente.
 - CLI con toolchain fijada, creación/configuración de proyectos, repositorio y remoto
   propios, actualización con migraciones y rollback. Formato de proyecto actual: 1.
 - Toolchain fijada: CPCTelera Next `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
@@ -51,8 +54,8 @@ abierta en ese historial no implica una tarea pendiente hoy.
 
 ## Próximos pasos autorizados, por orden
 
-1. Separar estado e historial: este cambio archiva el registro anterior y deja aquí
-   los hechos vigentes, límites y trabajo pendiente. Validar estructura y contratos.
+1. Separación de estado e historial completada en `b0aff2a`; estructura (7 pruebas)
+   y ABI (9 pruebas) correctos.
 2. Abrir PR de reorganización y documentación, esperar CI «Host tests and CPC builds»
    y fusionar con squash. No empujar directamente a `main`.
 3. Cambiar `example.json` por `glasnost.manifest.json` en una rama posterior:
