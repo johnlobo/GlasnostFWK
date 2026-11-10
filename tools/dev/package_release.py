@@ -10,13 +10,19 @@ import re
 import zipfile
 from pathlib import Path
 
-if __package__:
-    from build_test_disk import program_bin_name
-else:
-    from build_test_disk import program_bin_name
-
 ROOT = Path(__file__).resolve().parents[2]
-EXAMPLES = ("minimal", "board", "gravity", "physics88", "tilecoll", "tilerender", "spriteclip", "spritemask", "video", "resources128", "diskload", "audio", "window", "vertical", "perf", "tilemask", "experimental", "platformer", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "nave")
+
+try:
+    from tools.build.build_test_disk import program_bin_name
+    from tools.build.program_catalog import program_folder, program_folders, program_names
+except ModuleNotFoundError:
+    import sys
+    sys.path.insert(0, str(ROOT / "tools" / "build"))
+    from build_test_disk import program_bin_name
+    from program_catalog import program_folder, program_folders, program_names
+EXAMPLES = program_names(ROOT, "examples")
+VALIDATIONS = program_names(ROOT, "validations")
+PROGRAMS = (*EXAMPLES, *VALIDATIONS)
 TEST_DISK = "GlasnostFWK-tests.dsk"
 VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)
@@ -24,10 +30,10 @@ ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 
 def artifact_paths() -> list[tuple[str, Path]]:
     artifacts: list[tuple[str, Path]] = []
-    for example in EXAMPLES:
+    for example in PROGRAMS:
         base = ROOT / "build" / example
         manifest = json.loads(
-            (ROOT / "examples" / example / "example.json").read_text(encoding="utf-8")
+            (program_folder(ROOT, example) / "example.json").read_text(encoding="utf-8")
         )
         formats = ["bin"]
         if "cdt" in manifest.get("media", ["cdt", "dsk"]):
@@ -40,7 +46,8 @@ def artifact_paths() -> list[tuple[str, Path]]:
             )
             if not source.is_file() or source.stat().st_size == 0:
                 raise FileNotFoundError(f"missing artifact: {source}")
-            artifacts.append((f"examples/{example}/{example}.{suffix}", source))
+            relative = program_folder(ROOT, example).relative_to(ROOT)
+            artifacts.append((f"{relative}/{example}.{suffix}", source))
     disk = ROOT / "build" / "tests" / TEST_DISK
     if not disk.is_file() or disk.stat().st_size == 0:
         raise FileNotFoundError(f"missing artifact: {disk}")
@@ -62,9 +69,9 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     archive_path = output_dir / f"GlasnostFWK-v{version}-cpc-artifacts.zip"
     formats_by_example = {}
-    for example in EXAMPLES:
+    for example in PROGRAMS:
         example_manifest = json.loads(
-            (ROOT / "examples" / example / "example.json").read_text(
+            (program_folder(ROOT, example) / "example.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -80,24 +87,25 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
         "project": "GlasnostFWK",
         "version": version,
         "examples": list(EXAMPLES),
+        "validations": list(VALIDATIONS),
         "artifacts": formats_by_example,
         "run_names": {
             example: Path(program_bin_name(ROOT, example)).stem
-            for example in EXAMPLES
+            for example in PROGRAMS
         },
         "test_disk": f"tests/{TEST_DISK}",
-        "playable_examples": ["vertical", "platformer"],
+        "playable_examples": ["nave", "platformer"],
     }
     instructions = (
         "GlasnostFWK CPC examples\n"
         "========================\n\n"
         f"Load tests/{TEST_DISK} in an Amstrad CPC emulator. It contains all\n"
-        "example binaries and the auxiliary diskload payloads. Run the file\n"
+        "example/validation binaries and the auxiliary diskload payloads. Run the file\n"
         "matching the catalog name recorded in manifest.json. Playable examples:\n\n"
-        '    RUN"VERTICAL"\n\n'
+        '    RUN"NAVE"\n\n'
         '    RUN"PLATGAME"\n\n'
         "Both use the cursor keys; CursorUp jumps in PLATGAME.\n"
-        "The remaining examples are focused technical demonstrations.\n"
+        "Public examples are under examples/; internal checks and benchmarks are under framework/validations/.\n"
     )
 
     with zipfile.ZipFile(archive_path, "w") as archive:

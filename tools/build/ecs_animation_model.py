@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reference model and scenario for the ECS animation system (ABI 2.0, 10).
 
-Single source of truth for the emulator scenario run by examples/ecsanimation:
+Single source of truth for the emulator scenario run by framework/validations/ecsanimation:
 ``--output`` renders the command table as an include, ``--check`` verifies a
 committed copy, and tests/emulator_smoke.py replays the same model to know
 what the Z80 code must have logged.

@@ -37,7 +37,7 @@ GAME_DRONE_COMPS  = ECS_C_RENDER|ECS_C_MOTION|ECS_C_BEHAVIOR|ECS_C_ANIMATION|ECS
 - **Manager**: quien guarda las entidades, las crea y las recorre.
 - **Tick**: una pasada del bucle del juego, el tiempo del juego. «Esperar 20» significa 20
   pasadas. No es lo mismo que un fotograma de pantalla (un VSYNC, 1/50 s): medido en el emulador,
-  una pasada de este juego tarda dos fotogramas de pantalla (ver `PROJECT_STATUS.md`). El código
+  una pasada de este juego tarda dos fotogramas de pantalla (ver `docs/design/project-history.md`). El código
   la llama *frame* en sus comentarios; en este texto, para no confundirla con la de pantalla,
   una pasada se llama tick o pasada, y «fotograma» es siempre el de pantalla (la guía
 [Tu primer juego](first-game.md) usa «fotograma» en los dos sentidos). Las imágenes de una
@@ -838,14 +838,14 @@ guarda si el sujeto ya tocaba (para distinguir
 
 Una nota honesta sobre el renderizador: borra y vuelve a dibujar justo después del VSYNC y
 el haz del monitor puede alcanzar esas líneas antes de que acabe, así que un sprite puede
-parpadear. Es un efecto conocido, aún sin medir, y [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md)
+parpadear. Es un efecto conocido, aún sin medir, y [el historial](../design/project-history.md)
 deja abierto si lo corrige el renderizador o la plantilla.
 
 ## 6. Dos ejercicios
 
 Los dos están compilados y ejecutados en un emulador tal como se describen aquí
 (`tests/nave_walkthrough_smoke.py`, que construye un proyecto de glasnost con los ficheros de
-`examples/nave` y les aplica estos cambios; los resultados medidos están en `PROJECT_STATUS.md`).
+`examples/nave` y les aplica estos cambios; los resultados medidos están en `docs/design/project-history.md`).
 Con `GAME_SPEED_Y = 4` la nave recorre casi el doble de líneas que con 2 en los mismos 60
 fotogramas de pantalla (cociente de 1,93 a 2,00); con el cuarto dron el juego llega a `0x5A`, la quinta entidad es un dron que se
 mueve y, al colocar la nave encima (el smoke escribe su posición en la RAM), suma al menos un

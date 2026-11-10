@@ -4,7 +4,8 @@ Estado del plan: aprobado para ejecución por fases el 2026-11-03.
 
 Este documento es la referencia estable de alcance y decisiones. El punto
 operativo exacto para retomar una sesión se mantiene en `PROJECT_STATUS.md`,
-sección **Migración ECS 2.0: estado operativo**.
+secciones **Funcionalidad vigente** y **Próximos pasos autorizados, por orden**.
+El registro de fases anterior se conserva en `docs/design/project-history.md`.
 
 La especificación normativa de la fase 1 está en `docs/reference/ecs-abi-2.0.md`. La
 puerta G1 fue aprobada el 2026-11-03; las implementaciones posteriores deben

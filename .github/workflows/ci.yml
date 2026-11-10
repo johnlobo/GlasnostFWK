@@ -94,10 +94,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for example in minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 diskload audio window vertical perf tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender nave; do
+          for example in $(python3 tools/build/program_catalog.py all --media bin); do
             test -s "build/$example/obj/$example.bin"
           done
-          for example in minimal board gravity physics88 tilecoll tilerender spriteclip spritemask video resources128 audio window vertical tilemask experimental platformer ecsmanager ecscollision ecsanimation ecsrender nave; do
+          for example in $(python3 tools/build/program_catalog.py all --media cdt); do
             test -s "build/$example/$example.cdt"
           done
           test -s "build/tests/GlasnostFWK-tests.dsk"

@@ -34,7 +34,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = ROOT / "examples"
+from tools.build.program_catalog import program_folders
 
 SKIP_EXAMPLES: set[str] = set()
 SKIP_FILES = {"song.s", "sfx.s", "scenario.inc", "assets.s"}  # generated or pure data
@@ -51,7 +51,7 @@ REQUIRED = ("In :", "Out:", "Clobbers:", "Notes:")   # in this order
 
 def sources() -> list[Path]:
     found = []
-    for folder in sorted(EXAMPLES.iterdir()):
+    for folder in program_folders(ROOT):
         if not folder.is_dir() or folder.name in SKIP_EXAMPLES:
             continue
         for path in sorted(folder.glob("*.s")) + sorted(folder.glob("*.inc")):

@@ -164,7 +164,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los veintitrés consumidores y crea el disco de pruebas en <code>build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los 15 ejemplos públicos; <code>make validations</code>, los 7 programas internos de <code>framework/validations/</code>. El disco común se genera con <code>make test</code> o <code>make release VERSION=x.y.z</code> en <code>build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -176,21 +176,21 @@ make clean  # borra build/minimal/ y las copias locales</code></pre>
     <p><code>make</code> reutiliza <code>tools/build/build_examples.py</code> y deja el proyecto generado en <code>build/&lt;nombre&gt;/</code>. Además copia junto a las fuentes <code>examples/&lt;nombre&gt;/&lt;nombre&gt;.bin</code>, <code>.cdt</code> y <code>.dsk</code> (los que existan), de modo que el ejecutable queda a mano en la carpeta del ejemplo; esas copias están ignoradas por git y <code>make clean</code> las elimina. El framework nunca se copia al repositorio. <code>make run</code> abre el CDT del ejemplo, que autorrancia, o su DSK, con el ejecutable indicado en <code>GLASNOST_EMULATOR</code> o, en su defecto, con AmSpiriT-Lite si está junto al repositorio y, si no, con BluePixel. Sin emulador disponible imprime la ruta de la imagen. El emulador también puede fijarse en la propia orden: <code>make run GLASNOST_EMULATOR=/ruta/al/emulador</code>.</p>
     <p>Para lotes o automatización sigue disponible la herramienta de bajo nivel:</p>
     <pre><code>python3 tools/build/build_examples.py minimal
-python3 tools/build/build_examples.py animation vertical</code></pre>
+python3 tools/build/build_examples.py ecsanimation text</code></pre>
     <p>Los resultados quedan en <code>build/&lt;nombre&gt;/</code>. Según el manifiesto aparecen:</p>
     <ul>
       <li><code>obj/&lt;nombre&gt;.bin</code>: binario AMSDOS.</li>
       <li><code>&lt;nombre&gt;.cdt</code>: cinta, salvo ejemplos que declaren solo DSK.</li>
       <li><code>selected-modules.json</code>: prueba de qué módulos entraron realmente.</li>
     </ul>
-    <p><code>tools/build/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make examples</code> los sustituye por el único DSK común y deja su catálogo reproducible en <code>build/tests/catalog.json</code>.</p>
+    <p><code>tools/build/build_examples.py</code> es la herramienta de bajo nivel y CPCTelera puede dejar un DSK intermedio por ejemplo. La política pública de <code>make test</code> y <code>make release</code> los sustituyen por el único DSK común y deja su catálogo reproducible en <code>build/tests/catalog.json</code>.</p>
 
     <h3>3.3 Probar manualmente en un CPC o emulador</h3>
     <ol>
-      <li>Ejecute <code>make examples</code>.</li>
+      <li>Ejecute <code>make test</code> para construir los programas y el DSK común.</li>
       <li>Inserte <code>build/tests/GlasnostFWK-tests.dsk</code> o el CDT específico en el CPC/emulador.</li>
-      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"VERTICAL"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"PLATGAME"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code>, <code>spritemask</code> es <code>SPRITEMA.BIN</code>. El ejemplo <code>platformer</code> declara el nombre <code>PLATGAME</code> en su manifiesto.</li>
-      <li>Para la demostración jugable <code>vertical</code>, mantenga CursorRight y recoja los tres puntos. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> no necesitan entrada: muestran automáticamente su resultado.</li>
+      <li>En DSK ejecute <code>CAT</code> y cargue el binario cuyo nombre coincide con el ejemplo; por ejemplo, <code>RUN"NAVE"</code>, <code>RUN"TILEREND"</code>, <code>RUN"SPRITECL"</code> o <code>RUN"PLATGAME"</code>. Los nombres de más de ocho caracteres se ajustan a AMSDOS: <code>resources128</code> es <code>RESOURCE.BIN</code>, <code>tilerender</code> es <code>TILEREND.BIN</code>, <code>spriteclip</code> es <code>SPRITECL.BIN</code>, <code>spritemask</code> es <code>SPRITEMA.BIN</code>. El ejemplo <code>platformer</code> declara el nombre <code>PLATGAME</code> en su manifiesto.</li>
+      <li>Para <code>nave</code>, use los cursores para mover la nave. <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> no necesitan entrada: muestran automáticamente su resultado.</li>
     </ol>
     <div class="box">Los smoke automáticos no se limitan a comprobar que el emulador sigue abierto: leen RAM, memoria de vídeo, teclado y, en audio, registros PSG.</div>
   </section>
@@ -304,8 +304,8 @@ loop:
     <p><code>RENDER</code> se inserta siempre como bit 0. El resto conserva el orden solicitado, insertando antes sus dependencias. Se rechazan nombres o tipos inválidos, duplicados, ciclos, componentes desconocidos, más de 16 componentes, coordenadas incapaces de representar el perfil de vídeo y entidades mayores de 128 bytes.</p>
     <div class="box warning"><strong>Portfolio actual.</strong> <code>RENDER</code>, <code>MOTION</code>, <code>BEHAVIOR</code>, <code>INPUT</code> y <code>PLATFORM</code>, <code>COLLISION</code> y <code>ANIMATION</code> tienen layout normativo, y el renderer ECS dirty/multi-manager está en <code>video/ecs_render.s</code>.</div>
     <p>El include versionado está en <code>generated/ecs_profile.inc</code>. Antes de cambiarlo puede obtener una vista JSON de componentes resueltos, dependencias insertadas, campos, offsets, tamaños y diferencias sin escribir:</p>
-    <pre><code>python3 tools/build/gen_ecs_profile.py examples/ecsmanager/example.json \
-  --output examples/ecsmanager/generated/ecs_profile.inc --preview
+    <pre><code>python3 tools/build/gen_ecs_profile.py framework/validations/ecsmanager/example.json \
+  --output framework/validations/ecsmanager/generated/ecs_profile.inc --preview
 make generate-ecs   # escribe el include después de revisar la vista previa
 make check CHECK_EXAMPLES=ecsmanager  # falla si el include vuelve a quedar obsoleto</code></pre>
     <p>El generador publica <code>ECS_ABI_MAJOR/MINOR</code>, formatos y tamaños X/Y, <code>ECS_C_*</code>, <code>ECS_COMPONENT_VALID_MASK</code>, todos los offsets <code>ECS_E_*</code> y <code>ECS_ENTITY_SIZE</code>. Incluya <code>core/ecs_manager.s</code> en el manifiesto y <code>core/ecs_manager.inc</code> en el ensamblador. Un descriptor reserva ocho bytes y referencia almacenamiento propiedad del juego:</p>
@@ -652,34 +652,42 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
       <thead><tr><th>Ejemplo</th><th>Qué demuestra</th><th>Medios</th></tr></thead>
       <tbody>
         <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="board"><td><code>board</code></td><td>Entrada, texto y composición sencilla de tablero.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="text"><td><code>text</code></td><td>Texto, números pequeños y colores, con entrada sencilla.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="gravity"><td><code>gravity</code></td><td>Traza amarilla sobre negro: gravedad, salto, límites y aterrizaje con velocidad byte.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilecoll"><td><code>tilecoll</code></td><td>Escenario cian y traza amarilla: consulta row-major, techo, pared y suelo sólido.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilerender"><td><code>tilerender</code></td><td>Viewport Mode 0: cambio de cámara, render completo y actualización de una celda.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="spriteclip"><td><code>spriteclip</code></td><td>Sprites opacos: clipping en cuatro bordes y captura/restauración del fondo visible.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="spritemask"><td><code>spritemask</code></td><td>Color clave configurable: pen 3, tabla generada, composición, recoloreado 5→15, clipping y rechazo de pens/span.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="physics88"><td><code>physics88</code></td><td>Traza cian sobre negro: integración 8.8, fricción vectorial y rebote.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="resources128"><td><code>resources128</code></td><td>Detección y copia bancaria, con fallback de 64 KB.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="diskload"><td><code>diskload</code></td><td>Carga AMSDOS cruda y ZX7B con comparación byte a byte.</td><td>BIN, DSK común</td></tr>
         <tr data-example="audio"><td><code>audio</code></td><td>Música AKG, stop/restart y SFX.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="window"><td><code>window</code></td><td>Validación, captura, caja, texto, restauración y reapertura.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="vertical"><td><code>vertical</code></td><td>Escena jugable en ECS: entrada, movimiento, colisión, render y victoria.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="perf"><td><code>perf</code></td><td>Arnés de rendimiento: vacío, limpieza, sprites opacos/enmascarados, captura/restauración, lote de 8, tilemap completo y celda.</td><td>BIN, DSK común</td></tr>
         <tr data-example="tilemask"><td><code>tilemask</code></td><td>Render de tilemap con composición enmascarada por tile.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="platformer"><td><code>platformer</code></td><td>Plataformas en ECS: jugador, cuatro monedas, tres enemigos, puerta, vidas, HUD y parpadeo al perder una vida, un manager con cadencia por entidad, el renderer selectivo y dos niveles.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisión ECS: reproduce un escenario generado por un modelo Python (ENTER, STAY, EXIT, máscara, destrucción, aborto, BUSY, callback nulo) y registra los argumentos de cada callback.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="ecsanimation"><td><code>ecsanimation</code></td><td>Prueba técnica de animación ECS: reproduce un escenario generado por un modelo Python (cuenta atrás, avance y vuelta de frame, cambio de descriptor, descriptor ya activo, parada con 0) y registra frame, temporizador, sprite y DIRTY de cada entidad.</td><td>BIN, DSK común, CDT</td></tr>
-        <tr data-example="ecsrender"><td><code>ecsrender</code></td><td>Prueba técnica del renderer ECS: reproduce un escenario generado por un modelo Python (dos managers, solapes con orden distinto al de slot, ocultar, deshabilitar, destruir, recorte en los bordes) y el smoke compara la VRAM de cada frame con la imagen ideal.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="nave"><td><code>nave</code></td><td>El juego terminado de la guía <a href="guide/first-game.md">Tu primer juego</a>: una nave que se mueve con el cursor y tres drones que patrullan, con sprites convertidos desde un PNG (<code>assets/</code>), animación de dos fotogramas, colisión con contador de golpes y texto. Es la copia acumulada de <code>docs/guide/first-game/step1..3</code> y un test comprueba que coincide.</td><td>BIN, DSK común, CDT</td></tr>
         <span data-module="extensions/tilemap_dirty.s"></span>
         <span data-module="extensions/tilemap_render_masked.s"></span>
         <span data-module="video/transparency.s"></span>
       </tbody>
     </table>
-    <p><code>vertical</code>, <code>platformer</code> y <code>nave</code> son las tres escenas jugables completas, todas en ECS. Los otros veinte son pruebas técnicas deliberadamente pequeñas. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p><code>platformer</code> y <code>nave</code> son las dos escenas jugables. Los otros trece ejemplos muestran APIs concretas. <code>text</code> sustituye al anterior <code>board</code>. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <h3>8.1 Validaciones internas</h3>
+    <p>Estos siete programas viven en <code>framework/validations/</code>. No forman parte del catálogo público de ejemplos del CLI. Se construyen con <code>make validations</code> o desde su carpeta con <code>make</code>, <code>make run</code> y <code>make clean</code>. El constructor de bajo nivel también acepta su nombre, por ejemplo <code>python3 tools/build/build_examples.py ecsrender</code>.</p>
+    <table>
+      <thead><tr><th>Validación</th><th>Qué comprueba</th><th>Medios</th></tr></thead>
+      <tbody>
+        <tr data-validation="video"><td><code>video</code></td><td>Direcciones y limpieza de regiones visibles.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-validation="ecsmanager"><td><code>ecsmanager</code></td><td>Prueba técnica del manager ECS: slots estables, plantillas, máscaras, lifecycle, locks, recorrido y recolección.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-validation="ecscollision"><td><code>ecscollision</code></td><td>Prueba técnica de colisión ECS: reproduce un escenario generado por un modelo Python (ENTER, STAY, EXIT, máscara, destrucción, aborto, BUSY, callback nulo) y registra los argumentos de cada callback.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-validation="ecsanimation"><td><code>ecsanimation</code></td><td>Prueba técnica de animación ECS: reproduce un escenario generado por un modelo Python (cuenta atrás, avance y vuelta de frame, cambio de descriptor, descriptor ya activo, parada con 0) y registra frame, temporizador, sprite y DIRTY de cada entidad.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-validation="ecsrender"><td><code>ecsrender</code></td><td>Prueba técnica del renderer ECS: reproduce un escenario generado por un modelo Python (dos managers, solapes con orden distinto al de slot, ocultar, deshabilitar, destruir, recorte en los bordes) y el smoke compara la VRAM de cada frame con la imagen ideal.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-validation="perf"><td><code>perf</code></td><td>Arnés de rendimiento: vacío, limpieza, sprites opacos/enmascarados, captura/restauración, lote de 8, tilemap completo y celda.</td><td>BIN, DSK común</td></tr>
+        <tr data-validation="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
+      </tbody>
+    </table>
+    <p><code>perf</code> se mide con <code>tools/dev/measure_perf.py</code>. <code>experimental</code> conserva el límite de temporización CRTC sin validar en hardware. El antiguo ejemplo <code>vertical</code> y su smoke específico de recogida/victoria se han eliminado; no se atribuye esa cobertura a otro juego. El catálogo común <code>tools/build/program_catalog.py</code> descubre ambas colecciones a partir de <code>example.json</code> y alimenta construcción, CI, disco y distribución.</p>
+    <h3>8.2 Juego de plataformas</h3>
     <p><code>platformer</code> usa un único manager ECS de nueve slots (cuatro monedas, puerta, jugador y tres enemigos) y el renderer selectivo <code>video/ecs_render.s</code> sobre él. Al mover el jugador o retirar una moneda se activa <code>DIRTY</code>; el renderer restaura en orden inverso y redibuja por Y. Los enemigos comparten un canal de contacto: se descuenta una vida al comenzar un contacto, no durante todos los frames del solapamiento, y un segundo enemigo que empieza a tocar al jugador sin que el primero lo haya soltado no cuesta otra vida. La puerta permanece oculta hasta reunir las cuatro monedas y permite pasar al segundo nivel.</p>
     <p>El HUD ocupa una línea negra interior. Antes de redibujar texto restaura las celdas de tile que realmente cubre cada tramo: columna 3 para el dígito de monedas, columna 19 para las dos cifras de vida, columnas 0–4 para sustituir el contador completo y columnas 6–14 para retirar todo el mensaje de ayuda. Así no quedan restos de glifos anteriores ni se altera el borde.</p>
     <p>El ejemplo ejecuta lógica y <code>fwk_ecs_render_prepare</code> antes del VSYNC; después mantiene consecutivos <code>fwk_ecs_render_restore</code> y <code>fwk_ecs_render_draw</code>, y actualiza el HUD cuando las entidades ya vuelven a estar visibles. El recorrido automatizado conduce los tramos horizontales hasta posiciones observables del jugador: el coste de render puede hacer que una iteración de juego abarque más de un frame de vídeo, por lo que no equipara un número fijo de frames del emulador con actualizaciones de lógica. El recorrido completo, el smoke focalizado de comportamiento/contactos/puerta/HUD y la prueba de texto pasan en CPC 6128. La versión focalizada inmediatamente anterior pasó también en CPC 464; la fase 0 no repite ese modelo porque no cambia contratos de memoria o modelo. No existe validación en hardware real.</p>
@@ -693,8 +701,9 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
 make report</code></pre>
     <p>La suite comprueba generadores, límites de vídeo, seguridad de manifiestos, frontera de dependencias, nombres AMSDOS y colisiones del DSK común, paquete, cobertura de este manual y compilación. <code>make report</code> actualiza <code>docs/design/build-sizes.md</code> desde los mapas SDCC.</p>
 
-    <h3>9.2 Smoke completo en CPC 6128</h3>
-    <pre><code>python3 tests/emulator_smoke.py</code></pre>
+    <h3>9.2 Smoke de APIs y validaciones en CPC 6128</h3>
+    <pre><code>python3 tests/emulator_smoke.py
+python3 tests/first_game_smoke.py --example</code></pre>
     <h3>9.3 Nave sin ventana con BluePixel</h3>
     <p>El adaptador <code>tools/glasnost/bluepixel_adapter.py</code> controla un proceso privado de BluePixel headless mediante JSON-RPC por stdio: ejecución por fotogramas virtuales, RAM y símbolos, teclado, captura RGBA y estado exacto. Requiere CPCApi 1.x, estado canónico 1 y las tres ROMs CPC 6128 con <code>roms.json</code>. Cada petición tiene un tiempo límite y el contexto cierra el proceso incluso ante errores. No necesita servidor gráfico ni puertos.</p>
     <pre><code>python3 tests/bluepixel_smoke.py \
@@ -704,12 +713,13 @@ make report</code></pre>
     <p>Ejecute antes <code>make test</code> para construir el DSK común y los símbolos actuales. La prueba arranca <code>nave</code> tres veces, comprueba reloj, drone, cuatro límites, suelo, HUD, captura y restauración con continuación idéntica; todos los arranques deben coincidir. La espera de arranque consulta <code>game_status</code> dentro de un límite de fotogramas virtuales. El JSON guarda hashes de binario, disco, símbolos y manifiesto, revisión del SDK y tiempos por método, de arranque y totales. La aceleración usa 50 Hz e incluye control por API y comprobaciones; no se equipara al benchmark histórico de BluePixel.</p>
     <p>CI compila una revisión fijada de BluePixel (<code>BLUEPIXEL_REV</code> en el workflow), ejecuta esta prueba sobre el SDK recién compilado y publica el informe <code>bluepixel-nave-*</code>. Esta comprobación en Linux complementa los smoke de AmSpiriT; no sustituye las pruebas de otros ejemplos o CPC 464.</p>
     <h3>9.4 Casos específicos en CPC 464</h3>
+
     <pre><code>python3 tests/emulator_smoke.py --model 464 resources128
 python3 tests/emulator_smoke.py --model 464 diskload
 python3 tests/emulator_smoke.py --model 464 audio
 python3 tests/emulator_smoke.py --model 464 gravity tilecoll tilerender spriteclip spritemask physics88
 python3 tests/emulator_smoke.py --model 464 window
-python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
+python3 tests/emulator_smoke.py --model 464 text</code></pre>
     <p>Un build correcto, una prueba host correcta, una ejecución emulada y una prueba en hardware son evidencias distintas. Consulte <code>docs/design/validation.md</code> para ver cuáles se han realizado realmente.</p>
   </section>
 
@@ -717,7 +727,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <h2 id="distribucion">10. Crear un paquete de distribución</h2>
     <pre><code>make release VERSION=0.2.0
 (cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
-    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los veintitrés BIN, veintidós CDT y un solo <code>tests/GlasnostFWK-tests.dsk</code>, además de manifiesto, instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los 22 BIN y 20 CDT (15 ejemplos y 7 validaciones) y un solo <code>tests/GlasnostFWK-tests.dsk</code>, separando <code>examples/</code> y <code>framework/validations/</code> dentro del ZIP, además de manifiesto (listas <code>examples</code> y <code>validations</code>), instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
     <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.2.0</code>; los cambios locales posteriores todavía no pertenecen a esa release.</p>
   </section>
 
@@ -758,7 +768,7 @@ python3 tests/emulator_smoke.py --model 464 vertical</code></pre>
     <ol>
       <li>Actualice la explicación y el contrato correspondiente en <code>docs/manual.html</code>.</li>
       <li>Si aparece un módulo seleccionable, marque su sección con <code>data-module="ruta/del/modulo.s"</code>.</li>
-      <li>Si aparece un ejemplo, añada una fila con <code>data-example="nombre"</code>.</li>
+      <li>Si aparece un ejemplo, añada una fila con <code>data-example="nombre"</code>; para una validación interna use <code>data-validation="nombre"</code>.</li>
       <li>Regenerar PDF y checksum: <code>make manual</code>.</li>
       <li>Durante la edición use <code>make check CHECK_EXAMPLES="ejemplos afectados"</code>. Al cerrar el cambio, ejecute <code>make test</code> una sola vez y registre el resultado real en <code>PROJECT_STATUS.md</code>.</li>
     </ol>

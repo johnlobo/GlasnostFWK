@@ -8,3 +8,11 @@
   ABI del ECS, sprites, tilemaps, física, audio, disco y ZX7B, ventanas, migración.
 - [`design/`](design/): por qué es como es. Plan del ECS 2.0, matriz comparativa, procedencia,
   paridad del juego de plataformas, validación, rendimiento y tamaños.
+
+Los 15 ejemplos públicos viven en `examples/`; las 7 validaciones y mediciones
+internas, en `framework/validations/`. El catálogo de ambos está en la sección 8
+del manual. `text` sustituye a `board`; `vertical` se ha retirado.
+
+Estado vigente: [`PROJECT_STATUS.md`](../PROJECT_STATUS.md). Evidencia antigua por
+fases: [`design/project-history.md`](design/project-history.md); sus pendientes
+históricos no son el plan actual.

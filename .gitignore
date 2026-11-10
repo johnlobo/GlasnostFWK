@@ -12,3 +12,7 @@ tools/build/img2cpc/bin/
 tools/build/img2cpc/obj/
 tools/emulators/
 .claude/
+
+framework/validations/*/*.bin
+framework/validations/*/*.cdt
+framework/validations/*/*.dsk

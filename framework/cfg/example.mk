@@ -1,6 +1,6 @@
 ## GlasnostFWK per-example build entry point.
 ##
-## Included from examples/<name>/Makefile so every consumer can be built on
+## Included from examples/<name>/Makefile or framework/validations/<name>/Makefile so every consumer can be built on
 ## its own, the way a standalone CPCtelera project is. The actual project tree
 ## is still staged in build/<name>/; after a successful build the BIN, CDT and
 ## DSK are copied next to the example sources as a convenience. Those copies are
@@ -45,7 +45,7 @@ build:
 		[ -f "$$source" ] || source="$(GLASNOST_BUILD)/$$file"; \
 		if [ -f "$$source" ]; then \
 			cp -f "$$source" "$(GLASNOST_EXAMPLE_DIR)/$$file"; \
-			echo "  $$file -> examples/$(GLASNOST_EXAMPLE)/$$file"; \
+			echo "  $$file -> $(GLASNOST_EXAMPLE_DIR)/$$file"; \
 		fi; \
 	done
 

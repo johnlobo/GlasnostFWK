@@ -1,5 +1,19 @@
 # Estado de validación
 
+> Reorganización 2026-11-10: `board` se llama `text`; `vertical` y su smoke
+> se han retirado. Los arneses `video`, `ecsmanager`, `ecscollision`,
+> `ecsanimation`, `ecsrender`, `perf` y `experimental` viven en
+> `framework/validations/`. Las secciones por fases describen pruebas históricas
+> y no implican que sus comandos o ejemplos retirados sigan disponibles.
+
+Validación de esta reorganización: `make test` correcto (588 pruebas host,
+22 BIN, 20 CDT y DSK con 24 entradas), Makefile local de `ecsmanager` correcto,
+dos paquetes locales idénticos con SHA256 comprobado y 45 archivos, y smoke
+`text ecsanimation` correcto en AmSpiriT-Lite CPC 6128. Manual PDF y checksum
+regenerados. No se ha repetido CPC 464, hardware real ni CI remota para este cambio.
+Las comprobaciones específicas del antiguo `vertical` se han eliminado.
+
+
 > Nota de nombres (fase 11 parte B): los registros de este documento usan los
 > nombres de su época. `platformer` designa aquí el ejemplo original anterior al
 > ECS, eliminado en la fase 11 parte B, y `platformer_ecs` es el actual
@@ -37,7 +51,8 @@ Fecha: 2026-11-10 UTC.
   opaco y no integra todavía la máscara.
 - Ventanas opcionales con validación, captura, borde/relleno y restauración;
   texto, entrada y cierre permanecen en el consumidor.
-- Generadores de vídeo/recursos y veintitrés ejemplos, incluidas tres escenas jugables.
+- Generadores de vídeo/recursos, 15 ejemplos públicos (incluidos `nave` y
+  `platformer`) y 7 validaciones internas bajo `framework/validations/`.
 - Entity manager ECS con slots estables, copia de plantillas, lifecycle diferido,
   máscaras de 16 bits, locks, recorrido por máscara y recolección.
 - Frontera de dependencias y exclusión física de módulos.
@@ -126,7 +141,7 @@ Fecha: 2026-11-10 UTC.
   como banco 0.
 - `spritemask` configuró el pen 3 y el smoke comparó los 256 bytes instalados en
   `0x0100` con la tabla generada, además de sus testigos VRAM y clipping.
-- `board` verificó la tabla pen 0 y el texto; `tilemask` verificó el consumidor
+- `text` verificó la tabla pen 0 y el texto; `tilemask` verificó el consumidor
   transparente de tilemaps. Los cuatro casos pasaron en CPC 6128.
 - En un build sin transparencia (`spriteclip`) el símbolo
   `fwk_sprite_draw_masked` no aparece en el NOI. Las pruebas host cubren los 16
@@ -155,12 +170,12 @@ se ha medido todavía.
 
 ## Compilado
 
-Los veintitrés ejemplos generan `.bin` con CPCTelera Next `11e61fe3…`/SDCC 4.5.0;
-veintidós generan además `.cdt`. Sus veintitrés BIN y los dos payloads de
-`diskload` se reúnen en un único `build/tests/GlasnostFWK-tests.dsk` con 25
-entradas; los DSK individuales intermedios se eliminan. `diskload` no genera CDT
-porque sus payloads auxiliares no están en cinta. `docs/design/build-sizes.md` contiene
-tamaños enlazados.
+Los 15 ejemplos y 7 validaciones generan 22 `.bin` con CPCTelera Next
+`11e61fe3…`/SDCC 4.5.0; 20 generan además `.cdt`. Sus BIN y los dos payloads de
+`diskload` se reúnen con `make test` en `build/tests/GlasnostFWK-tests.dsk`, con
+24 entradas; los DSK individuales intermedios se eliminan. `diskload` y `perf`
+declaran solo DSK. `docs/design/build-sizes.md` contiene los tamaños enlazados
+y distingue ejemplos de validaciones.
 
 ## Probado automáticamente
 
@@ -171,7 +186,7 @@ tamaños enlazados.
 - Rechazo de solapamientos, destinos reservados y bancos no disponibles.
 - Ausencia de imports `src -> examples/game` y selección de módulos.
 - Validación de fuentes de juego declaradas, existentes y sin recorridos inseguros.
-- Construcción completa de los veintitrés ejemplos y validación de nombres 8.3,
+- Construcción completa de los 22 programas y validación de nombres 8.3,
   rutas locales y selección de medio para los archivos añadidos al DSK.
 - Composición de máscara, offsets de clipping compartidos, preservación de un
   píxel Mode 0 con `0xF0`, span de máscara sin wrap y la invariante de datos cero
@@ -185,18 +200,18 @@ tamaños enlazados.
   que generó el PDF vigente. Dos pruebas adicionales validan los enlaces, las
   cinco capturas PNG y el PDF de la guía específica de plataformas.
 
-## Ejecutado en emulador
+## Ejecutado en emulador (registro histórico anterior a la reorganización)
 
 Ejecutado con AmSpiriT-Lite 1.15.3, CRTC 1:
 
-- `board` instaló la tabla de transparencia exacta en `0x0100`, dibujó el título
+- `text` instaló la tabla de transparencia exacta en `0x0100`, dibujó el título
   con los glifos normales y produjo en VRAM los bytes exactos de `7`, `42` y
   `255` con los números pequeños, además de un `8` con cada uno de los quince
   índices válidos de recoloreado. Pasó en CPC 6128 y CPC 464.
 
 - Los veintidós programas arrancaron desde el único
   `GlasnostFWK-tests.dsk` en un CPC 6128 de 128 KB y superaron sus comprobaciones
-  de estado y VRAM. `board` y `platformer` se repitieron además en CPC 464.
+  de estado y VRAM. `text` y `platformer` se repitieron además en CPC 464.
 - `video` conservó el testigo `0xA5` en `0xC7D0` después de limpiar pantalla.
 - `resources128` detectó 128 KB y recuperó `GLASNOST` tras el viaje
   RAM normal -> banco 0 -> RAM normal.
@@ -296,10 +311,10 @@ No verificado.
   por el juego y sin mezcla alfa ni asignación dinámica.
 - Ciclos del dibujo enmascarado medidos en `docs/design/performance.md` (6x8 ≈ 11022
   T-estados). No se promete 50 Hz para una escena arbitraria.
-- Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente:
-  `vertical` prueba entrada, movimiento y recogida de entidades y `resources128`
-  prueba detección/copia bancaria; las ramas de error de disco y los payloads
-  ZX7B corruptos no están automatizados.
+- Ampliar las pruebas Z80 más allá de los recorridos cubiertos actualmente.
+  `resources128` prueba detección/copia bancaria; las ramas de error de disco
+  y los payloads ZX7B corruptos no están automatizados. La cobertura específica
+  de recogida/victoria de `vertical` se ha retirado con ese programa.
 
 ## Comandos reproducibles
 
@@ -338,7 +353,7 @@ python3 tests/emulator_smoke.py spriteclip spritemask
 python3 tests/emulator_smoke.py --model 464 spriteclip spritemask
 python3 tests/emulator_smoke.py window
 python3 tests/emulator_smoke.py --model 464 window
-python3 tests/emulator_smoke.py --model 464 vertical
+python3 tests/emulator_smoke.py --model 464 text
 ```
 
 ### Fase 5 ECS: plataforma aislada
@@ -401,7 +416,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   vinculante 300 y 8, comprobado por `tests/test_ecs_collision.py`. Para
   comparar: AABB no ECS anterior unos 330 bytes; primer diseño fiel al ABI
   original unos 980; versión optimizada para 255+255 entidades unos 5.300.
-- `examples/ecscollision`: escenario de 26 pasos generado desde
+- `framework/validations/ecscollision`: escenario de 26 pasos generado desde
   `tools/build/ecs_collision_model.py`; el smoke compara el registro del emulador con
   el modelo byte a byte (ENTER, STAY, EXIT sin objetivo, máscara de componentes,
   contacto por borde, destrucción desde el callback, aborto del callback, EXIT
@@ -431,7 +446,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   el mismo descriptor que el animador no ECS (`count`, `duration`, punteros de
   frame). Tamaño medido en el `.rel`: 109 bytes de código y 0 de datos;
   presupuesto vinculante 150 y 0, comprobado por `tests/test_ecs_animation.py`.
-- `examples/ecsanimation`: 14 pasos y cinco entidades generados desde
+- `framework/validations/ecsanimation`: 14 pasos y cinco entidades generados desde
   `tools/build/ecs_animation_model.py`: cuenta atrás, avance y vuelta, duración 1,
   entidad sin descriptor, cambio de descriptor, descriptor ya activo a mitad de
   ciclo, parada con 0, un descriptor de 130 frames que cruza el frame 128 y una
@@ -473,7 +488,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   construidos con `ldi`.
 - Oráculo independiente (`tools/build/ecs_render_model.py`): la imagen ideal de cada
   frame es el fondo con todas las entidades `ACTIVE` y `VISIBLE` dibujadas en
-  orden estable por `Y + SORT_OFFSET_Y`. `examples/ecsrender` ejecuta 36 frames
+  orden estable por `Y + SORT_OFFSET_Y`. `framework/validations/ecsrender` ejecuta 36 frames
   con 9 entidades en dos managers (movimientos, saltos, solapes con orden de Y
   distinto al de slot, un sort offset, ocultar y mostrar, deshabilitar y
   habilitar, destruir, recorte en los bordes derecho e inferior) y el smoke
@@ -591,7 +606,7 @@ python3 tests/emulator_smoke.py --model 464 vertical
   en su celda. Mutaciones a mano (puntuación sin contar, sin `collect`, jugador
   quieto, punto sin destruir, sin estado de victoria): detectadas. Sin cubrir: la
   rama de error de `_vertical_expect_ok`.
-- `examples/perf`: la escena del lote de ocho usa `ecs_render` y para el programa
+- `framework/validations/perf`: la escena del lote de ocho usa `ecs_render` y para el programa
   con el código de error en `perf_status` si el renderer falla; `measure_perf.py`
   lo notifica. El crítico en frío (FAIL en la primera ronda) halló que la escena
   ignoraba los errores y que el smoke de `vertical` solo cubría CursorRight.

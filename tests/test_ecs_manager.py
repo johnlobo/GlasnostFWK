@@ -45,9 +45,9 @@ class ECSManagerTests(unittest.TestCase):
 
     def test_manager_is_exercised_by_an_executable_example(self):
         manifest = json.loads(
-            (ROOT / "examples/ecsmanager/example.json").read_text()
+            (ROOT / "framework/validations/ecsmanager/example.json").read_text()
         )
-        main = (ROOT / "examples/ecsmanager/main.s").read_text()
+        main = (ROOT / "framework/validations/ecsmanager/main.s").read_text()
         self.assertIn("core/ecs_manager.s", manifest["modules"])
         self.assertEqual(manifest["ecs"]["components"], ["behavior", "test"])
         self.assertIn("core/ecs_behavior.s", manifest["modules"])
@@ -60,7 +60,7 @@ class ECSManagerTests(unittest.TestCase):
 
     def test_manager_consumes_the_selected_profile(self):
         source = (ROOT / "framework/src/core/ecs_manager.s").read_text()
-        profile = (ROOT / "examples/ecsmanager/generated/ecs_profile.inc").read_text()
+        profile = (ROOT / "framework/validations/ecsmanager/generated/ecs_profile.inc").read_text()
         self.assertIn('.include "ecs_profile.inc"', source)
         self.assertIn("ECS_COMPONENT_VALID_MASK", source)
         self.assertIn("ECS_ENTITY_SIZE", source)
@@ -223,9 +223,13 @@ class ECSManagerTests(unittest.TestCase):
         self.assertIn("ld ix, (_pfe_map_desc)", main.split("_pfe_hud_restore:", 1)[1].split("_pfe_hud_score:", 1)[0])
 
     def test_ci_verifies_the_new_bin_and_cdt(self):
+        from tools.build.program_catalog import program_names
+
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         artifact_section = workflow.split("Verify distributable artifacts", 1)[1]
-        self.assertGreaterEqual(artifact_section.count("ecsmanager"), 2)
+        for media in ("bin", "cdt"):
+            self.assertIn(f"program_catalog.py all --media {media}", artifact_section)
+            self.assertIn("ecsmanager", program_names(ROOT, media=media))
 
     def test_profile_change_invalidates_staged_objects(self):
         with tempfile.TemporaryDirectory() as directory:

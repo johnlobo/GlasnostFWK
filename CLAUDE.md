@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-GlasnostFWK is a modular Z80 assembly framework for the Amstrad CPC, built on a pinned CPCtelera Next (rev in `toolchain.lock.json` and `.github/workflows/ci.yml`; SDCC 4.5.0). Docs, commit messages and CLI output are in Spanish by default. Canonical project state and per-phase history live in `PROJECT_STATUS.md` (update it in every functional/build/release commit).
+GlasnostFWK is a modular Z80 assembly framework for the Amstrad CPC, built on a pinned CPCtelera Next (rev in `toolchain.lock.json` and `.github/workflows/ci.yml`; SDCC 4.5.0). Docs, commit messages and CLI output are in Spanish by default. Canonical current state lives in `PROJECT_STATUS.md` (update it in every functional/build/release commit); per-phase evidence is archived in `docs/design/project-history.md`. Start with current state; historical unchecked items are not the current backlog.
 
 ## Commands
 
@@ -13,24 +13,24 @@ bin/glasnost install-toolchain   # builds pinned CPCtelera into .toolchain/ (git
 make generate                    # deterministic generated files (video, resources128, ecs profiles, scenario .inc)
 make check                       # fast loop: full host unittest suite + builds only CHECK_EXAMPLES (default: platformer)
 make check CHECK_EXAMPLES="spritemask ecsrender"
-make test                        # closing gate: host tests + all 23 examples + common test DSK (run once, at commit time)
+make test                        # closing gate: host tests + 15 examples + 7 internal validations + common test DSK (run once, at commit time)
 make manual                      # regenerate docs/manual.pdf from docs/manual.html (needs .venv-docs, see tools/dev/requirements-manual.txt)
 make release VERSION=x.y.z       # dist/ ZIP + SHA256SUMS
 
 python3 -m unittest tests.test_sprite -q                          # one test module
 python3 -m unittest tests.test_architecture.ArchitectureTests.test_framework_never_imports_examples -v     # one test
 python3 tools/build/build_examples.py platformer                        # build one example into build/<name>/
-python3 tests/emulator_smoke.py vertical                          # real AmSpiriT-Lite smoke (optional, needs emulator)
+python3 tests/emulator_smoke.py text                          # real AmSpiriT-Lite smoke (optional, needs emulator)
 cd examples/minimal && make | make run | make clean              # standalone example build
 ```
 
-`make generate` runs with `--check` for the ECS profile generators, so a stale generated file fails the build rather than being silently rewritten. After changing a manifest, rerun `make generate` and commit the regenerated `examples/*/generated/ecs_profile.inc` and `scenario.inc`.
+`make generate` runs with `--check` for the ECS profile generators, so a stale generated file fails the build rather than being silently rewritten. After changing a manifest, rerun `make generate` and commit the regenerated `generated/ecs_profile.inc` and `scenario.inc` under examples or framework/validations.
 
-Adding an example means updating the `EXAMPLES` list in `Makefile` **and** the two hardcoded example lists in `.github/workflows/ci.yml` (BIN and CDT checks; `diskload` has no CDT).
+Public examples live in `examples/`; internal checks, benchmarks and the experimental profile live in `framework/validations/`. `tools/build/program_catalog.py` discovers both from their `example.json` manifests and supplies Makefile, CI, shared DSK and release lists. `make examples` builds public examples; `make validations` builds internal programs; `make test` builds both and the shared DSK. `board` is now `text`; `vertical` and its smoke were removed.
 
 ## Architecture
 
-**Layout.** First level: `bin/` (the `glasnost` entry; `install-cli` links to it, so it does not move), `docs/` (`guide/`, `reference/`, `design/`, plus the manual), `examples/`, `framework/`, `projects/` (user projects, gitignored), `tests/`, `tools/`. Everything specific to the framework lives under `framework/`: `framework/src` (Z80 sources), `framework/cfg` (CPCtelera build templates and `example.mk`), `framework/profiles`, `framework/manifests`, `framework/licenses`, `framework/templates` (`glasnost new`). Generated tables go to `build/generated/`, not the root. `tests/test_layout.py` fails if a new first-level entry appears or any file still points at an old path (history in `PROJECT_STATUS.md` keeps the paths of its time). Examples include `../../framework/cfg/example.mk`.
+**Layout.** First level: `bin/` (the `glasnost` entry; `install-cli` links to it, so it does not move), `docs/` (`guide/`, `reference/`, `design/`, plus the manual), `examples/`, `framework/`, `projects/` (user projects, gitignored), `tests/`, `tools/`. Everything specific to the framework lives under `framework/`: `framework/src` (Z80 sources), `framework/cfg` (CPCtelera build templates and `example.mk`), `framework/profiles`, `framework/manifests`, `framework/licenses`, `framework/templates` (`glasnost new`), `framework/validations` (internal CPC programs). Generated tables go to `build/generated/`, not the root. `tests/test_layout.py` fails if a new first-level entry appears or any file still points at an old path (history in `PROJECT_STATUS.md` keeps the paths of its time). Examples include `../../framework/cfg/example.mk`.
 
 **Manifest-driven linking.** Each `examples/<name>/example.json` declares `profile`, `modules` (framework sources from `framework/src/`), `game_sources` (consumer files), and optional capabilities (`transparency.pen`, `extended_memory`, ECS layout). `tools/build/build_examples.py` copies only the declared files into a temporary CPCtelera project under `build/<name>/`; an unselected module is never linked. Absolute paths and `..` in `game_sources` are rejected. The framework is never copied into the repo. Per-example `cfg/build_config.mk` overrides the generated one except for `CPCT_PATH`, `PROJNAME`, `TARGET`, `Z80CODELOC`, `-I$(SRCDIR)`. `assets/assets.json` drives incremental PNG/Tiled conversion (`img2cpc`) and optional ZX7B compression; `examples/platformer` is the reference.
 

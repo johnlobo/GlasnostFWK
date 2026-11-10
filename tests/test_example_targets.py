@@ -4,6 +4,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from tools.build.program_catalog import program_folder, program_folders
+
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = (
     "# Standalone build entry point for this example; see framework/cfg/example.mk.\n"
@@ -14,11 +16,11 @@ WRAPPER = (
 
 class ExampleTargetTests(unittest.TestCase):
     def examples(self):
-        return sorted(path.parent for path in (ROOT / "examples").glob("*/example.json"))
+        return sorted(path.parent for path in (folder / "example.json" for folder in program_folders(ROOT)))
 
     def make_dry_run(self, example: str, target: str, *, env=None, extra=()) -> str:
         result = subprocess.run(
-            ["make", "-n", "-C", str(ROOT / "examples" / example), target, *extra],
+            ["make", "-n", "-C", str(program_folder(ROOT, example)), target, *extra],
             capture_output=True,
             text=True,
             check=True,
@@ -31,13 +33,26 @@ class ExampleTargetTests(unittest.TestCase):
         for example in self.examples():
             makefile = example / "Makefile"
             self.assertTrue(makefile.is_file(), f"falta {makefile.relative_to(ROOT)}")
-            self.assertEqual(makefile.read_text(encoding="utf-8"), WRAPPER, str(makefile))
+            expected = WRAPPER
+            if example.parent.name == "validations":
+                expected = WRAPPER.replace(
+                    "include $(GLASNOST_EXAMPLE_DIR)/../../framework/cfg/example.mk",
+                    "GLASNOST_ROOT := $(abspath $(GLASNOST_EXAMPLE_DIR)/../../..)\n"
+                    "include $(GLASNOST_EXAMPLE_DIR)/../../cfg/example.mk",
+                )
+            self.assertEqual(makefile.read_text(encoding="utf-8"), expected, str(makefile))
 
     def test_build_target_stages_only_that_example(self):
         output = self.make_dry_run("minimal", "build")
         self.assertIn("build_examples.py minimal", output)
-        for other in ("audio", "board", "vertical"):
+        for other in ("audio", "text", "platformer"):
             self.assertNotIn(f"build_examples.py {other}", output)
+
+    def test_internal_validation_resolves_the_repository_root(self):
+        output = self.make_dry_run("ecsmanager", "build")
+        self.assertIn(f"{ROOT}/tools/build/build_examples.py ecsmanager", output)
+        self.assertIn(str(ROOT / "build/ecsmanager/obj"), output)
+        self.assertIn(str(ROOT / "framework/validations/ecsmanager"), output)
 
     def test_clean_target_removes_only_that_staging_directory(self):
         output = self.make_dry_run("minimal", "clean")

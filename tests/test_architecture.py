@@ -4,6 +4,8 @@ import re
 import unittest
 from pathlib import Path
 
+from tools.build.program_catalog import program_folders
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -16,13 +18,13 @@ class ArchitectureTests(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def test_manifests_select_existing_modules(self):
-        for manifest_path in (ROOT / "examples").glob("*/example.json"):
+        for manifest_path in (folder / "example.json" for folder in program_folders(ROOT)):
             manifest = json.loads(manifest_path.read_text())
             for module in manifest["modules"]:
                 self.assertTrue((ROOT / "framework" / "src" / module).is_file(), f"{manifest_path}: {module}")
 
     def test_game_sources_are_local_and_exist(self):
-        for manifest_path in (ROOT / "examples").glob("*/example.json"):
+        for manifest_path in (folder / "example.json" for folder in program_folders(ROOT)):
             manifest = json.loads(manifest_path.read_text())
             sources = manifest.get("game_sources", ["main.s"])
             self.assertIn("main.s", sources)
@@ -33,7 +35,7 @@ class ArchitectureTests(unittest.TestCase):
                 self.assertTrue((manifest_path.parent / relative).is_file(), f"{manifest_path}: {source}")
 
     def test_disk_files_are_local_unique_and_dsk_only(self):
-        for manifest_path in (ROOT / "examples").glob("*/example.json"):
+        for manifest_path in (folder / "example.json" for folder in program_folders(ROOT)):
             manifest = json.loads(manifest_path.read_text())
             entries = manifest.get("disk_files", [])
             names = [entry["name"] for entry in entries]
@@ -51,7 +53,7 @@ class ArchitectureTests(unittest.TestCase):
     def test_optional_modules_are_not_universally_selected(self):
         selections = {
             path.parent.name: set(json.loads(path.read_text())["modules"])
-            for path in (ROOT / "examples").glob("*/example.json")
+            for path in (folder / "example.json" for folder in program_folders(ROOT))
         }
         self.assertNotIn("resources/bank.s", selections["minimal"])
         resources_manifest = json.loads(
@@ -65,8 +67,7 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("audio/akg.s", selections["audio"])
         self.assertNotIn("audio/akg.s", selections["minimal"])
         self.assertIn("ui/window.s", selections["window"])
-        self.assertNotIn("ui/window.s", selections["board"])
-        self.assertIn("core/ecs_motion.s", selections["vertical"])
+        self.assertNotIn("ui/window.s", selections["text"])
         self.assertIn("extensions/physics_platform.s", selections["gravity"])
         self.assertNotIn("extensions/physics_8_8.s", selections["gravity"])
         self.assertIn("extensions/physics_8_8.s", selections["physics88"])
@@ -85,7 +86,7 @@ class ArchitectureTests(unittest.TestCase):
 
     def test_transparency_consumers_declare_the_project_capability(self):
         consumers = {"ui/text.s", "extensions/tilemap_render_masked.s"}
-        for path in (ROOT / "examples").glob("*/example.json"):
+        for path in (folder / "example.json" for folder in program_folders(ROOT)):
             manifest = json.loads(path.read_text())
             if consumers & set(manifest["modules"]):
                 self.assertIn("transparency", manifest, str(path))

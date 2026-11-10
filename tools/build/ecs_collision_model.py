@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reference model and scenario for fwk_ecs_collide (ABI 2.0, section 9).
 
-Single source of truth for the emulator scenario run by examples/ecscollision:
+Single source of truth for the emulator scenario run by framework/validations/ecscollision:
 ``--output`` renders the step table as an include, ``--check`` verifies a
 committed copy, and tests/emulator_smoke.py replays the same model to know
 what the Z80 routine must have logged.
