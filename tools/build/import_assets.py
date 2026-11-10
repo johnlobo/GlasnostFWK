@@ -28,6 +28,10 @@ import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+try:
+    from tools.build.program_catalog import program_folder
+except ModuleNotFoundError:
+    from program_catalog import program_folder
 PIPELINE_VERSION = 1
 CONFIG_NAME = "assets.json"
 PALETTE_NAME = "palette.json"
@@ -574,7 +578,7 @@ def ensure(example: Path, cpct_path: Path | None = None, *, force: bool = False)
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("examples", nargs="+", help="example names under examples/")
+    parser.add_argument("examples", nargs="+", help="example or internal validation names")
     parser.add_argument("--cpct-path", type=Path, help="CPCTelera/CPCTelera Next root")
     parser.add_argument("--force", action="store_true", help="convert even when up to date")
     parser.add_argument(
@@ -586,7 +590,7 @@ def main(argv: list[str] | None = None) -> int:
 
     status = 0
     for name in args.examples:
-        example = ROOT / "examples" / name
+        example = program_folder(ROOT, name)
         assets_dir = example / "assets"
         if not (assets_dir / CONFIG_NAME).is_file():
             if args.check:

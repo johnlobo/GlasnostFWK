@@ -2,7 +2,7 @@
 
 ## Método
 
-- Arnés: `examples/perf`, construido como el resto de ejemplos (`perf.BIN`,
+- Arnés: `framework/validations/perf`, construido como el resto de ejemplos (`perf.BIN`,
   incluido en el DSK común como `PERF.BIN`).
 - Medición por frames emulados, no por ciclos del emulador: cada escena ejecuta
   un número fijo de llamadas, mide `fwk_system_frame_count` antes y después y

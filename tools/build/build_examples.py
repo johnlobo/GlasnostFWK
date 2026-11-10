@@ -34,6 +34,11 @@ except ModuleNotFoundError:  # Direct execution: python3 tools/build/build_examp
     )
 
 ROOT = Path(__file__).resolve().parents[2]
+
+try:
+    from tools.build.program_catalog import program_folder, program_folders, program_names
+except ModuleNotFoundError:
+    from program_catalog import program_folder, program_folders, program_names
 DEFAULT_CPCT = Path("/config/workspace/cpctelera_next/cpctelera")
 AMSDOS_NAME = re.compile(r"^[A-Z0-9][A-Z0-9_]{0,7}\.[A-Z0-9]{1,3}$")
 SYMBOL_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -350,11 +355,11 @@ def stage_example(
 ) -> Path:
     """Stage one example, or a project folder shaped like one, into its build tree.
 
-    ``example`` defaults to ``examples/<name>`` and ``target`` to ``build/<name>``;
+    ``example`` is resolved in ``examples/`` or ``framework/validations/`` and ``target`` to ``build/<name>``;
     a glasnost project passes its own folder and ``<project>/build/<name>``. The
     framework (modules, profiles, templates) always comes from this repository.
     """
-    example = example if example is not None else ROOT / "examples" / name
+    example = example if example is not None else program_folder(ROOT, name)
     if not example.is_dir():
         raise ValueError(f"unknown example: {name}")
     manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
@@ -564,7 +569,7 @@ def build(
 ) -> None:
     if not (cpct_path / "cpctelera.lib").is_file():
         raise ValueError(f"invalid CPCT_PATH: {cpct_path}")
-    example = example if example is not None else ROOT / "examples" / name
+    example = example if example is not None else program_folder(ROOT, name)
     target = stage_example(name, cpct_path, example, target)
     manifest = json.loads((example / "example.json").read_text(encoding="utf-8"))
     profile = json.loads((ROOT / "framework" / "profiles" / manifest["profile"]).read_text(encoding="utf-8"))
@@ -577,7 +582,7 @@ def build(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("examples", nargs="*", help="example names; default: all")
+    parser.add_argument("examples", nargs="*", help="example or validation names; default: public examples")
     parser.add_argument("--project", type=Path, help="build a glasnost project folder instead of examples")
     parser.add_argument("--cpct-path", type=Path, default=Path(os.environ.get("CPCT_NEXT_PATH", DEFAULT_CPCT)))
     args = parser.parse_args()
@@ -591,7 +596,7 @@ def main() -> int:
             print(f"error: {name} did not build: {error}", file=sys.stderr)
             return 1
         return 0
-    names = args.examples or sorted(path.name for path in (ROOT / "examples").iterdir() if (path / "example.json").is_file())
+    names = args.examples or program_names(ROOT, "examples")
     for name in names:
         print(f"== building {name} ==", flush=True)
         build(name, args.cpct_path.resolve())

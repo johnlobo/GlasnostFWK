@@ -23,6 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import emulator_setup  # noqa: E402
+sys.path.insert(0, str(ROOT / "tools" / "build"))
+from program_catalog import program_folder  # noqa: E402
 DEFAULT_EMULATOR = ROOT.parent / "tools" / "amspirit-lite" / "run.sh"
 EMULATOR_COMMANDS = ("amspirit-lite", "amspirit", "bluepixel")
 BLUEPIXEL_CANDIDATES = (
@@ -32,7 +34,7 @@ BLUEPIXEL_CANDIDATES = (
 
 
 def project_name(example: str, folder: Path | None = None) -> str:
-    manifest = (folder or ROOT / "examples" / example) / "example.json"
+    manifest = (folder or program_folder(ROOT, example)) / "example.json"
     if not manifest.is_file():
         raise SystemExit(f"No existe el ejemplo {example}: falta {manifest}")
     return json.loads(manifest.read_text(encoding="utf-8"))["name"]
@@ -49,7 +51,7 @@ def select_image(name: str, requested: str | None, build_dir: Path | None = None
                  prefer: str | None = None) -> Path:
     """The image to open: the requested format, else `prefer`, else the CDT, else the DSK."""
     build_dir = build_dir or ROOT / "build" / name
-    how = "ejecute `glasnost build`" if project else f"ejecute `make` en examples/{name}"
+    how = "ejecute `glasnost build`" if project else f"ejecute `make` en {program_folder(ROOT, name)}"
     images = example_images(name, build_dir)
     if prefer == "dsk":
         images.reverse()

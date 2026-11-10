@@ -98,7 +98,7 @@ class RenderOracleTests(unittest.TestCase):
         self.assertEqual(model.SCENARIO[4].commands[0][1:], (78, 196))
 
     def test_committed_scenario_include_is_current(self):
-        committed = (ROOT / "examples/ecsrender/scenario.inc").read_text()
+        committed = (ROOT / "framework/validations/ecsrender/scenario.inc").read_text()
         self.assertEqual(committed, model.render_include())
 
 

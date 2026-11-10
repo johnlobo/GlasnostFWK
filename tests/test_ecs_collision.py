@@ -102,7 +102,7 @@ class CollisionModelTests(unittest.TestCase):
         self.assertEqual(len(model.describe_log(log, pointers)), len(model.SCENARIO))
 
     def test_committed_scenario_include_is_current(self):
-        committed = (ROOT / "examples/ecscollision/scenario.inc").read_text()
+        committed = (ROOT / "framework/validations/ecscollision/scenario.inc").read_text()
         self.assertEqual(committed, model.render_include())
 
 

@@ -5,6 +5,8 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 
+from tools.build.program_catalog import program_folders
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -12,12 +14,15 @@ class CoverageParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.examples = set()
+        self.validations = set()
         self.modules = set()
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
         if "data-example" in values:
             self.examples.add(values["data-example"])
+        if "data-validation" in values:
+            self.validations.add(values["data-validation"])
         if "data-module" in values:
             self.modules.add(values["data-module"])
 
@@ -31,9 +36,10 @@ class ManualTests(unittest.TestCase):
         self.coverage = parser
 
     def test_manual_covers_every_example_and_framework_module(self):
-        examples = {path.parent.name for path in (ROOT / "examples").glob("*/example.json")}
+        examples = {folder.name for folder in program_folders(ROOT, "examples")}
+        validations = {folder.name for folder in program_folders(ROOT, "validations")}
         modules = set()
-        for path in (ROOT / "examples").glob("*/example.json"):
+        for path in (folder / "example.json" for folder in program_folders(ROOT)):
             manifest = json.loads(path.read_text(encoding="utf-8"))
             modules.update(manifest["modules"])
             if "transparency" in manifest:
@@ -41,6 +47,7 @@ class ManualTests(unittest.TestCase):
             if manifest.get("extended_memory", False):
                 modules.add("resources/bank.s")
         self.assertEqual(examples, self.coverage.examples)
+        self.assertEqual(validations, self.coverage.validations)
         self.assertEqual(modules, self.coverage.modules)
 
     def test_pdf_matches_current_html_source(self):

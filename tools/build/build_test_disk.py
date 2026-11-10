@@ -12,27 +12,13 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+try:
+    from tools.build.program_catalog import program_folder, program_folders, program_names
+except ModuleNotFoundError:
+    from program_catalog import program_folder, program_folders, program_names
 DEFAULT_CPCT = Path("/config/workspace/cpctelera_next/cpctelera")
-DEFAULT_EXAMPLES = (
-    "minimal",
-    "board",
-    "gravity",
-    "physics88",
-    "tilecoll",
-    "tilerender",
-    "spriteclip",
-    "spritemask",
-    "video",
-    "resources128",
-    "diskload",
-    "audio",
-    "window",
-    "vertical",
-    "perf",
-    "tilemask",
-    "experimental",
-    "platformer",
-)
+DEFAULT_EXAMPLES = program_names(ROOT)
 DISK_NAME = "GlasnostFWK-tests.dsk"
 ADDRESS_RE = re.compile(
     r"^(Load Address|Run\s+Address)\s*=\s*(?:0x)?([0-9A-Fa-f]+)", re.MULTILINE
@@ -50,7 +36,7 @@ def amsdos_bin_name(example: str) -> str:
 
 def program_bin_name(root: Path, example: str) -> str:
     """Return the catalog name, honoring a strict optional manifest override."""
-    manifest_path = root / "examples" / example / "example.json"
+    manifest_path = program_folder(root, example) / "example.json"
     if not manifest_path.is_file():
         return amsdos_bin_name(example)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

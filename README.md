@@ -87,7 +87,8 @@ make check
 make generate   # vídeo y manifiesto de recursos, deterministas
 make check      # pruebas host + platformer; bucle rápido durante desarrollo
 make check CHECK_EXAMPLES="spritemask ecsrender"  # solo ejemplos afectados
-make examples   # veintitrés ejemplos, incluidas tres escenas jugables
+make examples   # 15 ejemplos públicos, incluidos nave y platformer
+make validations # 7 programas internos de validación y rendimiento
 make test       # pruebas host + construcción y DSK completos; cierre/commit
 make report     # actualiza docs/design/build-sizes.md desde los mapas SDCC
 make manual     # regenera docs/manual.pdf desde docs/manual.html
@@ -95,7 +96,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT se generan en `build/<ejemplo>/`; los veintitrés BIN de prueba se
+Los BIN y CDT se generan en `build/<nombre>/`; con `make test` los 22 BIN (15 ejemplos y 7 validaciones) se
 reúnen en `build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por
@@ -181,23 +182,28 @@ Primer nivel: `bin/` (entrada `glasnost`), `docs/`, `examples/`, `framework/`, `
 - `framework/templates`: plantillas de `glasnost new`. `framework/licenses`: licencias de lo que se distribuye.
 - `tools/glasnost` (CLI y emuladores), `tools/build` (generadores, importador de assets, `build_examples`, `img2cpc`) y `tools/dev` (manual, release, mediciones).
 - `projects`: tus proyectos (`glasnost new`); no se versiona.
-- `examples`: veintitrés consumidores pequeños, sin copias internas del framework (`examples/nave`
+- `framework/validations`: 7 validaciones internas: vídeo, manager, colisión, animación y render ECS, rendimiento y perfil experimental.
+- `examples`: 15 demostraciones y juegos, sin copias internas del framework (`examples/nave`
   es el juego terminado de la guía `docs/guide/first-game.md`).
 - `docs`: `guide/` (empezar y aprender), `reference/` (contratos y uso) y `design/` (decisiones, procedencia, validación); índice en `docs/README.md`.
 
 La aplicación didáctica de plataformas dispone de una guía paso a paso con
 capturas reproducibles en `docs/guide/platform-game-guide.html` y PDF equivalente.
 
-## Vertical jugable
+## Ejemplos y validaciones
 
-`examples/vertical` integra entrada, ECS (movimiento y colisión), vídeo y
-recursos de juego. Mueve al jugador con los cursores y recoge los tres puntos situados a su
-derecha. `assets.s` mantiene posiciones y bytes gráficos fuera de la lógica;
-el manifiesto los selecciona mediante `game_sources`.
+`examples/text` muestra texto, números pequeños y colores (antes se llamaba
+`board`). `nave` es el resultado de la guía inicial y `platformer` es la
+integración avanzada con plataformas, enemigos y niveles. `vertical` se ha retirado;
+su prueba específica de recogida y victoria también se ha eliminado.
 
-El smoke de AmSpiriT mantiene CursorRight en la matriz real del CPC y verifica
-en RAM que el manager pasa de cuatro entidades a una, el marcador llega a tres y
-el estado de victoria se activa. Más detalles en `docs/reference/vertical-slice.md`.
+Las pruebas internas están en `framework/validations/`: `video`, `ecsmanager`,
+`ecscollision`, `ecsanimation`, `ecsrender`, `perf` y `experimental`. Se construyen
+con `make validations` o individualmente con `make -C framework/validations/ecsmanager`.
+`make test` ejecuta la suite host, construye ambas colecciones y crea el DSK común.
+El ZIP de distribución separa ambas rutas y declara las validaciones en su manifiesto.
+El catálogo compartido `tools/build/program_catalog.py` alimenta Makefile, CI,
+DSK y distribución; los programas conservan por ahora el manifiesto `example.json`.
 
 ## Física especializada
 

@@ -1,5 +1,5 @@
 {
-  "name": "board",
+  "name": "text",
   "profile": "standard-160x200.json",
   "transparency": {"pen": 0},
   "modules": ["core/system.s", "core/input.s", "video/video.s", "ui/text.s"]

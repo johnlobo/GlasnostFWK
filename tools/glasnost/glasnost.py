@@ -34,6 +34,7 @@ import emulator_setup as emu  # noqa: E402
 import glasnost_project as gp  # noqa: E402
 import glasnost_update as gu  # noqa: E402
 from glasnost_i18n import LANGS, pick_language, say  # noqa: E402
+from program_catalog import program_names  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCKFILE = "toolchain.lock.json"
@@ -546,7 +547,7 @@ def cmd_uninstall_cli(args, root: Path, lang: str, runner: Runner) -> int:
 # ------------------------------------------------------- build / test / run
 
 def example_names(root: Path) -> list[str]:
-    return sorted(p.name for p in (root / "examples").iterdir() if (p / "example.json").is_file())
+    return list(program_names(root, "examples"))
 
 
 def check_examples(root: Path, names: Sequence[str], lang: str) -> None:

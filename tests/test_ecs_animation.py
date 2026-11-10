@@ -113,7 +113,7 @@ class AnimationModelTests(unittest.TestCase):
         self.assertEqual(len(model.describe_log(log, sprites)), len(model.COMMANDS))
 
     def test_committed_scenario_include_is_current(self):
-        committed = (ROOT / "examples/ecsanimation/scenario.inc").read_text()
+        committed = (ROOT / "framework/validations/ecsanimation/scenario.inc").read_text()
         self.assertEqual(committed, model.render_include())
 
 

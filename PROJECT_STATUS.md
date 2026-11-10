@@ -23,20 +23,56 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los veintitrés ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintidós construyen además CDT
-  y todos los BIN se reúnen en un único DSK de pruebas con 25 entradas.
-- La suite host contiene 583 pruebas; el manual cubre todos los ejemplos y
+- Los 15 ejemplos públicos y 7 validaciones internas construyen 22 BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; 20 construyen además CDT
+  y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
+- La suite host contiene 588 pruebas; el manual cubre ejemplos, validaciones y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
   framework fuera de `build/`.
-- `vertical` es la primera integración jugable. Está automatizada en CPC 6128
-  y CPC 464 mediante AmSpiriT-Lite 1.15.3.
+- `nave` es la referencia de la guía inicial y `platformer` la integración avanzada.
+  `vertical`, antigua integración jugable, y su smoke específico se han retirado.
 - El perfil estándar 160x200 está probado. El modelo de memoria 160x288 está
   probado, pero su temporización CRTC sigue siendo experimental.
 - El repositorio público es `johnlobo/GlasnostFWK` y la rama principal es
   `main`.
+
+## Reorganización de ejemplos y validaciones (2026-11-10)
+
+- Rama de trabajo: `refactor/examples-validations`, creada sobre `846047ffe0e7c7052b8cd41004d9762a06eacb7f`
+  (HEAD y referencia local `origin/main` coincidían al empezar). Sin nuevo commit,
+  push ni CI remota ejecutada para estos cambios.
+- `board` pasa a `examples/text`, incluidos manifiesto, símbolos del smoke y título.
+  Se elimina `examples/vertical`, su smoke y `docs/reference/vertical-slice.md`.
+  Sus comprobaciones específicas de recogida y victoria no se trasladan ni se
+  atribuyen a otros programas. Las secciones históricas conservan su evidencia.
+- `video`, `ecsmanager`, `ecscollision`, `ecsanimation`, `ecsrender`, `perf` y
+  `experimental` se trasladan a `framework/validations/`, con Makefiles locales.
+  Permanecen 15 ejemplos públicos; el CLI solo ofrece ese catálogo público.
+- `tools/build/program_catalog.py` descubre ambas colecciones y alimenta Makefile,
+  CI, DSK, distribución e informe de tamaños. Los manifiestos siguen llamándose
+  `example.json`; el cambio de nombre del manifiesto queda fuera de esta tarea.
+- `make examples` construye los ejemplos; `make validations`, las validaciones.
+  `make test` y `make release` reúnen ambas colecciones en el DSK común.
+  El ZIP separa `examples/` de `framework/validations/` y su manifiesto declara
+  las listas `examples` y `validations` y los juegos `nave` y `platformer`.
+- Validación local: `make test` correcto, 588 pruebas host en 102,778 s,
+  construcción de 22 programas y DSK con 24 entradas (22 programas + 2 payloads).
+  `make -C framework/validations/ecsmanager` correcto. Informe de tamaños regenerado.
+- Paquete local de comprobación `0.2.0-reorg` en `/tmp/glasnost-reorg-release/`:
+  dos ZIP idénticos, SHA256 verificado, 45 archivos (22 BIN, 20 CDT, un DSK,
+  manifiesto e instrucciones), sin `board` ni `vertical` en archivos o catálogo.
+  `diskload` y `perf` son solo DSK; las cifras antiguas que solo descontaban
+  `diskload` no describen el conjunto actual. No se ha publicado una release.
+- Manual HTML actualizado y PDF/checksum regenerados con `make manual
+  PYTHON=.venv-docs/bin/python`; cobertura diferenciada con `data-example` y
+  `data-validation`, incluyendo los módulos utilizados por ambas colecciones.
+- Smoke emulado focalizado de `text` y `ecsanimation`: correcto en AmSpiriT-Lite
+  CPC 6128; `text` comprueba texto y números en VRAM y `ecsanimation` su registro
+  frente al modelo Python. Comando: `flock /tmp/amspirit.lock python3
+  tests/emulator_smoke.py text ecsanimation`.
+  No se repite CPC 464 ni hardware real; no cambian los contratos de memoria o bancos.
 
 ## Fase completada: distribución v0.1.0
 
@@ -83,8 +119,9 @@ Release: <https://github.com/johnlobo/GlasnostFWK/releases/tag/v0.1.0>
 - El tilemap es de solo lectura. Su render no incluye transparencia, clipping,
   scroll sub-tile, bancos ni dirty rectangles automáticos; la colisión no
   resuelve pendientes ni colisión entre cuerpos.
-- `vertical` y `platformer` son escenas jugables; los demás ejemplos son
-  pruebas técnicas. `diskload` se ejecuta solo desde el DSK común porque
+- `nave` y `platformer` son escenas jugables; los demás ejemplos muestran APIs
+  concretas y las validaciones internas viven en `framework/validations/`.
+  `diskload` se ejecuta solo desde el DSK común porque
   requiere dos payloads auxiliares.
 - Los sprites enmascarados son una API separada del camino opaco y del lote
   ordenado. Su coste 6x8 está medido, pero no existe una promesa global de 50 Hz.

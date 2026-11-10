@@ -8,6 +8,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+try:
+    from tools.build.program_catalog import program_folder, program_folders, program_names
+except ModuleNotFoundError:
+    import sys
+    sys.path.insert(0, str(ROOT / "tools" / "build"))
+    from program_catalog import program_folder, program_folders, program_names
+
 
 def area_size(map_text: str, area: str) -> int:
     match = re.search(rf"^{re.escape(area)}\s+[0-9A-F]+\s+([0-9A-F]+)", map_text, re.MULTILINE)
@@ -16,7 +23,7 @@ def area_size(map_text: str, area: str) -> int:
 
 def main() -> int:
     rows = []
-    for manifest in sorted((ROOT / "examples").glob("*/example.json")):
+    for manifest in [folder / "example.json" for folder in program_folders(ROOT)]:
         name = manifest.parent.name
         obj = ROOT / "build" / name / "obj"
         map_path = obj / f"{name}.map"
@@ -24,14 +31,15 @@ def main() -> int:
         if not map_path.is_file() or not bin_path.is_file():
             raise SystemExit(f"build {name} first")
         text = map_path.read_text(errors="replace")
-        rows.append((name, area_size(text, "_CODE"), area_size(text, "_DATA"), bin_path.stat().st_size))
+        kind = "Ejemplo" if manifest.parent.parent.name == "examples" else "Validación"
+        rows.append((name, kind, area_size(text, "_CODE"), area_size(text, "_DATA"), bin_path.stat().st_size))
     out = [
-        "# Example build sizes", "",
-        "Generated from SDCC linker maps. Binary size may include sparse absolute-address padding.", "",
-        "| Example | Linked code | Linked data | BIN bytes |", "|---|---:|---:|---:|",
+        "# Tamaños de ejemplos y validaciones", "",
+        "Generado desde los mapas del enlazador SDCC. El BIN puede incluir relleno por direcciones absolutas dispersas.", "",
+        "| Programa | Tipo | Código enlazado | Datos enlazados | Bytes BIN |", "|---|---|---:|---:|---:|",
     ]
-    out += [f"| {name} | {code} | {data} | {binary} |" for name, code, data, binary in rows]
-    out += ["", "No cycle/frame-rate value is reported: no emulator timing run was completed.", ""]
+    out += [f"| {name} | {kind} | {code} | {data} | {binary} |" for name, kind, code, data, binary in rows]
+    out += ["", "Este informe recoge tamaños; no ejecuta mediciones de ciclos ni de frecuencia de frames.", ""]
     destination = ROOT / "docs" / "design" / "build-sizes.md"
     destination.write_text("\n".join(out), encoding="utf-8")
     print(destination)
