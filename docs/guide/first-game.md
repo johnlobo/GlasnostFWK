@@ -163,7 +163,7 @@ compilar.
 
 El ECS anima las entidades con el componente `animation`: cada una tiene un
 descriptor con sus fotogramas y cuántas llamadas dura cada uno. Hay que activar el
-componente y su módulo en `example.json`.
+componente (los campos de la entidad) y los módulos que lo ejecutan en `example.json`.
 
 Ficheros de este paso: [`step2/`](first-game/step2/).
 

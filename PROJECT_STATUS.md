@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-11-08 UTC. Última versión publicada: `v0.2.0`.
+Última actualización: 2026-11-10 UTC. Última versión publicada: `v0.2.0`.
 
 Este archivo es el registro canónico recuperable entre sesiones. Debe
 actualizarse en cada commit con cambios funcionales, de construcción o de
@@ -23,10 +23,10 @@ regenerar el PDF con `make manual` y superar las pruebas de cobertura y checksum
 - Las nueve fases del encargo inicial están implementadas como primera versión
   utilizable: reconocimiento, arquitectura, núcleo, módulos, recursos,
   generadores, perfil experimental, ejemplos y documentación.
-- Los veintidós ejemplos construyen BIN con CPCTelera Next fijada en
-  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintiuno construyen además CDT
-  y todos los BIN se reúnen en un único DSK de pruebas con 24 entradas.
-- La suite host contiene 115 pruebas; el manual cubre todos los ejemplos y
+- Los veintitrés ejemplos construyen BIN con CPCTelera Next fijada en
+  `11e61fe30175ad7b328de9bcd859c46fd61b26a5`; veintidós construyen además CDT
+  y todos los BIN se reúnen en un único DSK de pruebas con 25 entradas.
+- La suite host contiene 583 pruebas; el manual cubre todos los ejemplos y
   módulos seleccionados.
 - Cada ejemplo se compila y ejecuta por separado desde su carpeta con
   `make`, `make run` y `make clean`, como un proyecto CPCtelera, sin copiar el
@@ -1711,3 +1711,23 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   en lugar de mostrar la rama del framework. El README del proyecto explica cómo enlazar su remoto.
 - [x] Pruebas: `tests/test_project_repo.py` (28; repos Git reales en temporales, sin red).
 
+## Corrección: cifras vigentes y capas componente/módulo (2026-11-10)
+
+- [x] `PROJECT_STATUS.md` «Estado confirmado» se alinea con el árbol actual: veintitrés
+  ejemplos, veintidós CDT, DSK común con 25 entradas (23 BIN y los dos payloads de
+  `diskload`) y 583 pruebas host. Antes decía 22/21/24 y 115.
+- [x] `docs/design/validation.md` actualiza solo sus resúmenes vigentes («Implementado»,
+  «Compilado», «Probado automáticamente»): tres escenas jugables, 23 BIN, 22 CDT,
+  25 entradas y 583 pruebas. Las secciones históricas conservan sus cifras, como indica
+  la nota del propio documento.
+- [x] `docs/design/build-sizes.md` regenerado con `make report`: `nave` 9.521 B,
+  `platformer` 12.026 B, `vertical` 2.592 B y `ecsmanager` 2.639 B; el resto no cambió.
+- [x] `docs/reference/ecs-abi-2.0.md` y `docs/guide/first-game.md` aclaran que
+  `ecs.components` declara el layout de datos y `modules` enlaza el código que lo
+  ejecuta. `behavior` no está duplicado: el componente aporta `program`, `timer` y
+  `state`; `core/ecs_behavior.s` es el adaptador ECS y `extensions/behavior.s` el
+  intérprete de bytecode que llama.
+- [x] `projects/platformone` nació con una plantilla anterior a los assets y al tilemap;
+  conserva `extensions/physics_platform.s` en `modules` aunque no declare el componente
+  `platform`. Es código heredado de la plantilla: no participa en el layout ECS ni se
+  ejecuta, y no se toca porque es un proyecto de usuario.
