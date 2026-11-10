@@ -37,6 +37,11 @@ def run_once(binary: Path, rom_dir: Path, disk: Path, symbols: Path):
         require(emu.read("fwk_system_frame_count", 2) != frame, "El contador del juego no avanza")
         require(emu.read("game_storage + 37", 37) != drone, "El drone no se mueve/anima")
 
+        # Inspect the background before moving the ship onto y=192: its 8-line
+        # sprite then overlaps scanline 199 and may legitimately draw zero bytes.
+        ground = emu.read(0xC000 + (199 & 7) * 0x800 + (199 >> 3) * 80, 80)
+        require(all(ground), f"El mapa no dibuja el suelo en la última línea: {ground.hex()}")
+
         def boundary(row, mask, axis, target, limit):
             emu.key(row, mask, True)
             try:
@@ -55,8 +60,6 @@ def run_once(binary: Path, rom_dir: Path, disk: Path, symbols: Path):
         boundary(1, 0xFE, 4, 0, 450)
         boundary(0, 0xFE, 5, 44, 450)
         boundary(0, 0xFB, 5, 192, 450)
-        ground = emu.read(0xC000 + (199 & 7) * 0x800 + (199 >> 3) * 80, 80)
-        require(all(ground), "El mapa no dibuja el suelo en la última línea")
         hud = b"".join(emu.read(0xC000 + (y & 7) * 0x800 + (y >> 3) * 80 + 60, 16) for y in range(4, 13))
         require(any(hud), "El HUD está vacío")
         require(emu.read("game_status") == b"\x5a", "El juego deja de estar activo")
