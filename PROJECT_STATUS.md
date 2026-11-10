@@ -46,6 +46,7 @@ abierta en ese historial no implica una tarea pendiente hoy.
 - BluePixel headless integrado desde `07dc833` de `main`: adaptador stdio, smoke
   determinista de `nave` y ejecución en CI. El código y la documentación se conservan
   al resolver los conflictos con esta reorganización; validación combinada pendiente.
+  El CI compila BluePixel fijado en `c5e2437b4db4eb543a47b90fa8fccb90c448664f` (API 1.4).
 - CLI con toolchain fijada, creación/configuración de proyectos, repositorio y remoto
   propios, actualización con migraciones y rollback. Formato de proyecto actual: 1.
 - Toolchain fijada: CPCTelera Next `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
