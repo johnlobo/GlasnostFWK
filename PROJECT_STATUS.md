@@ -1700,3 +1700,14 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
   registro citan las rutas de su época (`docs/x.md` = `docs/<carpeta>/x.md`).
 - [x] `tests/test_layout.py` fija la forma de `docs/` y rechaza rutas viejas.
 
+## Proyectos con repositorio propio y sin acceso al remoto del framework (2026-11-10)
+
+- [x] `glasnost new --no-git` se niega dentro de un repositorio Git (un proyecto sin `.git` propio
+  haría que `git` actuara sobre el framework y su `origin`).
+- [x] `glasnost new --remote URL` y nuevo `glasnost remote [URL] [--name N]` fijan el remoto del
+  proyecto sin subir nada; rechazan la URL del framework (cualquier grafía: https, ssh, `.git`,
+  mayúsculas) y la de CPCTelera del lockfile, y las URL vacías, con espacios o que empiezan por `-`.
+- [x] `config`, `build`, `test` y `run` avisan si el proyecto no tiene repo propio; `projects` lo marca
+  en lugar de mostrar la rama del framework. El README del proyecto explica cómo enlazar su remoto.
+- [x] Pruebas: `tests/test_project_repo.py` (28; repos Git reales en temporales, sin red).
+

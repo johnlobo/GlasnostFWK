@@ -22,7 +22,7 @@ tabla de abajo es la referencia larga.
 |---|---|
 | `glasnost doctor [--network]` | Comprueba python3 >= 3.10, git, make, gcc, g++, bison, flex, cabeceras de Boost y CPCTelera Next. Sale con 1 si falta algo y dice cómo arreglarlo (con un lockfile inválido, muestra su error y sale con 1). `--network` comprueba también el acceso al repositorio de CPCTelera. |
 | `glasnost install-toolchain [--dry-run] [--force]` | Descarga el commit fijado y compila SDCC, hex2bin, iDSK, 2cdt, cpc2cdt, img2cpc (convierte los PNG de `assets/src`), la biblioteca y zx7b. `--dry-run` solo lista los pasos. `--force` rehace desde cero. |
-| `glasnost new [nombre] [--manifest F] [--title T] [--extended-memory] [--dir D] [--no-git] [--no-build]` | Crea un proyecto en `projects/<nombre>` (ver «Proyectos»). Sin nombre ni manifiesto, en una terminal, lanza el asistente. |
+| `glasnost new [nombre] [--manifest F] [--title T] [--extended-memory] [--dir D] [--no-git] [--no-build] [--remote URL]` | Crea un proyecto en `projects/<nombre>` (ver «Proyectos»). Sin nombre ni manifiesto, en una terminal, lanza el asistente. |
 | `glasnost config [--title T] [--extended-memory \| --no-extended-memory] [--dry-run]` | Dentro de un proyecto: sin opciones muestra la configuración y regenera los ficheros de `generated/` si están desactualizados; con ellas regenera lo que posee glasnost. |
 | `glasnost update [--dry-run]` | Dentro de un proyecto: lo actualiza al formato de este glasnost con migraciones consecutivas, en una rama de Git (ver «Actualizar proyectos»). |
 | `glasnost rollback [--delete]` | Sale de una rama de actualización y vuelve a la rama de origen sin perder nada; `--delete` borra además la rama de actualización. |
@@ -37,6 +37,7 @@ tabla de abajo es la referencia larga.
 | `glasnost uninstall-cli [--prefix DIR]` | Quita ese enlace, solo si apunta a este SDK. |
 | `glasnost path` | Imprime la ruta de CPCTelera Next en uso. |
 | `glasnost version` | `git describe --tags --always` del SDK. |
+| `glasnost remote [URL] [--name N] [--project D]` | Sin URL, lista los remotos del proyecto; con ella fija el remoto (`origin` por defecto) del repositorio **del proyecto**. Rechaza la URL del framework (ver «Repositorio del proyecto»). No sube nada. |
 | `glasnost help [comando]` | Lo mismo que `--help`, o la ayuda de un comando. |
 
 Códigos de salida: 0 bien, 1 fallo (mensaje traducido en stderr), 2 uso
@@ -200,6 +201,22 @@ elegido y `.gitignore`. Compila el proyecto antes de dar nada por bueno; si
 falla borra lo creado. Después hace `git init` y el primer commit (repositorio
 independiente del framework; si el commit falla por falta de identidad Git,
 avisa y deja el proyecto). `new` nunca escribe en una carpeta existente.
+
+**Repositorio del proyecto.** Cada proyecto es un repositorio Git propio, sin remoto, y
+`glasnost` nunca toca el del framework:
+
+- `glasnost new --remote URL` crea el repositorio y le fija `origin` (no sube nada); después,
+  `git push -u origin main` lo haces tú. `glasnost remote URL` lo hace en un proyecto existente.
+- La URL no puede ser la del framework: se compara, escrita de cualquier forma (https, ssh,
+  `.git`, mayúsculas), con todos los remotos del checkout del SDK y con la URL de CPCTelera del
+  lockfile. Tampoco se acepta una URL vacía, con espacios o que empiece por `-`.
+- `--no-git` se niega si la carpeta del proyecto está dentro de un repositorio Git (por
+  defecto `projects/`, dentro del SDK): sin `.git` propio, `git` actuaría sobre el repositorio del
+  framework y su remoto. Con `--dir` fuera de cualquier repositorio sí vale.
+- Si un proyecto pierde su `.git`, `config`, `build`, `test` y `run` avisan por stderr de qué
+  repositorio alcanzaría `git`, y `glasnost projects` lo marca en vez de mostrar la rama del
+  framework. `update` y `remote` se niegan a actuar así.
+- Ni `remote`, ni `new --remote`, ni `update` usan la red.
 
 **Quién es dueño de qué.** Tuyo: `main.s`, `common.inc`, README, y en
 `example.json` las claves `modules`, `game_sources`, `ecs` y cualquier otra

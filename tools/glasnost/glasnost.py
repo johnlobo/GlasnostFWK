@@ -593,6 +593,7 @@ def cmd_build(args, root: Path, lang: str, runner: Runner) -> int:
     if folder:
         if args.examples:
             raise CliError(say(lang, "proj.no_examples", path=folder))
+        warn_shared_repo(folder, lang)
         return build_project(folder, toolchain, root, lang, runner)
     check_examples(root, args.examples, lang)
     env = sdk_env(toolchain)
@@ -609,6 +610,7 @@ def cmd_test(args, root: Path, lang: str, runner: Runner) -> int:
     toolchain = resolve_toolchain(root, load_lock(root, lang), lang)
     folder = current_project(args)
     if folder:  # a project: its integrity, then that it builds
+        warn_shared_repo(folder, lang)
         code = build_project(folder, toolchain, root, lang, runner)
         if code == 0:
             print(say(lang, "proj.test_ok", name=folder.name))
@@ -626,6 +628,7 @@ def cmd_run(args, root: Path, lang: str, runner: Runner) -> int:
     if folder:
         if example:
             raise CliError(say(lang, "proj.no_examples", path=folder))
+        warn_shared_repo(folder, lang)
         ensure_emulator(args, root, lang, extra)
         return runner([sys.executable, "tools/glasnost/run_example.py", "--project", str(folder), *extra],
                       cwd=root, env=sdk_env(toolchain), check=False).returncode
@@ -865,6 +868,71 @@ def write_files(folder: Path, files: dict[str, bytes]) -> None:
         path.write_bytes(content)
 
 
+def git_toplevel(path: Path) -> Path | None:
+    """The work tree Git resolves `path` to (the nearest existing folder at or above it), if any.
+
+    Called directly, not through the runner: it only reads, and the recorded command lists of
+    the tests must stay the commands a command really runs.
+    """
+    folder = path
+    while not folder.exists() and folder != folder.parent:
+        folder = folder.parent
+    try:
+        result = subprocess.run(["git", "-C", str(folder), "rev-parse", "--show-toplevel"],
+                                capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+    return Path(result.stdout.strip()).resolve() if result.returncode == 0 and result.stdout.strip() else None
+
+
+def git_remote_urls(repo: Path) -> list[str]:
+    try:
+        result = subprocess.run(["git", "-C", str(repo), "remote", "-v"], capture_output=True, text=True, check=False)
+    except OSError:
+        return []
+    return sorted({line.split()[1] for line in result.stdout.splitlines() if len(line.split()) >= 2})
+
+
+def canonical_remote(url: str) -> str:
+    """`git@github.com:Owner/Repo.git`, `https://github.com/owner/repo/` and ssh://...:22/... compare equal."""
+    text = url.strip().lower()
+    text = re.sub(r"^[a-z][a-z0-9+.-]*://", "", text)
+    text = re.sub(r"^[^@/]+@", "", text)
+    if re.match(r"^[^/:]+:(?!\d+/)", text):   # scp-like host:owner/repo
+        text = text.replace(":", "/", 1)
+    text = re.sub(r"^([^/:]+):\d+/", r"\1/", text)
+    return text.rstrip("/").removesuffix(".git").rstrip("/")
+
+
+def framework_remotes(root: Path, lang: str) -> dict[str, str]:
+    """Canonical URL -> where it comes from, for every remote a project must never use."""
+    found = {canonical_remote(url): say(lang, "remote.what_origin", path=root) for url in git_remote_urls(root)}
+    with contextlib.suppress(CliError, OSError, ValueError, KeyError):
+        found.setdefault(canonical_remote(load_lock(root, lang).url), say(lang, "remote.what_lock"))
+    return found
+
+
+def check_project_remote(url: str, root: Path, lang: str) -> str:
+    """The URL if a project may use it; otherwise a clear error. Never touches the network."""
+    text = url.strip()
+    if not text or text.startswith("-") or len(text) > 2048 or re.search(r"[\s\x00-\x1f]", text):
+        raise CliError(say(lang, "remote.invalid", url=url))
+    what = framework_remotes(root, lang).get(canonical_remote(text))
+    if what:
+        raise CliError(say(lang, "remote.is_framework", url=text, what=what))
+    return text
+
+
+def warn_shared_repo(folder: Path, lang: str) -> None:
+    """Warn when `git` inside the project would act on another repository (the framework's)."""
+    top = git_toplevel(folder)
+    if top is None or top == folder.resolve():
+        return
+    urls = git_remote_urls(top)
+    remote = say(lang, "proj.shared_remote", url=urls[0]) if urls else ""
+    print(say(lang, "proj.shared_repo", path=folder, top=top, remote=remote), file=sys.stderr)
+
+
 def git_first_commit(folder: Path, lang: str, runner: Runner) -> None:
     """Independent repository with the first commit; never fails the creation."""
     steps = (["git", "-c", "init.defaultBranch=main", "init", "-q"],
@@ -896,6 +964,15 @@ def cmd_new(args, root: Path, lang: str, runner: Runner) -> int:
     folder = base / spec.name
     if folder.exists() or folder.is_symlink():
         raise CliError(say(lang, "new.exists", path=folder))
+    remote = None
+    if args.remote is not None:
+        if not spec.git:
+            raise CliError(say(lang, "new.remote_needs_git"))
+        remote = check_project_remote(args.remote, root, lang)
+    if not spec.git:
+        enclosing = git_toplevel(base)
+        if enclosing is not None:   # no repo of its own: git would reach this one, and its remote
+            raise CliError(say(lang, "new.no_git_in_repo", top=enclosing))
     toolchain = None if args.no_build else resolve_toolchain(root, load_lock(root, lang), lang)
     files = gp.render_project(spec, sdk_version(root, runner), lang)
     new_dirs = [d for d in (base, *base.parents) if not d.exists()]  # deepest last
@@ -909,6 +986,9 @@ def cmd_new(args, root: Path, lang: str, runner: Runner) -> int:
                 raise CliError(say(lang, "newbuild_failed", code=code))
         if spec.git:
             git_first_commit(folder, lang, runner)
+            if remote and git_toplevel(folder) == folder.resolve():
+                if git_run(runner, folder, "remote", "add", "origin", remote).returncode == 0:
+                    print(say(lang, "new.remote_set", remote="origin", url=remote, path=folder))
     except BaseException:
         shutil.rmtree(folder, ignore_errors=True)  # we created it a moment ago: it did not exist
         for directory in new_dirs:  # only the levels this command created, innermost first
@@ -929,6 +1009,7 @@ def cmd_config(args, root: Path, lang: str, runner: Runner) -> int:
     folder = current_project(args)
     if not folder:
         raise CliError(say(lang, "proj.not_in_project"))
+    warn_shared_repo(folder, lang)
     just_show = args.title is None and args.profile is None and args.extended_memory is None
     try:
         meta, example = gp.load_project(folder)
@@ -1139,6 +1220,9 @@ def cmd_projects(args, root: Path, lang: str, runner: Runner) -> int:
                 status = say(lang, f"projects.{status}", a=found, b=gp.FORMAT)
             except gp.ProjectError as error:
                 status = say(lang, "projects.invalid", reason=error)
+            if git_toplevel(folder) != folder.resolve():   # git would answer for another repository
+                rows.append((folder.name, status, say(lang, "projects.no_own_repo")))
+                continue
             branch = git_run(runner, folder, "branch", "--show-current").stdout.strip() or "-"
             dirty = git_run(runner, folder, "status", "--porcelain").stdout.strip()
             rows.append((folder.name, status, branch + (" *" if dirty else "")))
@@ -1148,6 +1232,32 @@ def cmd_projects(args, root: Path, lang: str, runner: Runner) -> int:
     width = max(len(name) for name, _s, _b in rows)
     for name, status, branch in rows:
         print(f"  {name:<{width}}  {branch:<28}  {status}")
+    return 0
+
+
+def cmd_remote(args, root: Path, lang: str, runner: Runner) -> int:
+    """Show or set the project's Git remote. Reads and writes the project's repo config only."""
+    folder = current_project(args, lang)
+    if not folder:
+        raise CliError(say(lang, "proj.not_in_project"))
+    top = git_toplevel(folder)
+    if top != folder.resolve():
+        raise CliError(say(lang, "remote.needs_repo", path=folder, top=top or "-"))
+    if args.url is None:
+        listing = git_run(runner, folder, "remote", "-v").stdout.splitlines()
+        rows = sorted({tuple(line.split()[:2]) for line in listing if len(line.split()) >= 2})
+        if not rows:
+            print(say(lang, "remote.none", name=folder.name))
+        for name, url in rows:
+            print(say(lang, "remote.line", name=name, url=url))
+        return 0
+    url = check_project_remote(args.url, root, lang)
+    existing = git_run(runner, folder, "remote").stdout.split()
+    verb = "set-url" if args.name in existing else "add"
+    if git_run(runner, folder, "remote", verb, args.name, url).returncode != 0:
+        raise CliError(say(lang, "update.git_failed", step=f"remote {verb}"))
+    branch = git_run(runner, folder, "branch", "--show-current").stdout.strip() or "main"
+    print(say(lang, "remote.set", remote=args.name, project=folder.name, url=url, branch=branch))
     return 0
 
 
@@ -1167,7 +1277,7 @@ def cmd_version(args, root: Path, lang: str, runner: Runner) -> int:
 
 HELP_GROUPS = (
     ("helptext.group_setup", ("doctor", "install-deps", "install-toolchain", "install-cli")),
-    ("helptext.group_projects", ("new", "config", "update", "rollback", "projects")),
+    ("helptext.group_projects", ("new", "config", "update", "rollback", "projects", "remote")),
     ("helptext.group_build", ("build", "test", "run", "emulator")),
     ("helptext.group_other", ("toolchains", "clean-toolchains", "uninstall-cli", "path", "version", "help")),
 )
@@ -1369,6 +1479,7 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     new.add_argument("--no-build", action="store_true", help=say(lang, "help.no_build"))
     new.add_argument("--minimal", action="store_true", help=say(lang, "help.new_minimal"))
     new.add_argument("--template", choices=("ecs-welcome", "minimal"), help=say(lang, "help.new_template"))
+    new.add_argument("--remote", metavar="URL", help=say(lang, "help.new_remote"))
     new.set_defaults(func=cmd_new, minimal=False, template=None)
 
     config = sub.add_parser("config", help=say(lang, "help.config"))
@@ -1418,6 +1529,12 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
                           help=say(lang, "help.emulator_download"))
     emulator.add_argument("--reset", action="store_true", help=say(lang, "help.emulator_reset"))
     emulator.set_defaults(func=cmd_emulator)
+
+    remote = sub.add_parser("remote", help=say(lang, "help.remote"))
+    remote.add_argument("url", nargs="?", metavar="URL", help=say(lang, "help.remote_url"))
+    remote.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
+    remote.add_argument("--name", default="origin", metavar="NAME", help=say(lang, "help.remote_name"))
+    remote.set_defaults(func=cmd_remote)
 
     sub.add_parser("path", help=say(lang, "help.path")).set_defaults(func=cmd_path)
     sub.add_parser("version", help=say(lang, "help.version")).set_defaults(func=cmd_version)

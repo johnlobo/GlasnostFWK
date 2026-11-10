@@ -323,7 +323,8 @@ class Cycle(unittest.TestCase):
         outer = self.sdk.tmp / "outer"
         outer.mkdir()
         git(outer, "init", "-q")
-        inner = self.new_legacy("inner", outer, "--no-git")
+        inner = self.new_legacy("inner", outer)   # `new --no-git` inside a repository is refused now
+        subprocess.run(["rm", "-rf", str(inner / ".git")], check=True)
         code, _, err = self.cmd("update", cwd=inner)
         self.assertEqual(code, 1)
         self.assertIn("own Git repository", err)
