@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-GlasnostFWK is a modular Z80 assembly framework for the Amstrad CPC, built on a pinned CPCtelera Next (rev in `toolchain.lock.json` and `.github/workflows/ci.yml`; SDCC 4.5.0). Docs, commit messages and CLI output are in Spanish by default. Canonical project state and per-phase history live in `PROJECT_STATUS.md` (update it in every functional/build/release commit).
+GlasnostFWK is a modular Z80 assembly framework for the Amstrad CPC, built on a pinned CPCtelera Next (rev in `toolchain.lock.json` and `.github/workflows/ci.yml`; SDCC 4.5.0). Docs, commit messages and CLI output are in Spanish by default. Canonical current state lives in `PROJECT_STATUS.md` (update it in every functional/build/release commit); per-phase evidence is archived in `docs/design/project-history.md`. Start with current state; historical unchecked items are not the current backlog.
 
 ## Commands
 

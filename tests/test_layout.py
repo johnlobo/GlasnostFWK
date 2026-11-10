@@ -19,7 +19,7 @@ TOP_FILES = {"CLAUDE.md", "Dockerfile", ".dockerignore", ".gitignore", "LICENSE"
 FRAMEWORK_DIRS = {"src", "cfg", "profiles", "manifests", "licenses", "templates", "validations"}
 
 # Dated history written before the move keeps the paths of its time.
-HISTORY = {"PROJECT_STATUS.md", "docs/design/platformer-parity.md", "tests/test_layout.py"}
+HISTORY = {"docs/design/project-history.md", "PROJECT_STATUS.md", "docs/design/platformer-parity.md", "tests/test_layout.py"}
 
 # A path of the old layout: framework folders at the root, as opposed to assets/src, build/<name>/src,
 # examples/<name>/cfg or a user project's own folders (those have a path component before them).
