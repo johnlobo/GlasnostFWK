@@ -23,7 +23,7 @@ assets/
 `tools/build/build_examples.py` copia esta carpeta en `src/assets` del proyecto
 generado (`build/platformer/`). Allí:
 
-- los archivos `.s` se ensamblan automáticamente, sin tocar `example.json`;
+- los archivos `.s` se ensamblan automáticamente, sin tocar `glasnost.manifest.json`;
 - los `.inc` se incluyen con `.include "assets/generated/assets.inc"`;
 - el resto de archivos (PNG, TMX, JSON) se copian para dejar trazabilidad.
 
@@ -104,7 +104,7 @@ Con `"compression": "zx7b"` el mapa se comprime con `tools/zx7b` y se genera:
 - `PLATFORMER_MAP_SIZE` y `PLATFORMER_MAP_PACKED_SIZE` en `assets.inc`.
 
 `main.s` llama una vez a `fwk_zx7b_unpack` al inicializar
-(`framework/src/resources/zx7b.s`, incluido en `example.json`). Los mapas son estáticos:
+(`framework/src/resources/zx7b.s`, incluido en `glasnost.manifest.json`). Los mapas son estáticos:
 la descompresión no entra en el presupuesto de frame. Para dejar un mapa sin
 comprimir, use `"compression": "none"` y elimine su llamada de
 `_pf_decompress_levels`.
@@ -119,7 +119,7 @@ Para activarla en una copia del ejemplo:
 
 1. Copie `examples/audio/song.s` a `assets/music/song.s` (se ensambla solo).
 2. Añada `audio/akg.s` a `modules` y
-   `audio/arkosTracker_PlayerAkg.s` a `cpct_modules` en `example.json`.
+   `audio/arkosTracker_PlayerAkg.s` a `cpct_modules` en `glasnost.manifest.json`.
 3. Inicialice con `fwk_audio_init_music`, `fwk_audio_start` y actualice con
    `fwk_audio_update` en el IRQ o el bucle, como en `examples/audio/main.s`.
 4. Vuelva a medir el frame; el smoke espera el jugador en una ventana concreta
@@ -138,5 +138,5 @@ cpct_aks2c -gs -m 0x4000 -o song -od assets/music song.aks
 - No edite `generated/assets.s` ni `generated/assets.inc` a mano: cambie los
   originales y ejecute `make assets`.
 - Mantenga los originales (PNG, TMX, paleta) junto a los generados.
-- Los nombres AMSDOS del DSK se declaran en `example.json`; esta carpeta no
+- Los nombres AMSDOS del DSK se declaran en `glasnost.manifest.json`; esta carpeta no
   altera el disco.

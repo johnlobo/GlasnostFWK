@@ -7,21 +7,34 @@ abierta en ese historial no implica una tarea pendiente hoy.
 
 ## Rama, commits y validación
 
-- Rama: `refactor/examples-validations`, publicada en `origin`.
-- Implementación: `c2b4bb91d3e32287f25717291db5f7ef42542667`,
-  «Reorganiza ejemplos públicos y validaciones internas».
-- Registro de sincronización: `9c93f13065e43a9936ad324d8eda6d8a28c177d6`.
-  SHA remoto verificado en la sesión anterior; se comprobará el nuevo HEAD al subir.
-- Base de la rama: `846047ffe0e7c7052b8cd41004d9762a06eacb7f`.
-- Validación local de la reorganización: `make test`, 588 pruebas host correctas
-  en 102,778 s, 22 BIN, 20 CDT y DSK de 24 entradas (22 programas y 2 payloads).
-- `make -C framework/validations/ecsmanager` correcto. Paquete local
-  `0.2.0-reorg`: dos ZIP idénticos, SHA256 correcto y 45 archivos.
-- Smoke AmSpiriT-Lite CPC 6128: `text` y `ecsanimation` correctos; el primero
-  comprueba texto/números en VRAM y el segundo el registro frente al modelo Python.
-- Manual HTML/PDF y checksum regenerados; informe de tamaños actualizado.
-- PR de esta rama: [#42](https://github.com/johnlobo/GlasnostFWK/pull/42), CI en curso. No hay nueva release.
-  Última versión publicada registrada: `v0.2.0` (histórica; no revisada en remoto aquí).
+- Estado e historial separados en `b0aff2a`, incluidos en la PR
+  [#42](https://github.com/johnlobo/GlasnostFWK/pull/42), fusionada con squash en
+  `0f920235dcf3c258ae6d25514e3530ec15504378` de `main`.
+- Conflictos con `07dc833` resueltos conservando la integración BluePixel.
+  Validación local combinada: 595 pruebas correctas en 104,227 s, 22 BIN,
+  20 CDT y DSK de 24 entradas. CI del commit combinado `6bc425c`:
+  [42866267161](https://github.com/johnlobo/GlasnostFWK/actions/runs/42866267161),
+  correcta, incluido smoke determinista de `nave` con BluePixel.
+- Rama actual: `refactor/program-manifest`, creada desde `0f92023`.
+  Cambio de nombre y primera migración real implementados; PR/CI pendientes.
+- Validación del cambio de manifiesto: `make test` correcto, 602 pruebas host
+  en 105,677 s, 22 BIN, 20 CDT y DSK con 24 entradas. Las 61 pruebas de
+  actualización incluyen la migración real, conservación de bytes, fallo y rollback.
+  Un proyecto legado se compila de verdad antes y después de migrar.
+- 21 BIN coinciden con la captura incremental anterior; `perf` difiere en ese
+  árbol, pero sus construcciones limpias de antes/después son idénticas
+  (`bd95e05c1140a6b85e4bbc7bb3e48fc1c2bad43dcff8208372818e90719eab69`, 6.402 B).
+  Los mapas muestran distinta dirección de `_main` entre build limpio e incremental.
+  No se atribuye esa diferencia al renombrado ni se garantiza reproducibilidad
+  de compilaciones incrementales; se conserva como pendiente técnico.
+- Manual y guía de plataformas: HTML, PDF, checksum y capturas del manifiesto
+  regenerados. Paquete `0.2.0-manifest`: dos ZIP idénticos de 45 archivos y
+  SHA256 correcto sobre los artefactos construidos.
+- La reorganización anterior verificó además dos paquetes locales idénticos
+  (45 archivos, SHA256 correcto), Makefile local de `ecsmanager` y smoke
+  AmSpiriT-Lite CPC 6128 de `text` y `ecsanimation`.
+- No hay nueva release; última versión publicada registrada: `v0.2.0`
+  (histórica; no revisada en remoto aquí).
 
 ## Funcionalidad vigente
 
@@ -39,36 +52,40 @@ abierta en ese historial no implica una tarea pendiente hoy.
 - `vertical`, su smoke y su guía específica se han eliminado. Su cobertura de
   recogida/victoria no se atribuye a otros programas.
 - `tools/build/program_catalog.py` alimenta Makefile, CLI, CI, DSK y paquete;
-  los programas todavía utilizan `example.json`.
+  los programas utilizan `glasnost.manifest.json`; la lectura de `example.json`
+  sigue disponible para consumidores y proyectos antiguos, rechazando pares ambiguos.
 - `make examples` construye ejemplos públicos; `make validations`, los internos;
   `make test` y `make release` construyen ambos y el DSK común. `diskload` y `perf`
   declaran solo DSK. El ZIP separa ejemplos y validaciones.
 - BluePixel headless integrado desde `07dc833` de `main`: adaptador stdio, smoke
   determinista de `nave` y ejecución en CI. El código y la documentación se conservan
-  al resolver los conflictos con esta reorganización; validación combinada pendiente.
+  al resolver los conflictos con la reorganización; validación local y CI correctas.
 - CLI con toolchain fijada, creación/configuración de proyectos, repositorio y remoto
-  propios, actualización con migraciones y rollback. Formato de proyecto actual: 1.
+  propios, actualización con migraciones y rollback. Formato de proyecto actual: 2.
 - Toolchain fijada: CPCTelera Next `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
   Los fuentes Z80 del framework viven en `framework/src/`, las herramientas en
   `tools/{glasnost,build,dev}` y la documentación en `docs/{guide,reference,design}`.
 
 ## Próximos pasos autorizados, por orden
 
-1. Separación de estado e historial completada en `b0aff2a`; estructura (7 pruebas)
-   y ABI (9 pruebas) correctos.
-2. Abrir PR de reorganización y documentación, esperar CI «Host tests and CPC builds»
-   y fusionar con squash. No empujar directamente a `main`.
-3. Cambiar `example.json` por `glasnost.manifest.json` en una rama posterior:
-   herramientas, ejemplos, validaciones, guías y pruebas, con migración segura para
-   proyectos existentes. Todavía no implementado.
+1. Separar estado e historial: completado y fusionado en la PR #42.
+2. PR/CI de reorganización: completadas y fusionadas en `0f92023`.
+3. Cambio a `glasnost.manifest.json`: implementado en la rama actual, pendiente
+   de cerrar PR/CI; pruebas y documentación correctas. Migración de formato 1 a 2 con
+   conservación byte a byte del manifiesto; elimina el nombre antiguo solo en la
+   rama de actualización, recuperable ante fallo o con rollback. No se han
+   modificado automáticamente los proyectos de usuario en `projects/`.
 
 ## Pendientes de producto y límites vigentes
 
 - Distribución reproducible y GitHub Actions para proyectos creados por el CLI;
   política de versiones y compatibilidad de actualizaciones. No confundir con
   el empaquetador del propio framework, que sí existe.
-- La infraestructura de migraciones solo tiene pruebas sintéticas hasta el formato 1;
-  el cambio de manifiesto deberá incorporar la primera migración real.
+- La migración de formato 1 a 2 es la primera real y ya tiene pruebas locales;
+  se conservan pruebas sintéticas para los contratos del motor y errores.
+- Investigar el orden de enlazado de `perf` en árboles incrementales frente a
+  builds limpios antes de prometer BIN reproducibles entre ambos. El ZIP sí es
+  determinista para un conjunto fijo de artefactos.
 - Eliminar la ruta local heredada de la toolchain en las herramientas de bajo nivel;
   el CLI utiliza la instalación resuelta y `CPCT_NEXT_PATH`.
 - Plantilla de proyectos limitada a vídeo estándar y coordenadas Y de 8 bits.

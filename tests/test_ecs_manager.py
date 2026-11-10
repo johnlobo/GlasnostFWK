@@ -45,7 +45,7 @@ class ECSManagerTests(unittest.TestCase):
 
     def test_manager_is_exercised_by_an_executable_example(self):
         manifest = json.loads(
-            (ROOT / "framework/validations/ecsmanager/example.json").read_text()
+            (ROOT / "framework/validations/ecsmanager/glasnost.manifest.json").read_text()
         )
         main = (ROOT / "framework/validations/ecsmanager/main.s").read_text()
         self.assertIn("core/ecs_manager.s", manifest["modules"])

@@ -23,18 +23,18 @@ generate:
 	$(PYTHON) tools/build/gen_video.py framework/profiles/standard-160x200.json --out-dir build/generated
 	$(PYTHON) tools/build/gen_video.py framework/profiles/experimental-160x288.json --out-dir build/generated
 	$(PYTHON) tools/build/gen_resources.py framework/manifests/resources128.json --output build/generated/resources128.inc
-	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsmanager/example.json --output framework/validations/ecsmanager/generated/ecs_profile.inc --check
-	$(PYTHON) tools/build/gen_ecs_profile.py examples/platformer/example.json --output examples/platformer/generated/ecs_profile.inc --check
-	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecscollision/example.json --output framework/validations/ecscollision/generated/ecs_profile.inc --check
+	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsmanager/glasnost.manifest.json --output framework/validations/ecsmanager/generated/ecs_profile.inc --check
+	$(PYTHON) tools/build/gen_ecs_profile.py examples/platformer/glasnost.manifest.json --output examples/platformer/generated/ecs_profile.inc --check
+	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecscollision/glasnost.manifest.json --output framework/validations/ecscollision/generated/ecs_profile.inc --check
 	$(PYTHON) tools/build/ecs_collision_model.py --output framework/validations/ecscollision/scenario.inc --check
-	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsanimation/example.json --output framework/validations/ecsanimation/generated/ecs_profile.inc --check
+	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsanimation/glasnost.manifest.json --output framework/validations/ecsanimation/generated/ecs_profile.inc --check
 	$(PYTHON) tools/build/ecs_animation_model.py --output framework/validations/ecsanimation/scenario.inc --check
-	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsrender/example.json --output framework/validations/ecsrender/generated/ecs_profile.inc --check
+	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsrender/glasnost.manifest.json --output framework/validations/ecsrender/generated/ecs_profile.inc --check
 	$(PYTHON) tools/build/ecs_render_model.py --output framework/validations/ecsrender/scenario.inc --check
-	$(PYTHON) tools/build/gen_ecs_profile.py examples/nave/example.json --output examples/nave/generated/ecs_profile.inc --check
+	$(PYTHON) tools/build/gen_ecs_profile.py examples/nave/glasnost.manifest.json --output examples/nave/generated/ecs_profile.inc --check
 
 generate-ecs:
-	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsmanager/example.json --output framework/validations/ecsmanager/generated/ecs_profile.inc
+	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsmanager/glasnost.manifest.json --output framework/validations/ecsmanager/generated/ecs_profile.inc
 
 examples: generate
 	$(PYTHON) tools/build/build_examples.py $(EXAMPLES)

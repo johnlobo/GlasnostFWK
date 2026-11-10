@@ -31,7 +31,7 @@ def manifest(**ecs_changes):
 
 class ECSProfileTests(unittest.TestCase):
     def test_committed_example_is_reproducible(self):
-        example_path = ROOT / "framework/validations/ecsmanager/example.json"
+        example_path = ROOT / "framework/validations/ecsmanager/glasnost.manifest.json"
         example = json.loads(example_path.read_text(encoding="utf-8"))
         generated = generate(example, PORTFOLIO, STANDARD)
         committed = ROOT / "framework/validations/ecsmanager/generated/ecs_profile.inc"
@@ -145,7 +145,7 @@ class ECSProfileTests(unittest.TestCase):
             generate(manifest(y_format="fixed_8_8"), PORTFOLIO, tall)
 
     def test_check_mode_detects_a_stale_versioned_include(self):
-        example = ROOT / "framework/validations/ecsmanager/example.json"
+        example = ROOT / "framework/validations/ecsmanager/glasnost.manifest.json"
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "ecs_profile.inc"
             output.write_text("stale\n", encoding="ascii")
@@ -177,7 +177,7 @@ class ECSProfileTests(unittest.TestCase):
         )
 
     def test_cli_preview_is_read_only(self):
-        example = ROOT / "framework/validations/ecsmanager/example.json"
+        example = ROOT / "framework/validations/ecsmanager/glasnost.manifest.json"
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "ecs_profile.inc"
             output.write_text("previous\n", encoding="ascii")

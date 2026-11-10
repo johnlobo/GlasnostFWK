@@ -11,9 +11,16 @@ clipping, restauración, máscaras opcionales y pases ordenados, texto, audio
 AKG opcional y copia bancaria de 128 KB.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
-ejemplo declara sus módulos y fuentes de juego en `examples/*/example.json`;
+ejemplo declara sus módulos y fuentes de juego en `examples/*/glasnost.manifest.json`;
 el constructor copia únicamente esos fuentes al árbol temporal `build/`, de
 modo que excluir una funcionalidad la excluye también del enlazado.
+
+Los proyectos nuevos son de formato 2 y usan `glasnost.manifest.json`.
+Los proyectos existentes de formato 1 pueden seguir compilando con `example.json`;
+para migrarlos, ejecute `glasnost update --dry-run` y después `glasnost update`.
+El cambio conserva el contenido del manifiesto y permite `glasnost rollback`.
+Si existen ambos nombres, las herramientas rechazan la ambigüedad.
+`glasnost.project.json` conserva los metadatos del proyecto y sigue siendo independiente.
 
 ## Dependencia fijada
 
@@ -138,7 +145,7 @@ la ruta de la imagen para abrirla a mano.
 
 Un ejemplo puede llevar su propia configuración de proyecto en
 `cfg/build_config.mk`; si existe, el constructor la usa como base y solo
-reescribe los valores que gobierna `example.json` (`CPCT_PATH`, `PROJNAME`,
+reescribe los valores que gobierna `glasnost.manifest.json` (`CPCT_PATH`, `PROJNAME`,
 `TARGET`, `Z80CODELOC` y `-I$(SRCDIR)`). Es el sitio para añadir flags,
 herramientas o rutas de inclusión.
 
@@ -203,7 +210,7 @@ con `make validations` o individualmente con `make -C framework/validations/ecsm
 `make test` ejecuta la suite host, construye ambas colecciones y crea el DSK común.
 El ZIP de distribución separa ambas rutas y declara las validaciones en su manifiesto.
 El catálogo compartido `tools/build/program_catalog.py` alimenta Makefile, CI,
-DSK y distribución; los programas conservan por ahora el manifiesto `example.json`.
+DSK y distribución; el manifiesto se llama `glasnost.manifest.json`.
 
 ## Física especializada
 

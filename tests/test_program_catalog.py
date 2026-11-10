@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.build.program_catalog import program_folder, program_folders, program_names
+from tools.build.program_catalog import manifest_path, program_folder, program_folders, program_names
 from tools.build.build_test_disk import program_bin_name
 from tools.glasnost.glasnost import example_names
 
@@ -42,13 +42,40 @@ class ProgramCatalogTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for prefix in ("examples", "framework/validations"):
-                manifest = root / prefix / "same/example.json"
+                manifest = root / prefix / "same/glasnost.manifest.json"
                 manifest.parent.mkdir(parents=True)
                 manifest.write_text(json.dumps({"name": "same"}))
             with self.assertRaisesRegex(ValueError, "duplicate program"):
                 program_folders(root)
             with self.assertRaisesRegex(ValueError, "duplicate program"):
                 program_folder(root, "same")
+
+    def test_legacy_manifests_are_discovered_without_being_rewritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "examples/old"
+            folder.mkdir(parents=True)
+            legacy = folder / "example.json"
+            raw = b'{ "name": "old", "media": ["dsk"], "amsdos_name": "LEGACY" }\n'
+            legacy.write_bytes(raw)
+            self.assertEqual(program_names(root), ("old",))
+            self.assertEqual(program_names(root, media="cdt"), ())
+            self.assertEqual(program_bin_name(root, "old"), "LEGACY.BIN")
+            self.assertEqual(manifest_path(folder), legacy)
+            self.assertEqual(legacy.read_bytes(), raw)
+            self.assertFalse((folder / "glasnost.manifest.json").exists())
+
+    def test_both_manifest_names_are_rejected_even_when_identical(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "framework/validations/ambiguous"
+            folder.mkdir(parents=True)
+            for name in ("example.json", "glasnost.manifest.json"):
+                (folder / name).write_text('{"name":"ambiguous"}')
+            with self.assertRaisesRegex(ValueError, "ambiguous manifests"):
+                program_names(root)
+            with self.assertRaisesRegex(ValueError, "ambiguous manifests"):
+                program_bin_name(root, "ambiguous")
 
 
 if __name__ == "__main__":

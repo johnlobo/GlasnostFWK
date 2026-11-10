@@ -1,8 +1,8 @@
 """Gate tests of `glasnost update`, `rollback` and `projects` and of the migration engine.
 
 Deterministic and local: Git is real (so branches, cleanliness and restores are the real thing),
-builds go through a recording runner, and the formats are synthetic (the real FORMAT is 1, so
-nothing needs migrating yet). The one test that compiles for real is skipped without a toolchain.
+builds go through a recording runner, with synthetic migrations for engine failure cases.
+The real format-1 filename migration is exercised separately. The one test that compiles for real is skipped without a toolchain.
 """
 
 from __future__ import annotations
@@ -59,6 +59,9 @@ class Engine(unittest.TestCase):
         for relative, content in gp.render_project(gp.Spec("demo", "hello"), "old", "en").items():
             (self.folder / relative).parent.mkdir(parents=True, exist_ok=True)
             (self.folder / relative).write_bytes(content)
+        meta = json.loads((self.folder / gp.PROJECT_FILE).read_text())
+        meta["format"] = 1
+        (self.folder / gp.PROJECT_FILE).write_text(gp.dump_json(meta))
 
     def plan(self, migration_map, target=2, framework="new"):
         return gu.plan_update(self.folder, framework, migration_map, target)
@@ -70,6 +73,9 @@ class Engine(unittest.TestCase):
             self.assertEqual(gu.MIGRATIONS[number].from_format, number)
 
     def test_a_project_at_the_current_format_has_nothing_to_do(self):
+        meta = json.loads((self.folder / gp.PROJECT_FILE).read_text())
+        meta["format"] = gp.FORMAT
+        (self.folder / gp.PROJECT_FILE).write_text(gp.dump_json(meta))
         plan = gu.plan_update(self.folder, "new")
         self.assertTrue(plan.empty)
         self.assertEqual((plan.steps, plan.changed, plan.tasks, plan.files), ((), (), (), {}))
@@ -88,14 +94,14 @@ class Engine(unittest.TestCase):
         self.assertIn(b'game_title: .asciz "UPDATED"', plan.files["generated/project.inc"])
         self.assertIn(gp.PROJECT_FILE, plan.changed)
         self.assertIn("generated/project.inc", plan.changed)
-        self.assertNotIn("example.json", plan.changed)  # untouched documents are not rewritten
+        self.assertNotIn("glasnost.manifest.json", plan.changed)  # untouched documents are not rewritten
 
     def test_planning_writes_nothing_and_never_offers_user_code(self):
         before = tree(self.folder)
         plan = self.plan(migrations(STEP1))
         self.assertEqual(tree(self.folder), before)
         self.assertEqual(sorted(plan.files), sorted(
-            [gp.PROJECT_FILE, "example.json", "generated/ecs_profile.inc", "generated/project.inc"]))
+            [gp.PROJECT_FILE, "glasnost.manifest.json", "generated/ecs_profile.inc", "generated/project.inc"]))
         self.assertTrue({"main.s", "common.inc", "README.md"}.isdisjoint(plan.files))
 
     def test_steps_are_consecutive_and_run_in_order(self):
@@ -176,7 +182,7 @@ class Engine(unittest.TestCase):
         with self.assertRaises(gu.UpdateError):
             self.plan(migrations(gu.Migration(1, "x", mutates_then_fails)))
         plan = self.plan(migrations(STEP1))
-        self.assertNotIn("x.s", json.loads(plan.files["example.json"])["modules"])
+        self.assertNotIn("x.s", json.loads(plan.files["glasnost.manifest.json"])["modules"])
 
     def test_migrations_may_edit_example_json_for_renamed_modules(self):
         def rename_module(meta, example):
@@ -185,8 +191,8 @@ class Engine(unittest.TestCase):
             return meta, example, []
 
         plan = self.plan(migrations(gu.Migration(1, "modules", rename_module)))
-        self.assertIn("extensions/tilemap.s", json.loads(plan.files["example.json"])["modules"])
-        self.assertIn("example.json", plan.changed)
+        self.assertIn("extensions/tilemap.s", json.loads(plan.files["glasnost.manifest.json"])["modules"])
+        self.assertIn("glasnost.manifest.json", plan.changed)
 
     def test_check_project_rejects_bad_formats_too(self):
         for bad in (0, -3, "1", True, 2.5):
@@ -213,8 +219,9 @@ class Cycle(unittest.TestCase):
         self.sdk = FakeSdk(self)
         self.assertEqual(self.sdk.cli("install-toolchain")[0], 0)
         self.base = self.sdk.tmp / "work"
-        code, _, err = run(["new", "demo", "--no-build", "--dir", str(self.base)], self.sdk.root,
-                           env=dict(self.sdk.env))
+        with mock.patch.object(gp, "FORMAT", 1):
+            code, _, err = run(["new", "demo", "--no-build", "--dir", str(self.base)], self.sdk.root,
+                               env=dict(self.sdk.env))
         self.assertEqual((code, err), (0, ""))
         self.folder = self.base / "demo"
         self.main = git(self.folder, "branch", "--show-current")
@@ -605,17 +612,107 @@ class Cycle(unittest.TestCase):
         self.assertIn("is not a glasnost project", err)
 
 
+class FilenameMigration(unittest.TestCase):
+    """The real legacy filename upgrade, with local Git and failure recovery."""
+
+    def setUp(self):
+        self.sdk = FakeSdk(self)
+        self.assertEqual(self.sdk.cli("install-toolchain")[0], 0)
+        with mock.patch.object(gp, "FORMAT", 1):
+            code, out, err = run(["new", "demo", "--no-build", "--dir", str(self.sdk.tmp / "games")],
+                                 self.sdk.root, env=dict(self.sdk.env))
+        self.assertEqual(code, 0, out + err)
+        self.folder = self.sdk.tmp / "games/demo"
+        self.current = self.folder / gp.MANIFEST_FILE
+        self.legacy = self.folder / gp.LEGACY_MANIFEST_FILE
+        data = json.loads(self.current.read_text())
+        data["custom_extension"] = {"numbers": [1, 2, 3]}
+        self.raw = (json.dumps(data, indent=4) + "\n\n").encode()
+        self.current.unlink()
+        self.legacy.write_bytes(self.raw)
+        git(self.folder, "add", "-A")
+        git(self.folder, "commit", "-qm", "legacy project")
+        self.base = git(self.folder, "branch", "--show-current")
+        self.before = tree(self.folder)
+
+    def cmd(self, *args, runner=None):
+        return run(list(args), self.sdk.root, runner=runner or Recorder(),
+                   env=dict(self.sdk.env), cwd=self.folder)
+
+    def test_dry_run_reports_rename_and_preserves_all_bytes(self):
+        plan = gu.plan_update(self.folder, "next")
+        self.assertEqual((plan.from_format, plan.to_format), (1, 2))
+        self.assertEqual(plan.removed, (gp.LEGACY_MANIFEST_FILE,))
+        self.assertEqual(plan.files[gp.MANIFEST_FILE], self.raw)
+        code, out, err = self.cmd("update", "--dry-run")
+        self.assertEqual(code, 0, err)
+        self.assertIn("removing example.json", out)
+        self.assertEqual(tree(self.folder), self.before)
+
+    def test_old_build_and_config_work_before_explicit_update(self):
+        self.assertEqual(self.cmd("build")[0], 0)
+        self.assertEqual(self.cmd("config")[0], 0)
+        self.assertEqual(tree(self.folder), self.before)
+        self.assertEqual(self.cmd("config", "--extended-memory")[0], 0)
+        self.assertFalse(self.current.exists())
+        self.assertTrue(json.loads(self.legacy.read_text())["extended_memory"])
+        self.assertEqual(json.loads((self.folder / gp.PROJECT_FILE).read_text())["format"], 1)
+
+    def test_update_and_rollback_preserve_manifest_and_user_sources(self):
+        code, out, err = self.cmd("update")
+        self.assertEqual(code, 0, out + err)
+        self.assertFalse(self.legacy.exists())
+        self.assertEqual(self.current.read_bytes(), self.raw)
+        self.assertEqual(json.loads((self.folder / gp.PROJECT_FILE).read_text())["format"], 2)
+        self.assertEqual(git(self.folder, "status", "--porcelain"), "")
+        for name in ("main.s", "common.inc", "README.md"):
+            self.assertEqual(tree(self.folder)[name], self.before[name])
+        self.assertEqual(self.cmd("update")[0], 0)
+        self.assertEqual(self.cmd("rollback")[0], 0)
+        self.assertEqual(tree(self.folder), self.before)
+        self.assertEqual(git(self.folder, "branch", "--show-current"), self.base)
+
+    def test_build_failure_restores_deleted_legacy_file(self):
+        failing = Recorder(fail=[(sys.executable, "tools/build/build_examples.py")])
+        code, out, err = self.cmd("update", runner=failing)
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(tree(self.folder), self.before)
+        self.assertFalse(self.current.exists())
+        self.assertEqual(self.legacy.read_bytes(), self.raw)
+        self.assertEqual(git(self.folder, "status", "--porcelain"), "")
+        self.assertEqual(git(self.folder, "branch", "--show-current"), self.base)
+
+    def test_conflicting_files_and_invalid_v2_are_never_silently_accepted(self):
+        self.current.write_bytes(self.raw)
+        before = tree(self.folder)
+        code, out, err = self.cmd("update", "--dry-run")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("ambiguous manifests", err)
+        self.assertEqual(tree(self.folder), before)
+        self.current.unlink()
+        meta = json.loads((self.folder / gp.PROJECT_FILE).read_text())
+        meta["format"] = 2
+        (self.folder / gp.PROJECT_FILE).write_text(gp.dump_json(meta))
+        self.assertTrue(any("requires glasnost.manifest.json" in error
+                            for error in gp.check_project(self.folder)))
+
+
 @unittest.skipUnless(real_toolchain(), "needs a CPCTelera Next toolchain")
 class RealBuild(unittest.TestCase):
     def test_update_with_a_real_build_then_rollback(self):
         tmp = Path(tempfile.mkdtemp(prefix="glasnost-real-upd-"))
         self.addCleanup(subprocess.run, ["rm", "-rf", str(tmp)])
         env = {"CPCT_NEXT_PATH": str(real_toolchain())}
-        code, out, err = run(["new", "demo", "--dir", str(tmp)], ROOT, runner=quiet_runner, env=env)
+        with mock.patch.object(gp, "FORMAT", 1):
+            code, out, err = run(["new", "demo", "--dir", str(tmp)], ROOT, runner=quiet_runner, env=env)
         self.assertEqual(code, 0, out + err)
         folder = tmp / "demo"
+        (folder / gp.MANIFEST_FILE).rename(folder / gp.LEGACY_MANIFEST_FILE)
+        git(folder, "add", "-A")
+        git(folder, "commit", "-qm", "legacy filename")
+        self.assertEqual(run(["build"], ROOT, runner=quiet_runner, env=env, cwd=folder)[0], 0)
         original = tree(folder)
-        step = gu.Migration(1, "retitle", retitle("AFTER UPDATE"))
+        step = gu.MIGRATIONS[1]
         with mock.patch.object(gp, "FORMAT", 2), mock.patch.object(gu, "MIGRATIONS", migrations(step)):
             code, out, err = run(["update"], ROOT, runner=quiet_runner, env=env, cwd=folder)
             self.assertEqual(code, 0, out + err)

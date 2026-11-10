@@ -1025,8 +1025,8 @@ def cmd_config(args, root: Path, lang: str, runner: Runner) -> int:
         raise CliError(say(lang, "proj.config_invalid", reason=error)) from error
     if just_show:
         # No options: bring only the generated files up to date. This is what `build` asks for
-        # when it says "run glasnost config" (after editing components or modules in example.json);
-        # the documents the user edits (example.json, glasnost.project.json) stay byte for byte.
+        # when it says "run glasnost config" (after editing components or modules in glasnost.manifest.json);
+        # the documents the user edits (glasnost.manifest.json, glasnost.project.json) stay byte for byte.
         new_files = {rel: content for rel, content in new_files.items() if rel.startswith("generated/")}
     changed = [rel for rel, content in sorted(new_files.items())
                if not (folder / rel).is_file() or (folder / rel).read_bytes() != content]
@@ -1093,7 +1093,7 @@ def print_plan(plan: gu.Plan, lang: str) -> None:
     for step in plan.steps:
         print(say(lang, "update.step", a=step.from_format, b=step.from_format + 1, summary=step.summary))
     for path in plan.changed:
-        print(say(lang, "update.rewrite", path=path))
+        print(say(lang, "update.remove" if path in plan.removed else "update.rewrite", path=path))
     for task in plan.tasks:
         print(say(lang, "update.task", task=task))
 
@@ -1155,7 +1155,9 @@ def cmd_update(args, root: Path, lang: str, runner: Runner) -> int:
     try:
         if git_run(runner, folder, "config", f"branch.{branch}.glasnostBase", base).returncode != 0:
             raise CliError(say(lang, "update.git_failed", step="config"))
-        write_replacing(folder, {path: plan.files[path] for path in plan.changed})
+        write_replacing(folder, {path: plan.files[path] for path in plan.changed if path in plan.files})
+        for relative in plan.removed:
+            (folder / relative).unlink()
         problems = gp.check_project(folder)
         if problems:
             raise CliError(say(lang, "proj.check_failed", path=folder) + "\n"

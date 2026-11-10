@@ -664,7 +664,7 @@ class RunExampleFindsTheBuild(Temp):
     def project(self, name="platform2") -> Path:
         folder = self.tmp / name
         (folder / "build" / "obj").mkdir(parents=True)
-        (folder / "example.json").write_text(json.dumps({"name": name}), encoding="utf-8")
+        (folder / "glasnost.manifest.json").write_text(json.dumps({"name": name}), encoding="utf-8")
         return folder
 
     def test_a_project_image_is_found_in_build_directly(self):
@@ -715,7 +715,7 @@ class RunExampleChoosesTheImage(Temp):
         self.addCleanup(patcher.stop)
         self.folder = self.tmp / "game"
         (self.folder / "build" / "obj").mkdir(parents=True)
-        (self.folder / "example.json").write_text('{"name": "game"}', encoding="utf-8")
+        (self.folder / "glasnost.manifest.json").write_text('{"name": "game"}', encoding="utf-8")
         for suffix in ("cdt", "dsk"):
             (self.folder / "build" / f"game.{suffix}").write_text("x")
         (self.folder / "build" / "obj" / "game.noi").write_text("x")
@@ -879,7 +879,7 @@ class RunAsksOnce(Harness):
         project.mkdir()
         (project / "glasnost.project.json").write_text(json.dumps(
             {"schema": 1, "template": "ecs-welcome", "format": 1, "framework": "x", "title": "T"}), encoding="utf-8")
-        (project / "example.json").write_text('{"name": "proj"}', encoding="utf-8")
+        (project / "glasnost.manifest.json").write_text('{"name": "proj"}', encoding="utf-8")
         _, out, _, asked = self.run_cli("run", "--project", str(project), answers=["3"])
         self.assertIn("No emulator is configured", out)
         self.assertEqual(len(asked), 1)

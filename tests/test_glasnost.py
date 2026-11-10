@@ -95,7 +95,7 @@ class FakeSdk:
         self.rev = make_fake_upstream(self.upstream, broken, silent)
         self.root = self.tmp / "sdk"
         (self.root / "examples" / "minimal").mkdir(parents=True)
-        (self.root / "examples" / "minimal" / "example.json").write_text("{}", encoding="utf-8")
+        (self.root / "examples" / "minimal" / "glasnost.manifest.json").write_text("{}", encoding="utf-8")
         self.write_lock(self.rev)
         self.env = {"GLASNOST_TOOLCHAIN_DIR": str(self.tmp / "tc"),
                     "GLASNOST_CPCTELERA_URL": self.upstream.resolve().as_uri()}

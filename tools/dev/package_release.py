@@ -14,12 +14,12 @@ ROOT = Path(__file__).resolve().parents[2]
 
 try:
     from tools.build.build_test_disk import program_bin_name
-    from tools.build.program_catalog import program_folder, program_folders, program_names
+    from tools.build.program_catalog import manifest_path, program_folder, program_folders, program_names
 except ModuleNotFoundError:
     import sys
     sys.path.insert(0, str(ROOT / "tools" / "build"))
     from build_test_disk import program_bin_name
-    from program_catalog import program_folder, program_folders, program_names
+    from program_catalog import manifest_path, program_folder, program_folders, program_names
 EXAMPLES = program_names(ROOT, "examples")
 VALIDATIONS = program_names(ROOT, "validations")
 PROGRAMS = (*EXAMPLES, *VALIDATIONS)
@@ -33,7 +33,7 @@ def artifact_paths() -> list[tuple[str, Path]]:
     for example in PROGRAMS:
         base = ROOT / "build" / example
         manifest = json.loads(
-            (program_folder(ROOT, example) / "example.json").read_text(encoding="utf-8")
+            manifest_path(program_folder(ROOT, example)).read_text(encoding="utf-8")
         )
         formats = ["bin"]
         if "cdt" in manifest.get("media", ["cdt", "dsk"]):
@@ -71,7 +71,7 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
     formats_by_example = {}
     for example in PROGRAMS:
         example_manifest = json.loads(
-            (program_folder(ROOT, example) / "example.json").read_text(
+            manifest_path(program_folder(ROOT, example)).read_text(
                 encoding="utf-8"
             )
         )

@@ -14,9 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 try:
-    from tools.build.program_catalog import program_folder, program_folders, program_names
+    from tools.build.program_catalog import manifest_path, program_folder, program_folders, program_names
 except ModuleNotFoundError:
-    from program_catalog import program_folder, program_folders, program_names
+    from program_catalog import manifest_path, program_folder, program_folders, program_names
 DEFAULT_CPCT = Path("/config/workspace/cpctelera_next/cpctelera")
 DEFAULT_EXAMPLES = program_names(ROOT)
 DISK_NAME = "GlasnostFWK-tests.dsk"
@@ -36,18 +36,18 @@ def amsdos_bin_name(example: str) -> str:
 
 def program_bin_name(root: Path, example: str) -> str:
     """Return the catalog name, honoring a strict optional manifest override."""
-    manifest_path = program_folder(root, example) / "example.json"
-    if not manifest_path.is_file():
+    path = manifest_path(program_folder(root, example))
+    if not path.is_file():
         return amsdos_bin_name(example)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     explicit = manifest.get("amsdos_name")
     if explicit is None:
         return amsdos_bin_name(example)
     if not isinstance(explicit, str):
-        raise ValueError(f"amsdos_name must be a string: {manifest_path}")
+        raise ValueError(f"amsdos_name must be a string: {path}")
     stem = explicit.upper()
     if not stem or len(stem) > 8 or not stem.replace("_", "A").isalnum():
-        raise ValueError(f"invalid amsdos_name in {manifest_path}: {explicit!r}")
+        raise ValueError(f"invalid amsdos_name in {path}: {explicit!r}")
     return f"{stem}.BIN"
 
 

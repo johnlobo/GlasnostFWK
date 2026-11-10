@@ -43,12 +43,12 @@ GAME_DRONE_COMPS  = ECS_C_RENDER|ECS_C_MOTION|ECS_C_BEHAVIOR|ECS_C_ANIMATION|ECS
 [Tu primer juego](first-game.md) usa «fotograma» en los dos sentidos). Las imágenes de una
 animación se llaman aquí *cuadros*.
 
-Y dos cosas del proyecto: `example.json` es su manifiesto (qué módulos del framework se
+Y dos cosas del proyecto: `glasnost.manifest.json` es su manifiesto (qué módulos del framework se
 enlazan y qué componentes usan las entidades) y lo que hay en `generated/` se regenera a
 partir de él (y del título del proyecto) cuando cambian los componentes, los módulos o el título. Hay dos formas de trabajar con este
 código: ejecutar el ejemplo tal cual (`make` en `examples/nave`; `make` no regenera `generated/`:
 si cambias componentes o módulos, ejecuta desde la raíz del SDK `python3 tools/build/gen_ecs_profile.py
-examples/nave/example.json --output examples/nave/generated/ecs_profile.inc`) o crear tu propio
+examples/nave/glasnost.manifest.json --output examples/nave/generated/ecs_profile.inc`) o crear tu propio
 proyecto con `glasnost new` (lo cuenta la
 guía [Tu primer juego](first-game.md)) y usar `glasnost config` y `glasnost build`. Los dos
 ejercicios del final no cambian componentes, así que no necesitan regenerar nada.
@@ -185,7 +185,7 @@ FWK_ECS_RENDER_SCENE game_scene, _game_managers, 1, _game_work, GAME_CAP, _game_
 ```
 
 `ECS_ENTITY_SIZE` es el tamaño en bytes de una entidad; lo calcula `glasnost config` a
-partir de los componentes de `example.json` (por eso hay que ejecutarlo al añadir uno).
+partir de los componentes de `glasnost.manifest.json` (por eso hay que ejecutarlo al añadir uno).
 `game_storage` guarda `GAME_CAP` entidades (4: la nave y tres drones). El framework las
 llena por orden de creación, así que la nave es la entidad 0.
 

@@ -5,7 +5,7 @@ A project records its `format` in glasnost.project.json (missing means 1). This 
 migrations N -> N+1 -> ... -> M. There is no shortcut and no gap: a missing step is an error.
 
 A migration is a pure function over the two JSON documents glasnost owns,
-`glasnost.project.json` and `example.json`:
+`glasnost.project.json` and `glasnost.manifest.json`:
 
     apply(meta: dict, example: dict) -> (meta, example, tasks)
 
@@ -40,9 +40,14 @@ class Migration:
     apply: Apply
 
 
-# Keyed by `from_format`. Empty today: format 1 is the first format. Add one entry per bump of
-# glasnost_project.FORMAT, in the same commit, with its tests.
-MIGRATIONS: dict[int, Migration] = {}
+def _manifest_v2(meta: dict, example: dict) -> tuple[dict, dict, list[str]]:
+    """Format 2 changes the manifest filename; its JSON data is unchanged."""
+    return meta, example, []
+
+
+MIGRATIONS: dict[int, Migration] = {
+    1: Migration(1, "Renombra example.json a glasnost.manifest.json", _manifest_v2),
+}
 
 
 @dataclass(frozen=True)
@@ -54,6 +59,7 @@ class Plan:
     files: dict[str, bytes] = field(default_factory=dict)   # everything glasnost would write
     changed: tuple[str, ...] = ()                            # those that differ from disk
     tasks: tuple[str, ...] = ()                              # manual work for the user
+    removed: tuple[str, ...] = ()                            # owned files retired by migration
 
     @property
     def empty(self) -> bool:
@@ -104,6 +110,8 @@ def plan_update(
                               f"{step.from_format}")
         steps.append(step)
 
+    source_manifest = gp.manifest_path(folder)
+    original_example = copy.deepcopy(example)
     name = example.get("name")
     meta, example = copy.deepcopy(meta), copy.deepcopy(example)
     tasks: list[str] = []
@@ -125,12 +133,16 @@ def plan_update(
         generated = gp.owned_files(meta, example)
     except gp.ProjectError as error:
         raise UpdateError(f"the migrated project is not valid: {error}") from error
+    destination = gp.MANIFEST_FILE if target >= 2 else source_manifest.name
     files = {
         gp.PROJECT_FILE: gp.dump_json(meta).encode("utf-8"),
-        "example.json": gp.dump_json(example).encode("utf-8"),
+        destination: (source_manifest.read_bytes() if example == original_example
+                      else gp.dump_json(example).encode("utf-8")),
         **{path: text.encode("ascii") for path, text in generated.items()},
     }
-    changed = tuple(sorted(
+    removed = (source_manifest.name,) if source_manifest.name != destination else ()
+    changed = tuple(sorted({
         path for path, content in files.items()
-        if not (folder / path).is_file() or (folder / path).read_bytes() != content))
-    return Plan(folder, current, target, tuple(steps), files, changed, tuple(tasks))
+        if not (folder / path).is_file() or (folder / path).read_bytes() != content
+    } | set(removed)))
+    return Plan(folder, current, target, tuple(steps), files, changed, tuple(tasks), removed)

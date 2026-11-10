@@ -64,7 +64,7 @@
   </nav>
 
   <h2 id="resultado">1. Resultado y requisitos</h2>
-  <p>El proyecto queda dividido en tres partes: <code>example.json</code> elige perfil, módulos y el bloque <code>ecs</code> con los componentes de las entidades; <code>main.s</code> implementa constantes, estado, inicialización y bucle; y <code>assets/</code> contiene los gráficos y mapas editables, que se convierten antes de compilar. El constructor genera <code>ecs_profile.inc</code> (los offsets de cada campo de entidad) a partir del bloque <code>ecs</code> y prepara un proyecto CPCTelera aislado bajo <code>build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
+  <p>El proyecto queda dividido en tres partes: <code>glasnost.manifest.json</code> elige perfil, módulos y el bloque <code>ecs</code> con los componentes de las entidades; <code>main.s</code> implementa constantes, estado, inicialización y bucle; y <code>assets/</code> contiene los gráficos y mapas editables, que se convierten antes de compilar. El constructor genera <code>ecs_profile.inc</code> (los offsets de cada campo de entidad) a partir del bloque <code>ecs</code> y prepara un proyecto CPCTelera aislado bajo <code>build/&lt;nombre&gt;</code>; no copie ni edite a mano ese directorio generado.</p>
   <p>Antes de empezar, desde la raíz de GlasnostFWK, compruebe:</p>
   <pre><code>test -f /config/workspace/cpctelera_next/cpctelera/cpctelera.lib
 python3 --version
@@ -79,7 +79,7 @@ make --version</code></pre>
   <h2 id="estructura"><span class="step">2</span> Crear la estructura</h2>
   <p>Para seguir el tutorial sin modificar el ejemplo distribuido, utilice otro nombre y parta de los assets del ejemplo:</p>
   <pre><code>mkdir -p examples/mi_plataformas
-touch examples/mi_plataformas/example.json
+touch examples/mi_plataformas/glasnost.manifest.json
 touch examples/mi_plataformas/main.s
 cp -r examples/platformer/assets examples/mi_plataformas/assets</code></pre>
   <p>La captura siguiente se genera leyendo el ejemplo real. Muestra la misma separación que debe conservar el proyecto nuevo.</p>
@@ -91,14 +91,14 @@ cp -r examples/platformer/assets examples/mi_plataformas/assets</code></pre>
   <table>
     <thead><tr><th>Archivo</th><th>Responsabilidad recomendada</th></tr></thead>
     <tbody>
-      <tr><td><code>example.json</code></td><td>Dependencias explícitas, perfil de vídeo, nombre AMSDOS y fuentes del juego.</td></tr>
+      <tr><td><code>glasnost.manifest.json</code></td><td>Dependencias explícitas, perfil de vídeo, nombre AMSDOS y fuentes del juego.</td></tr>
       <tr><td><code>assets/</code></td><td>Originales editables (PNG y TMX) y datos convertidos en <code>assets/generated/</code>: tiles, sprites, mapas comprimidos y paleta.</td></tr>
       <tr><td><code>main.s</code></td><td>Constantes, filas de creación de entidades, estado, inicialización, reglas, colisiones y bucle por frame.</td></tr>
     </tbody>
   </table>
 
   <h2 id="manifiesto"><span class="step">3</span> Declarar el manifiesto</h2>
-  <p>Escriba en <code>examples/mi_plataformas/example.json</code>:</p>
+  <p>Escriba en <code>examples/mi_plataformas/glasnost.manifest.json</code>:</p>
   <pre><code>{
   "name": "mi_plataformas",
   "amsdos_name": "MIPLATA",
@@ -132,12 +132,12 @@ cp -r examples/platformer/assets examples/mi_plataformas/assets</code></pre>
   }
 }</code></pre>
   <p>El bloque <code>ecs</code> fija el formato de las coordenadas y los componentes de las entidades. <code>RENDER</code> está siempre presente y <code>MOTION</code> se inserta como dependencia de <code>input</code>, <code>platform</code> y <code>behavior</code>. Los sistemas de movimiento y behavior exigen coordenadas <code>u8</code>, y el componente <code>platform</code> necesita <code>core/ecs_platform.s</code> cuando <code>core/ecs_motion.s</code> está seleccionado; el constructor rechaza las combinaciones incoherentes. Para ver el layout resuelto (componentes, campos y offsets) antes de compilar:</p>
-  <pre><code>python3 tools/build/gen_ecs_profile.py examples/mi_plataformas/example.json \
+  <pre><code>python3 tools/build/gen_ecs_profile.py examples/mi_plataformas/glasnost.manifest.json \
   --output examples/mi_plataformas/generated/ecs_profile.inc --preview</code></pre>
   <p><code>game_sources</code> debe incluir <code>main.s</code>. <code>transparency.pen=0</code> habilita el renderer transparente y coincide con el fondo de la fuente incorporada. Las rutas son relativas al directorio del ejemplo y el constructor rechaza rutas que escapen de él. <code>amsdos_name</code> se usa al integrar el BIN en el DSK común: debe contener entre uno y ocho caracteres AMSDOS válidos.</p>
   <figure>
     <img src="images/platformer/02-manifiesto.png" alt="Captura de terminal con el manifiesto JSON real de platformer">
-    <figcaption>Captura 3. Manifiesto leído directamente de <code>examples/platformer/example.json</code>. Si el ejemplo evoluciona, el generador de capturas reflejará el cambio.</figcaption>
+    <figcaption>Captura 3. Manifiesto leído directamente de <code>examples/platformer/glasnost.manifest.json</code>. Si el ejemplo evoluciona, el generador de capturas reflejará el cambio.</figcaption>
   </figure>
   <div class="note"><strong>Dependencias explícitas.</strong> Añadir una llamada en ensamblador no enlaza automáticamente su implementación. El archivo que define la rutina debe aparecer en <code>modules</code>; los <code>.inc</code> asociados se copian automáticamente cuando existen.</div>
 
