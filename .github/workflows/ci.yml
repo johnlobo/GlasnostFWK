@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BLUEPIXEL_REV: 28f5e45dd34efb11f0684a2b68823e3d20b60d22
+  BLUEPIXEL_REV: c5e2437b4db4eb543a47b90fa8fccb90c448664f
   CPCTELERA_REV: 11e61fe30175ad7b328de9bcd859c46fd61b26a5
   CPCTELERA_ROOT: ${{ github.workspace }}/.deps/cpctelera-next
   CPCT_NEXT_PATH: ${{ github.workspace }}/.deps/cpctelera-next/cpctelera
