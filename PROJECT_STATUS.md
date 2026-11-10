@@ -16,7 +16,10 @@ abierta en ese historial no implica una tarea pendiente hoy.
   [42866267161](https://github.com/johnlobo/GlasnostFWK/actions/runs/42866267161),
   correcta, incluido smoke determinista de `nave` con BluePixel.
 - Rama actual: `refactor/program-manifest`, creada desde `0f92023`.
-  Cambio de nombre y primera migración real implementados; PR/CI pendientes.
+  Implementación: `e71e9572406e13fc9e4ac22358f538823b92319a`,
+  «Renombra el manifiesto y migra proyectos al formato 2», subida y verificada
+  con `git ls-remote`. PR [#44](https://github.com/johnlobo/GlasnostFWK/pull/44);
+  CI pendiente sobre la integración con el último pin BluePixel de `main`.
 - Validación del cambio de manifiesto: `make test` correcto, 602 pruebas host
   en 105,677 s, 22 BIN, 20 CDT y DSK con 24 entradas. Las 61 pruebas de
   actualización incluyen la migración real, conservación de bytes, fallo y rollback.
@@ -60,6 +63,8 @@ abierta en ese historial no implica una tarea pendiente hoy.
 - BluePixel headless integrado desde `07dc833` de `main`: adaptador stdio, smoke
   determinista de `nave` y ejecución en CI. El código y la documentación se conservan
   al resolver los conflictos con la reorganización; validación local y CI correctas.
+  El CI compila BluePixel fijado en `c5e2437b4db4eb543a47b90fa8fccb90c448664f` (API 1.4),
+  incorporado desde `b8e50e5` de `main`; se comprobará ese pin con esta entrega.
 - CLI con toolchain fijada, creación/configuración de proyectos, repositorio y remoto
   propios, actualización con migraciones y rollback. Formato de proyecto actual: 2.
 - Toolchain fijada: CPCTelera Next `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
