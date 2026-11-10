@@ -110,6 +110,7 @@ jobs:
           name: glasnostfwk-${{ github.sha }}
           path: |
             build/*/obj/*.bin
+            build/*/obj/*.noi
             build/*/*.cdt
             build/tests/GlasnostFWK-tests.dsk
             build/tests/catalog.json
