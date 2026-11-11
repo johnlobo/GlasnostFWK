@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 TOP_DIRS = {"bin", "docs", "examples", "framework", "tests", "tools", ".github"}
-TOP_FILES = {"CLAUDE.md", "Dockerfile", ".dockerignore", ".gitignore", "LICENSE", "Makefile",
+TOP_FILES = {"CLAUDE.md", ".gitignore", "LICENSE", "Makefile",
              "PROJECT_STATUS.md", "README.md", "setup.sh", "toolchain.lock.json"}
 FRAMEWORK_DIRS = {"src", "cfg", "profiles", "manifests", "licenses", "templates", "validations", "assets"}
 

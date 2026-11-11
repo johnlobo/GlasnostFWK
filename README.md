@@ -57,21 +57,6 @@ Mensajes en castellano; `--lang en` o `GLASNOST_LANG=en` para inglés. El
 toolchain vive en `.toolchain/` (fuera de Git, sin `sudo`). Detalle en
 `docs/reference/glasnost-cli.md`.
 
-## Configuración con Docker (recomendado en Windows)
-
-```sh
-docker build -t glasnostfwk .
-docker run --rm -it -v "$(pwd)":/work -w /work glasnostfwk bash
-# dentro del contenedor:
-./setup.sh
-```
-
-O en un solo comando:
-
-```sh
-docker run --rm -it -v "$(pwd)":/work -w /work glasnostfwk bash -c './setup.sh'
-```
-
 ## Configuración inicial (Linux y macOS nativos)
 
 ```sh
@@ -81,8 +66,7 @@ docker run --rm -it -v "$(pwd)":/work -w /work glasnostfwk bash -c './setup.sh'
 En macOS (Apple Silicon o Intel) hacen falta antes las Command Line Tools de
 Xcode (`xcode-select --install`) y [Homebrew](https://brew.sh); `setup.sh`
 instala con `brew` el resto (Boost, bison, flex...) y compila SDCC desde
-fuente. La primera vez tarda unos minutos. No mezcle en la misma copia una
-instalación nativa y otra hecha dentro de Docker: ambas usan `.toolchain/`.
+fuente. La primera vez tarda unos minutos.
 
 O manualmente, en este orden:
 

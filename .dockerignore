@@ -1,8 +1,0 @@
-.git
-.build
-.toolchain
-*.bin
-*.cdt
-*.dsk
-__pycache__
-.venv-docs
