@@ -30,6 +30,7 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `framework/src/video/sprite.*` | `PocketFever/src/sys/ball_blit.s`, captura de mensajes de los cuatro proyectos, `framework/src/ui/window.s` de GlasnostFWK y algoritmo de reemplazo Mode 0 de CPCTelera Next | Implementación rectangular con clipping y buffer del consumidor; el recoloreado reutiliza la conversión de pens de CPCTelera y combina su regla de selección por píxel con la tabla configurable del framework | GPL-3.0 del conjunto; enlace con LGPL-3.0 |
 | `framework/src/video/entity_render.*` (eliminado en la fase 11 parte B; sustituido por `video/ecs_render.s`) | cola ordenada de `model01/src/sys/render.s` y separación de pases en `PocketFever/src/main.s` | Implementación nueva con prefijo genérico, dirty rectangles, cierre de solapamientos y cuatro modos de sprite; sin entidad de juego, sala ni bola de los proyectos origen | GPL-3.0 del conjunto |
 | `framework/src/ui/text.s`, `framework/src/ui/text.inc` | `PocketFever/src/sys/text.s`, contraste con `model01`/`DeckTower`; `font_chars_0.c`, `small_numbers.c` y tabla de máscara | Integración del renderer recoloreable y assets gráficos originales; se conserva el mapeo de 51 glifos y se sustituye la ruta defectuosa de números pequeños por el blitter enmascarado estable | Las rutinas de origen declaran LGPL-3.0-or-later. Los C/H generados por Img2CPC no contienen declaración individual y los repositorios de los que se copiaron constan como `NOASSERTION`; no se infiere una licencia para esos assets. |
+| `framework/src/ui/text_mode1.*`, `framework/assets/font_chars_1.png` | `DeckHero/assets/font_chars_1.png` y `DeckHero/src/assets/sprites/font_chars_1.c` | Copia del PNG facilitado por el usuario y de sus 43 glifos Mode 1 convertidos por Img2CPC; los dígitos 4×5 se derivan de cinco filas de los glifos regulares. El renderer es nuevo y usa la transparencia del framework. | El PNG y el C generado no contienen declaración individual de licencia; se registra su procedencia sin inferir una licencia adicional. |
 | `framework/src/audio/akg.*` | audio AKG de model01/boop/DeckTower; ABI AKG de CPCTelera Next | Adaptador genérico sobre el player fijado; no incluye datos musicales | GPL-3.0; enlace con LGPL-3.0 |
 | `examples/audio/song.s`, `sfx.s` | recursos oficiales `Music_AHarmlessGrenade` y `SoundEffects` del player AKG de Arkos Tracker 3.7 | Export SDASZ80 generado con la herramienta oficial y comentarios eliminados; solo demostración | MIT |
 | `framework/src/resources/bank.s` | `model01/src/sys/mem.s`, `DeckTower/src/sys/mem.s` y prueba de arranque de `DeckTower/src/sys/loader.s` | Stub consolidado; sonda temporal en `0x4000`, con restauración de RAM normal y banco 0, sin la reserva `0x7FF0` descartada por DeckTower | GPL-3.0 |
@@ -47,8 +48,9 @@ Las ramas locales de PocketFever observadas fueron `256-directions-step-ramp`,
 | `framework/src/ui/window.*` | `src/sys/messages.s` de los cuatro proyectos; caja idéntica en `DeckTower`/`PocketFever` `src/sys/render.s` | Geometría reimplementada sobre la tabla de vídeo, con buffer del consumidor; sin texto, espera, combate ni direcciones fijas | GPL-3.0 |
 | `framework/cfg/*.template*` | ejemplo `examples/asm/helloworld` de CPCTelera Next | Copia de plantilla de construcción con su cabecera intacta | LGPL-3.0 |
 
-Salvo la fuente gráfica y los dígitos incorporados de forma explícita en
-`framework/src/ui/text.inc`, no se copiaron sprites, mapas, música ni datos de los cuatro
+Salvo las fuentes gráficas y los dígitos incorporados de forma explícita en
+`framework/src/ui/text.inc`, `framework/src/ui/text_mode1.inc` y
+`framework/assets/font_chars_1.png`, no se copiaron sprites, mapas, música ni datos de los cuatro
 juegos. Los datos de `examples/audio` proceden exclusivamente de los recursos oficiales MIT de
 Arkos Tracker indicados arriba. Al no
 existir una declaración de licencia de repositorio en tres de ellos, el estado

@@ -11,6 +11,7 @@ from tools.build.project_config import (
     generate_include,
     generate_source,
     mode0_mask_table,
+    mode1_mask_table,
     parse_capabilities,
 )
 
@@ -53,6 +54,35 @@ class ProjectConfigTests(unittest.TestCase):
             self.assertEqual(sum(mask == 0xAA for mask in table), 15)
             self.assertEqual(sum(mask == 0x55 for mask in table), 15)
 
+    def test_mode1_mask_matches_each_of_four_packed_pixels(self) -> None:
+        # CPCtelera's Mode 1 pattern for pens 0,1,2,3 in order is 0x35.
+        self.assertEqual([mode1_mask_table(pen)[0x35] for pen in range(4)],
+                         [0x88, 0x22, 0x44, 0x11])
+        self.assertEqual(mode1_mask_table(1)[0xF0], 0xFF)
+        self.assertEqual(mode1_mask_table(2)[0x0F], 0xFF)
+        self.assertEqual(mode1_mask_table(3)[0xFF], 0xFF)
+        pixel_bits = ((7, 3), (6, 2), (5, 1), (4, 0))
+        for pen in range(4):
+            table = mode1_mask_table(pen)
+            self.assertEqual(len(table), 256)
+            for source in range(256):
+                expected = 0
+                for high, low in pixel_bits:
+                    pixel = ((source >> high) & 1) | (((source >> low) & 1) << 1)
+                    if pixel == pen:
+                        expected |= (1 << high) | (1 << low)
+                self.assertEqual(table[source], expected)
+
+    def test_mode1_transparency_range_and_generated_table(self) -> None:
+        for pen in range(4):
+            capabilities = parse_capabilities({"transparency": {"pen": pen}}, 1)
+            self.assertEqual(capabilities.video_mode, 1)
+            self.assertIn("FWK_PROJECT_VIDEO_MODE = 1", generate_include(capabilities))
+            self.assertIn("call _fwk_transparency_init", generate_source(capabilities))
+        for pen in (-1, 4, 15, True):
+            with self.assertRaisesRegex(ValueError, "Mode 1 transparency pen"):
+                parse_capabilities({"transparency": {"pen": pen}}, 1)
+
     def test_invalid_transparency_config_is_rejected(self) -> None:
         for value in (True, -1, 16, "0"):
             with self.subTest(value=value), self.assertRaises(ValueError):
@@ -85,6 +115,20 @@ class ProjectConfigTests(unittest.TestCase):
     def test_builtin_text_rejects_nonzero_transparent_pen(self) -> None:
         with self.assertRaisesRegex(ValueError, "require transparency pen 0"):
             effective_modules("demo", ["ui/text.s"], ProjectCapabilities(3, False))
+        with self.assertRaisesRegex(ValueError, "require transparency pen 0"):
+            effective_modules("demo", ["ui/text_mode1.s"], ProjectCapabilities(2, False, 1))
+
+    def test_mode1_rejects_mode0_renderers_but_accepts_sprites(self) -> None:
+        mode1 = ProjectCapabilities(0, False, 1)
+        for module in ("ui/text.s", "extensions/tilemap_render.s", "extensions/tilemap_render_masked.s"):
+            with self.subTest(module=module), self.assertRaisesRegex(ValueError, "Mode 1 does not support"):
+                effective_modules("demo", [module], mode1)
+        self.assertIn("video/sprite.s", effective_modules("demo", ["video/sprite.s"], mode1))
+        modules = effective_modules("demo", ["ui/text_mode1.s"], mode1)
+        self.assertIn("ui/text_mode1.s", modules)
+        self.assertIn("video/transparency.s", modules)
+        with self.assertRaisesRegex(ValueError, "Mode 0 does not support"):
+            effective_modules("demo", ["ui/text_mode1.s"], ProjectCapabilities(0, False))
 
 
 if __name__ == "__main__":

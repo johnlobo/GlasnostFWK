@@ -1,9 +1,13 @@
 {
+  "_comment": "Editable asset list. Change the PNG/TMX sources here, then run `make assets` to regenerate assets/generated/.",
   "version": 1,
+  "_comment_palette": "Palette file and exported assembly label used by every image below.",
   "palette": "palette.json",
   "palette_symbol": "game_palette",
+  "_comment_images": "Each image is cut into 8x8 Mode 0 tiles; tiles names become assembly labels in source order.",
   "images": [
     {
+      "_comment": "Player ship and drone sprites from the sprites sheet.",
       "source": "src/sprites.png",
       "width": 8,
       "height": 8,
@@ -13,6 +17,7 @@
       ]
     },
     {
+      "_comment": "Background tiles; symbol labels the start of the complete tileset.",
       "source": "src/tiles.png",
       "width": 8,
       "height": 8,
@@ -25,6 +30,7 @@
       ]
     }
   ],
+  "_comment_tilemaps": "Read the named TMX layer and export it as game_map; zx7b keeps the map compressed in the binary.",
   "tilemaps": [
     {
       "source": "src/level.tmx",

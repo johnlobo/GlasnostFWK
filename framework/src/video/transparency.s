@@ -1,9 +1,11 @@
-;; Project-configured Mode 0 colour-key transparency.
+;; Project-configured Mode 0/1 colour-key transparency.
 .module fwk_transparency
 .include "cpctelera.h.s"
 .include "project_config.inc"
 
 .if FWK_TRANSPARENCY_ENABLED
+
+.globl fwk_video_width_bytes
 
 .area _DATA
 _fwk_transparency_width: .db 0
@@ -50,8 +52,8 @@ _fwk_transparency_byte:
     ld d, a
     and #0x38
     jr nz, _fwk_transparency_row
-    ld a, e
-    add #0x50
+    ld a, (fwk_video_width_bytes)
+    add e
     ld e, a
     ld a, d
     adc #0xC0

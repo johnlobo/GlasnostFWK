@@ -57,7 +57,7 @@ class ReleasePackageTests(unittest.TestCase):
             with zipfile.ZipFile(archive1) as archive:
                 names = archive.namelist()
                 release_manifest = json.loads(archive.read("manifest.json"))
-            self.assertEqual(len(names), 45)
+            self.assertEqual(len(names), 47)
             self.assertIn("README.txt", names)
             self.assertIn("manifest.json", names)
             self.assertIn(f"tests/{package_release.TEST_DISK}", names)

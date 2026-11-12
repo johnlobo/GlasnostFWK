@@ -1,11 +1,13 @@
+import json
 import re
 import shutil
 import tempfile
 import unittest
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
+from unittest.mock import patch
 
-from tools.build import import_assets
+from tools.build import build_examples, import_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORMER = ROOT / "examples" / "platformer"
@@ -194,6 +196,135 @@ class ConfigTests(unittest.TestCase):
             example = Path(directory) / "plain"
             example.mkdir()
             self.assertFalse(import_assets.ensure(example))
+
+    def test_mode1_requires_four_colours_and_four_pixel_alignment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assets = self._assets(Path(directory))
+            config_path = assets / "assets.json"
+            palette_path = assets / "palette.json"
+            config = json.loads(config_path.read_text())
+            config["mode"] = 1
+            config_path.write_text(json.dumps(config))
+            with self.assertRaisesRegex(import_assets.AssetError, "4 firmware colors"):
+                import_assets.load_config(assets)
+            palette_path.write_text(json.dumps({"type": "firmware", "values": [0, 8, 3, 26]}))
+            self.assertEqual(import_assets.load_config(assets)["mode"], 1)
+            config["images"][0]["width"] = 6
+            config_path.write_text(json.dumps(config))
+            with self.assertRaisesRegex(import_assets.AssetError, "multiple of 4 in Mode 1"):
+                import_assets.load_config(assets)
+            config["mode"] = True
+            config_path.write_text(json.dumps(config))
+            with self.assertRaisesRegex(import_assets.AssetError, "mode must be 0 or 1"):
+                import_assets.load_config(assets)
+            config["mode"] = 1.0
+            config_path.write_text(json.dumps(config))
+            with self.assertRaisesRegex(import_assets.AssetError, "mode must be 0 or 1"):
+                import_assets.load_config(assets)
+
+    def test_mode1_uses_img2cpc_mode_and_byte_width(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assets = self._assets(Path(directory))
+            config = json.loads((assets / "assets.json").read_text())
+            config["mode"] = 1
+            config["images"][0]["width"] = 4
+            config["images"][0]["tiles"] = ["tile_a", "tile_b"]
+            (assets / "assets.json").write_text(json.dumps(config))
+            (assets / "palette.json").write_text(
+                json.dumps({"type": "firmware", "values": [0, 8, 3, 26]})
+            )
+            commands = []
+
+            def fake_run(command, label, cwd=None):
+                commands.append(command)
+                Path(command[command.index("-o") + 1] + ".bin").write_bytes(
+                    b"\x53" * 8 + b"\x71" * 8
+                )
+
+            with patch.object(import_assets, "_tool", return_value=Path("img2cpc")), \
+                 patch.object(import_assets, "_run", side_effect=fake_run):
+                import_assets.convert(assets)
+            self.assertEqual(commands[0][commands[0].index("-m") + 1], "1")
+            source = (assets / "generated/assets.s").read_text()
+            self.assertIn("(4x8 pixels, 1x8 bytes)", source)
+            self.assertIn("(4 hardware colour values", source)
+            self.assertEqual(_db_block(source, "tile_a"), b"\x53" * 8)
+            self.assertEqual(_db_block(source, "tile_b"), b"\x71" * 8)
+            self.assertEqual(_db_block(source, "example_palette"), bytes.fromhex("14 0d 1c 0b"))
+            self.assertIn("EXAMPLE_PALETTE_SIZE = 4", (assets / "generated/assets.inc").read_text())
+            self.assertTrue(import_assets.check(assets))
+
+    def test_rejects_wrong_mode1_converter_length(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assets = self._assets(Path(directory))
+            config = json.loads((assets / "assets.json").read_text())
+            config["mode"] = 1
+            config["images"][0]["width"] = 4
+            (assets / "assets.json").write_text(json.dumps(config))
+            (assets / "palette.json").write_text(
+                json.dumps({"type": "firmware", "values": [0, 8, 3, 26]})
+            )
+            for length in (7, 9):
+                def fake_run(command, label, cwd=None):
+                    Path(command[command.index("-o") + 1] + ".bin").write_bytes(
+                        bytes(length)
+                    )
+                with self.subTest(length=length), \
+                     patch.object(import_assets, "_tool", return_value=Path("img2cpc")), \
+                     patch.object(import_assets, "_run", side_effect=fake_run), \
+                     self.assertRaisesRegex(import_assets.AssetError, "expected 8"):
+                    import_assets.convert(assets)
+
+    def test_omitted_mode_still_converts_mode0(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assets = self._assets(Path(directory))
+            commands = []
+
+            def fake_run(command, label, cwd=None):
+                commands.append(command)
+                Path(command[command.index("-o") + 1] + ".bin").write_bytes(
+                    bytes(range(32))
+                )
+
+            with patch.object(import_assets, "_tool", return_value=Path("img2cpc")), \
+                 patch.object(import_assets, "_run", side_effect=fake_run):
+                import_assets.convert(assets)
+            self.assertEqual(commands[0][commands[0].index("-m") + 1], "0")
+            source = (assets / "generated/assets.s").read_text()
+            self.assertIn("(8x8 pixels, 4x8 bytes)", source)
+            self.assertEqual(_db_block(source, "tile_a"), bytes(range(32)))
+            self.assertIn("EXAMPLE_PALETTE_SIZE = 16", (assets / "generated/assets.inc").read_text())
+
+    def test_build_rejects_asset_mode_mismatched_to_video_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assets = self._assets(Path(directory))
+            example = assets.parent
+            build_examples.validate_asset_mode(example, 0, "example")
+            with self.assertRaisesRegex(ValueError, "assets mode 0 does not match"):
+                build_examples.validate_asset_mode(example, 1, "example")
+            config = json.loads((assets / "assets.json").read_text())
+            config["mode"] = 1
+            (assets / "assets.json").write_text(json.dumps(config))
+            (assets / "palette.json").write_text(
+                json.dumps({"type": "firmware", "values": [0, 8, 3, 26]})
+            )
+            build_examples.validate_asset_mode(example, 1, "example")
+
+    def test_stage_rejects_mode_mismatch_before_conversion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = self._assets(root)
+            example = assets.parent
+            (example / "glasnost.manifest.json").write_text(json.dumps({
+                "name": "example", "profile": "mode1-192x192.json", "modules": []
+            }))
+            (example / "main.s").write_text(".module example\n")
+            with patch.object(import_assets, "ensure") as ensure, \
+                 self.assertRaisesRegex(ValueError, "assets mode 0 does not match"):
+                build_examples.stage_example(
+                    "example", Path("/unused"), example=example, target=root / "build"
+                )
+            ensure.assert_not_called()
 
 
 class PlatformerAssetsTests(unittest.TestCase):

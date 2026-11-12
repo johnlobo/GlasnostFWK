@@ -1,10 +1,14 @@
-;; Clipped rectangular Mode 0 sprites with caller-owned background buffers.
+;; Clipped rectangular Mode 0/1 sprites with caller-owned background buffers.
 .module fwk_sprite
 .include "cpctelera.h.s"
 .include "video/sprite.inc"
 
 .globl fwk_video_get_ptr, fwk_video_width_bytes, fwk_video_height
+.if FWK_PROJECT_VIDEO_MODE
+.globl cpct_pens2pixelPatternPairM1_asm
+.else
 .globl cpct_pens2pixelPatternPairM0_asm
+.endif
 .if FWK_TRANSPARENCY_ENABLED
 .globl fwk_transparency_draw
 .endif
@@ -56,16 +60,25 @@ _fwk_sp_draw_row:
     ret
 
 ;; fwk_sprite_draw_recolor
-;; In: IX=8-byte sprite descriptor, D=source pen, E=replacement pen (0..15).
+;; In: IX=8-byte sprite descriptor, D=source pen, E=replacement pen
+;;     (0..15 in Mode 0, 0..3 in Mode 1).
 ;; Out: carry set for invalid pens/dimensions/source span; otherwise clear.
 ;; Modified: AF,BC,DE,HL. IX/IY preserved. Not reentrant.
 fwk_sprite_draw_recolor::
     push iy
     ld a, d
+.if FWK_PROJECT_VIDEO_MODE
+    and #0xFC
+.else
     and #0xF0
+.endif
     jr nz, _fwk_sp_opaque_recolor_invalid
     ld a, e
+.if FWK_PROJECT_VIDEO_MODE
+    and #0xFC
+.else
     and #0xF0
+.endif
     jr nz, _fwk_sp_opaque_recolor_invalid
     ld a, d
     cp e
@@ -73,7 +86,11 @@ fwk_sprite_draw_recolor::
     pop iy
     jp fwk_sprite_draw
 _fwk_sp_opaque_recolor_prepare:
+.if FWK_PROJECT_VIDEO_MODE
+    call cpct_pens2pixelPatternPairM1_asm
+.else
     call cpct_pens2pixelPatternPairM0_asm
+.endif
     push de
     pop iy
     ld__a_iyl
@@ -97,10 +114,13 @@ _fwk_sp_opaque_recolor_byte:
     ld__a_iyh
     xor (hl)
     ld c, a
+.if FWK_PROJECT_VIDEO_MODE
+.else
     rrca
     rrca
     or c
     ld c, a
+.endif
     rrca
     rrca
     rrca
@@ -174,7 +194,8 @@ _fwk_sp_masked_exit:
     ret
 
 ;; fwk_sprite_draw_masked_recolor (only with project transparency enabled)
-;; In: IX=8-byte sprite descriptor, D=source pen, E=replacement pen (0..15).
+;; In: IX=8-byte sprite descriptor, D=source pen, E=replacement pen
+;;     (0..15 in Mode 0, 0..3 in Mode 1).
 ;;     Recolouring precedes colour-key composition: changing a pixel to the
 ;;     configured transparent pen makes it transparent, and changing that pen
 ;;     to an opaque one makes it visible.
@@ -184,14 +205,26 @@ _fwk_sp_masked_exit:
 fwk_sprite_draw_masked_recolor::
     push iy
     ld a, d
+.if FWK_PROJECT_VIDEO_MODE
+    and #0xFC
+.else
     and #0xF0
+.endif
     jr nz, _fwk_sp_recolor_invalid
     ld a, e
+.if FWK_PROJECT_VIDEO_MODE
+    and #0xFC
+.else
     and #0xF0
+.endif
     jr nz, _fwk_sp_recolor_invalid
 
-    ;; CPCtelera converts the two pens into packed Mode 0 byte patterns in DE.
+    ;; CPCtelera converts the two pens into packed byte patterns in DE.
+.if FWK_PROJECT_VIDEO_MODE
+    call cpct_pens2pixelPatternPairM1_asm
+.else
     call cpct_pens2pixelPatternPairM0_asm
+.endif
     push de
     pop iy
     ld__a_iyl
@@ -213,15 +246,18 @@ _fwk_sp_recolor_row:
     push ix
     ld__ixl_a
 _fwk_sp_recolor_byte:
-    ;; Build an 0xAA/0x55 selection mask for each packed pixel matching the
-    ;; source pen. This is the same Mode 0 replacement rule used by CPCtelera.
+    ;; Select packed pixels matching the source pen, then apply the XOR
+    ;; difference between the old and new repeated-pen patterns.
     ld__a_iyh
     xor (hl)
     ld c, a
+.if FWK_PROJECT_VIDEO_MODE
+.else
     rrca
     rrca
     or c
     ld c, a
+.endif
     rrca
     rrca
     rrca

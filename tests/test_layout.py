@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TOP_DIRS = {"bin", "docs", "examples", "framework", "tests", "tools", ".github"}
 TOP_FILES = {"CLAUDE.md", "Dockerfile", ".dockerignore", ".gitignore", "LICENSE", "Makefile",
              "PROJECT_STATUS.md", "README.md", "setup.sh", "toolchain.lock.json"}
-FRAMEWORK_DIRS = {"src", "cfg", "profiles", "manifests", "licenses", "templates", "validations"}
+FRAMEWORK_DIRS = {"src", "cfg", "profiles", "manifests", "licenses", "templates", "validations", "assets"}
 
 # Dated history written before the move keeps the paths of its time.
 HISTORY = {"docs/design/project-history.md", "PROJECT_STATUS.md", "docs/design/platformer-parity.md", "tests/test_layout.py"}
@@ -53,7 +53,7 @@ class Layout(unittest.TestCase):
         self.assertEqual(files, TOP_FILES)
 
     def test_everything_framework_specific_lives_under_framework(self):
-        self.assertEqual({path.split("/")[1] for path in tracked() if path.startswith("framework/")}, FRAMEWORK_DIRS)
+        self.assertEqual({path.name for path in (ROOT / "framework").iterdir() if path.is_dir()}, FRAMEWORK_DIRS)
         for old in sorted(FRAMEWORK_DIRS | {"generated"}):
             self.assertFalse((ROOT / old).is_dir() and any((ROOT / old).iterdir()), f"{old}/ is back at the root")
 

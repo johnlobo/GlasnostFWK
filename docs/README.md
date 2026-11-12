@@ -9,7 +9,7 @@
 - [`design/`](design/): por qué es como es. Plan del ECS 2.0, matriz comparativa, procedencia,
   paridad del juego de plataformas, validación, rendimiento y tamaños.
 
-Los 15 ejemplos públicos viven en `examples/`; las 7 validaciones y mediciones
+Los 16 ejemplos públicos viven en `examples/`; las 7 validaciones y mediciones
 internas, en `framework/validations/`. El catálogo de ambos está en la sección 8
 del manual. `text` sustituye a `board`; `vertical` se ha retirado.
 

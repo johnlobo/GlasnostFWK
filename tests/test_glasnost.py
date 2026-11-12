@@ -519,14 +519,26 @@ class Commands(unittest.TestCase):
         self.recorder = recorder
         self.cpct = str(self.sdk.checkout / "cpctelera")
 
-    def test_build_generates_then_builds_the_named_examples_with_the_managed_toolchain(self):
+    def test_builds_only_the_named_example_with_the_managed_toolchain(self):
         code, _, _ = self.sdk.cli("build", "minimal", runner=self.recorder)
         self.assertEqual(code, 0)
-        self.assertEqual(self.calls[0][0][:3], ["make", "--no-print-directory", "generate"])
-        self.assertEqual(self.calls[1][0][1:], ["tools/build/build_examples.py", "minimal"])
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.calls[0][0][1:], ["tools/build/build_examples.py", "minimal"])
         for _, kwargs in self.calls:
             self.assertEqual(kwargs["env"]["CPCT_NEXT_PATH"], self.cpct)
             self.assertEqual(kwargs["cwd"], self.sdk.root)
+
+    def test_build_inside_an_example_selects_only_that_example(self):
+        folder = self.sdk.root / "examples" / "minimal"
+        nested = folder / "assets" / "src"
+        nested.mkdir(parents=True)
+        for cwd in (folder, nested):
+            self.calls.clear()
+            with mock.patch.object(glasnost.Path, "cwd", return_value=cwd):
+                code, _, _ = self.sdk.cli("build", runner=self.recorder)
+            self.assertEqual(code, 0)
+            self.assertEqual(len(self.calls), 1)
+            self.assertEqual(self.calls[0][0][1:], ["tools/build/build_examples.py", "minimal"])
 
     def test_build_stops_when_generation_fails(self):
         def failing(command, **kwargs):

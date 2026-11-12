@@ -1,4 +1,4 @@
-;; Geometry-driven Mode 0 addressing and visible-region clearing.
+;; Geometry-driven Mode 0/1 addressing and visible-region clearing.
 .module fwk_video
 
 .include "cpctelera.h.s"
@@ -14,7 +14,7 @@ fwk_video_height:: .dw FWK_VIDEO_HEIGHT
 .area _CODE
 
 ;; fwk_video_init
-;; In: none. Out: Mode 0 selected. Modified: AF,BC,DE,HL.
+;; In: none. Out: profile video mode selected. Modified: AF,BC,DE,HL.
 ;; CRTC timing is intentionally configured separately for experimental profiles.
 fwk_video_init::
     ld c, #FWK_VIDEO_MODE
@@ -66,7 +66,7 @@ _fwk_video_ptr_ready:
     ret
 
 ;; fwk_video_plot_byte
-;; In: HL=y, C=x byte, A=Mode 0 packed pixel byte. Out: byte written.
+;; In: HL=y, C=x byte, A=packed video byte. Out: byte written.
 ;; Modified: AF,DE,HL.
 fwk_video_plot_byte::
     push af

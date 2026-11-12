@@ -85,7 +85,7 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn("video/ecs_render.s", selections["platformer"])
 
     def test_transparency_consumers_declare_the_project_capability(self):
-        consumers = {"ui/text.s", "extensions/tilemap_render_masked.s"}
+        consumers = {"ui/text.s", "ui/text_mode1.s", "extensions/tilemap_render_masked.s"}
         for path in (folder / "glasnost.manifest.json" for folder in program_folders(ROOT)):
             manifest = json.loads(path.read_text())
             if consumers & set(manifest["modules"]):

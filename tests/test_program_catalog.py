@@ -19,8 +19,9 @@ class ProgramCatalogTests(unittest.TestCase):
         self.assertEqual(validations, {
             "video", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "perf", "experimental",
         })
-        self.assertEqual(len(examples), 15)
+        self.assertEqual(len(examples), 16)
         self.assertIn("text", examples)
+        self.assertIn("mode1", examples)
         self.assertFalse({"board", "vertical"} & set(program_names(ROOT)))
         self.assertFalse(examples & validations)
         self.assertEqual(set(example_names(ROOT)), examples)

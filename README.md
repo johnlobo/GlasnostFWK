@@ -10,6 +10,12 @@ física 8.8, consulta, colisión y render de tilemaps opcionales, sprites con
 clipping, restauración, máscaras opcionales y pases ordenados, texto, audio
 AKG opcional y copia bancaria de 128 KB.
 
+El núcleo de vídeo también admite el perfil experimental `mode1-192x192.json`
+para proyectos Mode 1 (192×192, cuatro colores). Las rutinas de sprites, el
+importador PNG y `ui/text_mode1.s` ya aceptan datos Mode 1; las plantillas de
+`glasnost new` y los renderizadores de tiles siguen usando Mode 0. Detalles
+en `docs/reference/architecture-and-api.md`.
+
 El framework no contiene assets ni reglas de los juegos originales. Cada
 ejemplo declara sus módulos y fuentes de juego en `examples/*/glasnost.manifest.json`;
 el constructor copia únicamente esos fuentes al árbol temporal `build/`, de

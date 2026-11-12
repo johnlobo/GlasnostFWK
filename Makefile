@@ -21,6 +21,7 @@ setup:
 
 generate:
 	$(PYTHON) tools/build/gen_video.py framework/profiles/standard-160x200.json --out-dir build/generated
+	$(PYTHON) tools/build/gen_video.py framework/profiles/mode1-192x192.json --out-dir build/generated
 	$(PYTHON) tools/build/gen_video.py framework/profiles/experimental-160x288.json --out-dir build/generated
 	$(PYTHON) tools/build/gen_resources.py framework/manifests/resources128.json --output build/generated/resources128.inc
 	$(PYTHON) tools/build/gen_ecs_profile.py framework/validations/ecsmanager/glasnost.manifest.json --output framework/validations/ecsmanager/generated/ecs_profile.inc --check
