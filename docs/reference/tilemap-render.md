@@ -21,6 +21,10 @@ CPCTelera Next:
 | 4x4 bytes | `cpct_drawTileAligned4x4_f_asm` | 8x4 píxeles | 16x4 píxeles |
 | 4x8 bytes | `cpct_drawTileAligned4x8_f_asm` | 8x8 píxeles | 16x8 píxeles |
 
+En Mode 1, un tile de 8x8 píxeles usa 2x8 bytes. El importador PNG empaqueta
+los gráficos según `assets/assets.json` (`"mode": 1`), y el build exige que
+coincida con el perfil de vídeo. Los datos Mode 0 no se pueden reutilizar.
+
 ```asm
 FWK_TILEMAP_DESCRIPTOR level_map, map_data, collision_types, 32, 20, 2, 3, 4, 8, 16
 
