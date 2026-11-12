@@ -16,10 +16,11 @@ def load_profile(path: Path) -> dict:
     missing = required - profile.keys()
     if missing:
         raise ValueError(f"missing profile keys: {', '.join(sorted(missing))}")
-    if profile["mode"] != 0:
-        raise ValueError("only Mode 0 is currently supported")
-    if profile["width_pixels"] != profile["width_bytes"] * 2:
-        raise ValueError("Mode 0 requires width_pixels == width_bytes * 2")
+    pixels_per_byte = {0: 2, 1: 4}.get(profile["mode"])
+    if pixels_per_byte is None:
+        raise ValueError("only Mode 0 and Mode 1 are currently supported")
+    if profile["width_pixels"] != profile["width_bytes"] * pixels_per_byte:
+        raise ValueError(f"Mode {profile['mode']} requires width_pixels == width_bytes * {pixels_per_byte}")
     if profile["height_lines"] > 256 and profile.get("coordinate_bits", 8) < 16:
         raise ValueError("height above 256 requires 16-bit coordinates")
     coverage: list[int] = []

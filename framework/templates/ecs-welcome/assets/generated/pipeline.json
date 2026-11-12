@@ -1,11 +1,11 @@
 {
-  "hash": "ad2fa4445c492fa7faa3ae4e461afa10a670e90d682eb94451f2a19f23549ca8",
+  "hash": "e85f432e61579a2a7f4f520cce6ef4c4ad8b26f60eead399167b135c41974840",
   "outputs": {
     "generated/assets.inc": "095dbbd15e71dc2f137579e2ccc0d6c6765a45994341bd1e3ae1f0e78f93fb0c",
     "generated/assets.s": "a5c9dbb03fa756ee9fea59c411077df3dbbc049a85bf47bbddfdc310c584076d"
   },
   "sources": {
-    "palette.json": "f3c61ccf0203dddedbebdea707dd639bd4c6d56a309686072425a911399ac582",
+    "palette.json": "476458eba2f7d4c5c4aebb70e4dfb065edda790ccc5883fae1933141aaea524a",
     "src/level.tmx": "da6f69a2a97a89e168fda1a41cd032afe7e6b8e0d36c94643f35d80ebcea123b",
     "src/sprites.png": "e7015a4da38f880f4fc0d942b060c390000b016bec2b3336a569342204be4e9a",
     "src/tiles.png": "485e53694041b672a4f34b58b89fc172bb1ffde7446b851ae8de38b5f75be2b5"

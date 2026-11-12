@@ -20,6 +20,7 @@ def load_module(name: str, path: Path):
 
 
 MODEL = load_module("video_model", ROOT / "tools" / "build" / "video_model.py")
+GENERATOR = load_module("gen_video", ROOT / "tools" / "build" / "gen_video.py")
 
 
 class VideoModelTests(unittest.TestCase):
@@ -55,6 +56,30 @@ class VideoModelTests(unittest.TestCase):
         self.assertEqual(MODEL.address(p, 0, 127), 0xBEB0)
         self.assertEqual(MODEL.address(p, 0, 128), 0xC000)
         self.assertEqual(MODEL.address(p, 79, 287), 0xFE3F)
+
+    def test_mode1_192x192_addresses_and_holes(self):
+        p = self.profile("mode1-192x192.json")
+        self.assertEqual(GENERATOR.load_profile(ROOT / "framework/profiles/mode1-192x192.json"), p)
+        self.assertEqual(GENERATOR.validate(p)["visible_bytes"], 48 * 192)
+        self.assertEqual((p["mode"], p["width_pixels"], p["width_bytes"], p["height_lines"]),
+                         (1, 192, 48, 192))
+        self.assertEqual(MODEL.address(p, 0, 0), 0xC000)
+        self.assertEqual(MODEL.address(p, 47, 0), 0xC02F)
+        self.assertEqual(MODEL.address(p, 0, 1), 0xC800)
+        self.assertEqual(MODEL.address(p, 0, 8), 0xC030)
+        self.assertEqual(MODEL.address(p, 47, 191), 0xFC7F)
+        visible = MODEL.visible_addresses(p)
+        self.assertEqual(len(visible), 48 * 192)
+        self.assertNotIn(0xC480, visible)
+
+    def test_mode1_rejects_wrong_pixel_width(self):
+        profile = self.profile("mode1-192x192.json")
+        profile["width_pixels"] = 96
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bad.json"
+            path.write_text(json.dumps(profile))
+            with self.assertRaisesRegex(ValueError, "Mode 1 requires width_pixels"):
+                GENERATOR.load_profile(path)
 
     def test_generation_is_reproducible(self):
         profile = ROOT / "framework" / "profiles" / "standard-160x200.json"

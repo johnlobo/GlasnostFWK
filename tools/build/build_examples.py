@@ -43,7 +43,9 @@ DEFAULT_CPCT = Path("/config/workspace/cpctelera_next/cpctelera")
 AMSDOS_NAME = re.compile(r"^[A-Z0-9][A-Z0-9_]{0,7}\.[A-Z0-9]{1,3}$")
 SYMBOL_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 TRANSPARENCY_MODULE = "video/transparency.s"
-TRANSPARENCY_REQUIRED_MODULES = {"ui/text.s", "extensions/tilemap_render_masked.s"}
+TRANSPARENCY_REQUIRED_MODULES = {"ui/text.s", "ui/text_mode1.s", "extensions/tilemap_render_masked.s"}
+MODE0_ONLY_MODULES = {"ui/text.s", "extensions/tilemap_render.s", "extensions/tilemap_render_masked.s"}
+MODE1_ONLY_MODULES = {"ui/text_mode1.s"}
 EXTENDED_MEMORY_MODULE = "resources/bank.s"
 ASSETS_DIR = "assets"
 LOCAL_BUILD_CONFIG = Path("cfg") / "build_config.mk"
@@ -56,6 +58,14 @@ def effective_modules(
         not isinstance(module, str) for module in requested_modules
     ):
         raise ValueError(f"{name}: modules must be a list of paths")
+    if capabilities.video_mode == 1:
+        incompatible = sorted(MODE0_ONLY_MODULES & set(requested_modules))
+        if incompatible:
+            raise ValueError(f"{name}: Mode 1 does not support {', '.join(incompatible)}")
+    else:
+        incompatible = sorted(MODE1_ONLY_MODULES & set(requested_modules))
+        if incompatible:
+            raise ValueError(f"{name}: Mode 0 does not support {', '.join(incompatible)}")
     if capabilities.transparency_pen is None:
         unavailable = sorted(TRANSPARENCY_REQUIRED_MODULES & set(requested_modules))
         if unavailable:
@@ -66,6 +76,8 @@ def effective_modules(
             raise ValueError(f"{name}: {TRANSPARENCY_MODULE} requires transparency")
     if "ui/text.s" in requested_modules and capabilities.transparency_pen != 0:
         raise ValueError(f"{name}: built-in text assets require transparency pen 0")
+    if "ui/text_mode1.s" in requested_modules and capabilities.transparency_pen != 0:
+        raise ValueError(f"{name}: built-in Mode 1 text assets require transparency pen 0")
     if EXTENDED_MEMORY_MODULE in requested_modules and not capabilities.extended_memory:
         raise ValueError(f"{name}: {EXTENDED_MEMORY_MODULE} requires extended_memory=true")
 
@@ -350,6 +362,18 @@ def _validate_ecs_systems(name: str, manifest: dict, modules: list[str]) -> None
             )
 
 
+def validate_asset_mode(example: Path, video_mode: int, name: str) -> None:
+    """Do not silently link pixels encoded for a different video mode."""
+    asset_config = example / "assets" / import_assets.CONFIG_NAME
+    if not asset_config.is_file():
+        return
+    asset_mode = import_assets.load_config(asset_config.parent).get("mode", 0)
+    if asset_mode != video_mode:
+        raise ValueError(
+            f"{name}: assets mode {asset_mode} does not match video profile mode {video_mode}"
+        )
+
+
 def stage_example(
     name: str, cpct_path: Path, example: Path | None = None, target: Path | None = None
 ) -> Path:
@@ -419,6 +443,7 @@ def stage_example(
         )
         _invalidate_objects_if_profile_changed(target, profile_changed)
         staged_managed.add(Path("src") / "ecs_profile.inc")
+    validate_asset_mode(example, profile["mode"], name)
     import_assets.ensure(example, cpct_path)
     assets = stage_assets(example, target)
     for item in assets:

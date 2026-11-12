@@ -27,7 +27,7 @@ tabla de abajo es la referencia larga.
 | `glasnost update [--dry-run]` | Dentro de un proyecto: lo actualiza al formato de este glasnost con migraciones consecutivas, en una rama de Git (ver «Actualizar proyectos»). |
 | `glasnost rollback [--delete]` | Sale de una rama de actualización y vuelve a la rama de origen sin perder nada; `--delete` borra además la rama de actualización. |
 | `glasnost projects [--dir D]` | Lista los proyectos de `projects/` con su rama Git (`*` si tienen cambios) y si están al día. |
-| `glasnost build [ejemplo...]` | Fuera de un proyecto: `make generate` y `tools/build/build_examples.py` con el toolchain resuelto (todos los ejemplos si no se nombra ninguno). Dentro de un proyecto: compila ese proyecto. |
+| `glasnost build [ejemplo...]` | Dentro de `examples/<nombre>`: compila solo ese ejemplo. Desde la raíz del SDK, sin nombres: genera y compila todos los ejemplos. Con nombres explícitos: compila solo los indicados. Dentro de un proyecto: compila ese proyecto. |
 | `glasnost test` | Fuera de un proyecto: `make test`. Dentro: comprueba la coherencia del proyecto y que compila. |
 | `glasnost run [ejemplo] [-- opciones]` | Abre el ejemplo (o el proyecto actual, sin nombre) en el emulador (`tools/glasnost/run_example.py`). Las opciones del emulador van tras `--`. Si no hay emulador configurado y estás en una terminal, te ofrece configurar uno (ver «Emulador»). |
 | `glasnost emulator [--set RUTA] [--download [rvm\|bluepixel]] [--reset]` | Muestra el emulador que usa `run` y, en una terminal, permite cambiarlo. `--set` guarda un ejecutable (o un `.app` de macOS), `--download` baja Retro Virtual Machine (o BluePixel, en macOS), `--reset` borra la configuración. |

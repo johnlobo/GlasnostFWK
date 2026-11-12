@@ -163,13 +163,13 @@ byte a byte está en la sección 10 de `ecs-abi-2.0.md`.
 
 ### Vídeo
 
-- `fwk_video_init`: selecciona Mode 0; altera `AF,BC,DE,HL`.
+- `fwk_video_init`: selecciona el modo del perfil (0 o 1); altera `AF,BC,DE,HL`.
 - `fwk_video_configure_crtc`: aplica la tabla CRTC explícita del perfil; altera
   `AF,BC,DE,HL,IX`. El perfil experimental no adquiere por ello estado de
   verificado.
 - `fwk_video_get_ptr`: `HL=y` de 16 bits, `C=x` en bytes; devuelve `HL=puntero`;
   altera `AF,DE,HL`. Las coordenadas deben estar dentro del perfil.
-- `fwk_video_plot_byte`: además recibe `A=byte Mode 0`.
+- `fwk_video_plot_byte`: además recibe `A=byte empaquetado del modo seleccionado`.
 - `fwk_video_clear_visible`: `A=patrón`; altera `AF,BC,DE,HL,IX`. Recorre solo
   las regiones visibles generadas y conserva todos los huecos declarados.
 - Geometría pública de solo lectura por contrato: `fwk_video_width_bytes` (1 B)
@@ -179,10 +179,22 @@ La tabla de líneas y las regiones se generan juntas. Para 160x200: ocho tramos
 de 2.000 B y ocho huecos de 48 B. Para 160x288: 288 entradas, dos segmentos y
 coordenadas de 16 bits.
 
-### Sprites Mode 0 opcionales
+El perfil `mode1-192x192.json` usa Mode 1 (cuatro píxeles por byte, cuatro
+colores), 48 bytes por línea y 192 líneas: 9.216 bytes visibles en `0xC000`.
+Su tabla CRTC declara R1=24, R2=38, R6=24 y R9=7. Hay que llamar
+`fwk_video_configure_crtc` después de `fwk_video_init`; la posición visual de
+este ajuste sigue pendiente de verificación en emulador y hardware. Para usarlo,
+selecciona `"profile": "mode1-192x192.json"` en el manifiesto del juego,
+enlaza `core/system.s` y `video/video.s`, y llama a
+`fwk_video_init` y `fwk_video_configure_crtc` durante el arranque. Los
+renderizadores de texto y tiles existentes usan bytes Mode 0 y no deben
+enlazarse con este perfil sin una implementación Mode 1. `video/sprite.s` y
+`video/transparency.s` sí admiten datos empaquetados Mode 1.
+
+### Sprites Mode 0 y Mode 1 opcionales
 
 Descriptor mutable de 8 bytes: puntero a datos, X/Y con signo de 16 bits,
-ancho en bytes Mode 0 y alto en scanlines. Los datos ocupan `width*height`
+ancho en bytes de vídeo y alto en scanlines. Los datos ocupan `width*height`
 bytes por filas, sin padding.
 
 - `fwk_sprite_draw`: `IX=descriptor`; valida dimensiones/span, recorta contra
@@ -197,6 +209,11 @@ bytes por filas, sin padding.
   devuelve `IY` al final de los bytes utilizados.
 - `fwk_sprite_restore`: `IX=mismo descriptor`, `HL=buffer`; repone el fondo
   visible y devuelve `IY` al final.
+
+En Mode 1, un byte representa cuatro píxeles y X debe alinearse a cuatro
+píxeles. El pen transparente y los dos pens de recoloreado deben estar entre 0
+y 3. `fwk_project_init` instala la tabla de máscaras antes de cualquier dibujo
+transparente. La API y el descriptor no cambian.
 
 Carry indica descriptor inválido o span de datos con wrap. Una geometría
 completamente exterior es válida y no escribe.
@@ -245,6 +262,15 @@ un proyecto con `transparency.pen=0`. La tabla se instala en `0x0100` mediante
 El índice de color selecciona la tabla original; no equivale necesariamente al
 número de pen de la paleta activa y el pen 14 se usa como sombra. No hay
 clipping ni borrado del fondo. El scratch de 18 bytes impide reentrancia.
+
+En Mode 1 se selecciona `ui/text_mode1.s`, con la fuente de DeckHero
+`font_chars_1.png`: 43 glifos de 4×9 píxeles (un byte por fila) y diez dígitos
+pequeños de 4×5. Mantiene los símbolos `fwk_text_*`, pero `fwk_text_set_color`
+recibe el pen de primer plano 1..3; el pen 0 es transparente. `fwk_text_draw`
+avanza un byte por carácter y admite espacio, `!`, coma, `-`, punto, `0..9`,
+`:`, `?`, `@` y `A..Z`. `fwk_text_set_assets` recibe `HL=43*9` y `DE=10*5`.
+Los caracteres no admitidos dejan una celda vacía. No hay clipping ni
+borrado del fondo; el llamador debe mantener el texto dentro de la pantalla.
 
 ### Ventanas opcionales
 

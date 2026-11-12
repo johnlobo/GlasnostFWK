@@ -550,6 +550,17 @@ def example_names(root: Path) -> list[str]:
     return list(program_names(root, "examples"))
 
 
+def current_example(root: Path) -> str | None:
+    """Return the SDK example containing the working directory, if any."""
+    try:
+        relative = Path.cwd().resolve().relative_to((root / "examples").resolve())
+    except ValueError:
+        return None
+    if relative.parts and relative.parts[0] in example_names(root):
+        return relative.parts[0]
+    return None
+
+
 def check_examples(root: Path, names: Sequence[str], lang: str) -> None:
     known = example_names(root)
     for name in names:
@@ -596,14 +607,20 @@ def cmd_build(args, root: Path, lang: str, runner: Runner) -> int:
             raise CliError(say(lang, "proj.no_examples", path=folder))
         warn_shared_repo(folder, lang)
         return build_project(folder, toolchain, root, lang, runner)
-    check_examples(root, args.examples, lang)
+    examples = list(args.examples)
+    if not examples:
+        here = current_example(root)
+        if here:
+            examples = [here]
+    check_examples(root, examples, lang)
     env = sdk_env(toolchain)
     python = sys.executable
-    generated = runner(["make", "--no-print-directory", "generate", f"PYTHON={python}"],
-                       cwd=root, env=env, check=False)
-    if generated.returncode != 0:
-        return generated.returncode
-    return runner([python, "tools/build/build_examples.py", *args.examples],
+    if not examples:
+        generated = runner(["make", "--no-print-directory", "generate", f"PYTHON={python}"],
+                           cwd=root, env=env, check=False)
+        if generated.returncode != 0:
+            return generated.returncode
+    return runner([python, "tools/build/build_examples.py", *examples],
                   cwd=root, env=env, check=False).returncode
 
 

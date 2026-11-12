@@ -1,7 +1,7 @@
 import unittest
 
 from tests.test_sprite import clipped_rectangle, source_rows
-from tools.build.project_config import mode0_mask_table
+from tools.build.project_config import mode0_mask_table, mode1_mask_table
 
 
 def transparent_byte(background, source, table):
@@ -47,7 +47,44 @@ def span_fits(base, width, height):
     return width > 0 and height > 0 and base + width * height <= 0xFFFF
 
 
+def recolor_mode1_byte(source, old_pen, new_pen):
+    """Model the Mode 1 Z80 rotate-four selection used by sprite.s."""
+    def pattern(pen):
+        return (0xF0 if pen & 1 else 0) | (0x0F if pen & 2 else 0)
+    old_pattern = pattern(old_pen)
+    difference = source ^ old_pattern
+    rotated = ((difference << 4) | (difference >> 4)) & 0xFF
+    selection = ~(difference | rotated) & 0xFF
+    return source ^ (selection & (old_pattern ^ pattern(new_pen)))
+
+
 class TransparentSpriteTests(unittest.TestCase):
+    def test_mode1_recolor_and_transparency_golden_bytes(self):
+        self.assertEqual(recolor_mode1_byte(0x35, 1, 2), 0x17)
+        self.assertEqual(recolor_mode1_byte(0x35, 0, 3), 0xBD)
+        self.assertEqual(recolor_mode1_byte(0x35, 3, 0), 0x24)
+        self.assertEqual(transparent_byte(0xFF, 0x35, mode1_mask_table(0)), 0xBD)
+        self.assertEqual(transparent_byte(0xFF, 0x35, mode1_mask_table(1)), 0x37)
+        self.assertEqual(transparent_byte(0xFF, 0x35, mode1_mask_table(2)), 0x75)
+        self.assertEqual(transparent_byte(0x00, 0x35, mode1_mask_table(3)), 0x24)
+        recolored = recolor_mode1_byte(0x35, 1, 2)
+        self.assertEqual(transparent_byte(0xFF, recolored, mode1_mask_table(2)), 0x77)
+
+    def test_mode1_recolor_matches_per_pixel_reference(self):
+        shifts = (3, 2, 1, 0)
+        for source in range(256):
+            for old_pen in range(4):
+                for new_pen in range(4):
+                    actual = recolor_mode1_byte(source, old_pen, new_pen)
+                    expected = 0
+                    for shift in shifts:
+                        high, low = shift + 4, shift
+                        pixel = ((source >> high) & 1) | (((source >> low) & 1) << 1)
+                        pixel = new_pen if pixel == old_pen else pixel
+                        expected |= (pixel & 1) << high
+                        expected |= ((pixel >> 1) & 1) << low
+                    self.assertEqual(actual, expected)
+
     def test_pen_three_can_be_transparent_or_opaque_per_pixel(self):
         table = mode0_mask_table(3)
         self.assertEqual(transparent_byte(0x55, 0xCC, table), 0x55)

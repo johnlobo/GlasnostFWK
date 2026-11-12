@@ -41,6 +41,7 @@ INCLUDE_FILE = "assets.inc"
 STATE_FILE = "pipeline.json"
 SYMBOL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 VALID_COMPRESSION = {"none", "zx7b"}
+PIXELS_PER_BYTE = {0: 2, 1: 4}
 FIRMWARE_TO_HARDWARE = [
     0x14, 0x04, 0x15, 0x1C, 0x18, 0x1D, 0x0C, 0x05, 0x0D,
     0x16, 0x06, 0x17, 0x1E, 0x00, 0x1F, 0x0E, 0x07, 0x0F,
@@ -93,6 +94,9 @@ def load_config(assets_dir: Path) -> dict:
             f"{path}: unsupported version {config.get('version')!r}; "
             f"expected {PIPELINE_VERSION}"
         )
+    mode = config.get("mode", 0)
+    if isinstance(mode, bool) or not isinstance(mode, int) or mode not in PIXELS_PER_BYTE:
+        raise AssetError(f"{path}: mode must be 0 or 1")
 
     images = config.get("images", [])
     tilemaps = config.get("tilemaps", [])
@@ -115,7 +119,7 @@ def load_config(assets_dir: Path) -> dict:
         palette_values = palette_data.get("values")
         if (
             not isinstance(palette_values, list)
-            or len(palette_values) != 16
+            or len(palette_values) != (16 if mode == 0 else 4)
             or any(
                 not isinstance(value, int)
                 or isinstance(value, bool)
@@ -124,7 +128,10 @@ def load_config(assets_dir: Path) -> dict:
                 for value in palette_values
             )
         ):
-            raise AssetError(f"{palette_path}: palette must contain 16 firmware colors (0-26)")
+            raise AssetError(
+                f"{palette_path}: Mode {mode} palette must contain "
+                f"{16 if mode == 0 else 4} firmware colors (0-26)"
+            )
     elif palette is not None:
         raise AssetError(f"{path}: palette is only used by images")
 
@@ -151,8 +158,12 @@ def load_config(assets_dir: Path) -> dict:
             value = image.get(field)
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise AssetError(f"{path}: images[{index}].{field} must be a positive integer")
-        if image["width"] % 2:
-            raise AssetError(f"{path}: images[{index}].width must be even in Mode 0")
+        pixels_per_byte = PIXELS_PER_BYTE[mode]
+        if image["width"] % pixels_per_byte:
+            raise AssetError(
+                f"{path}: images[{index}].width must be a multiple of "
+                f"{pixels_per_byte} in Mode {mode}"
+            )
         if image.get("symbol") is not None:
             unique(_symbol(image["symbol"], f"images[{index}].symbol"), "symbol")
         tiles = image.get("tiles")
@@ -345,6 +356,7 @@ def _convert_image(
     work: Path,
     img2cpc: Path,
     palette: Path,
+    mode: int,
 ) -> list[tuple[str, bytes]]:
     source = _relative_asset(assets_dir, image["source"])
     width = image["width"]
@@ -355,7 +367,7 @@ def _convert_image(
             str(img2cpc),
             "-w", str(width),
             "-h", str(height),
-            "-m", "0",
+            "-m", str(mode),
             "-of", "bin",
             "-nt",
             "-nm",
@@ -370,7 +382,7 @@ def _convert_image(
     if not binary.is_file():
         raise AssetError(f"img2cpc did not create {binary}")
     data = binary.read_bytes()
-    tile_size = (width // 2) * height
+    tile_size = (width // PIXELS_PER_BYTE[mode]) * height
     expected = tile_size * len(image["tiles"])
     if len(data) != expected:
         raise AssetError(
@@ -425,7 +437,10 @@ def _render(
     lines.append(".area _CODE")
     if palette_values is not None and palette_symbol is not None:
         lines.append("")
-        lines.append(f";; {palette_symbol} (16 hardware colour values from firmware palette)")
+        lines.append(
+            f";; {palette_symbol} ({len(palette_values)} hardware colour values "
+            "from firmware palette)"
+        )
         lines.append(f"{palette_symbol}::")
         lines.extend(_db_lines(_firmware_palette_hardware(palette_values)))
         lines.append("")
@@ -437,7 +452,7 @@ def _render(
         for name, data in tiles:
             lines.append(
                 f";; {name} ({image['width']}x{image['height']} pixels, "
-                f"{image['width'] // 2}x{image['height']} bytes)"
+                f"{image['width'] // PIXELS_PER_BYTE[config.get('mode', 0)]}x{image['height']} bytes)"
             )
             if name != image.get("symbol"):
                 lines.append(f"{name}::")
@@ -518,7 +533,10 @@ def convert(assets_dir: Path, cpct_path: Path | None = None) -> list[Path]:
         images = []
         for index, image in enumerate(config.get("images", [])):
             images.append(
-                (image, _convert_image(assets_dir, image, index, work, img2cpc, palette))
+                (image, _convert_image(
+                    assets_dir, image, index, work, img2cpc, palette,
+                    config.get("mode", 0),
+                ))
             )
 
         tilemaps = []

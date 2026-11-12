@@ -1,5 +1,8 @@
 {
+  "_comment": "16 firmware colour numbers for Mode 0, in ink order. The importer converts them to hardware colours in assets/generated/assets.s.",
   "type": "firmware",
+  "_comment_values": "One firmware colour number per ink, from ink 0 through ink 15.",
   "values": [0,8,13,3,6,15,24,16,9,12,20,14,2,4,1,26],
+  "_comment_transparent": "Palette index reserved as the transparent ink.",
   "transparent": 0
 }

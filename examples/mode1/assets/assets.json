@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "mode": 1,
+  "palette": "palette.json",
+  "palette_symbol": "mode1_palette",
+  "images": [
+    {
+      "source": "src/sprites.png",
+      "width": 16,
+      "height": 16,
+      "tiles": ["mode1_ship_pixels", "mode1_star_pixels"]
+    }
+  ]
+}

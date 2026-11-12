@@ -1,0 +1,14 @@
+{
+  "name": "mode1",
+  "amsdos_name": "MODE1",
+  "profile": "mode1-192x192.json",
+  "transparency": {"pen": 0},
+  "modules": [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s",
+    "video/sprite.s",
+    "ui/text_mode1.s"
+  ],
+  "game_sources": ["main.s"]
+}
