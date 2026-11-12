@@ -65,6 +65,8 @@ boundary. Clipping, capture, and restore retain their current contracts.
 ## Boundaries
 
 The PNG asset importer now supports Mode 1 with `"mode": 1` and four firmware
-colours. Built-in text and tile rendering still assume Mode 0. This change
+colours. Built-in text still assumes Mode 0. The tile renderers copy packed bytes and
+are allowed with Mode 1 since the follow-up that lifted the build gate
+(`examples/mode1` draws opaque and masked strips, checked in the emulator). This change
 provides byte-aligned Mode 1 sprite drawing and PNG conversion. Sub-byte X
 placement and conversion of Spectrum pixel/attribute data are separate work.

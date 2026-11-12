@@ -13,7 +13,8 @@ AKG opcional y copia bancaria de 128 KB.
 El núcleo de vídeo también admite el perfil experimental `mode1-192x192.json`
 para proyectos Mode 1 (192×192, cuatro colores). Las rutinas de sprites, el
 importador PNG y `ui/text_mode1.s` ya aceptan datos Mode 1; las plantillas de
-`glasnost new` y los renderizadores de tiles siguen usando Mode 0. Detalles
+`extensions/tilemap_render*` también (gráficos Mode 1 de 2x4 a 4x8 bytes);
+`glasnost new` y `ui/text.s` siguen usando Mode 0. Detalles
 en `docs/reference/architecture-and-api.md`.
 
 El framework no contiene assets ni reglas de los juegos originales. Cada
@@ -222,7 +223,7 @@ resuelve sólidos y plataformas de una dirección sobre el estado producido por
 automáticamente techo, pared y suelo; contratos y límites están en
 `docs/reference/tilemap-collision.md`.
 
-`extensions/tilemap_render` dibuja un viewport desde un tileset Mode 0 mediante
+`extensions/tilemap_render` dibuja un viewport desde un tileset Mode 0 o Mode 1 (bytes ya empaquetados) mediante
 las primitivas alineadas 2x4, 2x8, 4x4 y 4x8 de CPCTelera Next, con cámara y
 destino propiedad del consumidor. Prevalida el render completo y permite
 redibujar una celda explícita. La variante transparente usa el mismo tileset

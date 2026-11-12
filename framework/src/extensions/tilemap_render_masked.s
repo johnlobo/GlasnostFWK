@@ -1,4 +1,4 @@
-;; Masked rectangular Mode 0 tilemap renderer.
+;; Masked rectangular tilemap renderer (Mode 0 or Mode 1 packed bytes).
 .module fwk_tilemap_render_masked
 .include "cpctelera.h.s"
 .include "extensions/tilemap_render_masked.inc"

@@ -948,6 +948,35 @@ def run_example(
                         f"tilerender VRAM witness {(x, y)} is {actual.hex()}, "
                         f"expected {expected.hex()}"
                     )
+        if name == "mode1":
+            status = symbol(noi, "mode1_status")
+            wait_for(lambda: ram(status, 1) == b"\x5A", 5, "Mode 1 tile strips and sprites")
+
+            def mode1_address(x: int, y: int) -> int:
+                return 0xC000 + (y & 7) * 0x800 + (y >> 3) * 48 + x
+
+            # Strip rows 8..15: opaque tiles at bytes 8..23 (2 bytes wide each),
+            # masked tiles at bytes 26..41 over the 0xF0 (pen 1) background.
+            witnesses = {
+                (8, 8): b"\xFF\xFF",   # opaque graphic 0, first scanline
+                (10, 8): b"\x0F\x0F",  # opaque graphic 1, scanline 0
+                (10, 9): b"\xF0\xF0",  # opaque graphic 1, scanline 1
+                (20, 15): b"\xFF\xFF",  # opaque graphic 0 (tile 6), last scanline
+                (22, 15): b"\xF0\xF0",  # opaque graphic 1 (tile 7), odd scanline
+                (26, 8): b"\x0F\xF0",  # masked graphic 0: yellow half, background half
+                (26, 15): b"\x0F\xF0",
+                (28, 8): b"\xF0\xF0",  # masked graphic 1 is fully transparent
+                (40, 15): b"\xF0\xF0",
+                (7, 8): b"\xF0",       # nothing written left of the strip
+                (24, 8): b"\xF0\xF0",  # gap between the strips keeps the background
+            }
+            for (x, y), expected in witnesses.items():
+                actual = ram(mode1_address(x, y), len(expected))
+                if actual != expected:
+                    raise RuntimeError(
+                        f"mode1 VRAM witness {(x, y)} is {actual.hex()}, "
+                        f"expected {expected.hex()}"
+                    )
         if name == "spriteclip":
             status = symbol(noi, "spriteclip_status")
             used = symbol(noi, "spriteclip_capture_used")

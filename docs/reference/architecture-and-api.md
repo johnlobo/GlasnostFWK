@@ -117,7 +117,7 @@ entre cuerpos. El contrato completo está en `tilemap-collision.md`.
 
 ### Render de tilemap opcional
 
-Descriptor mutable de 10 bytes: puntero al tileset Mode 0, cámara X/Y en tiles,
+Descriptor mutable de 10 bytes: puntero al tileset (bytes Mode 0 o Mode 1), cámara X/Y en tiles,
 origen de pantalla (`x` byte, `y` palabra), ancho/alto del viewport en tiles y
 número de gráficos. Cada gráfico ocupa `map.x_size * map.y_size` bytes
 contiguos, por filas y sin padding. El render opaco admite las geometrías
@@ -187,9 +187,13 @@ este ajuste sigue pendiente de verificación en emulador y hardware. Para usarlo
 selecciona `"profile": "mode1-192x192.json"` en el manifiesto del juego,
 enlaza `core/system.s` y `video/video.s`, y llama a
 `fwk_video_init` y `fwk_video_configure_crtc` durante el arranque. Los
-renderizadores de texto y tiles existentes usan bytes Mode 0 y no deben
-enlazarse con este perfil sin una implementación Mode 1. `video/sprite.s` y
-`video/transparency.s` sí admiten datos empaquetados Mode 1.
+`ui/text.s` usa bytes Mode 0 y el build lo rechaza con este perfil (usa
+`ui/text_mode1.s`). `video/sprite.s`, `video/transparency.s` y los renderizadores
+de tiles (`extensions/tilemap_render.s` y `tilemap_render_masked.s`) admiten
+datos empaquetados Mode 1: copian bytes con las primitivas alineadas de
+CPCTelera y resuelven direcciones con la tabla de líneas del perfil. Un gráfico
+de 2x8 bytes mide 8x8 píxeles en Mode 1 (4x8 en Mode 0). `examples/mode1`
+dibuja una fila opaca y otra enmascarada y las comprueba en el emulador.
 
 ### Sprites Mode 0 y Mode 1 opcionales
 
