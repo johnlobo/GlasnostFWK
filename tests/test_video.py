@@ -72,6 +72,15 @@ class VideoModelTests(unittest.TestCase):
         self.assertEqual(len(visible), 48 * 192)
         self.assertNotIn(0xC480, visible)
 
+    def test_mode1_320x200_uses_standard_crtc_geometry(self):
+        p = self.profile("mode1-320x200.json")
+        self.assertEqual(GENERATOR.validate(p)["visible_bytes"], 16000)
+        self.assertEqual((p["mode"], p["width_pixels"], p["width_bytes"], p["height_lines"]),
+                         (1, 320, 80, 200))
+        self.assertEqual(p["crtc"]["registers"], {"R1": 40, "R6": 25, "R9": 7})
+        self.assertEqual(MODEL.address(p, 79, 199), 0xFFCF)
+        self.assertNotIn(0xC7D0, MODEL.visible_addresses(p))
+
     def test_mode1_rejects_wrong_pixel_width(self):
         profile = self.profile("mode1-192x192.json")
         profile["width_pixels"] = 96
