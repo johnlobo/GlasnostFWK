@@ -157,6 +157,8 @@ bin/glasnost doctor
 make generate
 make check</code></pre>
     <p>Si prefiere hacerlo a mano, ejecute esos cinco comandos en ese orden. <code>bin/glasnost install-deps --yes</code> omite la confirmación.</p>
+    <h4>Instalación sin red</h4>
+    <p>En una máquina con red, <code>bin/glasnost export-bundle --output DIR</code> escribe <code>glasnost-offline-&lt;commit&gt;.tar</code> (unos 77 MB) con el commit fijado de CPCTelera Next. En la máquina sin red, con las dependencias del sistema ya instaladas, <code>bin/glasnost install-toolchain --bundle FICHERO</code> lo valida (debe contener el commit de <code>toolchain.lock.json</code>), lo importa y compila como siempre, sin usar la red. El bundle no incluye paquetes del sistema ni emuladores. Detalle y garantías: <code>docs/reference/glasnost-cli.md</code>.</p>
 
     <h3>3.1 Construir todo</h3>
     <pre><code>cd /config/workspace/GlasnostFWK

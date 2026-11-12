@@ -21,7 +21,8 @@ tabla de abajo es la referencia larga.
 | Comando | Qué hace |
 |---|---|
 | `glasnost doctor [--network]` | Comprueba python3 >= 3.10, git, make, gcc, g++, bison, flex, cabeceras de Boost y CPCTelera Next. Sale con 1 si falta algo y dice cómo arreglarlo (con un lockfile inválido, muestra su error y sale con 1). `--network` comprueba también el acceso al repositorio de CPCTelera. |
-| `glasnost install-toolchain [--dry-run] [--force]` | Descarga el commit fijado y compila SDCC, hex2bin, iDSK, 2cdt, cpc2cdt, img2cpc (convierte los PNG de `assets/src`), la biblioteca y zx7b. `--dry-run` solo lista los pasos. `--force` rehace desde cero. |
+| `glasnost install-toolchain [--dry-run] [--force] [--bundle FILE]` | Descarga el commit fijado (o, con `--bundle`, lo importa de un bundle offline sin usar la red; ver «Instalación sin red») y compila SDCC, hex2bin, iDSK, 2cdt, cpc2cdt, img2cpc (convierte los PNG de `assets/src`), la biblioteca y zx7b. `--dry-run` solo lista los pasos. `--force` rehace desde cero. |
+| `glasnost export-bundle [--output DIR]` | Empaqueta el commit fijado de CPCTelera Next en `glasnost-offline-<commit12>.tar` (más `.sha256`) para instalar en una máquina sin red. Si el toolchain no está instalado lo descarga a una carpeta temporal y la borra. |
 | `glasnost new [nombre] [--manifest F] [--title T] [--extended-memory] [--dir D] [--no-git] [--no-build] [--remote URL]` | Crea un proyecto en `projects/<nombre>` (ver «Proyectos»). Sin nombre ni manifiesto, en una terminal, lanza el asistente. |
 | `glasnost config [--title T] [--extended-memory \| --no-extended-memory] [--dry-run]` | Dentro de un proyecto: sin opciones muestra la configuración y regenera los ficheros de `generated/` si están desactualizados; con ellas regenera lo que posee glasnost. |
 | `glasnost update [--dry-run]` | Dentro de un proyecto: lo actualiza al formato de este glasnost con migraciones consecutivas, en una rama de Git (ver «Actualizar proyectos»). |
@@ -164,9 +165,65 @@ escribe la última.
 - La comprobación final verifica que cada fichero existe, no está vacío y es
   ejecutable; **no ejecuta** las herramientas (límite conocido).
 - Repetir sobre una instalación completa no hace nada.
-- Solo este comando usa la red. `GLASNOST_CPCTELERA_URL` sustituye la URL del
+- De los comandos que construyen el toolchain, solo `install-toolchain` sin `--bundle` y `export-bundle` (si el commit
+  no está ya instalado) usan la red. `GLASNOST_CPCTELERA_URL` sustituye la URL del
   lockfile (espejos, tests) y solo acepta `https://` o `file:///`; cualquier
   otro valor (opciones, `ext::`, `ssh://`) se rechaza.
+
+## Instalación sin red (bundle offline)
+
+En una máquina con red:
+
+```sh
+glasnost export-bundle --output /media/usb     # glasnost-offline-11e61fe30175.tar (77 MB) y .sha256
+```
+
+En la máquina sin red (misma versión de GlasnostFWK, es decir, mismo `toolchain.lock.json`):
+
+```sh
+glasnost install-deps                          # necesita los paquetes del sistema ya instalados o en un espejo local
+glasnost install-toolchain --bundle /media/usb/glasnost-offline-11e61fe30175.tar
+```
+
+`--dry-run` con `--bundle` valida el archivo y lista los pasos sin cambiar nada. Después de importar, la
+compilación es la de siempre (SDCC y el resto salen del árbol importado) y `make` nunca usa la red.
+
+**Qué lleva.** Un `.tar` con `manifest.json` y `cpctelera-next.pack`: el commit fijado y su árbol completo, sin
+historial. Los bytes del `.tar` son reproducibles para un mismo pack (miembros ordenados, fechas y dueños a cero);
+el pack en sí puede variar entre versiones de git, así que no se compara el SHA-256 entre máquinas distintas.
+
+**Qué comprueba al importar** (antes de tocar nada): que sea un tar legible con exactamente esos dos miembros
+regulares (nunca se extrae el archivo, así que ninguna ruta del tar se usa), que el manifiesto sea válido, que su
+commit sea **el del lockfile**, y que el tamaño y el SHA-256 del pack coincidan. Esa validación completa (incluido que el pack tenga el commit del lockfile con todo
+su árbol, comprobado en una carpeta temporal) ocurre **antes** de crear o borrar nada en `.toolchain/`, también con
+`--force`: un bundle malo no deja restos ni destruye una instalación que funcione. La importación va a una carpeta de
+etapa y se mueve a su sitio al terminar (con `--force` se sustituye la instalación anterior solo entonces); solo una
+instalación incompleta que se reanuda sin `--force` se importa en el sitio, como en la descarga, y conserva su trabajo parcial. `git index-pack` re-calcula el
+hash de cada objeto, `--fsck-objects` añade comprobaciones estructurales, y se exige que `HEAD` quede en el commit
+del lockfile. Como en una instalación normal, queda `origin` apuntando a la URL del lockfile. La
+confianza real descansa en ese commit: el SHA-256 va dentro del mismo archivo, así que detecta daños, no
+manipulación; producir un bundle con otro contenido y el mismo commit exigiría una colisión de SHA-1 (git 2.43 usa SHA-1
+por defecto), algo inviable hoy salvo ataques de colisión dirigidos.
+
+Tras cada miembro y tras el último solo puede haber ceros (al menos los dos bloques de cierre, en múltiplo de 512
+bytes; cualquier relleno de registro pasa): un archivo cortado antes de los bloques de cierre, o con bytes añadidos o alterados después del último miembro, se rechaza. Solo se
+aceptan miembros de fichero normal (no dispersos, enlaces ni dispositivos).
+El `.sha256` que acompaña al `.tar` sirve para comprobar la copia entre máquinas (`sha256sum -c`);
+`install-toolchain` no lo lee.
+La validación usa el directorio temporal (`TMPDIR`): necesita unos 150 MB libres para el bundle de 77 MB (pico medido: 147 MB).
+
+Si `.toolchain/cpctelera-next/<commit>` es un enlace simbólico (un toolchain de desarrollo enlazado a otro
+repositorio), `install-toolchain`, con o sin `--bundle`, se niega a modificarlo o borrarlo cuando una instalación tendría que
+escribir en él (si ya está completo, dice «ya instalado» y no hace nada); para usarlo, `CPCT_NEXT_PATH`. Lo mismo si
+esa ruta existe y no es una carpeta.
+
+**Qué no lleva.**
+- Los paquetes del sistema (`gcc`, `make`, `bison`, `flex`, Boost): vienen de `apt`/`brew`, no del bundle.
+- Los emuladores: se descargan aparte con `glasnost emulator`.
+- Binarios compilados: se compila en destino (minutos), de modo que sirve igual en Linux y en macOS.
+
+**Por qué un pack y no `git bundle`.** `install-toolchain` descarga con `--depth=1`; desde un clon superficial,
+`git bundle create` termina sin error y el archivo no se puede importar («did not send all necessary objects»).
 
 ## Proyectos
 

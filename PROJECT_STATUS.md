@@ -1,6 +1,6 @@
 # Estado operativo del proyecto
 
-Actualizado: 2026-11-10 UTC. Este documento contiene el estado vigente y los
+Actualizado: 2026-11-12 UTC. Este documento contiene el estado vigente y los
 próximos pasos. El [historial por fases](docs/design/project-history.md) conserva
 las decisiones, mediciones y validaciones antiguas sin reescribirlas. Una casilla
 abierta en ese historial no implica una tarea pendiente hoy.
@@ -86,6 +86,20 @@ abierta en ese historial no implica una tarea pendiente hoy.
 
 ## Pendientes de producto y límites vigentes
 
+- Fase 15 (paquetes compartidos) cancelada el 2026-11-12 por decisión de David; la fase 16
+  sigue con offline, backups, CI de proyectos y publicación. Los emuladores en Mac los valida David.
+- Offline (fase 16, primer bloque): `glasnost export-bundle` e `install-toolchain --bundle FILE`
+  ([referencia](docs/reference/glasnost-cli.md), «Instalación sin red»). El bundle lleva el commit fijado y su
+  árbol sin historial, se valida contra el commit del lockfile y se compila en destino; no incluye paquetes del
+  sistema ni emuladores. Verificado con el commit real `11e61fe` (2026-11-12, Linux x86_64): export de 76,5 MB en
+  unos 6 s, árbol importado idéntico al repo (11.963 archivos, `fsck` limpio) e instalaciones completas sin red
+  (limpia y con `--force`, SDCC compilado, `doctor` correcto) con la URL del lockfile inutilizada. pruebas
+  nuevas (`tests/test_glasnost_bundle.py`) con un upstream falso, y rondas repetidas de revisión adversaria en frío
+  con comprobación por mutaciones. Un checkout enlazado simbólicamente (toolchain de desarrollo) nunca se modifica ni se borra, con o
+  sin `--bundle`.
+  Pendiente: CI no ejercita el flujo con el toolchain real; validar en macOS (`os.replace` de carpetas,
+  `O_NOFOLLOW`) y en Python 3.10/3.11 (ruta `onerror` de `remove_tree`; solo hay 3.12 aquí); reproducibilidad del
+  pack entre versiones de git; `clean-toolchains` no barre restos de una ejecución matada con SIGKILL.
 - Distribución reproducible y GitHub Actions para proyectos creados por el CLI;
   política de versiones y compatibilidad de actualizaciones. No confundir con
   el empaquetador del propio framework, que sí existe.
