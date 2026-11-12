@@ -86,6 +86,11 @@ abierta en ese historial no implica una tarea pendiente hoy.
 
 ## Pendientes de producto y límites vigentes
 
+- Tiles en Mode 1 (2026-11-12): `extensions/tilemap_render.s` y `tilemap_render_masked.s` ya no están
+  en `MODE0_ONLY_MODULES` de `tools/build/build_examples.py`; solo `ui/text.s` se rechaza con un perfil Mode 1.
+  Las primitivas de CPCTelera copian bytes y el renderizador resuelve direcciones con la tabla del perfil, así que
+  no había causa técnica. `examples/mode1` dibuja una franja opaca y otra enmascarada; `tests/emulator_smoke.py mode1`
+  lo comprobó en AmSpiriT-Lite con 11 testigos de VRAM (el perfil CRTC sigue sin validar visualmente).
 - Fase 15 (paquetes compartidos) cancelada el 2026-11-12 por decisión de David; la fase 16
   sigue con offline, backups, CI de proyectos y publicación. Los emuladores en Mac los valida David.
 - Offline (fase 16, primer bloque): `glasnost export-bundle` e `install-toolchain --bundle FILE`

@@ -2,7 +2,8 @@
 
 Demo para comprobar en el emulador el perfil experimental Mode 1. Muestra un
 área azul de 192 × 192 píxeles, un marco blanco, cuatro estrellas, texto Mode 1
-y una nave amarilla/blanca que se mueve sobre el fondo sin borrarlo.
+dos franjas de tiles (opacos a la izquierda, enmascarados a la derecha, 8x8 píxeles
+por gráfico de 2x8 bytes) y una nave amarilla/blanca que se mueve sobre el fondo sin borrarlo.
 
 ## Compilar y probar
 

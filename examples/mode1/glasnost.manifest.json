@@ -8,6 +8,9 @@
     "core/input.s",
     "video/video.s",
     "video/sprite.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s",
+    "extensions/tilemap_render_masked.s",
     "ui/text_mode1.s"
   ],
   "game_sources": ["main.s"]

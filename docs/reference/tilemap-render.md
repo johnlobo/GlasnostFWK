@@ -9,17 +9,17 @@ destino y tileset en un descriptor separado propiedad del consumidor.
 
 ## Datos y descriptor
 
-Cada gráfico ocupa exactamente `x_size * y_size` bytes: `x_size` bytes Mode 0
-por scanline y `y_size` scanlines, sin padding. Los gráficos se concatenan por
+Cada gráfico ocupa exactamente `x_size * y_size` bytes: `x_size` bytes de
+vídeo (Mode 0 o Mode 1) por scanline y `y_size` scanlines, sin padding. Los gráficos se concatenan por
 id en el tileset. Solo se admiten las cuatro geometrías nativas empleadas por
 CPCTelera Next:
 
-| Descriptor | Rutina | Tamaño Mode 0 |
-|---|---|---|
-| 2x4 bytes | `cpct_drawTileAligned2x4_f_asm` | 4x4 píxeles |
-| 2x8 bytes | `cpct_drawTileAligned2x8_f_asm` | 4x8 píxeles |
-| 4x4 bytes | `cpct_drawTileAligned4x4_f_asm` | 8x4 píxeles |
-| 4x8 bytes | `cpct_drawTileAligned4x8_f_asm` | 8x8 píxeles |
+| Descriptor | Rutina | Tamaño Mode 0 | Tamaño Mode 1 |
+|---|---|---|---|
+| 2x4 bytes | `cpct_drawTileAligned2x4_f_asm` | 4x4 píxeles | 8x4 píxeles |
+| 2x8 bytes | `cpct_drawTileAligned2x8_f_asm` | 4x8 píxeles | 8x8 píxeles |
+| 4x4 bytes | `cpct_drawTileAligned4x4_f_asm` | 8x4 píxeles | 16x4 píxeles |
+| 4x8 bytes | `cpct_drawTileAligned4x8_f_asm` | 8x8 píxeles | 16x8 píxeles |
 
 ```asm
 FWK_TILEMAP_DESCRIPTOR level_map, map_data, collision_types, 32, 20, 2, 3, 4, 8, 16
@@ -29,7 +29,7 @@ FWK_TILE_RENDER_DESCRIPTOR level_view, tileset, 0, 0, 10, 24, 12, 10, 16
 ; viewport_width, viewport_height, tile_count
 ```
 
-La cámara y el viewport se expresan en tiles. `screen_x` está en bytes Mode 0
+La cámara y el viewport se expresan en tiles. `screen_x` está en bytes de vídeo
 y `screen_y` es una palabra de 16 bits. El origen Y debe estar alineado al alto
 del tile (múltiplo de 4 u 8); cada destino se resuelve mediante
 `fwk_video_get_ptr` antes de llamar a CPCTelera. El perfil experimental conserva

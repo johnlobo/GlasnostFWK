@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -118,11 +119,19 @@ class ProjectConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "require transparency pen 0"):
             effective_modules("demo", ["ui/text_mode1.s"], ProjectCapabilities(2, False, 1))
 
-    def test_mode1_rejects_mode0_renderers_but_accepts_sprites(self) -> None:
+    def test_mode1_example_links_both_tile_renderers(self) -> None:
+        manifest = json.loads((ROOT / "examples/mode1/glasnost.manifest.json").read_text())
+        modules = effective_modules("mode1", manifest["modules"], ProjectCapabilities(0, False, 1))
+        for module in ("extensions/tilemap_render.s", "extensions/tilemap_render_masked.s"):
+            self.assertIn(module, modules)
+
+    def test_mode1_rejects_mode0_text_but_accepts_sprites_and_tiles(self) -> None:
         mode1 = ProjectCapabilities(0, False, 1)
-        for module in ("ui/text.s", "extensions/tilemap_render.s", "extensions/tilemap_render_masked.s"):
-            with self.subTest(module=module), self.assertRaisesRegex(ValueError, "Mode 1 does not support"):
-                effective_modules("demo", [module], mode1)
+        with self.assertRaisesRegex(ValueError, "Mode 1 does not support ui/text.s"):
+            effective_modules("demo", ["ui/text.s"], mode1)
+        for module in ("extensions/tilemap_render.s", "extensions/tilemap_render_masked.s"):
+            with self.subTest(module=module):
+                self.assertIn(module, effective_modules("demo", [module], mode1))
         self.assertIn("video/sprite.s", effective_modules("demo", ["video/sprite.s"], mode1))
         modules = effective_modules("demo", ["ui/text_mode1.s"], mode1)
         self.assertIn("ui/text_mode1.s", modules)

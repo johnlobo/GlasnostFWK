@@ -1,6 +1,7 @@
 .module example_mode1
 .include "cpctelera.h.s"
 .include "video/sprite.inc"
+.include "extensions/tilemap_render_masked.inc"
 .include "assets/generated/assets.inc"
 
 .globl fwk_project_init
@@ -10,6 +11,7 @@
 .globl mode1_palette, mode1_ship_pixels, mode1_star_pixels
 .globl fwk_text_init, fwk_text_set_color, fwk_text_draw
 .globl fwk_text_draw_small_u8
+.globl fwk_tilemap_render_view, fwk_tilemap_render_view_masked
 
 .area _DATA
 mode1_bindings:
@@ -30,6 +32,33 @@ FWK_SPRITE_DESCRIPTOR mode1_star_tl, mode1_star_pixels, 1, 8, 4, 16
 FWK_SPRITE_DESCRIPTOR mode1_star_tr, mode1_star_pixels, 43, 8, 4, 16
 FWK_SPRITE_DESCRIPTOR mode1_star_bl, mode1_star_pixels, 1, 168, 4, 16
 FWK_SPRITE_DESCRIPTOR mode1_star_br, mode1_star_pixels, 43, 168, 4, 16
+
+;; Tile strip above the ship's range (rows 8..15, between the stars). Each
+;; graphic is 2 bytes x 8 scanlines: 8x8 Mode 1 pixels (4 pixels per byte).
+mode1_tile_types: .db FWK_TILE_PASSABLE, FWK_TILE_SOLID
+mode1_tile_map:   .db 0,1,0,1,0,1,0,1
+FWK_TILEMAP_DESCRIPTOR mode1_tile_map_descriptor, mode1_tile_map, mode1_tile_types, 8, 1, 1, 3, 2, 8, 2
+
+;; Opaque graphics: 0 = white block (pen 3), 1 = yellow/blue stripes (pens 2/1).
+mode1_tileset:
+    .rept 8
+        .db 0xFF,0xFF
+    .endm
+    .rept 4
+        .db 0x0F,0x0F, 0xF0,0xF0
+    .endm
+;; Masked graphics (pen 0 transparent): 0 = yellow left half over the blue
+;; background, 1 = fully transparent.
+mode1_masked_tileset:
+    .rept 8
+        .db 0x0F,0x00
+    .endm
+    .rept 8
+        .db 0x00,0x00
+    .endm
+
+FWK_TILE_RENDER_DESCRIPTOR mode1_tile_view, mode1_tileset, 0, 0, 8, 8, 8, 1, 2
+FWK_TILE_RENDER_DESCRIPTOR mode1_masked_view, mode1_masked_tileset, 0, 0, 26, 8, 8, 1, 2
 
 mode1_status:: .db 0
 mode1_title: .asciz "MODE 1 192X192"
@@ -193,6 +222,17 @@ _main::
     jp c, mode1_fail
     ld ix, #mode1_star_br
     call fwk_sprite_draw_masked
+    jp c, mode1_fail
+
+    ;; Opaque and masked tile strips, drawn through the shared Mode 1 video
+    ;; geometry. The masked strip keeps the blue background where pen 0 shows.
+    ld ix, #mode1_tile_map_descriptor
+    ld iy, #mode1_tile_view
+    call fwk_tilemap_render_view
+    jp c, mode1_fail
+    ld ix, #mode1_tile_map_descriptor
+    ld iy, #mode1_masked_view
+    call fwk_tilemap_render_view_masked
     jp c, mode1_fail
 
     ;; Static HUD stays below the ship's movement range and between the stars.
