@@ -110,14 +110,14 @@ mantendrá su historial.
   fija ambas; una ruta local puede sustituirlas durante desarrollo.
 - Los proyectos se crean por defecto en `projects/`, ignorada por el Git del
   framework. Cada proyecto es un repositorio Git independiente. Actualizar,
-  reparar o desinstalar el SDK no puede borrar proyectos, paquetes ni backups.
+  reparar o desinstalar el SDK no puede borrar proyectos ni backups.
 - El creador funciona de modo interactivo o desde manifiesto, genera un juego
   compilable con mensaje de bienvenida, BIN/CDT/DSK, debug/release, pruebas,
   documentación y primer commit validado.
 - Las actualizaciones son explícitas: requieren Git limpio, vista previa, rama,
   migraciones consecutivas, regeneración, pruebas y rollback. `make` nunca
   consulta la red ni actualiza dependencias.
-- Versionado semántico para framework, proyectos y paquetes. Se mantiene la
+- Versionado semántico para framework y proyectos. Se mantiene la
   mayor actual y la anterior; las más antiguas siguen instalables sin soporte
   activo.
 - El SDK funciona offline una vez instaladas las dependencias y puede exportar
@@ -129,9 +129,6 @@ mantendrá su historial.
   requiere autorización separada.
 - GlasnostFWK es GPL-3.0; los proyectos generados usan `GPL-3.0-only` por
   defecto y conservan avisos y obligaciones de sus dependencias.
-- El workspace admite paquetes compartidos versionados, con repositorio,
-  licencia, prefijo único, pruebas, compatibilidad, dependencias transitivas,
-  una versión resuelta por paquete, caché GitHub y override local.
 - El SDK gestiona backups/restauración, archivado, renombrado y borrado seguro.
   Las dependencias descargadas se fijan, verifican y activan solo tras validar.
 - Los emuladores son herramientas opcionales mediante adaptadores de
@@ -186,7 +183,8 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 
 ### P4: ecosistema
 
-15. Paquetes compartidos.
+15. ~~Paquetes compartidos.~~ **Cancelada el 2026-11-12** por decisión de David: no se
+    compartirán librerías entre proyectos. Se conserva el número para no renumerar 16 y 17.
 16. Offline, backups, emuladores, CI, publicación y releases.
 
 ### P5: cierre
@@ -213,7 +211,7 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 - G2: vertical ECS jugable antes de migrar todo el portfolio.
 - G3: paridad y rendimiento aceptados antes de sustituir `platformer`.
 - G4: cero consumidores y cero APIs no ECS antes del RC.
-- G5: instalación limpia, proyecto nuevo, actualización/rollback, paquete,
+- G5: instalación limpia, proyecto nuevo, actualización/rollback,
   offline y backup/restore demostrados antes de 2.0.0.
 
 ## Riesgos prioritarios
@@ -225,7 +223,6 @@ rendimiento se mide con entidades de un juego, no con casos extremos.
 5. Destrucción visual y referencias directas a slots reutilizados.
 6. Instalación, tamaño y portabilidad de CPCTelera Next.
 7. Seguridad de proyectos almacenados dentro del SDK.
-8. Resolución, licencias y reproducibilidad de paquetes.
 
 No se introducen caches de vistas, layouts alternativos ni optimizaciones sin
 medir primero el cuello de botella real.

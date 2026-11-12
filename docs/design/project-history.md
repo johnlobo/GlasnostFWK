@@ -1819,3 +1819,13 @@ perfil experimental 160x288 puede redefinirse `FWK_ECS_INPUT_SPEED_Y`.
 - `make test` completo en worktree aislado: 590 pruebas host (5 omitidas), 23 ejemplos y DSK común construidos. Siete pruebas del adaptador y 91 del selector de emulador pasan.
 - Validación Linux x86_64: [CI 42848022356](https://github.com/johnlobo/GlasnostFWK/actions/runs/42848022356), commit `b76d7a5`, pasa suite y smoke. Tres arranques de 1.120 fotogramas con hash `4e0b802db1e40b35`; mediana 47,85x (0,468 s de pared por recorrido) en el runner de GitHub. Incluye API, lectura de memoria, captura y restauración; no es la VPS Haswell ni el fixture congelado de BluePixel. Los artefactos `bluepixel-nave-*` conservan todas las muestras e identidades.
 - Verificación local macOS arm64 con el DSK común recién compilado: tres arranques idénticos, 1.120 fotogramas ejecutados por arranque, hash `6f1e775d95274e99`; la aceleración de cada recorrido queda en el JSON. Es una medición de este recorrido con API y validaciones, no la carga congelada de BluePixel ni una medición Linux/VPS.
+
+
+## Fase 15 cancelada (2026-11-12)
+
+- Decisión de David: no se compartirán librerías entre proyectos, así que no se
+  construyen paquetes compartidos (repo por paquete o índice central quedan sin
+  decidir y sin implementar). Ningún código dependía de ellos.
+- `ecs-2.0-master-plan.md`: se retiran la decisión vinculante de paquetes, el
+  riesgo 8 y "paquete" de la puerta G5. La fase 15 queda marcada como cancelada y
+  conserva su número; las fases 16 y 17 no se renumeran.
