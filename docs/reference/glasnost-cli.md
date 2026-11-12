@@ -250,8 +250,8 @@ combinación no es válido, `config` lo dice y no escribe nada.
   `! - / : > ? @`, hasta 30; se pasan a mayúsculas).
 - `glasnost.project.json` guarda la versión del framework para que la fase 14
   (actualización y migraciones) sepa de dónde parte; hoy no se compara.
-- GitHub Actions, empaquetado y paquetes compartidos del proyecto son de las
-  fases 14 a 16.
+- GitHub Actions y empaquetado del proyecto son de las fases 14 a 16 (los
+  paquetes compartidos, fase 15, se cancelaron).
 
 ## Actualizar proyectos
 
