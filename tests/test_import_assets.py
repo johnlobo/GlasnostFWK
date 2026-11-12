@@ -1,8 +1,10 @@
 import json
 import re
 import shutil
+import struct
 import tempfile
 import unittest
+import zlib
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 from unittest.mock import patch
@@ -325,6 +327,97 @@ class ConfigTests(unittest.TestCase):
                     "example", Path("/unused"), example=example, target=root / "build"
                 )
             ensure.assert_not_called()
+
+
+def _write_rgb_png(path: Path, rows: list[list[tuple[int, int, int]]]) -> None:
+    """Write an 8-bit RGB PNG with the standard library only."""
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (struct.pack(">I", len(body)) + kind + body
+                + struct.pack(">I", zlib.crc32(kind + body)))
+
+    raw = b"".join(b"\x00" + bytes(c for pixel in row for c in pixel) for row in rows)
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
+
+
+def _mode1_bytes(row: list[int]) -> list[int]:
+    """CPC Mode 1 encoder written from the hardware layout, not from img2cpc.
+
+    Each byte holds four pixels: bits 7..4 are pen bit 0 of pixels 0..3 and
+    bits 3..0 are pen bit 1 of the same pixels.
+    """
+    out = []
+    for start in range(0, len(row), 4):
+        byte = 0
+        for index, pen in enumerate(row[start:start + 4]):
+            byte |= ((pen & 1) << (7 - index)) | (((pen >> 1) & 1) << (3 - index))
+        out.append(byte)
+    return out
+
+
+class RealMode1ConversionTests(unittest.TestCase):
+    """Runs the real img2cpc: the fake-converter tests cannot see bad encoding."""
+
+    PEN_RGB = {0: (0, 0, 0), 1: (0, 0, 255), 2: (255, 255, 0), 3: (255, 255, 255)}
+
+    def _convert(self, directory: Path, tile_width: int, tile_height: int, columns: int, rows: int):
+        try:
+            import_assets._tool(None, "img2cpc", "IMG2CPC")
+        except import_assets.AssetError as error:
+            self.skipTest(f"img2cpc unavailable: {error}")
+        # Deterministic pseudo-random pens: no tile equals another or its mirror.
+        state = 12345
+        tiles = []
+        for _ in range(columns * rows):
+            tile = []
+            for _ in range(tile_height):
+                row = []
+                for _ in range(tile_width):
+                    state = (state * 1103515245 + 12345) & 0x7FFFFFFF
+                    row.append((state >> 16) & 3)
+                tile.append(row)
+            tiles.append(tile)
+        pixels = [[(0, 0, 0)] * (tile_width * columns) for _ in range(tile_height * rows)]
+        for number, tile in enumerate(tiles):
+            left, top = (number % columns) * tile_width, (number // columns) * tile_height
+            for y, row in enumerate(tile):
+                for x, pen in enumerate(row):
+                    pixels[top + y][left + x] = self.PEN_RGB[pen]
+        assets = directory / "assets"
+        (assets / "src").mkdir(parents=True)
+        _write_rgb_png(assets / "src" / "tiles.png", pixels)
+        (assets / "palette.json").write_text(
+            json.dumps({"type": "firmware", "values": [0, 2, 24, 26], "transparent": 0})
+        )
+        names = [f"tile{number}" for number in range(len(tiles))]
+        (assets / "assets.json").write_text(json.dumps({
+            "version": 1, "mode": 1, "palette": "palette.json", "palette_symbol": "pal",
+            "images": [{"source": "src/tiles.png", "width": tile_width,
+                        "height": tile_height, "tiles": names}],
+        }))
+        import_assets.convert(assets)
+        source = (assets / "generated" / "assets.s").read_text()
+        return tiles, names, source
+
+    def _assert_tiles(self, tiles, names, source) -> None:
+        for name, tile in zip(names, tiles):
+            expected = bytes(byte for row in tile for byte in _mode1_bytes(row))
+            self.assertEqual(_db_block(source, name), expected, name)
+
+    def test_8x8_tiles_match_the_hardware_encoding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            self._assert_tiles(*self._convert(Path(directory), 8, 8, 4, 1))
+
+    def test_16x8_tiles_in_a_grid_keep_row_major_order_and_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            tiles, names, source = self._convert(Path(directory), 16, 8, 2, 2)
+            self.assertEqual(len(_db_block(source, "tile0")), 32)
+            self._assert_tiles(tiles, names, source)
 
 
 class PlatformerAssetsTests(unittest.TestCase):

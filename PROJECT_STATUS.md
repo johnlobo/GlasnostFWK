@@ -91,6 +91,9 @@ abierta en ese historial no implica una tarea pendiente hoy.
   Las primitivas de CPCTelera copian bytes y el renderizador resuelve direcciones con la tabla del perfil, así que
   no había causa técnica. `examples/mode1` dibuja una franja opaca y otra enmascarada; `tests/emulator_smoke.py mode1`
   lo comprobó en AmSpiriT-Lite con 11 testigos de VRAM (el perfil CRTC sigue sin validar visualmente).
+  Importador de tiles Mode 1 revisado (2026-11-12): con el `img2cpc` real, tiles 8x8 y 16x8 (rejilla 2x2) coinciden byte a
+  byte con un codificador independiente de la disposición Mode 1 y mantienen el orden por filas
+  (`RealMode1ConversionTests` en `tests/test_import_assets.py`; se salta si no hay `img2cpc`). Sin cambios de código.
 - Fase 15 (paquetes compartidos) cancelada el 2026-11-12 por decisión de David; la fase 16
   sigue con offline, backups, CI de proyectos y publicación. Los emuladores en Mac los valida David.
 - Offline (fase 16, primer bloque): `glasnost export-bundle` e `install-toolchain --bundle FILE`
