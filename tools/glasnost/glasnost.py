@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """glasnost: single interface of the GlasnostFWK SDK (messages in es/en).
 
-Commands: doctor, install-toolchain, build, test, run, path, version.
+Commands: doctor, install-toolchain, export-bundle, build, test, run, path, version.
 
 The CPCTelera Next toolchain is managed: `install-toolchain` fetches the commit
 pinned in toolchain.lock.json and builds it under
 `.toolchain/cpctelera-next/<commit>/` (outside Git, no sudo). `CPCT_NEXT_PATH`
 overrides it for development. Nothing here touches the network except
-`install-toolchain` (and `doctor --network`).
+`install-toolchain` (and `doctor --network`) and `export-bundle`; `install-toolchain --bundle FILE`
+replaces the download with an offline bundle made by `export-bundle`.
 """
 
 from __future__ import annotations
@@ -20,9 +21,11 @@ import json
 import os
 import platform as platform_module
 import re
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +34,7 @@ from typing import Callable, Sequence
 # glasnost_project loads the generators of tools/build; every folder of tools/ is importable by name.
 sys.path[:0] = [str(Path(__file__).resolve().parents[1] / folder) for folder in ("glasnost", "build")]
 import emulator_setup as emu  # noqa: E402
+import glasnost_bundle as bundle_io  # noqa: E402
 import glasnost_project as gp  # noqa: E402
 import glasnost_update as gu  # noqa: E402
 from glasnost_i18n import LANGS, pick_language, say  # noqa: E402
@@ -292,13 +296,17 @@ def cmd_doctor(args, root: Path, lang: str, runner: Runner) -> int:
 
 # -------------------------------------------------------- install-toolchain
 
-def install_plan(root: Path, lock: Lock, lang: str, jobs: int) -> list[tuple[str, list[str]]]:
-    """Ordered (label, command) steps; pseudo-commands are FETCH, VERIFY and MARK."""
+def install_plan(root: Path, lock: Lock, lang: str, jobs: int,
+                 bundle: Path | None = None) -> list[tuple[str, list[str]]]:
+    """Ordered (label, command) steps; pseudo-commands are FETCH, VERIFY and MARK.
+
+    FETCH downloads the pinned commit, or imports it from `bundle` when one is given.
+    """
     checkout = managed_root(root, lock)
     cpct = checkout / "cpctelera"
-    steps: list[tuple[str, list[str]]] = [
-        (say(lang, "toolchain.step_fetch", url=lock.url, path=checkout), [FETCH]),
-    ]
+    first = (say(lang, "toolchain.step_import", bundle=bundle, path=checkout) if bundle
+             else say(lang, "toolchain.step_fetch", url=lock.url, path=checkout))
+    steps: list[tuple[str, list[str]]] = [(first, [FETCH])]
     for relative in MAKE_STEPS:
         target = cpct if relative == "." else cpct / relative
         label = "cpctelera.lib" if relative == "." else relative
@@ -330,11 +338,233 @@ def fetch_pinned(runner: Runner, lock: Lock, checkout: Path, label: str, lang: s
         raise CliError(say(lang, "toolchain.rev_mismatch", got=head, want=lock.rev))
 
 
+@contextlib.contextmanager
+def bundle_errors(lang: str):
+    """Turn a BundleError (message key + values) into a translated CliError."""
+    try:
+        yield
+    except bundle_io.BundleError as error:
+        raise CliError(say(lang, error.key, **error.values)) from error
+    except OSError as error:
+        raise CliError(say(lang, "bundle.io_error", reason=str(error))) from error
+
+
+def remove_tree(path: Path) -> None:
+    """rmtree that also removes read-only and unlistable folders (best effort: a leftover is only disk space).
+
+    A symlink is only unlinked: neither chmod nor rmtree may follow it out of the tree. Each pass makes the
+    folders that failed accessible and the next pass deletes them (three passes cover any nesting depth).
+    """
+    if path.is_symlink():
+        path.unlink()
+        return
+
+    root = os.path.abspath(path)
+
+    def open_up(_function, failing, _error) -> None:
+        # the failing entry and, unless it is the root itself, the folder that holds it; never above the tree
+        for candidate in (failing,) if os.path.abspath(failing) == root else (os.path.dirname(failing), failing):
+            with contextlib.suppress(OSError):
+                if not os.path.islink(candidate):
+                    os.chmod(candidate, 0o700)
+
+    handler = {"onexc": open_up} if sys.version_info >= (3, 12) else {"onerror": open_up}
+    for _ in range(3):
+        if not os.path.lexists(path):
+            return
+        shutil.rmtree(path, **handler)
+
+
+def swap_in(new: Path, checkout: Path, rev: str) -> None:
+    """Move `new` to `checkout`; the old install is set aside first and restored if the move fails."""
+    if not checkout.exists():
+        os.replace(new, checkout)
+        return
+    aside = Path(tempfile.mkdtemp(prefix=f".{rev}.old-", dir=checkout.parent))   # exclusive, unpredictable name
+    try:
+        os.replace(checkout, aside)         # a rename onto our empty folder: nothing in the old tree has to be writable
+    except BaseException:
+        with contextlib.suppress(OSError):
+            aside.rmdir()
+        raise
+    try:
+        os.replace(new, checkout)
+    except BaseException:
+        os.replace(aside, checkout)
+        raise
+    remove_tree(aside)
+
+
+def import_bundle(bundle: Path, lock: Lock, checkout: Path, lang: str, replace: bool = False) -> None:
+    """The offline twin of fetch_pinned: same end state (one shallow commit at lock.rev).
+
+    A new checkout, or one that `replace` (--force) is about to swap, is imported into a staging
+    folder and moved into place only when complete, so a failure leaves nothing new behind and
+    never destroys the install that was there. Only a resumed, incomplete checkout is imported in
+    place, like the download path: its partial work is what a retry continues from.
+    """
+    checkout.parent.mkdir(parents=True, exist_ok=True)
+    in_place = checkout.exists() and not replace
+    pack: Path | None = None
+    target: Path | None = checkout if in_place else None
+    try:
+        with bundle_errors(lang):
+            descriptor, pack_name = tempfile.mkstemp(prefix=f".{lock.rev}.pack-", suffix=".part", dir=checkout.parent)
+            os.close(descriptor)
+            pack = Path(pack_name)
+            if not in_place:
+                # exclusive creation with a random name: a link planted at a guessable name is never followed
+                target = Path(tempfile.mkdtemp(prefix=f".{lock.rev}.import-", dir=checkout.parent))
+                os.chmod(target, bundle_io.public_mode(directory=True))   # mkdtemp makes it 0700; a download gives the umask's
+            bundle_io.open_bundle(bundle, lock.rev, pack_to=pack)
+            bundle_io.import_pack(target, pack, lock.rev, lock.url)
+            if not in_place:
+                swap_in(target, checkout, lock.rev)
+    except BaseException:
+        if target is not None and not in_place:
+            remove_tree(target)
+        raise
+    finally:
+        if pack is not None:
+            pack.unlink(missing_ok=True)
+
+
+def swap_pair(moves: Sequence[tuple[Path, Path]], lang: str = "es") -> None:
+    """Put each `new` at its `final` path, all or nothing.
+
+    What is already at a final path is first renamed to an exclusive random backup name in the same folder.
+    On any failure, KeyboardInterrupt included: the new files this call placed are removed (a final path is
+    recorded BEFORE its move, and one without a backup did not exist before the call), every backup is put
+    back independently of the others, one that cannot be restored is kept and reported by path, and the
+    ORIGINAL error is what propagates. On success the backups are deleted.
+    """
+    backups: list[tuple[Path, Path]] = []
+    placed: list[Path] = []
+    try:
+        for _new, final in moves:
+            if final.exists() or final.is_symlink():
+                descriptor, name = tempfile.mkstemp(prefix=final.name + ".old-", dir=final.parent)
+                os.close(descriptor)
+                backup = Path(name)
+                try:
+                    os.replace(final, backup)    # onto our placeholder: a rename, the content is kept
+                except BaseException:
+                    backup.unlink(missing_ok=True)
+                    raise
+                backups.append((backup, final))
+        for new, final in moves:
+            placed.append(final)
+            os.replace(new, final)
+    except BaseException:
+        for final in placed:
+            with contextlib.suppress(OSError):
+                final.unlink()
+        for backup, final in backups:
+            try:
+                os.replace(backup, final)
+            except OSError:
+                print(say(lang, "bundle.undo_failed", backup=backup, final=final), file=sys.stderr)
+        raise
+    for backup, _final in backups:
+        backup.unlink(missing_ok=True)
+
+
+def make_dirs(path: Path) -> list[Path]:
+    """mkdir -p that returns the folders it created, deepest first (so they can be taken back).
+
+    If it fails midway it removes what it had made before re-raising: the caller never learns of a partial chain.
+    """
+    missing: list[Path] = []
+    probe = path
+    while not probe.exists():
+        missing.append(probe)
+        probe = probe.parent
+    created: list[Path] = []
+    try:
+        for folder in reversed(missing):
+            try:
+                folder.mkdir()
+            except FileExistsError:
+                if not folder.is_dir():      # a dangling link or a file in the way, not a lost race
+                    raise
+                continue
+            created.append(folder)
+    except BaseException:
+        for folder in reversed(created):
+            with contextlib.suppress(OSError):
+                folder.rmdir()
+        raise
+    return created[::-1]
+
+
+def cmd_export_bundle(args, root: Path, lang: str, runner: Runner) -> int:
+    """Write the offline bundle of the pinned commit; needs the network only if it is not installed."""
+    lock = load_lock(root, lang)
+    out_dir = Path(args.output).expanduser().resolve() if args.output else Path.cwd()
+    checkout = managed_root(root, lock)
+    temporary: Path | None = None
+    pack: Path | None = None
+    created: list[Path] = []
+    out_created: list[Path] = []
+    delivered = False
+    with bundle_errors(lang):
+        out_created = make_dirs(out_dir)
+        target = out_dir / bundle_io.bundle_name(lock.rev)
+        try:
+            descriptor, pack_name = tempfile.mkstemp(prefix=f".{target.name}.pack-", suffix=".part", dir=out_dir)
+            pack = Path(pack_name)
+            os.close(descriptor)
+            if not bundle_io.has_commit(checkout, lock.rev):
+                created = make_dirs(checkout.parent)
+                temporary = Path(tempfile.mkdtemp(prefix=".export-", dir=checkout.parent))
+                print(say(lang, "bundle.fetching", url=lock.url, rev=lock.rev[:12]), flush=True)
+                try:
+                    fetch_pinned(runner, lock, temporary, "export-bundle", lang)
+                except CliError as error:   # its own text promises a resumable partial install; export keeps none
+                    raise CliError(say(lang, "bundle.fetch_failed", rev=lock.rev[:12], url=lock.url)) from error
+                checkout = temporary
+            bundle_io.build_pack(checkout, lock.rev, pack)
+            # both files are prepared in temporaries first, and the destinations are checked, before either
+            # is replaced: a failure must never cost the user a bundle that was already there
+            side = out_dir / f"{target.name}.sha256"
+            staged: Path | None = None
+            sha_staged = None
+            try:
+                staged, digest = bundle_io.stage_bundle(target, lock.url, lock.rev, pack, sdk_version(root, runner))
+                sha_staged = bundle_io.stage_text(side, f"{digest}  {target.name}\n")
+                for final in (target, side):
+                    if final.is_dir():
+                        raise IsADirectoryError(21, "Is a directory", str(final))
+                swap_pair(((staged, target), (sha_staged, side)), lang)
+            finally:
+                if staged is not None:
+                    staged.unlink(missing_ok=True)
+                if sha_staged is not None:
+                    sha_staged.unlink(missing_ok=True)
+            delivered = True
+        finally:
+            if pack is not None:
+                pack.unlink(missing_ok=True)
+            if temporary is not None:
+                remove_tree(temporary)
+            for folder in created + ([] if delivered else out_created):   # only what this run made, if empty again
+                with contextlib.suppress(OSError):
+                    folder.rmdir()
+    print(say(lang, "bundle.export_done", path=target, quoted=shlex.quote(str(target)),
+              size=human_size(target.stat().st_size), sha256=digest, rev=lock.rev[:12]))
+    return 0
+
+
 def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
     lock = load_lock(root, lang)
     checkout = managed_root(root, lock)
     jobs = max(1, min(os.cpu_count() or 1, 4))
-    plan = install_plan(root, lock, lang, jobs)
+    bundle = Path(args.bundle).expanduser().resolve() if args.bundle else None
+    if bundle:
+        with bundle_errors(lang):
+            bundle_io.verify_bundle(bundle, lock.rev)   # fails before anything changes, also on --dry-run
+        print(say(lang, "bundle.verified", path=bundle, rev=lock.rev[:12]))
+    plan = install_plan(root, lock, lang, jobs, bundle)
 
     print(say(lang, "toolchain.plan_title", rev=lock.rev))
     if args.dry_run:
@@ -348,6 +578,13 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
         print(say(lang, "toolchain.already", rev=lock.rev[:12], path=checkout))
         return 0
 
+    if checkout.is_symlink():
+        # e.g. a development toolchain linked to another repository: we must neither rewrite nor delete it
+        raise CliError(say(lang, "toolchain.symlink", path=checkout, target=os.path.realpath(checkout)))
+
+    if checkout.exists() and not checkout.is_dir():
+        raise CliError(say(lang, "toolchain.not_dir", path=checkout))
+
     absent = [tool for tool in BUILD_TOOLS if not shutil.which(tool)]
     if not BOOST_HEADER.is_file():
         absent.append("libboost-dev")
@@ -357,7 +594,7 @@ def cmd_install(args, root: Path, lang: str, runner: Runner) -> int:
     if sys.platform == "darwin":
         use_homebrew_paths(runner)
     with install_lock(checkout, lang):
-        return run_install(args, lock, checkout, plan, lang, runner)
+        return run_install(args, lock, checkout, plan, lang, runner, bundle)
 
 
 def use_homebrew_paths(runner: Runner) -> None:
@@ -387,7 +624,12 @@ def use_homebrew_paths(runner: Runner) -> None:
 def install_lock(checkout: Path, lang: str):
     """One install per commit at a time: a second one would corrupt the first."""
     checkout.parent.mkdir(parents=True, exist_ok=True)
-    with open(checkout.parent / f".{checkout.name}.lock", "w") as handle:
+    lock_path = checkout.parent / f".{checkout.name}.lock"
+    try:
+        descriptor = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_TRUNC, 0o666)
+    except OSError as error:   # e.g. a symlink planted at the lock name
+        raise CliError(say(lang, "toolchain.lock_failed", path=lock_path, reason=error.strerror)) from error
+    with os.fdopen(descriptor, "w") as handle:
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
@@ -395,15 +637,21 @@ def install_lock(checkout: Path, lang: str):
         yield
 
 
-def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runner) -> int:
-    if args.force and checkout.exists():
+def run_install(args, lock: Lock, checkout: Path, plan, lang: str, runner: Runner,
+                bundle: Path | None = None) -> int:
+    staged = bundle is not None and args.force   # the import swaps the old install only once the new one exists
+    if args.force and checkout.exists() and not staged:
         shutil.rmtree(checkout)
-    # a retry starts incomplete: the marker comes back only after the last step
-    (checkout / COMPLETE_MARKER).unlink(missing_ok=True)
+    if not staged:
+        # a retry starts incomplete: the marker comes back only after the last step
+        (checkout / COMPLETE_MARKER).unlink(missing_ok=True)
     for number, (label, command) in enumerate(plan, 1):
         print(say(lang, "toolchain.plan_step", n=number, total=len(plan), text=label), flush=True)
         if command == [FETCH]:
-            fetch_pinned(runner, lock, checkout, label, lang)
+            if bundle:
+                import_bundle(bundle, lock, checkout, lang, replace=bool(args.force))
+            else:
+                fetch_pinned(runner, lock, checkout, label, lang)
         elif command == [VERIFY]:
             absent_files = missing_files(checkout / "cpctelera")
             if absent_files:
@@ -1296,7 +1544,7 @@ def cmd_version(args, root: Path, lang: str, runner: Runner) -> int:
 # ------------------------------------------------------------------- help
 
 HELP_GROUPS = (
-    ("helptext.group_setup", ("doctor", "install-deps", "install-toolchain", "install-cli")),
+    ("helptext.group_setup", ("doctor", "install-deps", "install-toolchain", "export-bundle", "install-cli")),
     ("helptext.group_projects", ("new", "config", "update", "rollback", "projects", "remote")),
     ("helptext.group_build", ("build", "test", "run", "emulator")),
     ("helptext.group_other", ("toolchains", "clean-toolchains", "uninstall-cli", "path", "version", "help")),
@@ -1466,7 +1714,12 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     install = sub.add_parser("install-toolchain", help=say(lang, "help.install"))
     install.add_argument("--dry-run", action="store_true", help=say(lang, "help.install_dry"))
     install.add_argument("--force", action="store_true", help=say(lang, "help.install_force"))
+    install.add_argument("--bundle", metavar="FILE", help=say(lang, "help.install_bundle"))
     install.set_defaults(func=cmd_install)
+
+    export = sub.add_parser("export-bundle", help=say(lang, "help.export_bundle"))
+    export.add_argument("--output", metavar="DIR", help=say(lang, "help.export_output"))
+    export.set_defaults(func=cmd_export_bundle)
 
     sub.add_parser("toolchains", help=say(lang, "help.toolchains")).set_defaults(func=cmd_toolchains)
 
