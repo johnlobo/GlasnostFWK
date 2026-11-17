@@ -1,6 +1,6 @@
 # Estado operativo del proyecto
 
-Actualizado: 2026-11-12 UTC. Este documento contiene el estado vigente y los
+Actualizado: 2026-11-17 UTC. Este documento contiene el estado vigente y los
 próximos pasos. El [historial por fases](docs/design/project-history.md) conserva
 las decisiones, mediciones y validaciones antiguas sin reescribirlas. Una casilla
 abierta en ese historial no implica una tarea pendiente hoy.
@@ -68,6 +68,9 @@ abierta en ese historial no implica una tarea pendiente hoy.
   al resolver los conflictos con la reorganización; validación local y CI correctas.
   El CI compila BluePixel fijado en `c5e2437b4db4eb543a47b90fa8fccb90c448664f` (API 1.4),
   incorporado desde `b8e50e5` de `main` y comprobado con esta entrega en CI.
+- `glasnost publish`: compila y publica el DSK y los símbolos en la biblioteca web mediante
+  `cpc-publish` (fuera del repositorio, en `tools/cpc-publish` del workspace), que imprime el
+  enlace a BluePixel web con `?disk=&sym=&run=`. Pruebas en `tests/test_glasnost.py`.
 - CLI con toolchain fijada, creación/configuración de proyectos, repositorio y remoto
   propios, actualización con migraciones y rollback. Formato de proyecto actual: 2.
 - Toolchain fijada: CPCTelera Next `11e61fe30175ad7b328de9bcd859c46fd61b26a5`.
