@@ -906,6 +906,55 @@ def cmd_run(args, root: Path, lang: str, runner: Runner) -> int:
                   cwd=root, env=sdk_env(toolchain), check=False).returncode
 
 
+PUBLISH_TOOL = Path("tools") / "cpc-publish" / "cpc-publish"   # next to the SDK, in the workspace tools folder
+
+
+def publish_tool(root: Path, lang: str) -> Path:
+    """cpc-publish: GLASNOST_PUBLISH_TOOL, else <workspace>/tools/cpc-publish/cpc-publish."""
+    configured = os.environ.get("GLASNOST_PUBLISH_TOOL", "").strip()
+    tool = Path(configured).expanduser() if configured else root.parent / PUBLISH_TOOL
+    if not tool.is_file():
+        raise CliError(say(lang, "pub.no_tool", path=tool))
+    return tool
+
+
+def cmd_publish(args, root: Path, lang: str, runner: Runner) -> int:
+    """Build, then hand the DSK and its symbols to cpc-publish (web library + BluePixel link)."""
+    toolchain = resolve_toolchain(root, load_lock(root, lang), lang)
+    folder = current_project(args)
+    tokens = list(args.rest)  # [example] [-- cpc-publish options]
+    example = tokens.pop(0) if tokens and not tokens[0].startswith("-") else None
+    extra = tokens[1:] if tokens[:1] == ["--"] else tokens
+    tool = publish_tool(root, lang)
+    if folder:
+        if example:
+            raise CliError(say(lang, "proj.no_examples", path=folder))
+        warn_shared_repo(folder, lang)
+        code = build_project(folder, toolchain, root, lang, runner)
+        manifest = json.loads((folder / "glasnost.manifest.json").read_text(encoding="utf-8"))
+        name, build_dir = manifest["name"], folder / "build"
+        title = json.loads((folder / gp.PROJECT_FILE).read_text(encoding="utf-8")).get("title") or name
+    else:
+        if not example:
+            raise CliError(say(lang, "cmd.publish_needs_example"))
+        check_examples(root, [example], lang)
+        code = runner([sys.executable, "tools/build/build_examples.py", example],
+                      cwd=root, env=sdk_env(toolchain), check=False).returncode
+        manifest_file = root / "examples" / example / "glasnost.manifest.json"
+        name = json.loads(manifest_file.read_text(encoding="utf-8")).get("name", example)
+        build_dir, title = root / "build" / name, name
+    if code != 0:
+        return code
+    dsk = build_dir / f"{name}.dsk"
+    if not dsk.is_file():
+        raise CliError(say(lang, "pub.no_image", path=dsk))
+    command = [str(tool), name, str(dsk), "--run", f'run"{name[:8]}', "--title", title]
+    noi = build_dir / "obj" / f"{name}.noi"
+    if noi.is_file():
+        command += ["--sym", str(noi)]
+    return runner([*command, *extra], cwd=root, check=False).returncode
+
+
 # ------------------------------------------------------------- emulator
 
 def emulator_given(extra: Sequence[str]) -> bool:
@@ -1546,7 +1595,7 @@ def cmd_version(args, root: Path, lang: str, runner: Runner) -> int:
 HELP_GROUPS = (
     ("helptext.group_setup", ("doctor", "install-deps", "install-toolchain", "export-bundle", "install-cli")),
     ("helptext.group_projects", ("new", "config", "update", "rollback", "projects", "remote")),
-    ("helptext.group_build", ("build", "test", "run", "emulator")),
+    ("helptext.group_build", ("build", "test", "run", "publish", "emulator")),
     ("helptext.group_other", ("toolchains", "clean-toolchains", "uninstall-cli", "path", "version", "help")),
 )
 HELP_EXAMPLES = (
@@ -1795,6 +1844,12 @@ def build_parser(lang: str) -> argparse.ArgumentParser:
     run.add_argument("rest", nargs=argparse.REMAINDER, metavar=say(lang, "help.meta_rest"),
                      help=say(lang, "help.rest"))
     run.set_defaults(func=cmd_run)
+
+    publish = sub.add_parser("publish", help=say(lang, "help.publish"))
+    publish.add_argument("--project", metavar="DIR", help=say(lang, "help.project"))
+    publish.add_argument("rest", nargs=argparse.REMAINDER, metavar=say(lang, "help.meta_rest"),
+                         help=say(lang, "help.publish_rest"))
+    publish.set_defaults(func=cmd_publish)
 
     emulator = sub.add_parser("emulator", help=say(lang, "help.emulator"))
     emulator.add_argument("--set", metavar="PATH", help=say(lang, "help.emulator_set"))

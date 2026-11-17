@@ -573,6 +573,58 @@ class Commands(unittest.TestCase):
         self.sdk.cli("run", "minimal", runner=self.recorder)
         self.assertEqual(self.calls[-1][0][1:], ["tools/glasnost/run_example.py", "minimal"])
 
+    def _publish_setup(self, with_symbols=True):
+        tool = self.sdk.tmp / "cpc-publish"
+        tool.write_text("#!/bin/sh\n", encoding="utf-8")
+        build = self.sdk.root / "build" / "minimal"
+        (build / "obj").mkdir(parents=True)
+        (build / "minimal.dsk").write_bytes(b"MV - CPC")
+        if with_symbols:
+            (build / "obj" / "minimal.noi").write_text("DEF _main 0x200\n", encoding="utf-8")
+        return tool, build
+
+    def test_publish_builds_then_calls_cpc_publish_with_disc_symbols_and_run(self):
+        tool, build = self._publish_setup()
+        code, _, err = self.sdk.cli("publish", "minimal", "--", "--base-url", "https://h", runner=self.recorder,
+                                    extra_env={"GLASNOST_PUBLISH_TOOL": str(tool)})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.calls[0][0][1:], ["tools/build/build_examples.py", "minimal"])
+        self.assertEqual(self.calls[1][0], [str(tool), "minimal", str(build / "minimal.dsk"), "--run", 'run"minimal',
+                                            "--title", "minimal", "--sym", str(build / "obj" / "minimal.noi"),
+                                            "--base-url", "https://h"])
+
+    def test_publish_without_symbols_omits_sym(self):
+        tool, _ = self._publish_setup(with_symbols=False)
+        self.sdk.cli("publish", "minimal", runner=self.recorder, extra_env={"GLASNOST_PUBLISH_TOOL": str(tool)})
+        self.assertNotIn("--sym", self.calls[1][0])
+
+    def test_publish_stops_when_the_build_fails(self):
+        tool, _ = self._publish_setup()
+        def failing(command, **kwargs):
+            self.calls.append((list(command), kwargs))
+            return subprocess.CompletedProcess(command, 3)
+        code, _, _ = self.sdk.cli("publish", "minimal", runner=failing, extra_env={"GLASNOST_PUBLISH_TOOL": str(tool)})
+        self.assertEqual(code, 3)
+        self.assertEqual(len(self.calls), 1, "nothing is published after a failed build")
+
+    def test_publish_explains_a_missing_tool_or_image(self):
+        code, _, err = self.sdk.cli("publish", "minimal", runner=self.recorder,
+                                    extra_env={"GLASNOST_PUBLISH_TOOL": str(self.sdk.tmp / "nope")})
+        self.assertEqual(code, 1)
+        self.assertIn("cpc-publish not found", err)
+        self.assertEqual(self.calls, [])
+        tool = self.sdk.tmp / "cpc-publish"
+        tool.write_text("", encoding="utf-8")
+        code, _, err = self.sdk.cli("publish", "minimal", runner=self.recorder, extra_env={"GLASNOST_PUBLISH_TOOL": str(tool)})
+        self.assertEqual(code, 1)
+        self.assertIn("did not produce", err)
+
+    def test_publish_needs_an_example_outside_a_project(self):
+        tool, _ = self._publish_setup()
+        code, _, err = self.sdk.cli("publish", runner=self.recorder, extra_env={"GLASNOST_PUBLISH_TOOL": str(tool)})
+        self.assertEqual(code, 1)
+        self.assertIn("glasnost publish platformer", err)
+
     def test_commands_exit_with_the_exit_code_of_the_underlying_tool(self):
         def failing(command, **kwargs):
             return subprocess.CompletedProcess(command, 5)
