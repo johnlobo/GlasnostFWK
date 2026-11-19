@@ -599,7 +599,7 @@ class Cycle(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), mock.patch.dict(os.environ, dict(GIT_ENV, **self.sdk.env)):
             os.chdir(self.folder)
-            glasnost.main(["--lang", "es", "update", "--dry-run"], root=self.sdk.root, runner=Recorder())
+            glasnost.main(["--lang", "es", "update", "--dry-run"], root=self.sdk.root, runner=Recorder(), interactive=False)
             os.chdir(ROOT)
         self.assertIn("Actualización de demo", out.getvalue())
 

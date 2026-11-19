@@ -63,7 +63,8 @@ abierta en ese historial no implica una tarea pendiente hoy.
   de error de AMSDOS (disco protegido o lleno) no tiene prueba automática.
 - `glasnost new` solo pregunta por el juego de ejemplo con `args.interactive`
   (antes miraba el tty directamente y `make test` lanzado desde un terminal se
-  quedaba esperando). Los tests de miembros sparse de `test_glasnost_bundle` se
+  quedaba esperando). Todas las llamadas a `glasnost.main` de `tests/` pasan
+  `interactive=` (lo vigila `TestsNeverAsk`). Los tests de miembros sparse de `test_glasnost_bundle` se
   saltan si el `tar` del sistema no los genera (bsdtar en macOS).
 - `fwk_system_wait_frame` (`cpct_waitVSYNC`) vuelve varias veces mientras dura el
   pulso VSYNC; un bucle que necesite una iteración por frame debe esperar a que

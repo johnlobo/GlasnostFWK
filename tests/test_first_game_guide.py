@@ -61,7 +61,7 @@ def run(argv, cwd=None, env=None):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
                 mock.patch.dict(os.environ, env or {}, clear=False):
             try:
-                code = glasnost.main(["--lang", "en", *argv], root=ROOT, runner=tail_runner(out))
+                code = glasnost.main(["--lang", "en", *argv], root=ROOT, runner=tail_runner(out), interactive=False)
             except SystemExit as exit_:
                 code = exit_.code
     finally:

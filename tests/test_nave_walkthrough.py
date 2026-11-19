@@ -40,7 +40,7 @@ def run(args, cwd=None, env=None):
         os.environ.update(env or {})
         with redirect_stdout(out), redirect_stderr(err):
             try:
-                code = glasnost.main(["--lang", "en", *args])
+                code = glasnost.main(["--lang", "en", *args], interactive=False)
             except SystemExit as exit_:
                 code = exit_.code
     finally:

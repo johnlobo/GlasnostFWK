@@ -399,7 +399,7 @@ class Resolution(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
                 mock.patch.dict(os.environ, dict(sdk.env, CPCT_NEXT_PATH=str(other))):
-            code = glasnost.main(["--lang", "en", "path"], root=sdk.root)
+            code = glasnost.main(["--lang", "en", "path"], root=sdk.root, interactive=False)
         self.assertEqual((code, out.getvalue().strip()), (0, str(other)))
 
     def test_env_override_that_is_incomplete_is_rejected(self):
@@ -409,7 +409,7 @@ class Resolution(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
                 mock.patch.dict(os.environ, dict(sdk.env, CPCT_NEXT_PATH=str(empty))):
-            code = glasnost.main(["--lang", "en", "path"], root=sdk.root)
+            code = glasnost.main(["--lang", "en", "path"], root=sdk.root, interactive=False)
         self.assertEqual(code, 1)
         self.assertIn("incomplete", err.getvalue())
         self.assertIn("cpctelera.lib", err.getvalue())
@@ -961,6 +961,30 @@ class Shim(unittest.TestCase):
         ignored = subprocess.run(["git", "check-ignore", ".toolchain/cpctelera-next/x", "projects/p"],
                                  cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(sorted(ignored.stdout.split()), [".toolchain/cpctelera-next/x", "projects/p"])
+
+
+class TestsNeverAsk(unittest.TestCase):
+    """Run from a terminal, glasnost.main() defaults to interactive and a question waits on
+    the keyboard behind redirected output: `make test` hung that way on macOS. Every call
+    from the tests and smokes must pass interactive= explicitly."""
+
+    def test_every_glasnost_main_call_in_tests_passes_interactive(self):
+        missing = []
+        for path in sorted((ROOT / "tests").glob("*.py")):
+            if path == Path(__file__).resolve():
+                continue   # this test names the call in its own text
+            source = path.read_text(encoding="utf-8")
+            start = 0
+            while (start := source.find("glasnost.main(", start)) != -1:
+                end, depth = start + len("glasnost.main("), 1
+                while depth:
+                    depth += {"(": 1, ")": -1}.get(source[end], 0)
+                    end += 1
+                if "interactive" not in source[start:end]:
+                    line = source.count("\n", 0, start) + 1
+                    missing.append(f"{path.name}:{line}")
+                start = end
+        self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":

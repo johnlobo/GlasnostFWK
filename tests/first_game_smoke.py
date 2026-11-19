@@ -69,7 +69,7 @@ def best_screenshot() -> bytes:
 def apply_steps(folder: Path) -> None:
     for step in ("step1", "step2", "step3"):
         shutil.copytree(GUIDE / step, folder, dirs_exist_ok=True, copy_function=shutil.copy)
-    code = glasnost.main(["--lang", "en", "config", "--project", str(folder)])
+    code = glasnost.main(["--lang", "en", "config", "--project", str(folder)], interactive=False)
     if code != 0:
         raise SystemExit(code)
 
@@ -85,17 +85,17 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="glasnost-guide-") as tmp:
         if args.example:
-            code = glasnost.main(["--lang", "en", "build", "nave"])
+            code = glasnost.main(["--lang", "en", "build", "nave"], interactive=False)
             if code != 0:
                 return code
             folder, built = ROOT / "examples" / "nave", ROOT / "build" / "nave"
         else:
-            code = glasnost.main(["--lang", "en", "new", "nave", "--dir", tmp, "--no-git", "--no-build"])
+            code = glasnost.main(["--lang", "en", "new", "nave", "--dir", tmp, "--no-git", "--no-build"], interactive=False)
             if code != 0:
                 return code
             folder = Path(tmp) / "nave"
             apply_steps(folder)
-            code = glasnost.main(["--lang", "en", "build", "--project", str(folder)])
+            code = glasnost.main(["--lang", "en", "build", "--project", str(folder)], interactive=False)
             if code != 0:
                 return code
             built = folder / "build"
