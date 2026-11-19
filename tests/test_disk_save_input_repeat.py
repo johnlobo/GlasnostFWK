@@ -28,6 +28,10 @@ class DiskSaveTests(unittest.TestCase):
         source = (ROOT / "framework/src/resources/disk.s").read_text(encoding="ascii")
         init = source.split("fwk_disk_init::", 1)[1].split("ret", 1)[0]
         self.assertIn("_fwk_disk_firmware_vector", init)
+        self.assertIn("ld (_fwk_disk_ready), a", init)
+        save = source.split("fwk_disk_save::", 1)[1].split("_save_refused:", 1)[0]
+        self.assertIn("ld a, (_fwk_disk_ready)", save)
+        self.assertIn("ld (_cpct_mode_rom_status), a", save)
         self.assertIn("fwk_disk_save::", source)
         self.assertIn("FWK_DISK_AMSDOS_MESSAGES", source)
         api = (ROOT / "docs/reference/architecture-and-api.md").read_text(encoding="utf-8")

@@ -73,7 +73,7 @@ especiales, pero no instala capacidades del proyecto.
   conjunto mantenido. Mueva cursores con `fwk_input_repeat` y acciones de un
   solo disparo con `fwk_input_pressed`.
 - `fwk_input_set_repeat`: `B=delay`, `C=interval`, ambos 1..255 en llamadas a
-  `fwk_input_update` (frames si se llama una vez por frame). Por defecto 15 y 4.
+  `fwk_input_update` (frames si se llama una vez por frame; 0 equivale a 256). Por defecto 15 y 4.
   Altera `A`. `fwk_input_init` conserva estos valores.
 
 ### Entity manager ECS
@@ -277,6 +277,7 @@ un proyecto con `transparency.pen=0`. La tabla se instala en `0x0100` mediante
 - `fwk_text_draw_clear`: `IY=ASCII NUL`, `HL=vídeo`, `B=celdas 1..32`,
   `C=byte de relleno` (0 para pen 0). Rellena `B*2` bytes por 9 líneas y dibuja
   encima: sustituye un texto por otro más corto. Altera `AF,BC,DE,HL,IX,IY`.
+  Ambas solo existen en `ui/text.s` (Mode 0); `ui/text_mode1.s` no las tiene.
 
 El índice de color selecciona la tabla original; no equivale necesariamente al
 número de pen de la paleta activa y el pen 14 se usa como sombra. No hay
@@ -373,7 +374,10 @@ ocultas del núcleo con 128 KB y reduce el riesgo de ejecutar código paginado.
   se paran). El firmware reaplica modo y tintas en cada frame, por eso el
   descriptor le da los del juego. Requiere que el programa no haya escrito la
   RAM del firmware (`0xA700..0xBFFF`) salvo la pila del perfil. No es
-  reentrante. Validación: `framework/validations/disksave`.
+  reentrante. Datos y buffer no deben solaparse. `fwk_disk_init` debe ejecutarse
+  con el firmware activo; si no, la llamada devuelve carry limpio. Al volver
+  actualiza también `_cpct_mode_rom_status` de CPCtelera. Validación:
+  `framework/validations/disksave`.
 
 ### ZX7B
 

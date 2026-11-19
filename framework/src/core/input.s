@@ -38,7 +38,8 @@ fwk_input_set_bindings::
     ret
 
 ;; fwk_input_set_repeat
-;; In: B=delay, C=interval, both in fwk_input_update calls (frames), 1..255.
+;; In: B=delay, C=interval, both in fwk_input_update calls (frames), 1..255
+;; (0 acts as 256).
 ;; Default 15 and 4. Out: none. Modified: A.
 fwk_input_set_repeat::
     ld a, b

@@ -509,7 +509,7 @@ call fwk_text_draw_small_u8</code></pre>
         <li><code>fwk_text_draw_small_digit</code>: <code>A=0..9</code>, <code>HL=vídeo</code>; carry indica dígito inválido.</li>
         <li><code>fwk_text_draw_small_u8</code>: <code>A=0..255</code>, <code>HL=vídeo</code>; imprime decimal sin ceros iniciales.</li>
         <li><code>fwk_text_draw_centered</code>: <code>IY=cadena NUL</code>, <code>HL=vídeo del byte 0 de la fila</code>. Centra el texto en <code>fwk_video_width_bytes</code> (columna <code>ancho/2 - longitud</code>, porque cada glifo ocupa 2 bytes).</li>
-        <li><code>fwk_text_draw_clear</code>: <code>IY=cadena NUL</code>, <code>HL=vídeo</code>, <code>B=celdas a borrar 1..32</code>, <code>C=byte de relleno</code> (0 para pen 0). Rellena <code>B*2</code> bytes por 9 líneas y dibuja el texto encima, así que <code>ON</code> sustituye a <code>OFF</code> sin restos.</li>
+        <li><code>fwk_text_draw_clear</code>: <code>IY=cadena NUL</code>, <code>HL=vídeo</code>, <code>B=celdas a borrar 1..32</code>, <code>C=byte de relleno</code> (0 para pen 0). Rellena <code>B*2</code> bytes por 9 líneas y dibuja el texto encima, así que <code>ON</code> sustituye a <code>OFF</code> sin restos. Esta función y la anterior son solo de Mode 0 (<code>ui/text.s</code>).</li>
       </ul>
       <p>Los caracteres no admitidos dejan una celda en blanco. Todas las rutinas dibujan sin clipping: el consumidor debe mantener cada sprite dentro de la pantalla. El renderer recolorea en un buffer interno de 18 bytes y no es reentrante. Como el enmascarado conserva el fondo, para sustituir texto ya dibujado hay que restaurar o limpiar primero su rectángulo.</p>
     </article>
@@ -638,7 +638,7 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
       <ul>
         <li><code>fwk_disk_save</code>: <code>IX=descriptor</code>. Carry si el fichero quedó escrito; carry limpio si faltó <code>fwk_disk_init</code>, si datos o buffer salen de <code>0x4000..0xA6FF</code> o si AMSDOS falló (sin disco, lleno o protegido). Altera <code>AF,BC,DE,HL</code> y conserva <code>IX,IY</code>.</li>
       </ul>
-      <p>Mientras escribe, la IRQ del juego no corre: la música y <code>fwk_system_frame_count</code> se paran. El firmware reaplica modo y tintas en cada frame, por eso el descriptor le da los del juego y la pantalla no cambia. Los avisos de AMSDOS quedan apagados, de modo que un error devuelve carry limpio en lugar de esperar una tecla. Un fichero anterior con el mismo nombre queda como <code>.BAK</code>. El fichero lleva cabecera AMSDOS y <code>fwk_disk_load</code> lo lee en el siguiente arranque. En el emulador web BluePixel el fichero se conserva entre visitas. La validación <code>disksave</code> lo comprueba en BluePixel.</p>
+      <p>Mientras escribe, la IRQ del juego no corre: la música y <code>fwk_system_frame_count</code> se paran. El firmware reaplica modo y tintas en cada frame, por eso el descriptor le da los del juego y la pantalla no cambia. Los avisos de AMSDOS quedan apagados, de modo que un error devuelve carry limpio en lugar de esperar una tecla. Un fichero anterior con el mismo nombre queda como <code>.BAK</code>. Datos y buffer no deben solaparse. El fichero lleva cabecera AMSDOS y <code>fwk_disk_load</code> lo lee en el siguiente arranque. En el emulador web BluePixel el fichero se conserva entre visitas. La validación <code>disksave</code> lo comprueba en BluePixel.</p>
     </article>
 
     <article class="api" data-module="resources/zx7b.s">

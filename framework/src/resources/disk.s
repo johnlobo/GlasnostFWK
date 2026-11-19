@@ -1,6 +1,7 @@
 ;; Firmware-backed DSK loader and writer. fwk_disk_init runs before fwk_system_init disables firmware.
 .module fwk_disk
 .include "resources/disk.inc"
+.globl _cpct_mode_rom_status
 
 .area _CODE
 
@@ -13,6 +14,8 @@ fwk_disk_init::
     ld de, #_fwk_disk_firmware_vector
     ld bc, #3
     ldir
+    ld a, #1
+    ld (_fwk_disk_ready), a
     ei
     ld c, #FWK_DISK_AMSDOS_ROM
     ld de, #FWK_DISK_POOL_LOW
@@ -54,6 +57,7 @@ _fwk_disk_game_vector:     .ds 3
 _fwk_disk_save_copy:       .ds FWK_DISK_SAVE_SIZE
 _fwk_disk_messages:        .db 0
 _fwk_disk_result:          .db 0
+_fwk_disk_ready:           .db 0     ;; 1 once fwk_disk_init kept the vector
 
 .area _CODE
 
@@ -69,7 +73,10 @@ _fwk_disk_result:          .db 0
 ;; The game's interrupt (music, frame counter) stops during the write; the
 ;; firmware keeps the descriptor's mode and inks so the screen does not change.
 ;; Not reentrant. Mode 0..2 and the ROMs-off state are set on the Gate Array
-;; on return.
+;; (and in CPCtelera's _cpct_mode_rom_status) on return. fwk_disk_init must run
+;; while the firmware is on, before fwk_project_init. Data and buffer must not
+;; overlap. Firmware entries are the RAM jumpblock: they map the ROMs
+;; themselves, so the call works with both ROMs off.
 fwk_disk_save::
     push ix
     push iy
@@ -78,9 +85,9 @@ fwk_disk_save::
     ld de, #_fwk_disk_save_copy
     ld bc, #FWK_DISK_SAVE_SIZE
     ldir
-    ld a, (_fwk_disk_firmware_vector)
-    cp #0xC3                       ;; JP: fwk_disk_init kept the vector
-    jp nz, _save_refused
+    ld a, (_fwk_disk_ready)
+    or a
+    jp z, _save_refused
     ld hl, (_fwk_disk_save_copy + FWK_DISK_SAVE_DATA)
     ld de, (_fwk_disk_save_copy + FWK_DISK_SAVE_LENGTH)
     call _fwk_disk_check_area
@@ -165,6 +172,7 @@ _save_restore:
     ld a, (_fwk_disk_save_copy + FWK_DISK_SAVE_MODE)
     and #3
     or #0x8C
+    ld (_cpct_mode_rom_status), a  ;; keep CPCtelera's copy in step
     ld bc, #0x7F00
     out (c), a
     ei
