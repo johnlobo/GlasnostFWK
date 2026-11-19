@@ -33,6 +33,7 @@ el smoke general de `experimental` solo comprueba el avance de frames.
 `disksave` y `uiinput` se comprueban con BluePixel headless:
 
 ```sh
+python3 tools/build/build_examples.py disksave uiinput   # DSK propio de cada uno
 python3 tests/bluepixel_validations_smoke.py --emulator BIN --rom-dir DIR
 ```
 Los manifiestos se llaman `glasnost.manifest.json`.
