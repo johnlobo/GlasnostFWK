@@ -12,8 +12,10 @@ Los ejemplos públicos y juegos para aprender están en `../../examples/`.
 | `ecsrender` | Escenario de composición y comparación de VRAM con el modelo. |
 | `perf` | Banco de rendimiento para `tools/dev/measure_perf.py`. |
 | `experimental` | Perfil 160×288; la temporización CRTC sigue sin validación en hardware. |
+| `disksave` | `fwk_disk_save` con el firmware apagado: dos escrituras, `.BAK` y área rechazada. |
+| `uiinput` | Texto centrado y con borrado, e intervalos de `fwk_input_repeat`. |
 
-Desde la raíz, `make validations` construye los siete. Cada carpeta admite
+Desde la raíz, `make validations` construye los nueve. Cada carpeta admite
 `make`, `make run` y `make clean`; los resultados están en `build/<nombre>/`
 y se copian junto a sus fuentes al usar el Makefile local.
 
@@ -28,4 +30,9 @@ python3 tests/emulator_smoke.py ecsmanager ecscollision ecsanimation ecsrender v
 La compilación, las pruebas host, la ejecución emulada y las mediciones son
 comprobaciones distintas. `perf` tiene su herramienta de medición específica;
 el smoke general de `experimental` solo comprueba el avance de frames.
+`disksave` y `uiinput` se comprueban con BluePixel headless:
+
+```sh
+python3 tests/bluepixel_validations_smoke.py --emulator BIN --rom-dir DIR
+```
 Los manifiestos se llaman `glasnost.manifest.json`.

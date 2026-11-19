@@ -18,6 +18,7 @@ class ProgramCatalogTests(unittest.TestCase):
         validations = set(program_names(ROOT, "validations"))
         self.assertEqual(validations, {
             "video", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "perf", "experimental",
+            "disksave", "uiinput",
         })
         self.assertEqual(len(examples), 16)
         self.assertIn("text", examples)
@@ -37,7 +38,8 @@ class ProgramCatalogTests(unittest.TestCase):
         tapes = set(program_names(ROOT, media="cdt"))
         self.assertNotIn("perf", tapes)
         self.assertNotIn("diskload", tapes)
-        self.assertEqual(len(tapes), len(program_names(ROOT)) - 2)
+        self.assertNotIn("disksave", tapes)
+        self.assertEqual(len(tapes), len(program_names(ROOT)) - 3)
 
     def test_ambiguous_names_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

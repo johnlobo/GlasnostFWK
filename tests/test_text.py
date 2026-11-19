@@ -45,6 +45,8 @@ class TextModuleTests(unittest.TestCase):
             "fwk_text_draw::",
             "fwk_text_draw_small_digit::",
             "fwk_text_draw_small_u8::",
+            "fwk_text_draw_centered::",
+            "fwk_text_draw_clear::",
         ):
             self.assertIn(symbol, source)
         self.assertIn("sub #39", source)  # ASCII digits -> frames 9..18

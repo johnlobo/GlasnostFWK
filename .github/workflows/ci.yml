@@ -133,6 +133,12 @@ jobs:
             --rom-dir .deps/bluepixel/web/roms \
             --json build/bluepixel-nave.json
 
+      - name: Test disksave and uiinput in BluePixel
+        run: |
+          python3 tests/bluepixel_validations_smoke.py \
+            --emulator .deps/bluepixel/build/bluepixel-headless \
+            --rom-dir .deps/bluepixel/web/roms
+
       - name: Upload deterministic nave checks and timings
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

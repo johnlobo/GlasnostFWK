@@ -1,6 +1,6 @@
 # Estado operativo del proyecto
 
-Actualizado: 2026-11-17 UTC. Este documento contiene el estado vigente y los
+Actualizado: 2026-11-19 UTC. Este documento contiene el estado vigente y los
 próximos pasos. El [historial por fases](docs/design/project-history.md) conserva
 las decisiones, mediciones y validaciones antiguas sin reescribirlas. Una casilla
 abierta en ese historial no implica una tarea pendiente hoy.
@@ -53,15 +53,24 @@ abierta en ese historial no implica una tarea pendiente hoy.
   documentan en las fases 10 y 11 del historial; no se debe retomar la antigua fase 6.
 - 15 ejemplos públicos en `examples/`; `board` ahora se llama `text`.
   `nave` es el resultado de la guía inicial y `platformer` la referencia avanzada.
-- 7 programas internos en `framework/validations/`: `video`, `ecsmanager`,
-  `ecscollision`, `ecsanimation`, `ecsrender`, `perf` y `experimental`.
+- 9 programas internos en `framework/validations/`: `video`, `ecsmanager`,
+  `ecscollision`, `ecsanimation`, `ecsrender`, `perf`, `experimental`,
+  `disksave` y `uiinput`.
+- Llevado desde catdoku: `fwk_disk_save` (escribir un fichero AMSDOS con el
+  firmware apagado), `fwk_input_repeat`/`fwk_input_set_repeat` (repetición de
+  tecla) y `fwk_text_draw_centered`/`fwk_text_draw_clear`. Comprobados en
+  BluePixel por `tests/bluepixel_validations_smoke.py` (también en CI). La ruta
+  de error de AMSDOS (disco protegido o lleno) no tiene prueba automática.
+- `fwk_system_wait_frame` (`cpct_waitVSYNC`) vuelve varias veces mientras dura el
+  pulso VSYNC; un bucle que necesite una iteración por frame debe esperar a que
+  cambie `fwk_system_frame_count`. Documentado; sin corregir.
 - `vertical`, su smoke y su guía específica se han eliminado. Su cobertura de
   recogida/victoria no se atribuye a otros programas.
 - `tools/build/program_catalog.py` alimenta Makefile, CLI, CI, DSK y paquete;
   los programas utilizan `glasnost.manifest.json`; la lectura de `example.json`
   sigue disponible para consumidores y proyectos antiguos, rechazando pares ambiguos.
 - `make examples` construye ejemplos públicos; `make validations`, los internos;
-  `make test` y `make release` construyen ambos y el DSK común. `diskload` y `perf`
+  `make test` y `make release` construyen ambos y el DSK común. `diskload`, `disksave` y `perf`
   declaran solo DSK. El ZIP separa ejemplos y validaciones.
 - BluePixel headless integrado desde `07dc833` de `main`: adaptador stdio, smoke
   determinista de `nave` y ejecución en CI. El código y la documentación se conservan
