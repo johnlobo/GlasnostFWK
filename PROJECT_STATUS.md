@@ -1,6 +1,6 @@
 # Estado operativo del proyecto
 
-Actualizado: 2026-11-19 UTC. Este documento contiene el estado vigente y los
+Actualizado: 2026-11-20 UTC. Este documento contiene el estado vigente y los
 próximos pasos. El [historial por fases](docs/design/project-history.md) conserva
 las decisiones, mediciones y validaciones antiguas sin reescribirlas. Una casilla
 abierta en ese historial no implica una tarea pendiente hoy.
@@ -61,6 +61,10 @@ abierta en ese historial no implica una tarea pendiente hoy.
   tecla) y `fwk_text_draw_centered`/`fwk_text_draw_clear`. Comprobados en
   BluePixel por `tests/bluepixel_validations_smoke.py` (también en CI). La ruta
   de error de AMSDOS (disco protegido o lleno) no tiene prueba automática.
+- `glasnost new` solo pregunta por el juego de ejemplo con `args.interactive`
+  (antes miraba el tty directamente y `make test` lanzado desde un terminal se
+  quedaba esperando). Los tests de miembros sparse de `test_glasnost_bundle` se
+  saltan si el `tar` del sistema no los genera (bsdtar en macOS).
 - `fwk_system_wait_frame` (`cpct_waitVSYNC`) vuelve varias veces mientras dura el
   pulso VSYNC; un bucle que necesite una iteración por frame debe esperar a que
   cambie `fwk_system_frame_count`. Documentado; sin corregir.
