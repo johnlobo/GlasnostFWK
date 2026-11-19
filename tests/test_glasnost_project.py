@@ -584,7 +584,7 @@ class NewCommand(unittest.TestCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
                 mock.patch.dict(os.environ, dict(GIT_ENV, **self.sdk.env)):
             glasnost.main(["--lang", "es", "new", "demo", "--no-build", "--no-git", "--dir", str(self.base)],
-                          root=self.sdk.root)
+                          root=self.sdk.root, interactive=False)
         self.assertIn("creado", out.getvalue())
 
 

@@ -55,7 +55,7 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="glasnost-smoke-") as tmp:
         extra = ["--extended-memory"] if args.extended_memory else []
-        code = glasnost.main(["--lang", "en", "new", "smoke", "--dir", tmp, "--no-git", *extra])
+        code = glasnost.main(["--lang", "en", "new", "smoke", "--dir", tmp, "--no-git", *extra], interactive=False)
         if code != 0:
             return code
         folder = Path(tmp) / "smoke"
