@@ -2,6 +2,7 @@
 .module fwk_video
 
 .include "cpctelera.h.s"
+FWK_VIDEO_EMIT_TABLES = 1
 .include "video_config.inc"
 .globl cpct_setVideoMode_asm
 .globl cpct_setCRTCReg_asm
@@ -10,6 +11,11 @@
 .area _DATA
 fwk_video_width_bytes:: .db FWK_VIDEO_WIDTH_BYTES
 fwk_video_height:: .dw FWK_VIDEO_HEIGHT
+.if FWK_VIDEO_RASTER_BANK_WRAP_2K
+;; Physical byte offset within each 2 KiB raster bank. Set only at a CRTC
+;; origin commit; the generated line table stays at its fixed profile base.
+fwk_video_origin_bytes:: .dw 0
+.endif
 
 .area _CODE
 
@@ -56,6 +62,29 @@ fwk_video_get_ptr::
     ld e, (hl)
     inc hl
     ld d, (hl)
+.if FWK_VIDEO_RASTER_BANK_WRAP_2K
+    ld a, d
+    and #0xF8
+    push af
+    ex de, hl
+    push bc
+    ld bc, (fwk_video_origin_bytes)
+    add hl, bc
+    pop bc
+    ld a, l
+    add c
+    ld l, a
+    jr nc, _fwk_video_ptr_wrap
+    inc h
+_fwk_video_ptr_wrap:
+    pop af
+    ld d, a
+    ld a, h
+    and #7
+    or d
+    ld h, a
+    ret
+.else
     ld a, e
     add c
     ld e, a
@@ -64,6 +93,7 @@ fwk_video_get_ptr::
 _fwk_video_ptr_ready:
     ex de, hl
     ret
+.endif
 
 ;; fwk_video_plot_byte
 ;; In: HL=y, C=x byte, A=packed video byte. Out: byte written.

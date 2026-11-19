@@ -23,6 +23,15 @@ def load_profile(path: Path) -> dict:
         raise ValueError(f"Mode {profile['mode']} requires width_pixels == width_bytes * {pixels_per_byte}")
     if profile["height_lines"] > 256 and profile.get("coordinate_bits", 8) < 16:
         raise ValueError("height above 256 requires 16-bit coordinates")
+    wrap = profile.get("raster_bank_wrap_2k", False)
+    if not isinstance(wrap, bool):
+        raise ValueError("raster_bank_wrap_2k must be a boolean")
+    if wrap:
+        windows = profile["memory_windows"]
+        if len(windows) != 1 or number(windows[0]["start"]) != 0xC000 or number(windows[0]["end"]) != 0xFFFF:
+            raise ValueError("raster_bank_wrap_2k requires the 0xC000..0xFFFF video page")
+        if any(segment.raster_stride != 0x800 for segment in segments(profile)):
+            raise ValueError("raster_bank_wrap_2k requires 0x800 raster stride")
     coverage: list[int] = []
     for segment in segments(profile):
         coverage.extend(range(segment.y_start, segment.y_start + segment.height))
@@ -67,11 +76,13 @@ def asm(profile: dict, report: dict) -> str:
         f"FWK_VIDEO_WIDTH_BYTES = {profile['width_bytes']}",
         f"FWK_VIDEO_HEIGHT = {profile['height_lines']}",
         f"FWK_VIDEO_COORD_BITS = {profile.get('coordinate_bits', 8)}",
+        f"FWK_VIDEO_RASTER_BANK_WRAP_2K = {1 if profile.get('raster_bank_wrap_2k', False) else 0}",
         f"FWK_VIDEO_VISIBLE_BYTES = {report['visible_bytes']}",
         f"FWK_VIDEO_VISIBLE_RUN_COUNT = {len(report['visible_runs'])}",
         f"FWK_VIDEO_CRTC_REG_COUNT = {len(crtc_registers)}",
         f"FWK_VIDEO_HAS_PAGE_COMMAND = {1 if page_command is not None else 0}",
         f"FWK_VIDEO_PAGE_COMMAND = {number(page_command) if page_command is not None else 0}",
+        ".if FWK_VIDEO_EMIT_TABLES",
         ".area _CODE",
         "fwk_video_crtc_table::",
     ]
@@ -84,6 +95,7 @@ def asm(profile: dict, report: dict) -> str:
     for start, end in report["visible_runs"]:
         lines.append(f"    .dw 0x{start:04X}, 0x{end - start + 1:04X}")
     lines.append("    .dw 0, 0")
+    lines.append(".endif")
     return "\n".join(lines) + "\n"
 
 

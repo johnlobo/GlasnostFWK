@@ -75,3 +75,64 @@ def window_addresses(profile: dict) -> set[int]:
     for window in profile["memory_windows"]:
         result.update(range(number(window["start"]), number(window["end"]) + 1))
     return result
+
+
+def address_at_origin(profile: dict, x_byte: int, y: int, byte_offset: int) -> int:
+    """Candidate classic-CPC CRTC origin in one 16 KiB video page.
+
+    The CRTC advances the character address within each 2 KiB raster bank;
+    crossing that bank wraps inside the same bank. ``byte_offset`` is physical
+    bytes, not an R13 value. Register programming needs a visible probe.
+    """
+    windows = profile["memory_windows"]
+    if len(windows) != 1:
+        raise ValueError("origin model requires one video window")
+    start = number(windows[0]["start"])
+    end = number(windows[0]["end"])
+    original = address(profile, x_byte, y)
+    if end - start + 1 != 0x4000:
+        raise ValueError("origin model requires a 16 KiB video page")
+    if not start <= original <= end:
+        raise ValueError("base address falls outside video window")
+    relative = original - start
+    return start + (relative & ~0x7FF) + ((relative & 0x7FF) + byte_offset) % 0x800
+
+
+def visible_at_origin(profile: dict, byte_offset: int) -> set[int]:
+    """Physical bytes read for every visible byte at a candidate origin."""
+    return {
+        address_at_origin(profile, x, y, byte_offset)
+        for y in range(profile["height_lines"])
+        for x in range(profile["width_bytes"])
+    }
+
+
+def entering_strip(
+    profile: dict, next_offset: int, direction: str, tile_width_bytes: int, tile_height: int = 8
+) -> set[int]:
+    """Physical addresses for the row or column entering after one tile step."""
+    width = profile["width_bytes"]
+    height = profile["height_lines"]
+    if not 0 < tile_width_bytes <= width or not 0 < tile_height <= height:
+        raise ValueError("tile size is outside visible geometry")
+    if direction == "east":
+        xs, ys = range(width - tile_width_bytes, width), range(height)
+    elif direction == "west":
+        xs, ys = range(tile_width_bytes), range(height)
+    elif direction == "south":
+        xs, ys = range(width), range(height - tile_height, height)
+    elif direction == "north":
+        xs, ys = range(width), range(tile_height)
+    else:
+        raise ValueError(f"unknown direction: {direction}")
+    return {address_at_origin(profile, x, y, next_offset) for y in ys for x in xs}
+
+
+def unsafe_pre_switch_fill(
+    profile: dict, current_offset: int, next_offset: int,
+    direction: str, tile_width_bytes: int, tile_height: int = 8,
+) -> set[int]:
+    """Entering bytes that are still visible before a candidate origin switch."""
+    return visible_at_origin(profile, current_offset) & entering_strip(
+        profile, next_offset, direction, tile_width_bytes, tile_height
+    )

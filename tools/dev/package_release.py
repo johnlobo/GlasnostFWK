@@ -94,7 +94,7 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
             for example in PROGRAMS
         },
         "test_disk": f"tests/{TEST_DISK}",
-        "playable_examples": ["nave", "platformer"],
+        "playable_examples": ["nave", "platformer", "scroll0", "scroll1"],
     }
     instructions = (
         "GlasnostFWK CPC examples\n"
@@ -104,7 +104,12 @@ def package(version: str, output_dir: Path) -> tuple[Path, Path]:
         "matching the catalog name recorded in manifest.json. Playable examples:\n\n"
         '    RUN"NAVE"\n\n'
         '    RUN"PLATGAME"\n\n'
-        "Both use the cursor keys; CursorUp jumps in PLATGAME.\n"
+        '    RUN"SCROLL0"\n\n'
+        '    RUN"SCROLL1"\n\n'
+        "NAVE and PLATGAME use cursor keys; CursorUp jumps in PLATGAME.\n"
+        "SCROLL0 and SCROLL1 start with a full-redraw camera. Use O/P/Q/A to move.\n"
+        "Press T once for experimental playable CRTC tile scrolling. Reload to reset.\n"
+        "H/J/L/K/I are isolated CRTC probes before T. CPC 464 and hardware remain unverified.\n"
         "Public examples are under examples/; internal checks and benchmarks are under framework/validations/.\n"
     )
 

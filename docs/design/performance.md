@@ -96,3 +96,52 @@ repositorio; se conserva fuera de él como `spike-tile-repaint.patch`.
   ya 44000 T (más de un tercio del trabajo de `platformer`). Una alternativa sin
   medir es repintar solo el rectángulo del sprite desde el tilemap (bloques
   parciales de tile, sin captura), con un coste estimado de unos 30000 T.
+## Scroll 128×128: estado de medición (2026-11-12)
+
+`scroll0` y `scroll1` muestran un mapa de 16×16 tiles dentro de un mapa de
+24×24. La ruta inicial redibuja el viewport al cambiar la cámara. En una
+ejecución BluePixel CPC 6128 manteniendo P después de rodear el obstáculo,
+los cuatro cambios horizontales de cámara observados separaron las
+actualizaciones de movimiento **11 frames en Mode 0** y **10 en Mode 1**;
+los pasos ordinarios separados de esos cambios tardaron normalmente un frame.
+Es una medida de cadencia visible por conteo de frames, no de T-estados de
+la rutina aislada. El redibujado completo no cumple el objetivo de un paso
+de cámara por frame.
+
+Las sondas J/L/K/I comprobaron un relleno y un único cambio CRTC en BluePixel
+CPC 6128. El modelo encuentra una coincidencia de 480/240 bytes visibles en
+los pasos horizontales de Mode 0/1, por lo que J espera al intervalo de borde
+para rellenar la columna en ambas direcciones. No se ha medido aún el coste
+en T-estados ni una
+ruta jugable sostenida. El presupuesto de 79.872 T-estados por paso sigue sin
+verificarse.
+
+La ruta opcional T integra el cambio CRTC con franja de mapa y sprite. Su
+primera versión separó pasos de movimiento cuatro frames en ambos modos. El
+recorrido de los cuatro bordes terminó en menos frames que el redibujado
+completo y produjo capturas idénticas.
+
+Quitar la segunda espera de VSYNC antes de optimizar la franja no mejoró Mode
+0 y dejó una captura intermedia con el origen cambiado durante el paso. Tras
+especializar la copia de los 16 tiles y calcular el origen en cada acceso de
+vídeo, el strip horizontal medido en BluePixel cuesta unos **26.000 T en Mode
+0** y **20.000 T en Mode 1** (solo la copia). La ruta actual prepara el strip
+desde el VSYNC del bucle, lo termina antes del siguiente y cambia R12/R13 en
+ese VSYNC. Cuatro cambios al oeste separaron pasos de movimiento **dos frames
+en ambos modos**; `tests/bluepixel_scroll_smoke.py` fija ese límite. No hay
+todavía un coste total aislado ni un paso por frame.
+
+## Scroll por bytes con doble imagen (2026-11-15)
+
+La ruta S copia el área de 128×128 a la mitad oculta de la página de vídeo,
+recompone el borde y el sprite y cambia el origen CRTC en VSYNC. Un paso de
+cámara desplaza **2 píxeles en Mode 0** o **4 en Mode 1**, en ambos ejes. El
+recorrido completo de los cuatro bordes coincide píxel a píxel con el
+redibujado de referencia en BluePixel CPC 6128.
+
+Con la tecla oeste mantenida, seis cambios consecutivos de cámara quedaron
+separados por **7 frames en Mode 0** y **5 en Mode 1**. En la misma medición
+la ruta T separó cambios de tile por 5 y 3 frames respectivamente, pero cada
+cambio de T mueve 8 píxeles. La ruta S gana resolución espacial a costa de
+velocidad de avance. Es una medida de cadencia visible, no de T-estados de la
+copia aislada; no cumple el presupuesto de un paso por frame.

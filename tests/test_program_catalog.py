@@ -20,9 +20,11 @@ class ProgramCatalogTests(unittest.TestCase):
             "video", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "perf", "experimental",
             "disksave", "uiinput",
         })
-        self.assertEqual(len(examples), 16)
+        self.assertEqual(len(examples), 18)
         self.assertIn("text", examples)
         self.assertIn("mode1", examples)
+        self.assertIn("scroll0", examples)
+        self.assertIn("scroll1", examples)
         self.assertFalse({"board", "vertical"} & set(program_names(ROOT)))
         self.assertFalse(examples & validations)
         self.assertEqual(set(example_names(ROOT)), examples)
