@@ -13,7 +13,7 @@ bin/glasnost install-toolchain   # builds pinned CPCtelera into .toolchain/ (git
 make generate                    # deterministic generated files (video, resources128, ecs profiles, scenario .inc)
 make check                       # fast loop: full host unittest suite + builds only CHECK_EXAMPLES (default: platformer)
 make check CHECK_EXAMPLES="spritemask ecsrender"
-make test                        # closing gate: host tests + 15 examples + 7 internal validations + common test DSK (run once, at commit time)
+make test                        # closing gate: host tests + 15 examples + 9 internal validations + common test DSK (run once, at commit time)
 make manual                      # regenerate docs/manual.pdf from docs/manual.html (needs .venv-docs, see tools/dev/requirements-manual.txt)
 make release VERSION=x.y.z       # dist/ ZIP + SHA256SUMS
 

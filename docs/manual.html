@@ -446,8 +446,10 @@ FWK_ECS_RENDER_SCENE escena, managers, 1, trabajo, 8, pools, 1
       <ul>
         <li><code>fwk_input_init</code>: borra el estado.</li>
         <li><code>fwk_input_set_bindings</code>: <code>HL=tabla</code>. La tabla debe persistir y termina con máscara cero.</li>
-        <li><code>fwk_input_update</code>: actualiza <code>fwk_input_held</code>, <code>fwk_input_pressed</code> y <code>fwk_input_released</code>. Altera <code>AF,BC,DE,HL,IY</code>.</li>
+        <li><code>fwk_input_update</code>: actualiza <code>fwk_input_held</code>, <code>fwk_input_pressed</code>, <code>fwk_input_released</code> y <code>fwk_input_repeat</code>. Altera <code>AF,BC,DE,HL,IY</code>.</li>
+        <li><code>fwk_input_set_repeat</code>: <code>B=retardo</code>, <code>C=intervalo</code>, ambos 1..255 en llamadas a <code>fwk_input_update</code>. Por defecto 15 y 4. Altera <code>A</code>.</li>
       </ul>
+      <p><strong>Repetición de tecla.</strong> <code>fwk_input_repeat</code> vale lo mismo que <code>fwk_input_pressed</code> en una pulsación nueva. Si las acciones siguen mantenidas sin otra pulsación, vale <code>fwk_input_held</code> una vez pasado el retardo y luego cada intervalo; el resto del tiempo vale 0. Use <code>fwk_input_repeat</code> para mover cursores y <code>fwk_input_pressed</code> para acciones de un solo disparo. Llame a <code>fwk_input_update</code> una vez por frame: <code>fwk_system_wait_frame</code> puede volver varias veces mientras dura el pulso VSYNC, así que un bucle rápido debe esperar a que cambie <code>fwk_system_frame_count</code> (lo hace la validación <code>uiinput</code>).</p>
     </article>
 
     <article class="api" data-module="video/video.s">
@@ -506,6 +508,8 @@ call fwk_text_draw_small_u8</code></pre>
         <li><code>fwk_text_draw</code>: <code>IY=cadena NUL</code>, <code>HL=puntero de vídeo</code>. Admite espacio, <code>!</code>, <code>-</code>, <code>/</code>, <code>0..9</code>, <code>:</code>, <code>&gt;</code>, <code>?</code>, <code>@</code> y <code>A..Z</code>.</li>
         <li><code>fwk_text_draw_small_digit</code>: <code>A=0..9</code>, <code>HL=vídeo</code>; carry indica dígito inválido.</li>
         <li><code>fwk_text_draw_small_u8</code>: <code>A=0..255</code>, <code>HL=vídeo</code>; imprime decimal sin ceros iniciales.</li>
+        <li><code>fwk_text_draw_centered</code>: <code>IY=cadena NUL</code>, <code>HL=vídeo del byte 0 de la fila</code>. Centra el texto en <code>fwk_video_width_bytes</code> (columna <code>ancho/2 - longitud</code>, porque cada glifo ocupa 2 bytes).</li>
+        <li><code>fwk_text_draw_clear</code>: <code>IY=cadena NUL</code>, <code>HL=vídeo</code>, <code>B=celdas a borrar 1..32</code>, <code>C=byte de relleno</code> (0 para pen 0). Rellena <code>B*2</code> bytes por 9 líneas y dibuja el texto encima, así que <code>ON</code> sustituye a <code>OFF</code> sin restos. Esta función y la anterior son solo de Mode 0 (<code>ui/text.s</code>).</li>
       </ul>
       <p>Los caracteres no admitidos dejan una celda en blanco. Todas las rutinas dibujan sin clipping: el consumidor debe mantener cada sprite dentro de la pantalla. El renderer recolorea en un buffer interno de 18 bytes y no es reentrante. Como el enmascarado conserva el fondo, para sustituir texto ya dibujado hay que restaurar o limpiar primero su rectángulo.</p>
     </article>
@@ -622,6 +626,19 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
         <li><code>fwk_disk_load</code>: <code>HL=nombre</code>, <code>B=longitud</code>, <code>DE=destino</code>. Carry y <code>BC=longitud lógica</code> indican apertura correcta.</li>
       </ul>
       <p>Usa <code>0xF800..0xFFFF</code> como buffer de cabecera y no es reentrante. El llamador debe verificar longitud y contenido; este backend no ofrece por sí solo integridad.</p>
+      <p><strong>Guardar durante la partida.</strong> <code>fwk_disk_save</code> escribe un fichero aunque <code>fwk_project_init</code> ya haya desactivado el firmware: <code>fwk_disk_init</code> guarda la interrupción del firmware y la llamada la repone mientras escribe. Recibe <code>IX</code> apuntando a un descriptor de 12 bytes (campos <code>FWK_DISK_SAVE_*</code> en <code>resources/disk.inc</code>):</p>
+      <pre><code>save_descriptor:
+    .dw save_name           ;; nombre, sin NUL
+    .db 11                  ;; longitud del nombre
+    .dw save_data           ;; datos (0x4000..0xA6FF)
+    .dw SAVE_DATA_SIZE      ;; bytes
+    .dw save_disk_buffer    ;; 2 KB para AMSDOS (0x4000..0xA6FF)
+    .dw save_inks           ;; 16 pens + borde en colores de firmware, o 0
+    .db 0                   ;; modo de pantalla</code></pre>
+      <ul>
+        <li><code>fwk_disk_save</code>: <code>IX=descriptor</code>. Carry si el fichero quedó escrito; carry limpio si faltó <code>fwk_disk_init</code>, si datos o buffer salen de <code>0x4000..0xA6FF</code> o si AMSDOS falló (sin disco, lleno o protegido). Altera <code>AF,BC,DE,HL</code> y conserva <code>IX,IY</code>.</li>
+      </ul>
+      <p>Mientras escribe, la IRQ del juego no corre: la música y <code>fwk_system_frame_count</code> se paran. El firmware reaplica modo y tintas en cada frame, por eso el descriptor le da los del juego y la pantalla no cambia. Los avisos de AMSDOS quedan apagados, de modo que un error devuelve carry limpio en lugar de esperar una tecla. Un fichero anterior con el mismo nombre queda como <code>.BAK</code>. Datos y buffer no deben solaparse. El fichero lleva cabecera AMSDOS y <code>fwk_disk_load</code> lo lee en el siguiente arranque. En el emulador web BluePixel el fichero se conserva entre visitas. La validación <code>disksave</code> lo comprueba en BluePixel.</p>
     </article>
 
     <article class="api" data-module="resources/zx7b.s">
@@ -683,7 +700,7 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
     </table>
     <p><code>platformer</code> y <code>nave</code> son las dos escenas jugables. Los otros trece ejemplos muestran APIs concretas. <code>text</code> sustituye al anterior <code>board</code>. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
     <h3>8.1 Validaciones internas</h3>
-    <p>Estos siete programas viven en <code>framework/validations/</code>. No forman parte del catálogo público de ejemplos del CLI. Se construyen con <code>make validations</code> o desde su carpeta con <code>make</code>, <code>make run</code> y <code>make clean</code>. El constructor de bajo nivel también acepta su nombre, por ejemplo <code>python3 tools/build/build_examples.py ecsrender</code>.</p>
+    <p>Estos nueve programas viven en <code>framework/validations/</code>. No forman parte del catálogo público de ejemplos del CLI. Se construyen con <code>make validations</code> o desde su carpeta con <code>make</code>, <code>make run</code> y <code>make clean</code>. El constructor de bajo nivel también acepta su nombre, por ejemplo <code>python3 tools/build/build_examples.py ecsrender</code>.</p>
     <table>
       <thead><tr><th>Validación</th><th>Qué comprueba</th><th>Medios</th></tr></thead>
       <tbody>
@@ -694,6 +711,8 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
         <tr data-validation="ecsrender"><td><code>ecsrender</code></td><td>Prueba técnica del renderer ECS: reproduce un escenario generado por un modelo Python (dos managers, solapes con orden distinto al de slot, ocultar, deshabilitar, destruir, recorte en los bordes) y el smoke compara la VRAM de cada frame con la imagen ideal.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-validation="perf"><td><code>perf</code></td><td>Arnés de rendimiento: vacío, limpieza, sprites opacos/enmascarados, captura/restauración, lote de 8, tilemap completo y celda.</td><td>BIN, DSK común</td></tr>
         <tr data-validation="experimental"><td><code>experimental</code></td><td>Perfil experimental 160x288: configuración CRTC y limpieza del área extendida.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-validation="disksave"><td><code>disksave</code></td><td><code>fwk_disk_save</code> con el firmware apagado: escribe <code>SAVED.DAT</code> dos veces (con y sin tintas), comprueba el <code>.BAK</code> y que un área fuera de <code>0x4000..0xA6FF</code> se rechaza. <code>tests/bluepixel_validations_smoke.py</code> lee el disco exportado.</td><td>BIN, DSK común</td></tr>
+        <tr data-validation="uiinput"><td><code>uiinput</code></td><td><code>fwk_text_draw_centered</code> y <code>fwk_text_draw_clear</code> en VRAM, e intervalos de <code>fwk_input_repeat</code> con una tecla mantenida (15 frames y luego cada 4).</td><td>BIN, DSK común, CDT</td></tr>
       </tbody>
     </table>
     <p><code>perf</code> se mide con <code>tools/dev/measure_perf.py</code>. <code>experimental</code> conserva el límite de temporización CRTC sin validar en hardware. El antiguo ejemplo <code>vertical</code> y su smoke específico de recogida/victoria se han eliminado; no se atribuye esa cobertura a otro juego. El catálogo común <code>tools/build/program_catalog.py</code> descubre ambas colecciones a partir de <code>glasnost.manifest.json</code> y alimenta construcción, CI, disco y distribución.</p>

@@ -7,6 +7,7 @@
 .include "project_config.inc"
 
 .globl fwk_transparency_draw
+.globl cpct_drawSolidBox_asm, fwk_video_width_bytes
 
 FWK_TEXT_FONT_WIDTH       = 2
 FWK_TEXT_FONT_HEIGHT      = 9
@@ -161,6 +162,58 @@ _fwk_text_draw_glyph_ready:
     ld c, #18
     call _fwk_text_recolor_and_draw
     jr _fwk_text_draw_loop
+
+;; fwk_text_draw_centered
+;; In: IY=NUL-terminated string, HL=screen pointer of byte 0 of the row.
+;; Draws the string centred in fwk_video_width_bytes: x = width/2 - length,
+;; since glyphs are 2 bytes wide. A string as wide as the screen or wider
+;; starts at x=0. Length counts up to 255 characters.
+;; Modified: AF, BC, DE, HL, IX, IY.
+fwk_text_draw_centered::
+    push iy
+    pop de
+    ld b, #0
+_fwk_text_centered_count:
+    ld a, (de)
+    or a
+    jr z, _fwk_text_centered_counted
+    inc de
+    inc b
+    jr nz, _fwk_text_centered_count
+    dec b                         ;; 256+ characters: keep 255
+_fwk_text_centered_counted:
+    ld a, (fwk_video_width_bytes)
+    srl a
+    sub b
+    jr nc, _fwk_text_centered_x
+    xor a
+_fwk_text_centered_x:
+    ld e, a
+    ld d, #0
+    add hl, de
+    jp fwk_text_draw
+
+;; fwk_text_draw_clear
+;; In: IY=NUL-terminated string, HL=screen pointer, B=cells to clear (1..32,
+;;     2 bytes each), C=fill byte (0 = pen 0; cpct_px2byteM0 for another pen).
+;; Fills B*2 bytes by FWK_TEXT_FONT_HEIGHT lines with C, then draws the string
+;; there. The font does not paint spaces or glyph background, so this is how a
+;; shorter text replaces a longer one ("ON" over "OFF").
+;; Modified: AF, BC, DE, HL, IX, IY.
+fwk_text_draw_clear::
+    push hl
+    push iy
+    ex de, hl                     ;; DE = destination
+    ld a, b
+    add a, a
+    ld b, c                       ;; B = fill byte for a moment
+    ld c, a                       ;; C = width in bytes
+    ld a, b                       ;; A = fill byte
+    ld b, #FWK_TEXT_FONT_HEIGHT
+    call cpct_drawSolidBox_asm
+    pop iy
+    pop hl
+    jp fwk_text_draw
 
 ;; fwk_text_draw_small_digit
 ;; In: A=digit 0..9, HL=screen pointer. Out: carry set when invalid.

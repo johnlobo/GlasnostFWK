@@ -66,6 +66,15 @@ especiales, pero no instala capacidades del proyecto.
   `fwk_input_pressed`, `fwk_input_released`.
 - `fwk_input_init`: altera `AF` y borra estado. Soporta hasta ocho acciones por
   máscaras de bits; no contiene semántica del juego.
+- Repetición de tecla: `fwk_input_update` también actualiza `fwk_input_repeat`.
+  Vale `fwk_input_pressed` en una pulsación nueva; mientras las acciones siguen
+  mantenidas sin pulsación nueva, vale `fwk_input_held` una vez pasados `delay`
+  updates y luego cada `interval`; si no, 0. Un único contador para todo el
+  conjunto mantenido. Mueva cursores con `fwk_input_repeat` y acciones de un
+  solo disparo con `fwk_input_pressed`.
+- `fwk_input_set_repeat`: `B=delay`, `C=interval`, ambos 1..255 en llamadas a
+  `fwk_input_update` (frames si se llama una vez por frame; 0 equivale a 256). Por defecto 15 y 4.
+  Altera `A`. `fwk_input_init` conserva estos valores.
 
 ### Entity manager ECS
 
@@ -262,6 +271,13 @@ un proyecto con `transparency.pen=0`. La tabla se instala en `0x0100` mediante
   `0..9`, `:`, `>`, `?`, `@` y `A..Z`.
 - `fwk_text_draw_small_digit`: `A=0..9`, `HL=vídeo`; carry si no es un dígito.
 - `fwk_text_draw_small_u8`: `A=0..255`, `HL=vídeo`; decimal sin relleno.
+- `fwk_text_draw_centered`: `IY=ASCII NUL`, `HL=vídeo del byte 0 de la fila`;
+  dibuja en `x = fwk_video_width_bytes/2 - longitud` (glifos de 2 bytes), o en
+  `x=0` si el texto ocupa la pantalla entera. Altera `AF,BC,DE,HL,IX,IY`.
+- `fwk_text_draw_clear`: `IY=ASCII NUL`, `HL=vídeo`, `B=celdas 1..32`,
+  `C=byte de relleno` (0 para pen 0). Rellena `B*2` bytes por 9 líneas y dibuja
+  encima: sustituye un texto por otro más corto. Altera `AF,BC,DE,HL,IX,IY`.
+  Ambas solo existen en `ui/text.s` (Mode 0); `ui/text_mode1.s` no las tiene.
 
 El índice de color selecciona la tabla original; no equivale necesariamente al
 número de pen de la paleta activa y el pen 14 se usa como sombra. No hay
@@ -339,6 +355,29 @@ ocultas del núcleo con 128 KB y reduce el riesgo de ejecutar código paginado.
   mientras el sistema del framework mantiene el firmware desactivado.
 - El firmware no proporciona aquí una comprobación de integridad: el llamador
   debe validar longitud y contenido según su formato. `diskload` hace ambas.
+- `fwk_disk_init` guarda además la entrada de interrupción del firmware
+  (`0x0038..0x003A`) para `fwk_disk_save`.
+- `fwk_disk_save`: `IX=descriptor` de `FWK_DISK_SAVE_SIZE` (12) bytes, campos
+  `FWK_DISK_SAVE_*` de `resources/disk.inc`: `.dw nombre`, `.db longitud del
+  nombre`, `.dw datos`, `.dw bytes`, `.dw buffer` de `FWK_DISK_BUFFER_SIZE`
+  (2 KB), `.dw tintas` (16 pens y borde como colores de firmware, o 0) y `.db
+  modo`. Escribe un fichero binario AMSDOS con el firmware ya desactivado: pone
+  la interrupción del firmware durante la escritura y la del juego al volver.
+  Devuelve carry si el fichero quedó escrito; carry limpio si `fwk_disk_init`
+  no se ejecutó, si datos o buffer salen de `0x4000..0xA6FF`, o si AMSDOS
+  falló (sin disco, lleno, protegido). Los avisos de AMSDOS (`0xBE78`) quedan
+  apagados durante la llamada, así que un error nunca espera una tecla. Un
+  fichero anterior con el mismo nombre pasa a `.BAK`. Altera `AF,BC,DE,HL`;
+  conserva `IX,IY`; vuelve con interrupciones habilitadas, el modo del
+  descriptor y las ROM desconectadas en el Gate Array.
+- Durante la escritura la IRQ del juego no corre (música y contador de frames
+  se paran). El firmware reaplica modo y tintas en cada frame, por eso el
+  descriptor le da los del juego. Requiere que el programa no haya escrito la
+  RAM del firmware (`0xA700..0xBFFF`) salvo la pila del perfil. No es
+  reentrante. Datos y buffer no deben solaparse. `fwk_disk_init` debe ejecutarse
+  con el firmware activo; si no, la llamada devuelve carry limpio. Al volver
+  actualiza también `_cpct_mode_rom_status` de CPCtelera. Validación:
+  `framework/validations/disksave`.
 
 ### ZX7B
 

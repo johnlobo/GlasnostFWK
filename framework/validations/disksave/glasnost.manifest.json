@@ -1,0 +1,6 @@
+{
+  "name": "disksave",
+  "profile": "standard-160x200.json",
+  "media": ["dsk"],
+  "modules": ["core/system.s", "resources/disk.s"]
+}
