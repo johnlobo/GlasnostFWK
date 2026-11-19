@@ -1264,12 +1264,13 @@ def git_first_commit(folder: Path, lang: str, runner: Runner) -> None:
 
 
 def cmd_new(args, root: Path, lang: str, runner: Runner) -> int:
-    # In an interactive terminal, ask whether to include the example game even
-    # when a name was given on the command line.
+    # In an interactive session, ask whether to include the example game even
+    # when a name was given on the command line. args.interactive (not the raw
+    # tty) so callers such as the tests can turn every question off.
     if (args.name and not args.manifest and args.template is None and not args.minimal
-            and sys.stdin.isatty()):
+            and args.interactive):
         try:
-            answer = input(say(lang, "new.ask_example", default="s" if lang == "es" else "y")).strip()
+            answer = args.ask(say(lang, "new.ask_example", default="s" if lang == "es" else "y")).strip()
         except EOFError:
             answer = ""
         if answer.strip().lower() not in ("", "s", "si", "sí", "y", "yes"):

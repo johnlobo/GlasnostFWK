@@ -489,6 +489,36 @@ class NewCommand(unittest.TestCase):
         self.assertIn("install-toolchain", err)
         self.assertFalse(self.base.exists())
 
+    def test_a_terminal_does_not_make_new_ask_when_interactive_is_off(self):
+        # Regression: `make test` from a terminal hung here, because the question
+        # about the example game looked at the raw tty instead of args.interactive.
+        asked = []
+
+        def ask(prompt):
+            asked.append(prompt)
+            return ""
+
+        def no_input(prompt=""):
+            raise AssertionError(f"input() called: {prompt}")
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), \
+                mock.patch("builtins.input", no_input):
+            code, out, err = self.new("demo", "--dir", str(self.base), runner=Recorder(), ask=ask)
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual(asked, [])
+
+    def test_an_interactive_new_asks_through_ask_and_no_means_minimal(self):
+        asked = []
+
+        def ask(prompt):
+            asked.append(prompt)
+            return "n"
+
+        code, out, err = self.new("demo", "--dir", str(self.base), runner=Recorder(), ask=ask, interactive=True)
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual(len(asked), 1)
+        self.assertFalse((self.base / "demo" / "assets").exists())
+
     def test_ctrl_c_during_the_build_cleans_up(self):
         def interrupted(command, **kwargs):
             raise KeyboardInterrupt
