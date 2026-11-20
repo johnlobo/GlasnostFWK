@@ -178,7 +178,14 @@ scroll_smooth_bg_ptr: .dw 0
 
 .area _CODE
 
-;; Carry set when the proposed 8x8 player overlaps a fixture blocker.
+;; ----------------------------------------------------------------------------
+;; scroll_collision
+;;   Tests the proposed 8x8 player box against the three fixture blockers.
+;;   In : scroll_try_x, scroll_try_y = proposed top-left in world pixels.
+;;   Out: carry set when blocked, clear when free.
+;;   Clobbers: AF
+;;   Notes: Hard-coded boxes: solid tile [96,104)x[64,72), object [96,112)x[128,136), character [128,136)x[96,104).
+;; ----------------------------------------------------------------------------
 scroll_collision:
     ;; Solid tile [96,104) x [64,72).
     ld a, (scroll_try_x)
@@ -296,7 +303,14 @@ scroll_follow_y_low:
     ld (scroll_try_camera_y), a
     jr scroll_follow_y
 
-;; Commit a one-direction player move after boundary and obstacle checks.
+;; ----------------------------------------------------------------------------
+;; scroll_move
+;;   Moves the player one step in the single held direction (O/P/Q/A), checks limits and blockers, follows with the camera and redraws.
+;;   In : fwk_input_held (exactly one of bits 0..3), scroll_world_*, scroll_camera_*.
+;;   Out: world, screen and camera positions updated and scroll_step_count + 1; scroll_blocked = 1 when refused; scroll_status = 0xEE when a redraw fails.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: Several keys at once do nothing. Smooth mode continues in scroll_smooth_move; hardware mode redraws through scroll_hw_redraw, otherwise the full view is drawn.
+;; ----------------------------------------------------------------------------
 scroll_move:
     ld a, (scroll_world_x)
     ld (scroll_try_x), a
@@ -440,8 +454,14 @@ scroll_move_blocked:
     ld (scroll_blocked), a
     ret
 
-;; Experimental opt-in hardware path. The full redraw remains the baseline.
-;; The movement policy guarantees one camera tile on one axis per update.
+;; ----------------------------------------------------------------------------
+;; scroll_hw_redraw
+;;   Experimental hardware scroll: draws the entering strip, then moves the CRTC start (R12/R13) by one tile on one axis.
+;;   In : scroll_try_camera_* and scroll_camera_* (one tile apart on one axis), scroll_hw_ma.
+;;   Out: carry clear; scroll_hw_ma, fwk_video_origin_bytes, R12 and R13 at the new origin.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: The movement policy guarantees one camera tile on one axis per update. A horizontal step waits about 1300 loop turns so the strip is drawn outside the active display.
+;; ----------------------------------------------------------------------------
 scroll_hw_redraw:
     ld a, (scroll_try_camera_x)
     ld b, a
@@ -488,6 +508,14 @@ scroll_hw_vertical:
     ld (scroll_hw_direction), a
     call scroll_hw_prepare_addresses
     jr scroll_hw_draw
+;; ----------------------------------------------------------------------------
+;; scroll_hw_prepare_addresses
+;;   Saves the old sprite addresses and computes the target CRTC origin.
+;;   In : scroll_hw_ma, scroll_hw_chars (signed step in CRTC characters).
+;;   Out: scroll_hw_target_ma = (scroll_hw_ma + scroll_hw_chars) AND 0x3FF, scroll_hw_target_bytes = twice that; scroll_hw_old_sprite_ptrs filled.
+;;   Clobbers: AF, BC, DE, HL
+;;   Notes: The 10-bit mask keeps the origin inside the 16 KiB video page.
+;; ----------------------------------------------------------------------------
 scroll_hw_prepare_addresses:
     call scroll_hw_save_sprite_addresses
     ld hl, (scroll_hw_ma)
@@ -519,9 +547,14 @@ scroll_hw_draw:
     or a
     ret
 
-;; This fixture's four tile IDs have direct graphics pointers. The generic
-;; renderer remains available for setup, but a camera strip avoids sixteen
-;; full descriptor validations and resolves each raster-bank wrap itself.
+;; ----------------------------------------------------------------------------
+;; scroll_hw_draw_strip_fast
+;;   Draws the 16 entering tiles (a column for east/west, a row for south/north) at the target origin.
+;;   In : scroll_hw_direction (1 east, 2 west, 3 south, 4 north), scroll_try_camera_*, scroll_hw_target_bytes.
+;;   Out: the strip written to VRAM.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: Reads tile IDs straight from scroll_map and skips the generic renderer's sixteen descriptor validations; valid only for this fixture's four tiles.
+;; ----------------------------------------------------------------------------
 scroll_hw_draw_strip_fast:
     ld a, (scroll_hw_direction)
     cp #3
@@ -589,7 +622,14 @@ scroll_hw_fast_vertical_loop:
     jr nz, scroll_hw_fast_vertical_loop
     ret
 
-;; B/C are map tile coordinates; IY returns the map cell address.
+;; ----------------------------------------------------------------------------
+;; scroll_hw_map_ptr
+;;   Address of one cell of the 24-column fixture map.
+;;   In : B = map row, C = map column (tiles).
+;;   Out: IY = scroll_map + B*24 + C.
+;;   Clobbers: F, B, DE, HL
+;;   Notes: No bounds check: the callers keep the camera inside the map.
+;; ----------------------------------------------------------------------------
 scroll_hw_map_ptr:
     ld h, #0
     ld l, b
@@ -608,7 +648,14 @@ scroll_hw_map_ptr:
     pop iy
     ret
 
-;; IY points at a tile ID in the fixture map; HL receives its graphics.
+;; ----------------------------------------------------------------------------
+;; scroll_hw_tile_source
+;;   Graphics of the tile in one map cell.
+;;   In : IY = map cell.
+;;   Out: HL = tile graphics from scroll_tile_ptrs.
+;;   Clobbers: AF, DE, HL
+;;   Notes: Tile IDs 0..3 only; no check.
+;; ----------------------------------------------------------------------------
 scroll_hw_tile_source:
     ld a, 0(iy)
     add a, a
@@ -622,7 +669,14 @@ scroll_hw_tile_source:
     ex de, hl
     ret
 
-;; Copy one 8-line tile using the next CRTC origin and 2 KiB raster wraps.
+;; ----------------------------------------------------------------------------
+;; scroll_hw_copy_tile
+;;   Copies one 8-line tile to the target origin, wrapping inside its 2 KiB raster bank.
+;;   In : HL = tile graphics, IX = fwk_video_line_table entry of the tile's first line, scroll_hw_xbyte, scroll_hw_target_bytes.
+;;   Out: tile written; IX advanced by 16 (8 line-table entries).
+;;   Clobbers: AF, BC, DE, HL, IX
+;;   Notes: The bank bits of each line come from the line table; only the low 11 bits move with the origin.
+;; ----------------------------------------------------------------------------
 scroll_hw_copy_tile:
     push hl
     ld e, 0(ix)
@@ -661,8 +715,14 @@ scroll_hw_copy_raster:
     add ix, bc
     ret
 
-;; Keep the old sprite visible while the strip is prepared, then remove it
-;; immediately before changing the CRTC origin.
+;; ----------------------------------------------------------------------------
+;; scroll_hw_save_sprite_addresses
+;;   Records the 8 screen addresses of the player rows before the origin moves.
+;;   In : scroll_player X and Y.
+;;   Out: scroll_hw_old_sprite_ptrs = 8 addresses.
+;;   Clobbers: AF, BC, DE, HL
+;;   Notes: The old sprite stays visible while the strip is prepared; scroll_hw_restore_old_sprite removes it later.
+;; ----------------------------------------------------------------------------
 scroll_hw_save_sprite_addresses:
     ld hl, #scroll_hw_old_sprite_ptrs
     ld (scroll_hw_ptr_cursor), hl
@@ -693,6 +753,14 @@ scroll_hw_save_sprite_row:
     cp #8
     jr nz, scroll_hw_save_sprite_row
     ret
+;; ----------------------------------------------------------------------------
+;; scroll_hw_restore_old_sprite
+;;   Puts the saved background back at the 8 recorded sprite addresses.
+;;   In : scroll_hw_old_sprite_ptrs, scroll_player_background.
+;;   Out: the old sprite erased from VRAM.
+;;   Clobbers: AF, BC, DE, HL
+;;   Notes: Called just after VSYNC starts, immediately before the CRTC origin changes.
+;; ----------------------------------------------------------------------------
 scroll_hw_restore_old_sprite:
     ld hl, #scroll_hw_old_sprite_ptrs
     ld (scroll_hw_ptr_cursor), hl
@@ -718,9 +786,14 @@ scroll_hw_restore_sprite_row:
     jr nz, scroll_hw_restore_sprite_row
     ret
 
-;; H enters or leaves a drawing-free R13+1 display-start probe. The original
-;; fixed-origin drawing routines are never called while the shifted origin is
-;; active. The next H restores the profile origin before redrawing the baseline.
+;; ----------------------------------------------------------------------------
+;; scroll_toggle_probe
+;;   H key: enters or leaves the drawing-free R13+1 display-start probe.
+;;   In : scroll_probe_offset (0 = no probe).
+;;   Out: entering: first scanline = scroll_probe_pattern, R13 = origin + 1, scroll_probe_offset = 1; leaving: R12/R13 restored, map and player redrawn, scroll_probe_offset = 0.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: No fixed-origin drawing routine runs while the shifted origin is active.
+;; ----------------------------------------------------------------------------
 scroll_toggle_probe:
     ld a, (scroll_probe_offset)
     or a
@@ -756,9 +829,14 @@ scroll_probe_stop:
     call fwk_sprite_capture
     jp fwk_sprite_draw
 
-;; Experimental one-tile east shift. The incoming tile-2 column is written
-;; only after the 128-line active display has ended. No drawing runs at the
-;; shifted origin; H restores the fixed-origin baseline.
+;; ----------------------------------------------------------------------------
+;; scroll_probe_east
+;;   J key: experimental one-tile east shift of the display start.
+;;   In : scroll_probe_offset (does nothing unless 0).
+;;   Out: entering column drawn, R13 = origin + TILE_R13_STEP, scroll_probe_offset = 1 (Mode 1) or 2 (Mode 0).
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: Waits about 51200 T (1765 loop turns) after VSYNC so the column is written after the 128-line active display; H restores the baseline.
+;; ----------------------------------------------------------------------------
 scroll_probe_east:
     ld a, (scroll_probe_offset)
     or a
@@ -812,8 +890,14 @@ scroll_probe_commit:
     ld (scroll_probe_offset), a
     ret
 
-;; One character row south. Its entering eight scanlines are outside the
-;; current display, so they can be prepared before the R13 switch.
+;; ----------------------------------------------------------------------------
+;; scroll_probe_south
+;;   K key: experimental one-character-row south shift of the display start.
+;;   In : scroll_probe_offset (does nothing unless 0).
+;;   Out: entering 8 lines filled with 0xFF, R13 = origin + ROW_R13_STEP, scroll_probe_offset = ROW_R13_STEP.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: The entering lines are outside the current display, so they are written before the R13 switch.
+;; ----------------------------------------------------------------------------
 scroll_probe_south:
     ld a, (scroll_probe_offset)
     or a
@@ -848,8 +932,14 @@ scroll_probe_south_byte:
     ld (scroll_probe_offset), a
     ret
 
-;; One tile west. R12=0x33 keeps the same 16 KiB video page while the
-;; 10-bit character address wraps backward inside each raster bank.
+;; ----------------------------------------------------------------------------
+;; scroll_probe_west
+;;   L key: experimental one-tile west shift of the display start.
+;;   In : scroll_probe_offset (does nothing unless 0).
+;;   Out: entering column drawn, R12 = 0x33, R13 = 256 - TILE_R13_STEP, scroll_probe_offset = the same.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: R12 = 0x33 keeps the same 16 KiB page while the 10-bit address wraps backwards inside each raster bank.
+;; ----------------------------------------------------------------------------
 scroll_probe_west:
     ld a, (scroll_probe_offset)
     or a
@@ -909,7 +999,14 @@ scroll_probe_west_commit:
     ld (scroll_probe_offset), a
     ret
 
-;; One character row north. The incoming row is outside the initial image.
+;; ----------------------------------------------------------------------------
+;; scroll_probe_north
+;;   I key: experimental one-character-row north shift of the display start.
+;;   In : scroll_probe_offset (does nothing unless 0).
+;;   Out: entering 8 lines filled with 0xFF, R12 = 0x33, R13 = 256 - ROW_R13_STEP, scroll_probe_offset = the same.
+;;   Clobbers: AF, BC, DE, HL, IX, IY
+;;   Notes: The entering row is outside the initial image.
+;; ----------------------------------------------------------------------------
 scroll_probe_north:
     ld a, (scroll_probe_offset)
     or a
@@ -950,6 +1047,14 @@ scroll_probe_north_byte:
     ld (scroll_probe_offset), a
     ret
 
+;; ----------------------------------------------------------------------------
+;; scroll_enable_hardware
+;;   T key: turns on the experimental hardware scroll path.
+;;   In : scroll_probe_offset, scroll_smooth_enabled.
+;;   Out: scroll_hw_enabled = 1 unless a probe or smooth mode is active.
+;;   Clobbers: AF
+;;   Notes: Once on it stays on; the full redraw remains the baseline.
+;; ----------------------------------------------------------------------------
 scroll_enable_hardware:
     ld a, (scroll_probe_offset)
     or a
@@ -961,6 +1066,14 @@ scroll_enable_hardware:
     ld (scroll_hw_enabled), a
     ret
 
+;; ----------------------------------------------------------------------------
+;; scroll_enable_smooth
+;;   S key: turns on the byte-step (smooth) camera.
+;;   In : scroll_probe_offset, scroll_hw_enabled, scroll_camera_*.
+;;   Out: scroll_smooth_enabled = 1 and scroll_smooth_camera_* = tile camera * 8, unless a probe or hardware mode is active.
+;;   Clobbers: AF
+;;   Notes: Does nothing when smooth mode is already on.
+;; ----------------------------------------------------------------------------
 scroll_enable_smooth:
     ld a, (scroll_probe_offset)
     or a
@@ -1111,6 +1224,14 @@ scroll_smooth_count_step:
     ld (scroll_step_count), hl
     ret
 
+;; ----------------------------------------------------------------------------
+;; scroll_smooth_commit_player
+;;   Commits the candidate pixel camera and the player position.
+;;   In : scroll_smooth_try_camera_*, scroll_try_*.
+;;   Out: scroll_smooth_camera_*, scroll_camera_* (pixels / 8), scroll_world_*, scroll_screen_* and scroll_player X/Y.
+;;   Clobbers: AF, B
+;;   Notes: Player X in bytes is the screen X divided by 2 (Mode 0) or 4 (Mode 1).
+;; ----------------------------------------------------------------------------
 scroll_smooth_commit_player:
     ld a, (scroll_smooth_try_camera_x)
     ld (scroll_smooth_camera_x), a
@@ -1142,6 +1263,14 @@ scroll_smooth_commit_player:
     ld (scroll_player+FWK_SPRITE_Y), a
     ret
 
+;; ----------------------------------------------------------------------------
+;; scroll_smooth_copy_picture
+;;   Copies the visible picture into the other 1 KiB half, shifted one step in scroll_smooth_direction.
+;;   In : scroll_smooth_direction (1 east, 2 west: one byte; 3 south, 4 north: PLAYER_STEP lines), scroll_smooth_source_origin, scroll_smooth_target_origin.
+;;   Out: VRAM of the target half; fwk_video_origin_bytes = target origin.
+;;   Clobbers: AF, BC, DE, HL
+;;   Notes: fwk_video_origin_bytes is switched between source and target for every line.
+;; ----------------------------------------------------------------------------
 scroll_smooth_copy_picture:
     xor a
     ld (scroll_smooth_copy_y), a
@@ -1212,6 +1341,14 @@ scroll_smooth_copy_run:
     jr nz, scroll_smooth_copy_loop
     ret
 
+;; ----------------------------------------------------------------------------
+;; scroll_smooth_fill_edge
+;;   Draws the entering edge of the target picture from the map: one byte column (east/west) or PLAYER_STEP rows (south/north).
+;;   In : scroll_smooth_direction, scroll_smooth_try_camera_*, scroll_smooth_target_origin.
+;;   Out: the edge written to VRAM.
+;;   Clobbers: AF, BC, DE, HL, IY
+;;   Notes: One scroll_smooth_fill_one call per byte.
+;; ----------------------------------------------------------------------------
 scroll_smooth_fill_edge:
     ld a, (scroll_smooth_direction)
     cp #3
@@ -1264,7 +1401,14 @@ scroll_smooth_fill_byte_loop:
     jr nz, scroll_smooth_fill_row_loop
     ret
 
-;; One byte of map graphics at the candidate pixel camera and screen address.
+;; ----------------------------------------------------------------------------
+;; scroll_smooth_fill_one
+;;   Writes one byte of map graphics at the candidate pixel camera into the target picture.
+;;   In : scroll_smooth_fill_x (byte), scroll_smooth_fill_y (line), scroll_smooth_try_camera_*, scroll_smooth_target_origin.
+;;   Out: one VRAM byte; fwk_video_origin_bytes = target origin.
+;;   Clobbers: AF, BC, DE, HL, IY
+;;   Notes: Uses scroll_hw_map_ptr and scroll_hw_tile_source, so only this fixture's four tiles.
+;; ----------------------------------------------------------------------------
 scroll_smooth_fill_one:
     ld a, (scroll_smooth_try_camera_x)
 .if FWK_PROJECT_VIDEO_MODE
@@ -1323,6 +1467,14 @@ scroll_smooth_fill_one:
     ld (hl), a
     ret
 
+;; ----------------------------------------------------------------------------
+;; scroll_smooth_restore_sprite_in_target
+;;   Erases the player from the target picture where the shifted copy moved it.
+;;   In : scroll_player X/Y, scroll_smooth_direction, scroll_player_background.
+;;   Out: 8 background rows written to the target picture.
+;;   Clobbers: AF, BC, DE, HL
+;;   Notes: The copy shifted the old sprite by one byte or PLAYER_STEP lines; this undoes it at that place.
+;; ----------------------------------------------------------------------------
 scroll_smooth_restore_sprite_in_target:
     ld a, (scroll_player+FWK_SPRITE_X)
     ld b, a
