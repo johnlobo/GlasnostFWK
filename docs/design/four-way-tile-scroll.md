@@ -3,7 +3,6 @@
 * **Author:** johnlobo
 * **Status:** Proposed
 * **Date:** 2026-11-12
-* **Source:** [Concept brief](../../concepts_brief.md)
 
 ## Overview
 
