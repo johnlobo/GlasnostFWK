@@ -742,3 +742,94 @@ reposo de `platformer` ≤ 112.000 T con 2 frames por iteración, binario de
   `ecsrender`; la séptima, que `restore` no devuelva los buffers, sobrevivía porque
   ningún escenario agotaba un pool. Se añadió el invariante anterior y ahora se
   detecta (9 buffers en uso frente a 7 poseídos).
+## Scroll 128×128 Mode 0/1: primera comprobación (2026-11-12)
+
+Los perfiles experimentales `scroll-mode0-128x128.json` y
+`scroll-mode1-128x128.json` generan una pantalla fija de 128×128. BluePixel
+CPC 6128 arranca `scroll0` y `scroll1`; la prueba
+`python3 tests/bluepixel_scroll_smoke.py` alcanza los cuatro bordes y comprueba
+tres bloqueos (tile sólido, objeto y otro personaje) en ambos modos. Las
+capturas y estados de esta ejecución quedan en `build/scroll-evidence/`.
+
+La prueba aislada **H** cambia R13 de 0 a 1, deja quieto el patrón de RAM y
+desplaza su primera línea 16 píxeles de la captura de BluePixel en ambos modos.
+Esto demuestra que el origen CRTC cambia la imagen en ese emulador; no demuestra
+todavía scroll jugable. Faltan la ejecución en CPC 464 y la comprobación en
+hardware real.
+
+El modelo de direcciones del perfil actual encuentra un impedimento para
+rellenar la franja horizontal *antes* de cambiar el origen. Para los 72 pasos
+horizontales posibles de una rejilla de cámara 9×9, la franja entrante coincide
+con **480 bytes todavía visibles en Mode 0** y **240 en Mode 1**. Los 72 pasos
+verticales de cada dirección no tienen esa coincidencia en el mismo modelo.
+Los tests de `tests/test_video.py` fijan estos resultados. La razón es que R1
+da a cada fila de caracteres el mismo ancho físico que se muestra: al desplazar
+el origen hacia la derecha, el extremo de una fila toma bytes del comienzo de
+la siguiente. Rellenarlos antes del cambio alteraría la imagen aún visible.
+
+**Decisión de esta fase:** mantener el ejemplo jugable con redibujado completo.
+J rellena una columna después del área visible y cambia R13 para un tile al
+este. L hace lo mismo al oeste con R12=0x33 y R13=254/255. En BluePixel CPC
+6128 ambos desplazan la imagen 32 píxeles de salida en Mode 0 o 16 en Mode 1;
+las 128 líneas de cada columna entrante coinciden con el patrón esperado.
+K rellena una fila de ocho líneas no visible y avanza al sur; I retrocede al
+norte con R12=0x33. Ambos desplazan la imagen ocho líneas. H devuelve R12/R13
+al origen inicial. Estas sondas no usan el mapa ni dibujan el personaje en el nuevo
+origen; no prueban un paso sostenido por frame ni scroll jugable de cuatro
+direcciones. Faltan la temporización en CPC 464 y la validación en hardware.
+
+Se descartó situar el origen inicial en R13=136/68 para dar margen a oeste y
+norte: el patrón capturado por BluePixel ya no coincidía con el modelo lineal
+de direcciones. Las sondas L/I prueban el retorno del contador CRTC dentro de
+cada banco de raster de 2 KiB desde R13=0; todavía hay que verificar la
+transición repetida entre orígenes y el uso de los bytes por el renderer.
+
+## Integración jugable opcional (2026-11-13)
+
+La tecla T activa una ruta de cámara por CRTC. Al entrar un tile de mapa,
+calcula el nuevo origen, dibuja únicamente la fila
+o columna entrante, restaura el fondo anterior del personaje, cambia R12/R13
+y captura/dibuja el personaje en la nueva vista. Los pasos horizontales
+esperan al borde antes de escribir la franja compartida con el área visible.
+Las rutinas de tile usan una copia por línea en estos perfiles, porque una
+copia rápida alineada puede cruzar `0xFFFF` cuando el origen se desplaza.
+
+`tests/bluepixel_scroll_smoke.py` recorre oeste → norte → este → sur hasta los
+cuatro límites, primero con redibujado completo y después con T. En Mode 0 y
+Mode 1 de BluePixel CPC 6128, los cuatro estados finales, R12/R13 y todas las
+capturas RGBA coinciden exactamente con la referencia. El smoke comprueba el
+estado del programa en cada frame para detectar corrupción de RAM. Se
+mantienen las pruebas aisladas H/J/L/K/I.
+
+La ruta T es experimental. Con una copia directa de la franja y el origen
+aplicado al resolver punteros, cuatro pasos horizontales al oeste separaron
+actualizaciones de movimiento dos frames en ambos modos. La comparación de
+los cuatro bordes conserva la igualdad de píxeles. La imagen todavía salta
+ocho píxeles por tile; no se ha validado la temporización en CPC 464 ni en
+hardware real.
+
+## Desplazamiento por bytes con doble imagen (2026-11-15)
+
+La tecla S activa una ruta jugable experimental para los dos ejemplos de
+128×128. Reserva dos imágenes en la página de vídeo: para cada banco de raster
+de 2 KiB usa las mitades de 1 KiB con orígenes CRTC alternos `0x000` y
+`0x400` bytes. Copia la imagen actual a la mitad oculta con un desplazamiento
+de un byte horizontal o `PLAYER_STEP` líneas verticales, repone allí el fondo
+del sprite anterior, rellena el borde entrante desde el mapa y dibuja el nuevo
+sprite. Solo entonces cambia R12/R13 en VSYNC. T y S son rutas excluyentes;
+la ruta predeterminada de redibujado completo sigue disponible al arrancar.
+
+`tests/bluepixel_scroll_smoke.py` comprueba que el primer paso al oeste mueve
+la imagen ocho píxeles de salida de BluePixel, equivalentes a **2 píxeles Mode
+0** o **4 píxeles Mode 1**. El mismo test recorre los cuatro bordes en ambos
+modos con S y compara la captura RGBA completa con la del redibujado de
+referencia: cuatro coincidencias exactas por modo. También comprueba los
+estados de mundo y cámara, los obstáculos y el estado del programa. Las
+capturas están en `build/scroll-evidence/6128/scroll*/smooth-*-edge.png`.
+
+Esto demuestra la ruta en BluePixel CPC 6128. Su cadencia observada es menor
+que la de T: seis cambios consecutivos de cámara al oeste quedaron separados
+por 7 frames en Mode 0 y 5 en Mode 1. La escritura se hace en la imagen oculta,
+pero aún no hay un test de captura en cada frame intermedio ni ejecución en
+CPC 464 o hardware real. S no cumple el objetivo de un paso por frame y sigue
+siendo una alternativa experimental para comparar la suavidad espacial.

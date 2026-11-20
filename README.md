@@ -17,6 +17,18 @@ importador PNG y `ui/text_mode1.s` ya aceptan datos Mode 1; las plantillas de
 `glasnost new` y `ui/text.s` siguen usando Mode 0. Detalles
 en `docs/reference/architecture-and-api.md`.
 
+`examples/scroll0` y `examples/scroll1` son pruebas jugables de cámara en
+128×128 para Mode 0 y Mode 1. El redibujado completo es la ruta inicial;
+**T** activa una cámara jugable experimental que actualiza la franja entrante
+y mueve el origen CRTC. H/J/L/K/I son sondas aisladas disponibles antes de T.
+La ruta T coincide píxel a píxel con la inicial en los cuatro bordes en
+BluePixel CPC 6128. El cambio horizontal medido tarda dos frames y todavía
+salta un tile completo. **S** activa una alternativa experimental por doble
+buffer que mueve la cámara un byte de vídeo por paso (2 píxeles en Mode 0,
+4 en Mode 1). Sus cuatro bordes también coinciden con la referencia en
+BluePixel, aunque cada paso tarda más. Véase
+[la validación](docs/design/validation.md).
+
 El framework no contiene assets ni reglas de los juegos originales. Cada
 ejemplo declara sus módulos y fuentes de juego en `examples/*/glasnost.manifest.json`;
 el constructor copia únicamente esos fuentes al árbol temporal `build/`, de
@@ -86,7 +98,7 @@ make check
 make generate   # vídeo y manifiesto de recursos, deterministas
 make check      # pruebas host + platformer; bucle rápido durante desarrollo
 make check CHECK_EXAMPLES="spritemask ecsrender"  # solo ejemplos afectados
-make examples   # 15 ejemplos públicos, incluidos nave y platformer
+make examples   # 18 ejemplos públicos, incluidos scroll0 y scroll1
 make validations # 7 programas internos de validación y rendimiento
 make test       # pruebas host + construcción y DSK completos; cierre/commit
 make report     # actualiza docs/design/build-sizes.md desde los mapas SDCC
@@ -95,7 +107,7 @@ make release VERSION=0.1.0  # ZIP jugable y SHA256SUMS en dist/
 python3 tests/emulator_smoke.py  # smoke real en AmSpiriT-Lite, si está instalado
 ```
 
-Los BIN y CDT se generan en `build/<nombre>/`; con `make test` los 22 BIN (15 ejemplos y 7 validaciones) se
+Los BIN y CDT se generan en `build/<nombre>/`; con `make test` los 25 BIN (18 ejemplos y 7 validaciones) se
 reúnen en `build/tests/GlasnostFWK-tests.dsk`, junto con los payloads auxiliares
 que necesita `diskload`. En esa construcción global los DSK individuales usados
 internamente por CPCTelera se eliminan al terminar; si compilas un ejemplo por

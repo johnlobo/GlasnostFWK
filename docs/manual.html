@@ -166,7 +166,7 @@ make generate
 make check
 make examples
 make test</code></pre>
-    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los 15 ejemplos públicos; <code>make validations</code>, los 7 programas internos de <code>framework/validations/</code>. El disco común se genera con <code>make test</code> o <code>make release VERSION=x.y.z</code> en <code>build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
+    <p><code>make generate</code> produce las tablas de vídeo y recursos. Durante el desarrollo, <code>make check</code> ejecuta toda la suite host y compila solo <code>platformer</code>; puede seleccionar otros consumidores con <code>make check CHECK_EXAMPLES="ecsmanager platformer"</code>. No reconstruye el DSK común. <code>make examples</code> construye los 18 ejemplos públicos; <code>make validations</code>, los 7 programas internos de <code>framework/validations/</code>. El disco común se genera con <code>make test</code> o <code>make release VERSION=x.y.z</code> en <code>build/tests/GlasnostFWK-tests.dsk</code>. <code>make test</code> combina suite host, construcción completa y DSK y se reserva para cerrar una tarea o preparar un commit.</p>
     <div class="box"><strong>Política de validación por niveles.</strong> En cada iteración use pruebas focalizadas o <code>make check</code>. Ejecute un único smoke CPC 6128 solo si cambió código Z80 ejecutado. Repita en CPC 464 únicamente si el cambio depende del modelo, memoria o bancos. Regenere PDF una vez, cuando el texto esté cerrado. Antes del commit ejecute <code>make test</code> una sola vez; las releases sí requieren la matriz completa aplicable.</div>
 
     <h3>3.2 Construir y ejecutar un único ejemplo</h3>
@@ -588,6 +588,10 @@ FWK_TILEMAP_DESCRIPTOR level_map, tile_data, tile_types, 4, 1, 2, 3, 4, 8, 3</co
       <p>Cada gráfico contiene <code>x_size*y_size</code> bytes de vídeo contiguos, en Mode 0 o Mode 1 (perfil <code>mode1-192x192.json</code>; <code>examples/mode1</code> lo comprueba). El render opaco admite exclusivamente las geometrías nativas de CPCTelera Next: 2x4, 2x8, 4x4 y 4x8 bytes (4x4, 4x8, 8x4 y 8x8 píxeles en Mode 0; el doble de ancho en Mode 1), exige que Y esté alineada al alto y despacha a <code>cpct_drawTileAligned*_f_asm</code>. La variante transparente usa un único tileset con el pen clave del proyecto y la tabla implícita de <code>0x0100</code>.</p>
       <p>Carry indica error antes de escribir. Ambas rutinas preservan <code>IX/IY</code>, alteran <code>AF,BC,DE,HL</code> y no son reentrantes. No hay clipping, scroll sub-tile, bancos ni dirty rectangles automáticos; el mapa no se modifica. Véase <code>docs/reference/tilemap-render.md</code>.</p>
     </article>
+    <article class="api" data-module="extensions/tilemap_wrapped_copy.s">
+      <h3>Copia de tile para origen CRTC desplazado — <code>extensions/tilemap_wrapped_copy.s</code></h3>
+      <p>Módulo opcional de los perfiles scroll 128×128. Copia cada línea del tile por separado y usa el puntero de vídeo con retorno dentro del banco de raster de 2 KiB. El renderer ordinario conserva las primitivas rápidas de CPCTelera Next.</p>
+    </article>
 
     <article class="api" data-module="extensions/physics_8_8.s">
       <h3>6.12 Física 8.8 — <code>extensions/physics_8_8.s</code></h3>
@@ -680,6 +684,8 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
         <tr data-example="minimal"><td><code>minimal</code></td><td>Sistema, entrada y vídeo mínimos.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="text"><td><code>text</code></td><td>Texto, números pequeños y colores, con entrada sencilla.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="mode1"><td><code>mode1</code></td><td>Pantalla Mode 1 de 192×192 con sprites, tiles opacos y enmascarados, texto de DeckHero y dígitos pequeños.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="scroll0"><td><code>scroll0</code></td><td>Mapa jugable de 192×192 en ventana Mode 0 de 128×128: cámara en cuatro direcciones, bordes y tres bloqueos; redibujado completo por defecto, ruta CRTC por tiles con T, ruta de 2 píxeles con S y sondas H/J/K/L/I.</td><td>BIN, DSK común, CDT</td></tr>
+        <tr data-example="scroll1"><td><code>scroll1</code></td><td>La misma prueba en Mode 1 de 128×128; avance de cuatro píxeles, ruta CRTC por tiles con T, ruta de 4 píxeles con S y sondas H/J/K/L/I.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="gravity"><td><code>gravity</code></td><td>Traza amarilla sobre negro: gravedad, salto, límites y aterrizaje con velocidad byte.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilecoll"><td><code>tilecoll</code></td><td>Escenario cian y traza amarilla: consulta row-major, techo, pared y suelo sólido.</td><td>BIN, DSK común, CDT</td></tr>
         <tr data-example="tilerender"><td><code>tilerender</code></td><td>Viewport Mode 0: cambio de cámara, render completo y actualización de una celda.</td><td>BIN, DSK común, CDT</td></tr>
@@ -698,7 +704,7 @@ python3 tools/build/gen_resources.py framework/manifests/resources128.json --out
         <span data-module="video/transparency.s"></span>
       </tbody>
     </table>
-    <p><code>platformer</code> y <code>nave</code> son las dos escenas jugables. Los otros trece ejemplos muestran APIs concretas. <code>text</code> sustituye al anterior <code>board</code>. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
+    <p><code>platformer</code> y <code>nave</code> son escenas jugables completas; <code>scroll0</code> y <code>scroll1</code> son ejemplos jugables experimentales. En estos dos últimos use O/P/Q/A para moverse. T activa la ruta CRTC por tiles; S activa una alternativa con doble imagen y pasos de un byte de vídeo (2 píxeles Mode 0, 4 Mode 1). El programa arranca con redibujado completo; recargue el disco para cambiar entre T y S. Antes de activar una ruta, H activa o desactiva el cambio R13, J/L prueba un tile al este/oeste y K/I una fila al sur/norte. H restaura el juego tras una sonda. Ambas rutas jugables coinciden píxel a píxel con el redibujado completo en los cuatro bordes de BluePixel CPC 6128. T salta ocho píxeles por tile; S realiza pasos menores pero tarda más frames en cada uno. Consulte <code>docs/design/validation.md</code>. Los demás ejemplos muestran APIs concretas. <code>text</code> sustituye al anterior <code>board</code>. <code>gravity</code>, <code>tilecoll</code>, <code>tilerender</code>, <code>spriteclip</code>, <code>spritemask</code> y <code>physics88</code> no aceptan entrada: dibujan automáticamente su resultado y fijan una paleta propia cuando la necesitan.</p>
     <h3>8.1 Validaciones internas</h3>
     <p>Estos nueve programas viven en <code>framework/validations/</code>. No forman parte del catálogo público de ejemplos del CLI. Se construyen con <code>make validations</code> o desde su carpeta con <code>make</code>, <code>make run</code> y <code>make clean</code>. El constructor de bajo nivel también acepta su nombre, por ejemplo <code>python3 tools/build/build_examples.py ecsrender</code>.</p>
     <table>
@@ -741,6 +747,12 @@ python3 tests/first_game_smoke.py --example</code></pre>
   --json build/bluepixel-nave.json</code></pre>
     <p>Ejecute antes <code>make test</code> para construir el DSK común y los símbolos actuales. La prueba arranca <code>nave</code> tres veces, comprueba reloj, drone, cuatro límites, suelo, HUD, captura y restauración con continuación idéntica; todos los arranques deben coincidir. La espera de arranque consulta <code>game_status</code> dentro de un límite de fotogramas virtuales. El JSON guarda hashes de binario, disco, símbolos y manifiesto, revisión del SDK y tiempos por método, de arranque y totales. La aceleración usa 50 Hz e incluye control por API y comprobaciones; no se equipara al benchmark histórico de BluePixel.</p>
     <p>CI compila una revisión fijada de BluePixel (<code>BLUEPIXEL_REV</code> en el workflow), ejecuta esta prueba sobre el SDK recién compilado y publica el informe <code>bluepixel-nave-*</code>. Esta comprobación en Linux complementa los smoke de AmSpiriT; no sustituye las pruebas de otros ejemplos o CPC 464.</p>
+    <h3>9.3.1 Cámara experimental en BluePixel</h3>
+    <pre><code>python3 tools/build/build_examples.py scroll0 scroll1
+python3 tests/bluepixel_scroll_smoke.py \
+  --emulator /ruta/BluePixel/build/bluepixel-headless \
+  --rom-dir /ruta/BluePixel/web/roms</code></pre>
+    <p>Esta prueba CPC 6128 comprueba en ambos modos tres obstáculos y los cuatro bordes. H cambia R13 mientras el dibujo está detenido; J/L comprueban las columnas al este/oeste rellenas durante el borde y K/I las filas al sur/norte. Después activa T, recorre los cuatro bordes y compara píxel a píxel sus capturas con el redibujado completo. Guarda imágenes y estados en <code>build/scroll-evidence/</code>. No cubre CPC 464 ni hardware real.</p>
     <h3>9.4 Publicar para probar en el navegador</h3>
     <pre><code>glasnost publish                     # dentro de un proyecto
 glasnost publish nave -- --base-url https://tu-host</code></pre>
@@ -760,7 +772,7 @@ python3 tests/emulator_smoke.py --model 464 text</code></pre>
     <h2 id="distribucion">10. Crear un paquete de distribución</h2>
     <pre><code>make release VERSION=0.2.0
 (cd dist &amp;&amp; sha256sum --check SHA256SUMS)</code></pre>
-    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los 23 BIN y 21 CDT (16 ejemplos y 7 validaciones) y un solo <code>tests/GlasnostFWK-tests.dsk</code>, separando <code>examples/</code> y <code>framework/validations/</code> dentro del ZIP, además de manifiesto (listas <code>examples</code> y <code>validations</code>), instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
+    <p>El empaquetador construye los ejemplos y crea en <code>dist/</code> un ZIP con los 25 BIN y 23 CDT (18 ejemplos y 7 validaciones) y un solo <code>tests/GlasnostFWK-tests.dsk</code>, separando <code>examples/</code> y <code>framework/validations/</code> dentro del ZIP, además de manifiesto (listas <code>examples</code> y <code>validations</code>), instrucciones y <code>SHA256SUMS</code>. Crear este paquete local no publica automáticamente una GitHub Release.</p>
     <p>Use una versión con forma <code>X.Y.Z</code> y sufijo opcional válido. La release pública estable confirmada en la fecha de este manual es <code>v0.2.0</code>; los cambios locales posteriores todavía no pertenecen a esa release.</p>
   </section>
 

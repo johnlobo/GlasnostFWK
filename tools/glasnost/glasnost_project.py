@@ -40,6 +40,7 @@ TITLE_ALLOWED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !-/:>?@")
 # Video profiles this template can run. experimental-160x288 needs 16-bit Y coordinates
 # (u8 cannot address 288 lines) and this template uses u8, so it is not offered.
 PROFILES = {"standard": "standard-160x200.json"}
+CUSTOM_PROFILES = {"mode1-320x200": "mode1-320x200.json"}
 MANIFEST_KEYS = {"schema", "name", "title", "profile", "extended_memory", "git"}
 
 # Keys of glasnost.manifest.json that `glasnost config` may rewrite.
@@ -376,7 +377,7 @@ def find_project(start: Path) -> Path | None:
 
 
 def profile_key(profile_file: str) -> str:
-    for key, value in PROFILES.items():
+    for key, value in (PROFILES | CUSTOM_PROFILES).items():
         if value == profile_file:
             return key
     raise ProjectError(f"glasnost.manifest.json: profile {profile_file!r} is not one glasnost configures")

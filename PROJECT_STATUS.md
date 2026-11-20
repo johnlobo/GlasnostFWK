@@ -5,6 +5,39 @@ próximos pasos. El [historial por fases](docs/design/project-history.md) conser
 las decisiones, mediciones y validaciones antiguas sin reescribirlas. Una casilla
 abierta en ese historial no implica una tarea pendiente hoy.
 
+## Cámara 128×128 en desarrollo
+
+- `scroll0` y `scroll1` elevan el catálogo a 18 ejemplos públicos. El personaje
+  recorre un mapa de 192×192 con cámara en cuatro direcciones, zona central
+  configurable por eje y tres clases de bloqueo. La cámara jugable redibuja el
+  viewport completo al cambiar de tile por defecto. La tecla T activa una
+  ruta CRTC experimental: dibuja solo la franja entrante, aplica el origen al
+  resolver direcciones de vídeo y cambia R12/R13 antes de volver a capturar y
+  dibujar el sprite. La tecla S activa una ruta alternativa con dos imágenes
+  de vídeo: copia la vista, rellena el borde y cambia de imagen en VSYNC. Mueve
+  2 píxeles por paso en Mode 0 o 4 en Mode 1, con más frames por paso que T.
+- Las sondas H (R13), J/L (un tile al este/oeste con relleno durante el borde)
+  y K/I (una fila de ocho líneas al sur/norte) pasaron en BluePixel CPC 6128
+  en Mode 0 y Mode 1.
+  También pasaron los cuatro límites y los tres bloqueos; 43 pruebas host
+  focalizadas correctas. PDF y checksum del manual regenerados.
+- El circuito con T llega a los cuatro bordes en ambos modos y coincide
+  exactamente píxel a píxel con el redibujado completo en BluePixel CPC 6128.
+  El retorno de 2 KiB exigió una copia de tile por línea y un ajuste del
+  puntero de vídeo; sin él, una franja cruzaba `0xFFFF` y pisaba datos del juego.
+  La franja especializada y el origen calculado redujeron el cambio horizontal
+  observado de cuatro a dos frames; todavía salta ocho píxeles y no cumple la
+  meta de un paso por frame. Faltan medir
+  T-estados, comprobar CPC 464 y hardware real, y decidir si el camino pasa a
+  ser una API pública. Los perfiles mantienen R13=0 al arrancar.
+- La ruta S también alcanza los cuatro bordes en ambos modos con capturas
+  idénticas a la referencia en BluePixel CPC 6128. El primer desplazamiento
+  intermedio mide un byte de vídeo; seis cambios al oeste quedaron separados
+  por 7 frames en Mode 0 y 5 en Mode 1. Sigue siendo una alternativa
+  experimental por su coste de copia.
+- La suite host completa encontró fallos del fixture `tar` GNU en este macOS;
+  las pruebas focalizadas anteriores y el smoke BluePixel sí terminaron bien.
+
 ## Rama, commits y validación
 
 - Estado e historial separados en `b0aff2a`, incluidos en la PR
@@ -51,7 +84,7 @@ abierta en ese historial no implica una tarea pendiente hoy.
 - Contrato normativo: [ecs-abi-2.0.md](docs/reference/ecs-abi-2.0.md).
   Fase 1: completada, G1 aprobada. La migración y retirada del modelo anterior se
   documentan en las fases 10 y 11 del historial; no se debe retomar la antigua fase 6.
-- 15 ejemplos públicos en `examples/`; `board` ahora se llama `text`.
+- 18 ejemplos públicos en `examples/`; `board` ahora se llama `text`.
   `nave` es el resultado de la guía inicial y `platformer` la referencia avanzada.
 - 9 programas internos en `framework/validations/`: `video`, `ecsmanager`,
   `ecscollision`, `ecsanimation`, `ecsrender`, `perf`, `experimental`,

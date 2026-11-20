@@ -1,0 +1,25 @@
+{
+  "name": "scroll-mode0-128x128",
+  "status": "experimental-unverified-crtc",
+  "mode": 0,
+  "width_pixels": 128,
+  "width_bytes": 64,
+  "height_lines": 128,
+  "coordinate_bits": 8,
+  "raster_bank_wrap_2k": true,
+  "crtc": {
+    "profile": "cpc-scroll-probe-128x128",
+    "registers": {"R1": 32, "R2": 42, "R6": 16, "R9": 7, "R12": 48, "R13": 0},
+    "video_page": "0xC000",
+    "evidence": "R13=0 matches the generated fixed-origin table in CPC 6128 BluePixel. Candidate centering is observed there; CPC 464 and hardware remain unverified."
+  },
+  "segments": [
+    {"y_start": 0, "height": 128, "base": "0xC000", "row_bytes": 64, "raster_stride": "0x0800"}
+  ],
+  "memory_windows": [
+    {"start": "0xC000", "end": "0xFFFF", "purpose": "video"}
+  ],
+  "reserved": [
+    {"start": "0xB800", "end": "0xBFFF", "purpose": "stack"}
+  ]
+}

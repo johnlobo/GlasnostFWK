@@ -359,6 +359,15 @@ class ConfigRules(unittest.TestCase):
         with self.assertRaises(gp.ProjectError):
             gp.apply_config(self.folder, title="x")
 
+    def test_custom_mode1_profile_can_be_kept_by_config(self):
+        example = json.loads((self.folder / "glasnost.manifest.json").read_text())
+        example["profile"] = "mode1-320x200.json"
+        (self.folder / "glasnost.manifest.json").write_text(json.dumps(example))
+        self.assertEqual(gp.profile_key(example["profile"]), "mode1-320x200")
+        out = gp.apply_config(self.folder, title="x")
+        self.assertEqual(json.loads(out["glasnost.manifest.json"])["profile"],
+                         "mode1-320x200.json")
+
 
 class NewCommand(unittest.TestCase):
     def setUp(self):

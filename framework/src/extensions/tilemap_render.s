@@ -1,8 +1,13 @@
 ;; CPCTelera Next tilemap renderer with a consumer-owned viewport.
 .module fwk_tilemap_render
 .include "extensions/tilemap_render.inc"
+FWK_VIDEO_EMIT_TABLES = 0
+.include "video_config.inc"
 
 .globl fwk_video_get_ptr, fwk_video_width_bytes, fwk_video_height
+.if FWK_VIDEO_RASTER_BANK_WRAP_2K
+.globl fwk_tilemap_copy_wrapped
+.endif
 .globl cpct_drawTileAligned2x4_f_asm, cpct_drawTileAligned2x8_f_asm
 .globl cpct_drawTileAligned4x4_f_asm, cpct_drawTileAligned4x8_f_asm
 
@@ -307,6 +312,16 @@ _fwk_tr_y_loop:
     djnz _fwk_tr_y_loop
 _fwk_tr_y_ready:
     ld (_fwk_tr_screen_y), hl
+.if FWK_VIDEO_RASTER_BANK_WRAP_2K
+    ;; The fast aligned primitive crosses 0xFFFF at some shifted origins.
+    ;; The optional copy module resolves each raster line separately.
+    ld hl, (_fwk_tr_graphics)
+    ld de, (_fwk_tr_screen_y)
+    ld a, (_fwk_tr_screen_x)
+    ld b, FWK_TILEMAP_X_SIZE(ix)
+    ld c, FWK_TILEMAP_Y_SIZE(ix)
+    jp fwk_tilemap_copy_wrapped
+.else
     ;; Resolve the destination once, then let CPCTelera copy the complete tile.
     ld hl, (_fwk_tr_screen_y)
     ld a, (_fwk_tr_screen_x)
@@ -328,3 +343,4 @@ _fwk_tr_draw_4wide:
     cp #4
     jp z, cpct_drawTileAligned4x4_f_asm
     jp cpct_drawTileAligned4x8_f_asm
+.endif

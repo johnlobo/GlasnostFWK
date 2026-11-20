@@ -225,6 +225,14 @@ def run_example(
         run_name = Path(program_bin_name(ROOT, name)).stem
         post("/api/keytype", {"text": f'run"{run_name}\n'})
         wait_for(lambda: int.from_bytes(ram(frame, 2), "little") > 2, 30, f"{name} frame loop")
+        if name in {"scroll0", "scroll1"}:
+            status = symbol(noi, "scroll_status")
+            position = symbol(noi, "scroll_world_x")
+            wait_for(lambda: ram(status, 1) == b"\x5a", 30, f"{name} baseline ready")
+            if ram(position, 6) != bytes((92, 92, 60, 60, 4, 4)):
+                raise RuntimeError(f"{name} did not initialize player and camera")
+            # The full four-edge route and isolated R13 witness run in
+            # tests/bluepixel_scroll_smoke.py; this catalog check is boot-only.
         if name == "text":
             status = symbol(noi, "text_demo_status")
             wait_for(lambda: ram(status, 1) == b"\xA5", 5, "sprite-font rendering")

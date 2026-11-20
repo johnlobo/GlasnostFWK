@@ -1,0 +1,15 @@
+{
+  "name": "scroll0",
+  "amsdos_name": "SCROLL0",
+  "profile": "scroll-mode0-128x128.json",
+  "modules": [
+    "core/system.s",
+    "core/input.s",
+    "video/video.s",
+    "video/sprite.s",
+    "extensions/tilemap.s",
+    "extensions/tilemap_render.s",
+    "extensions/tilemap_wrapped_copy.s"
+  ],
+  "game_sources": ["main.s"]
+}
