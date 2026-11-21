@@ -1,6 +1,6 @@
 # Estado operativo del proyecto
 
-Actualizado: 2026-11-20 UTC. Este documento contiene el estado vigente y los
+Actualizado: 2026-11-21 UTC. Este documento contiene el estado vigente y los
 próximos pasos. El [historial por fases](docs/design/project-history.md) conserva
 las decisiones, mediciones y validaciones antiguas sin reescribirlas. Una casilla
 abierta en ese historial no implica una tarea pendiente hoy.
@@ -99,9 +99,11 @@ abierta en ese historial no implica una tarea pendiente hoy.
   quedaba esperando). Todas las llamadas a `glasnost.main` de `tests/` pasan
   `interactive=` (lo vigila `TestsNeverAsk`). Los tests de miembros sparse de `test_glasnost_bundle` se
   saltan si el `tar` del sistema no los genera (bsdtar en macOS).
-- `fwk_system_wait_frame` (`cpct_waitVSYNC`) vuelve varias veces mientras dura el
-  pulso VSYNC; un bucle que necesite una iteración por frame debe esperar a que
-  cambie `fwk_system_frame_count`. Documentado; sin corregir.
+- `fwk_system_wait_frame` espera el inicio del siguiente pulso VSYNC (fin del
+  pulso actual y comienzo del siguiente, puerto B del PPI) y vuelve una vez por
+  frame; antes llamaba a `cpct_waitVSYNC` y volvía varias veces durante el pulso.
+  `uiinput` lo usa en un bucle corto y su smoke en BluePixel comprueba los
+  intervalos de repetición [15, 4, ...]; con la versión anterior daba [5, 1, 1, 2, ...].
 - `vertical`, su smoke y su guía específica se han eliminado. Su cobertura de
   recogida/victoria no se atribuye a otros programas.
 - `tools/build/program_catalog.py` alimenta Makefile, CLI, CI, DSK y paquete;

@@ -49,7 +49,7 @@ especiales, pero no instala capacidades del proyecto.
 
 - `fwk_system_init`: sin entrada/salida; altera `AF,BC,DE,HL`. Desactiva
   firmware, instala IRQ y deja callback nulo. No reentrante durante instalación.
-- `fwk_system_wait_frame`: altera `AF,BC,DE,HL`; espera VSYNC.
+- `fwk_system_wait_frame`: altera `AF,BC,DE,HL` (hoy solo `AF,BC`); espera al inicio del siguiente pulso VSYNC y vuelve una vez por frame. Llamada dentro de un pulso, espera al siguiente. No necesita interrupciones.
 - `fwk_system_set_irq_callback`: `HL=callback|0`; no altera registros. El
   callback corre una vez por seis IRQ, después del scan de teclado. Cambiarlo
   mientras está activo requiere interrupciones deshabilitadas por el llamador.

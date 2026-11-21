@@ -426,7 +426,7 @@ FWK_ECS_RENDER_SCENE escena, managers, 1, trabajo, 8, pools, 1
       <h3>6.1 Sistema — <code>core/system.s</code></h3>
       <ul>
         <li><code>fwk_system_init</code>: desactiva firmware, instala IRQ y deja el callback nulo. Altera <code>AF,BC,DE,HL</code>.</li>
-        <li><code>fwk_system_wait_frame</code>: espera VSYNC. Altera <code>AF,BC,DE,HL</code>.</li>
+        <li><code>fwk_system_wait_frame</code>: espera al inicio del siguiente pulso VSYNC; vuelve una vez por frame (llamada dentro de un pulso, espera al siguiente). Altera <code>AF,BC,DE,HL</code>.</li>
         <li><code>fwk_system_set_irq_callback</code>: recibe <code>HL=callback|0</code>. El callback se ejecuta una vez por cada seis IRQ, después del escaneo del teclado.</li>
         <li>Estado público: <code>fwk_system_irq_count</code>, <code>fwk_system_frame_count</code> y el puntero de callback.</li>
       </ul>
@@ -449,7 +449,7 @@ FWK_ECS_RENDER_SCENE escena, managers, 1, trabajo, 8, pools, 1
         <li><code>fwk_input_update</code>: actualiza <code>fwk_input_held</code>, <code>fwk_input_pressed</code>, <code>fwk_input_released</code> y <code>fwk_input_repeat</code>. Altera <code>AF,BC,DE,HL,IY</code>.</li>
         <li><code>fwk_input_set_repeat</code>: <code>B=retardo</code>, <code>C=intervalo</code>, ambos 1..255 en llamadas a <code>fwk_input_update</code>. Por defecto 15 y 4. Altera <code>A</code>.</li>
       </ul>
-      <p><strong>Repetición de tecla.</strong> <code>fwk_input_repeat</code> vale lo mismo que <code>fwk_input_pressed</code> en una pulsación nueva. Si las acciones siguen mantenidas sin otra pulsación, vale <code>fwk_input_held</code> una vez pasado el retardo y luego cada intervalo; el resto del tiempo vale 0. Use <code>fwk_input_repeat</code> para mover cursores y <code>fwk_input_pressed</code> para acciones de un solo disparo. Llame a <code>fwk_input_update</code> una vez por frame: <code>fwk_system_wait_frame</code> puede volver varias veces mientras dura el pulso VSYNC, así que un bucle rápido debe esperar a que cambie <code>fwk_system_frame_count</code> (lo hace la validación <code>uiinput</code>).</p>
+      <p><strong>Repetición de tecla.</strong> <code>fwk_input_repeat</code> vale lo mismo que <code>fwk_input_pressed</code> en una pulsación nueva. Si las acciones siguen mantenidas sin otra pulsación, vale <code>fwk_input_held</code> una vez pasado el retardo y luego cada intervalo; el resto del tiempo vale 0. Use <code>fwk_input_repeat</code> para mover cursores y <code>fwk_input_pressed</code> para acciones de un solo disparo. Llame a <code>fwk_input_update</code> una vez por frame, por ejemplo después de <code>fwk_system_wait_frame</code>, que vuelve una vez por frame aunque el bucle sea muy corto (lo hace la validación <code>uiinput</code>).</p>
     </article>
 
     <article class="api" data-module="video/video.s">

@@ -1,7 +1,7 @@
 .module validation_uiinput
 .include "cpctelera.h.s"
 
-.globl fwk_project_init, fwk_system_frame_count
+.globl fwk_project_init, fwk_system_frame_count, fwk_system_wait_frame
 .globl fwk_input_init, fwk_input_set_bindings, fwk_input_update, fwk_input_repeat
 .globl fwk_text_init, fwk_text_draw, fwk_text_draw_centered, fwk_text_draw_clear
 
@@ -59,14 +59,9 @@ _main::
     ld a, #0x5A
     ld (uiinput_ready), a
 _loop:
-    ;; One update per frame: wait for the IRQ frame counter to change.
-    ;; (fwk_system_wait_frame returns at once while the VSYNC pulse lasts.)
-    ld a, (fwk_system_frame_count)
-    ld b, a
-_wait:
-    ld a, (fwk_system_frame_count)
-    cp b
-    jr z, _wait
+    ;; One update per frame: fwk_system_wait_frame returns once per frame
+    ;; however short the loop (the smoke checks the repeat gaps in frames).
+    call fwk_system_wait_frame
     call fwk_input_update
     ld a, (fwk_input_repeat)
     or a
