@@ -70,7 +70,19 @@ fwk_system_init::
     jp cpct_setInterruptHandler_asm
 
 ;; fwk_system_wait_frame
-;; In: none. Out: none. Modified: AF,BC,DE,HL.
-;; Waits for the next vertical synchronization through CPCtelera.
+;; In: none. Out: none. Modified: AF,BC (contract: AF,BC,DE,HL).
+;; Waits for the start of the next VSYNC pulse: first for the current pulse to
+;; end, then for the next one to begin (PPI port B, bit 0). Returns once per
+;; frame however fast the caller loops; called inside a pulse, it waits for
+;; the next frame. Does not need interrupts.
 fwk_system_wait_frame::
-    jp cpct_waitVSYNC_asm
+    ld b, #0xF5
+_fwk_wait_frame_end:
+    in a, (c)
+    rra
+    jr c, _fwk_wait_frame_end
+_fwk_wait_frame_start:
+    in a, (c)
+    rra
+    jr nc, _fwk_wait_frame_start
+    ret
