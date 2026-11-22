@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Validaciones disksave y uiinput en el adaptador stdio de BluePixel.
+"""Validaciones disksave, uiinput y textm1 en el adaptador stdio de BluePixel.
 
 disksave: fwk_disk_save escribe SAVED.DAT con el firmware apagado; el disco exportado
 se lee aquí y se comprueba byte a byte (y que AMSDOS dejó la versión anterior en .BAK).
-uiinput: fwk_text_draw_centered / fwk_text_draw_clear en VRAM y los intervalos de
+uiinput: fwk_text_draw_centered / fwk_text_draw_clear (y sus versiones _big) en VRAM y los intervalos de
 fwk_input_repeat con una tecla mantenida.
+textm1: texto Mode 1 normal y a doble altura (cada línea dos veces).
 
     python3 tests/bluepixel_validations_smoke.py --emulator BIN --rom-dir DIR
 """
@@ -106,6 +107,24 @@ def screen(emu: BluePixel, x: int, y: int, length: int) -> bytes:
     return emu.read(0xC000 + (y & 7) * 0x800 + (y >> 3) * 80 + x, length)
 
 
+def double_height(emu: BluePixel) -> None:
+    """The _big calls: every line of the normal drawing twice, and the fill byte kept."""
+    for name, normal_y, big_y, rows in (("fwk_text_draw_centered_big", 32, 64, 9),
+                                        ("fwk_text_draw_small_u8_big", 144, 160, 5)):
+        normal = [screen(emu, 0, normal_y + y, 80) for y in range(rows)]
+        big = [screen(emu, 0, big_y + y, 80) for y in range(2 * rows + 1)]
+        require(any(any(row) for row in normal), f"{name}: no se dibujó la versión normal")
+        require(big[:2 * rows] == [row for row in normal for _ in (0, 1)], f"{name}: no duplica cada línea")
+        require(not any(big[2 * rows]), f"{name}: dibuja más de {2 * rows} líneas")
+    value = [screen(emu, 0, 144 + y, 80) for y in range(5)]
+    zero = [screen(emu, 0, 176 + y, 80) for y in range(5)]
+    require(value != zero, "fwk_text_draw_small_u8 dibuja 0 en vez de 123 (pierde A)")
+    for name, y0, lines in (("fwk_text_draw_clear", 96, 9), ("fwk_text_draw_clear_big", 120, 18)):
+        rows = [screen(emu, 0, y0 + y, 80) for y in range(lines + 1)]
+        require(all(row[2:8] == b"\xff" * 6 for row in rows[:lines]), f"{name}: no rellena con C")
+        require(not any(rows[lines][:8]), f"{name}: rellena más de {lines} líneas")
+
+
 def uiinput(emulator: Path, rom_dir: Path) -> None:
     build = ROOT / "build/uiinput"
     with BluePixel(emulator, rom_dir) as emu:
@@ -117,6 +136,7 @@ def uiinput(emulator: Path, rom_dir: Path) -> None:
         rows = [screen(emu, 0, 16 + y, 80) for y in range(9)]
         require(any(any(row[0:2]) for row in rows), '"A" no se dibujó')
         require(not any(any(row[2:]) for row in rows), "fwk_text_draw_clear dejó restos de WXYZ")
+        double_height(emu)
 
         emu.run(5)
         require(emu.read("uiinput_log_count")[0] == 0, "repetición sin tecla")
@@ -133,14 +153,32 @@ def uiinput(emulator: Path, rom_dir: Path) -> None:
     print("uiinput: ok")
 
 
+def textm1(emulator: Path, rom_dir: Path) -> None:
+    build = ROOT / "build/textm1"
+    with BluePixel(emulator, rom_dir) as emu:
+        emu.load(build / "textm1.dsk", build / "obj/textm1.noi")
+        emu.boot('run"textm1', "textm1_ready", 0x5A)
+        for name, normal_y, big_y, rows in (("fwk_text_draw_big", 0, 16, 9),
+                                            ("fwk_text_draw_small_u8_big", 48, 64, 5)):
+            normal = [screen(emu, 0, normal_y + y, 80) for y in range(rows)]
+            big = [screen(emu, 0, big_y + y, 80) for y in range(2 * rows + 1)]
+            require(any(any(row) for row in normal), f"{name}: no se dibujó la versión normal")
+            require(big[:2 * rows] == [row for row in normal for _ in (0, 1)], f"{name}: no duplica cada línea")
+            require(not any(big[2 * rows]), f"{name}: dibuja más de {2 * rows} líneas")
+        value = [screen(emu, 0, 48 + y, 80) for y in range(5)]
+        zero = [screen(emu, 0, 96 + y, 80) for y in range(5)]
+        require(value != zero, "fwk_text_draw_small_u8 dibuja 0 en vez de 123 (pierde A)")
+    print("textm1: ok")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--emulator", type=Path, required=True)
     parser.add_argument("--rom-dir", type=Path, required=True)
-    parser.add_argument("programs", nargs="*", default=["disksave", "uiinput"])
+    parser.add_argument("programs", nargs="*", default=["disksave", "uiinput", "textm1"])
     args = parser.parse_args()
     for name in args.programs:
-        {"disksave": disksave, "uiinput": uiinput}[name](args.emulator, args.rom_dir)
+        {"disksave": disksave, "uiinput": uiinput, "textm1": textm1}[name](args.emulator, args.rom_dir)
     return 0
 
 

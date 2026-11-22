@@ -133,9 +133,9 @@ jobs:
             --rom-dir .deps/bluepixel/web/roms \
             --json build/bluepixel-nave.json
 
-      - name: Test disksave and uiinput in BluePixel
+      - name: Test disksave, uiinput and textm1 in BluePixel
         run: |
-          python3 tools/build/build_examples.py disksave uiinput
+          python3 tools/build/build_examples.py disksave uiinput textm1
           python3 tests/bluepixel_validations_smoke.py \
             --emulator .deps/bluepixel/build/bluepixel-headless \
             --rom-dir .deps/bluepixel/web/roms

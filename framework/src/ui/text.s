@@ -25,12 +25,14 @@ _fwk_text_destination:    .dw 0
 _fwk_text_blit_source:    .dw 0
 _fwk_text_blit_dest:      .dw 0
 _fwk_text_blit_height:    .db 0
+_fwk_text_double:         .db 0
 _fwk_text_number_dest:    .dw 0
 _fwk_text_number_value:   .db 0
 _fwk_text_digit:          .db 0
 _fwk_text_number_hundreds:.db 0
 _fwk_text_number_tens:    .db 0
 _fwk_text_char_buffer:    .ds 18
+_fwk_text_char_buffer_big:.ds 36
 
 .area _CODE
 
@@ -80,6 +82,20 @@ fwk_text_set_colors::
 ;; Unsupported bytes advance one glyph cell without drawing.
 ;; Modified: AF, BC, DE, HL, IX, IY.
 fwk_text_draw::
+    xor a
+    ld (_fwk_text_double), a
+    jp _fwk_text_draw_impl
+
+;; fwk_text_draw_big
+;; Like fwk_text_draw but every glyph is drawn double height (18 rows
+;; instead of 9), reusing the same font (no new spritesheet).
+;; Modified: AF, BC, DE, HL, IX, IY.
+fwk_text_draw_big::
+    ld a, #1
+    ld (_fwk_text_double), a
+    jp _fwk_text_draw_impl
+
+_fwk_text_draw_impl:
     push iy
     pop de
     ld (_fwk_text_string), de
@@ -170,6 +186,16 @@ _fwk_text_draw_glyph_ready:
 ;; starts at x=0. Length counts up to 255 characters.
 ;; Modified: AF, BC, DE, HL, IX, IY.
 fwk_text_draw_centered::
+    xor a
+    ld (_fwk_text_double), a
+    jp _fwk_text_draw_centered_impl
+
+fwk_text_draw_centered_big::
+    ld a, #1
+    ld (_fwk_text_double), a
+    jp _fwk_text_draw_centered_impl
+
+_fwk_text_draw_centered_impl:
     push iy
     pop de
     ld b, #0
@@ -191,7 +217,7 @@ _fwk_text_centered_x:
     ld e, a
     ld d, #0
     add hl, de
-    jp fwk_text_draw
+    jp _fwk_text_draw_impl
 
 ;; fwk_text_draw_clear
 ;; In: IY=NUL-terminated string, HL=screen pointer, B=cells to clear (1..32,
@@ -201,6 +227,16 @@ _fwk_text_centered_x:
 ;; shorter text replaces a longer one ("ON" over "OFF").
 ;; Modified: AF, BC, DE, HL, IX, IY.
 fwk_text_draw_clear::
+    xor a
+    ld (_fwk_text_double), a
+    jp _fwk_text_draw_clear_impl
+
+fwk_text_draw_clear_big::
+    ld a, #1
+    ld (_fwk_text_double), a
+    jp _fwk_text_draw_clear_impl
+
+_fwk_text_draw_clear_impl:
     push hl
     push iy
     ex de, hl                     ;; DE = destination
@@ -208,17 +244,36 @@ fwk_text_draw_clear::
     add a, a
     ld b, c                       ;; B = fill byte for a moment
     ld c, a                       ;; C = width in bytes
-    ld a, b                       ;; A = fill byte
+    ld a, (_fwk_text_double)
+    or a
+    ld a, b                       ;; A = fill byte (flags still from the test)
     ld b, #FWK_TEXT_FONT_HEIGHT
+    jr z, _fwk_text_clear_height_ready
+    ld b, #2*FWK_TEXT_FONT_HEIGHT
+_fwk_text_clear_height_ready:
     call cpct_drawSolidBox_asm
     pop iy
     pop hl
-    jp fwk_text_draw
+    jp _fwk_text_draw_impl
 
 ;; fwk_text_draw_small_digit
 ;; In: A=digit 0..9, HL=screen pointer. Out: carry set when invalid.
 ;; Modified: AF, BC, DE, HL, IX, IY.
 fwk_text_draw_small_digit::
+    push af                       ;; A is the value: keep it
+    xor a
+    ld (_fwk_text_double), a
+    pop af
+    jp _fwk_text_draw_small_digit_impl
+
+fwk_text_draw_small_digit_big::
+    push af                       ;; A is the value: keep it
+    ld a, #1
+    ld (_fwk_text_double), a
+    pop af
+    jp _fwk_text_draw_small_digit_impl
+
+_fwk_text_draw_small_digit_impl:
     cp #10
     jr c, _fwk_text_small_valid
     scf
@@ -247,6 +302,23 @@ _fwk_text_small_ready:
 ;; In: A=value 0..255, HL=screen pointer. Draws unpadded decimal digits.
 ;; Modified: AF, BC, DE, HL, IX, IY.
 fwk_text_draw_small_u8::
+    push af                       ;; A is the value: keep it
+    xor a
+    ld (_fwk_text_double), a
+    pop af
+    jp _fwk_text_draw_small_u8_impl
+
+;; fwk_text_draw_small_u8_big
+;; Like fwk_text_draw_small_u8 but digits drawn double height.
+;; Modified: AF, BC, DE, HL, IX, IY.
+fwk_text_draw_small_u8_big::
+    push af                       ;; A is the value: keep it
+    ld a, #1
+    ld (_fwk_text_double), a
+    pop af
+    jp _fwk_text_draw_small_u8_impl
+
+_fwk_text_draw_small_u8_impl:
     ld (_fwk_text_number_dest), hl
     ld b, #0
 _fwk_text_hundreds_loop:
@@ -295,7 +367,7 @@ _fwk_text_draw_ones:
 _fwk_text_draw_number_digit:
     ld hl, (_fwk_text_number_dest)
     push af
-    call fwk_text_draw_small_digit
+    call _fwk_text_draw_small_digit_impl
     pop af
     ld hl, (_fwk_text_number_dest)
     inc hl
@@ -354,8 +426,46 @@ _fwk_text_store_byte:
     dec c
     jr nz, _fwk_text_recolor_loop
 
+    ld a, (_fwk_text_double)
+    or a
+    jr z, _fwk_text_no_double_expand
+    ;; Expand each recoloured row into two scanlines.
+    ld hl, #_fwk_text_char_buffer
+    ld de, #_fwk_text_char_buffer_big
+    ld a, (_fwk_text_blit_height)
+    ld b, a
+_fwk_text_expand_loop:
+    ld a, (hl)
+    ld (de), a
+    inc de
+    inc hl
+    ld a, (hl)
+    ld (de), a
+    inc de
+    dec hl
+    ld a, (hl)
+    ld (de), a
+    inc de
+    inc hl
+    ld a, (hl)
+    ld (de), a
+    inc de
+    inc hl
+    dec b
+    jr nz, _fwk_text_expand_loop
+_fwk_text_no_double_expand:
+    ld a, (_fwk_text_double)
+    or a
+    jr z, _fwk_text_use_normal_buf
+    ld bc, #_fwk_text_char_buffer_big
+    jr _fwk_text_buf_ready
+_fwk_text_use_normal_buf:
     ld bc, #_fwk_text_char_buffer
+_fwk_text_buf_ready:
     ld de, (_fwk_text_blit_dest)
+    ld a, (_fwk_text_double)
+    or a
+    jr nz, _fwk_text_double_dims
     ld a, (_fwk_text_blit_height)
     cp #FWK_TEXT_SMALL_HEIGHT
     jr z, _fwk_text_small_dimensions
@@ -363,6 +473,15 @@ _fwk_text_store_byte:
     jr _fwk_text_dimensions_ready
 _fwk_text_small_dimensions:
     ld ix, #0x0502
+    jr _fwk_text_dimensions_ready
+_fwk_text_double_dims:
+    ld a, (_fwk_text_blit_height)
+    cp #FWK_TEXT_SMALL_HEIGHT
+    jr z, _fwk_text_small_double_dimensions
+    ld ix, #0x1202
+    jr _fwk_text_dimensions_ready
+_fwk_text_small_double_dimensions:
+    ld ix, #0x0A02
 _fwk_text_dimensions_ready:
     call fwk_transparency_draw
     pop iy

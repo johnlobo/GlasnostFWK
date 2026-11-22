@@ -18,7 +18,7 @@ class ProgramCatalogTests(unittest.TestCase):
         validations = set(program_names(ROOT, "validations"))
         self.assertEqual(validations, {
             "video", "ecsmanager", "ecscollision", "ecsanimation", "ecsrender", "perf", "experimental",
-            "disksave", "uiinput",
+            "disksave", "uiinput", "textm1",
         })
         self.assertEqual(len(examples), 18)
         self.assertIn("text", examples)
