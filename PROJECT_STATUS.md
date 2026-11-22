@@ -86,9 +86,15 @@ abierta en ese historial no implica una tarea pendiente hoy.
   documentan en las fases 10 y 11 del historial; no se debe retomar la antigua fase 6.
 - 18 ejemplos públicos en `examples/`; `board` ahora se llama `text`.
   `nave` es el resultado de la guía inicial y `platformer` la referencia avanzada.
-- 9 programas internos en `framework/validations/`: `video`, `ecsmanager`,
+- 10 programas internos en `framework/validations/`: `video`, `ecsmanager`,
   `ecscollision`, `ecsanimation`, `ecsrender`, `perf`, `experimental`,
-  `disksave` y `uiinput`.
+  `disksave`, `uiinput` y `textm1`.
+- Texto a doble altura: `fwk_text_draw_big`, `fwk_text_draw_small_digit_big` y
+  `fwk_text_draw_small_u8_big` en Mode 0 y Mode 1, más `fwk_text_draw_centered_big`
+  y `fwk_text_draw_clear_big` en Mode 0. Repiten cada línea de la misma fuente.
+  `uiinput` (Mode 0) y `textm1` (Mode 1) comparan en BluePixel cada línea con la
+  versión normal; también comprueban que `fwk_text_draw_clear` usa el relleno `C`
+  y que los dígitos conservan `A` (la primera versión perdía los dos).
 - Llevado desde catdoku: `fwk_disk_save` (escribir un fichero AMSDOS con el
   firmware apagado), `fwk_input_repeat`/`fwk_input_set_repeat` (repetición de
   tecla) y `fwk_text_draw_centered`/`fwk_text_draw_clear`. Comprobados en

@@ -1,0 +1,6 @@
+{
+  "name": "textm1",
+  "profile": "mode1-320x200.json",
+  "transparency": {"pen": 0},
+  "modules": ["core/system.s", "video/video.s", "ui/text_mode1.s"]
+}

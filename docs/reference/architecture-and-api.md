@@ -269,15 +269,26 @@ un proyecto con `transparency.pen=0`. La tabla se instala en `0x0100` mediante
   `H`. Conserva el símbolo, no la antigua semántica de números de pen.
 - `fwk_text_draw`: `IY=ASCII NUL`, `HL=vídeo`; admite espacio, `!`, `-`, `/`,
   `0..9`, `:`, `>`, `?`, `@` y `A..Z`.
+- `fwk_text_draw_big`: igual que `fwk_text_draw`, pero cada glifo se dibuja al
+  doble de alto (18 filas en lugar de 9), reutilizando la misma fuente (sin
+  spritesheet nuevo). La fuente no cambia; solo la altura del blit.
 - `fwk_text_draw_small_digit`: `A=0..9`, `HL=vídeo`; carry si no es un dígito.
+- `fwk_text_draw_small_digit_big`: igual que el anterior, al doble de alto.
 - `fwk_text_draw_small_u8`: `A=0..255`, `HL=vídeo`; decimal sin relleno.
+- `fwk_text_draw_small_u8_big`: igual que el anterior, al doble de alto.
 - `fwk_text_draw_centered`: `IY=ASCII NUL`, `HL=vídeo del byte 0 de la fila`;
   dibuja en `x = fwk_video_width_bytes/2 - longitud` (glifos de 2 bytes), o en
   `x=0` si el texto ocupa la pantalla entera. Altera `AF,BC,DE,HL,IX,IY`.
+- `fwk_text_draw_centered_big`: igual que `fwk_text_draw_centered`, al doble de
+  alto (18 filas).
 - `fwk_text_draw_clear`: `IY=ASCII NUL`, `HL=vídeo`, `B=celdas 1..32`,
   `C=byte de relleno` (0 para pen 0). Rellena `B*2` bytes por 9 líneas y dibuja
   encima: sustituye un texto por otro más corto. Altera `AF,BC,DE,HL,IX,IY`.
-  Ambas solo existen en `ui/text.s` (Mode 0); `ui/text_mode1.s` no las tiene.
+- `fwk_text_draw_clear_big`: igual que `fwk_text_draw_clear`, con relleno de 18
+  líneas y glifos al doble de alto.
+  Las cuatro de centrar y borrar (`fwk_text_draw_centered`, `fwk_text_draw_clear`
+  y sus `_big`) solo existen en `ui/text.s` (Mode 0); `ui/text_mode1.s` no las
+  tiene. Las versiones `_big` conservan `A` (dígito o valor) igual que las normales.
 
 El índice de color selecciona la tabla original; no equivale necesariamente al
 número de pen de la paleta activa y el pen 14 se usa como sombra. No hay
@@ -291,6 +302,9 @@ avanza un byte por carácter y admite espacio, `!`, coma, `-`, punto, `0..9`,
 `:`, `?`, `@` y `A..Z`. `fwk_text_set_assets` recibe `HL=43*9` y `DE=10*5`.
 Los caracteres no admitidos dejan una celda vacía. No hay clipping ni
 borrado del fondo; el llamador debe mantener el texto dentro de la pantalla.
+También existen `fwk_text_draw_big`, `fwk_text_draw_small_digit_big` y
+`fwk_text_draw_small_u8_big`, que reutilizan la misma fuente al doble de
+alto (18 filas en lugar de 9).
 
 ### Ventanas opcionales
 

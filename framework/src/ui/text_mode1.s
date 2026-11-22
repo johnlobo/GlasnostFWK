@@ -19,12 +19,14 @@ _fwk_m1_destination:   .dw 0
 _fwk_m1_source:        .dw 0
 _fwk_m1_blit_dest:     .dw 0
 _fwk_m1_height:        .db 0
+_fwk_m1_double:        .db 0
 _fwk_m1_number_dest:   .dw 0
 _fwk_m1_number_value:  .db 0
 _fwk_m1_hundreds:      .db 0
 _fwk_m1_tens:          .db 0
 _fwk_m1_digit:         .db 0
 _fwk_m1_char_buffer:   .ds 9
+_fwk_m1_char_buffer_big:.ds 18
 
 .area _CODE
 
@@ -72,6 +74,20 @@ fwk_text_set_colors::
 ;; Unsupported characters leave a blank glyph cell.
 ;; Modified: AF, BC, DE, HL; IX/IY preserved.
 fwk_text_draw::
+    xor a
+    ld (_fwk_m1_double), a
+    jp _fwk_m1_draw_impl
+
+;; fwk_text_draw_big
+;; Like fwk_text_draw but every glyph is drawn double height (18 rows
+;; instead of 9), reusing the same font (no new spritesheet).
+;; Modified: AF, BC, DE, HL; IX/IY preserved.
+fwk_text_draw_big::
+    ld a, #1
+    ld (_fwk_m1_double), a
+    jp _fwk_m1_draw_impl
+
+_fwk_m1_draw_impl:
     push iy
     pop de
     ld (_fwk_m1_string), de
@@ -157,6 +173,23 @@ _fwk_m1_glyph_ready:
 ;; In: A=0..9, HL=screen pointer. Out: carry set if A is invalid.
 ;; Modified: AF, BC, DE, HL; IX/IY preserved.
 fwk_text_draw_small_digit::
+    push af                       ;; A is the value: keep it
+    xor a
+    ld (_fwk_m1_double), a
+    pop af
+    jp _fwk_m1_small_digit_impl
+
+;; fwk_text_draw_small_digit_big
+;; Like fwk_text_draw_small_digit but double height.
+;; Modified: AF, BC, DE, HL; IX/IY preserved.
+fwk_text_draw_small_digit_big::
+    push af                       ;; A is the value: keep it
+    ld a, #1
+    ld (_fwk_m1_double), a
+    pop af
+    jp _fwk_m1_small_digit_impl
+
+_fwk_m1_small_digit_impl:
     cp #10
     jr c, _fwk_m1_small_valid
     scf
@@ -184,6 +217,23 @@ _fwk_m1_small_ready:
 ;; In: A=0..255, HL=screen pointer. Draws unpadded 1-byte-wide digits.
 ;; Modified: AF, BC, DE, HL; IX/IY preserved.
 fwk_text_draw_small_u8::
+    push af                       ;; A is the value: keep it
+    xor a
+    ld (_fwk_m1_double), a
+    pop af
+    jp _fwk_m1_small_u8_impl
+
+;; fwk_text_draw_small_u8_big
+;; Like fwk_text_draw_small_u8 but digits drawn double height.
+;; Modified: AF, BC, DE, HL; IX/IY preserved.
+fwk_text_draw_small_u8_big::
+    push af                       ;; A is the value: keep it
+    ld a, #1
+    ld (_fwk_m1_double), a
+    pop af
+    jp _fwk_m1_small_u8_impl
+
+_fwk_m1_small_u8_impl:
     ld (_fwk_m1_number_dest), hl
     ld b, #0
 _fwk_m1_hundreds_loop:
@@ -229,7 +279,7 @@ _fwk_m1_draw_ones:
 
 _fwk_m1_draw_number_digit:
     ld hl, (_fwk_m1_number_dest)
-    call fwk_text_draw_small_digit
+    call _fwk_m1_small_digit_impl
     ld hl, (_fwk_m1_number_dest)
     inc hl
     ld (_fwk_m1_number_dest), hl
@@ -277,13 +327,47 @@ _fwk_m1_recolor_store:
     dec c
     jr nz, _fwk_m1_recolor_loop
 
-    ld bc, #_fwk_m1_char_buffer
-    ld de, (_fwk_m1_blit_dest)
+    ld a, (_fwk_m1_double)
+    or a
+    jr z, _fwk_m1_no_double_expand
+    ld hl, #_fwk_m1_char_buffer
+    ld de, #_fwk_m1_char_buffer_big
     ld a, (_fwk_m1_height)
+    ld b, a
+_fwk_m1_expand_loop:
+    ld a, (hl)
+    ld (de), a
+    inc de
+    ld (de), a
+    inc de
+    inc hl
+    dec b
+    jr nz, _fwk_m1_expand_loop
+_fwk_m1_no_double_expand:
+    ld a, (_fwk_m1_double)
+    or a
+    jr z, _fwk_m1_use_normal_buf
+    ld bc, #_fwk_m1_char_buffer_big
+    jr _fwk_m1_buf_ready
+_fwk_m1_use_normal_buf:
+    ld bc, #_fwk_m1_char_buffer
+_fwk_m1_buf_ready:
+    ld de, (_fwk_m1_blit_dest)
+    ld a, (_fwk_m1_double)
+    or a
+    jr nz, _fwk_m1_double_dims
     ld ix, #0x0901
+    ld a, (_fwk_m1_height)
     cp #5
     jr nz, _fwk_m1_dimensions_ready
     ld ix, #0x0501
+    jr _fwk_m1_dimensions_ready
+_fwk_m1_double_dims:
+    ld ix, #0x1201
+    ld a, (_fwk_m1_height)
+    cp #5
+    jr nz, _fwk_m1_dimensions_ready
+    ld ix, #0x0A01
 _fwk_m1_dimensions_ready:
     call fwk_transparency_draw
     pop iy
